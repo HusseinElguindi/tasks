@@ -32,7 +32,6 @@ final class TaskListView: NSView {
     private var labelsLeaving: [EntityID: (view: GroupLabelView, until: CFTimeInterval)] = [:]
     private let completedRow = CompletedRowView()
     private var completedWidth: CGFloat = 0
-    private let ghost = GhostRowView()
     private let empty = EmptyStateView()
     private let banner = BannerView()
     private var renameField: InlineField?
@@ -50,7 +49,6 @@ final class TaskListView: NSView {
         case row(EntityID, TaskRowView.Part)
         case label(EntityID, plus: Bool)
         case completed
-        case addZone
         case banner
         case empty
     }
@@ -75,7 +73,6 @@ final class TaskListView: NSView {
         scroll.automaticallyAdjustsContentInsets = false
         addSubview(scroll)
         doc.owner = self
-        doc.addSubview(ghost)
         doc.addSubview(completedRow)
         doc.addSubview(empty)
         doc.addSubview(banner)
@@ -367,7 +364,7 @@ final class TaskListView: NSView {
         v.layer?.removeAllAnimations()
         v.layer?.setInstant { v.layer?.opacity = 1 }
         v.isHidden = false
-        if v.superview !== doc { doc.addSubview(v, positioned: .above, relativeTo: ghost) }
+        if v.superview !== doc { doc.addSubview(v, positioned: .below, relativeTo: completedRow) }
         return v
     }
 
@@ -402,7 +399,7 @@ final class TaskListView: NSView {
         }
     }
 
-    // MARK: Labels, the Completed row, the ghost row, the empty state and the banner
+    // MARK: Labels, the Completed row, the empty state and the banner
 
     private func renderLabels(_ L: TaskLayout, rowW: CGFloat, animate: Bool, now: CFTimeInterval) {
         let p = store.projection
@@ -431,7 +428,7 @@ final class TaskListView: NSView {
             if let existing = labels[key] { v = existing } else {
                 v = GroupLabelView()
                 v.layer?.setScaleDeep(window?.backingScaleFactor ?? 2)
-                doc.addSubview(v, positioned: .above, relativeTo: ghost)
+                doc.addSubview(v, positioned: .below, relativeTo: completedRow)
                 labels[key] = v
                 isNew = true
             }
@@ -473,17 +470,6 @@ final class TaskListView: NSView {
             }
         } else {
             completedRow.isHidden = true
-        }
-        // The ghost row and the add zone (a list, not during a drag). While a new task is being added the ghost never
-        // shows: the draft's own row is the one "New Task" (the add zone then only puts the caret back or writes it, §6).
-        if let gy = L.ghostY, state.route.listID != nil {
-            ghost.isHidden = false
-            ghost.configure(palette: palette)
-            if state.draft != nil { ghost.show(false, animated: false) }
-            if ghost.frame.minY != gy || ghost.frame.width != rowW { place(ghost, y: gy, width: rowW) }
-        } else {
-            ghost.isHidden = true
-            ghost.show(false, animated: false)
         }
         // The empty states: never clickable; 34% down (40pt for All done).
         if let kind = L.empty, !(kind == .list && state.route.listID.flatMap { p.list($0)?.archivedAt } != nil) {
@@ -653,7 +639,6 @@ final class TaskListView: NSView {
                 return .label(key, plus: plus)
             }
         }
-        if state.route.listID != nil, let gy = L.ghostY, p.y >= gy, state.drag == nil { return .addZone }
         return .empty
     }
 
@@ -689,7 +674,6 @@ final class TaskListView: NSView {
         if case .row(let id, let pt) = t { hoveredRow = id; part = pt }
         for (id, v) in rows { v.setHover(row: id == hoveredRow, part: id == hoveredRow ? part : nil) }
         completedRow.setHover(t == .completed)
-        ghost.show(t == .addZone && state.drag == nil && state.draft == nil, animated: state.draft == nil)
         for (key, v) in labels {
             if case .label(let k, let plus) = t, k == key { v.setHover(true, overPlus: plus) } else { v.setHover(false, overPlus: false) }
         }
@@ -721,10 +705,9 @@ final class TaskListView: NSView {
         state.overlays.hideTip()
         let editing = state.rename != nil || state.draft != nil || state.detailEditing != nil
         let untitled = a.untitledDraft
-        // An untitled new task keeps its caret when the press lands on an add control (dc:1316).
+        // An untitled new task keeps its caret when the press lands on an add control: a Today group's + (dc:1316).
         let keepsCaret: Bool = {
             if !untitled { return false }
-            if t == .addZone { return true }
             if case .label(_, plus: true) = t { return true }
             return false
         }()
@@ -770,16 +753,16 @@ final class TaskListView: NSView {
             labels[key]?.plus.pressed = true
         case .banner:
             banner.setButtonState(hovered: true, pressed: true)
-        case .addZone:
-            press = nil
-            if untitled {
-                state.titleFocusRequest = .init(selection: .end)
-            } else if !editing {
-                a.newTask()
-            }
         case .empty:
+            // Empty space (v2 feedback 2): a press clears the selection, as in Rex and Finder; with something being
+            // edited, the first press only ends that edit (a new task is written, or dropped if it has no title). A
+            // double-click adds a task, as ⌘N does.
             press = nil
-            if !editing, state.route == .today || true, !state.selection.isEmpty { state.selection = [] }
+            if event.clickCount == 2 {
+                a.newTask()
+            } else if !editing, !state.selection.isEmpty {
+                state.selection = []
+            }
         case .completed, .label:
             break
         }

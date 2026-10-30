@@ -35,4 +35,4 @@ The user's words: "i want the active pane color to only appear when there is mor
 - **With two panes:** the focused pane keeps its current colour, and the other one dims as now.
 - **The change between the two** follows the detail pane's open and close transition rather than snapping at the end.
 
-Check this against Rex: does a lone pane in a Rex tab show the focus colour? Note what you find; the user's rule wins either way. Update the spec and the prototype source.
+Do not open or drive Rex to check this; the user's rule wins. Update the spec and the prototype source.

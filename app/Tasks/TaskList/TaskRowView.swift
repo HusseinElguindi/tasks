@@ -446,57 +446,6 @@ final class CompletedRowView: NSView {
     }
 }
 
-// MARK: - The ghost row in the landing slot (css:218–223)
-
-final class GhostRowView: NSView {
-    private let ring = CAShapeLayer()
-    private let label = TextLayer()
-    private(set) var shown = false
-
-    override var isFlipped: Bool { true }
-
-    init() {
-        super.init(frame: .zero)
-        wantsLayer = true
-        layerContentsRedrawPolicy = .never
-        let s = TK.M.check
-        ring.path = CGPath(ellipseIn: CGRect(x: 0.75, y: 0.75, width: s - 1.5, height: s - 1.5), transform: nil)
-        ring.lineWidth = 1.5
-        ring.fillColor = nil
-        ring.opacity = 0.8
-        ring.frame = CGRect(x: TK.M.rowPadLeft, y: (TK.M.row - s) / 2, width: s, height: s)
-        layer?.addSublayer(ring)
-        layer?.addSublayer(label)
-        layer?.opacity = 0
-        for l in [ring, label] as [CALayer] { l.actions = TaskRowView.noActions }
-    }
-
-    required init?(coder: NSCoder) { fatalError() }
-
-    override func viewDidChangeBackingProperties() {
-        super.viewDidChangeBackingProperties()
-        layer?.setScaleDeep(window?.backingScaleFactor ?? 2)
-    }
-
-    func configure(palette: TK.Palette) {
-        layer?.setInstant {
-            ring.strokeColor = palette.inkQ.cgColor
-            label.set("New Task", font: TK.Font.body, color: palette.ink3)
-            label.place(x: TK.M.rowPadLeft + TK.M.check + TK.M.titleGap, lineTop: 7, lineHeight: 16, width: 120)
-        }
-    }
-
-    func show(_ on: Bool, animated: Bool = true) {
-        guard on != shown else { return }
-        shown = on
-        if animated {
-            layer?.animate("opacity", to: on ? 1 : 0, on ? TK.CA.hoverInT : TK.CA.hoverOutT)
-        } else {
-            layer?.setInstant { layer?.opacity = on ? 1 : 0 }
-        }
-    }
-}
-
 // MARK: - Empty states (css:298–303, §13)
 
 final class EmptyStateView: NSView {
@@ -529,7 +478,7 @@ final class EmptyStateView: NSView {
 
     func configure(_ kind: TaskLayout.Empty, palette: TK.Palette, width: CGFloat) {
         let (e1, e2): (String, String) = switch kind {
-        case .list: ("No tasks", "Click anywhere here or press ⌘N to add one.")
+        case .list: ("No tasks", "Double-click anywhere here or press ⌘N to add one.")
         case .today: ("Nothing for today", "Tasks you plan for today, or that are due, show up here.")
         case .allDone: ("All done for today", "")
         }

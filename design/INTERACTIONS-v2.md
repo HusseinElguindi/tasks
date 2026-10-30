@@ -273,7 +273,8 @@ show unfocused; the sidebar has no focus look of its own. Selected rows in an un
 | ⌘-click | Add or remove it; it becomes the anchor |
 | ⇧-click | Select the range from the anchor, in visual order |
 | Click a row that's part of a multi-selection | Nothing until mouse-up (so the selection can be dragged); then select only it |
-| Click empty space below the rows | In a list: add a task (§6). In Today: clear the selection `dc:1559–1563` |
+| Click empty space below the rows | Clear the selection, as in Rex and Finder (in a list and in Today). With something being edited, the first press only ends that edit: a new task is written, or dropped if it has no title. It never starts a task `dc:1559–1563` |
+| Double-click empty space below the rows | Add a task, exactly as ⌘N does (§6) `dc:1564–1572` |
 | Click a checkbox | Completes that row; the selection doesn't change |
 | Click a chip | Selects the row if it wasn't selected, then opens its date popover (for the whole selection if the row was in it) `dc:1550–1556` |
 | Click › | Selects only that row and shows the details `dc:1557` |
@@ -313,8 +314,8 @@ The selected row scrolls into view, ending 8pt below the top or 12pt above the b
 | Where you are | Trigger | The new task goes |
 |---|---|---|
 | A list | ⌘N; the header's + | That list, at the bottom of its open tasks (SPEC §3: new tasks append) |
-| A list | Pressing the empty space under its last open task | The same. Hovering that space shows a ghost row in the landing slot (below) |
-| An empty list | ⌘N, +, or pressing anywhere in the pane: the empty space is the whole pane, and the empty state says "Click anywhere here or press ⌘N to add one." | The first slot |
+| A list or Today | Double-clicking the empty space under the rows | As ⌘N (its first press has already cleared the selection, so in Today the task goes to the default list). A single press never adds |
+| An empty list | ⌘N, +, or double-clicking anywhere in the pane: the empty space is the whole pane, and the empty state says "Double-click anywhere here or press ⌘N to add one." | The first slot |
 | An archived list | As a list (SPEC §2: nothing is read-only) | That list |
 | Today | ⌘N; the header's + | The selected task's list if a task is selected, else the default list (the first active list, SPEC §2); **When = today**. It lands at the bottom of that list's Today group; if the group wasn't showing, its label fades in above it |
 | Today | A group label's + (revealed on hover) | That list, When = today |
@@ -325,12 +326,10 @@ The selected row scrolls into view, ending 8pt below the top or 12pt above the b
 The header +'s tooltip names the target in Today: "New Task in Inbox ⌘N" `dc:1919`. That is the
 discoverable mark of the default list; the sidebar carries none.
 
-Source: `dc:837–872`, `dc:1566–1572`, `dc:1574`.
+Source: `dc:837–872`, `dc:1564–1572`, `dc:1574`.
 
-**The ghost row** (lists only, hidden during a drag): the empty space from the landing slot down to the bottom of the
-list is one hover region. Hovering it shows, in the landing slot, a 30pt row with a placeholder ring (`ink-quiet` at
-80%) and "New Task" in `ink-tertiary`, in on `hoverIn` and out on `hoverOut`
-(`css:219–223`, `dc:66–67`).
+**No ghost row.** Hovering the empty space under the rows shows nothing: since a single click there never adds a
+task, there's no "New Task" row to advertise one (v2 feedback 2; `dc:65–69`, `css:218–223` record the removal).
 
 ### What happens (one frame)
 
@@ -373,7 +372,7 @@ list is one hover region. Hovering it shows, in the landing slot, a 30pt row wit
 |---|---|---|
 | Anywhere in the detail pane but its × (the title, the dimmed rows, the header) | Normal editing | The caret stays in the title |
 | Another row | Writes it; that row is selected (and shown in the pane) | Drops it; that row is selected; the pane closes if the add opened it |
-| The empty space under the list | Writes it (the first press only ends the edit) | The caret goes back to the title |
+| The empty space under the list | Writes it (the first press only ends the edit) | Drops it (the first press only ends the edit) |
 | The header + | Writes it and starts another | The caret goes back to the title (no second draft) |
 | A Today group's + | Writes it and starts another in that group | The draft moves to that group; the caret stays |
 | Anything else (sidebar, another view, the pane's ×) | Writes it, then does that | Drops it, then does that |
@@ -712,8 +711,7 @@ archived list shows no empty state.
     show up here." 34% down.
   - All done (only completed tasks today): a check-circle in `accent`, "All done for today", 40 below the header, with
     the Completed group under it from y 132.
-  - An empty list: "No tasks" and "Click anywhere here or press ⌘N to add one.", 34% down; the ghost row shows in the
-    first slot on hover.
+  - An empty list: "No tasks" and "Double-click anywhere here or press ⌘N to add one.", 34% down.
 
 ---
 
@@ -789,7 +787,7 @@ checkbox is the exception: it shrinks over 80 ms ease-out and comes back on `sna
 | Sidebar row | §12 | Title `ink` | Opens on mouse-down | §12 | `css:108` |
 | Group label's + / chevron | Hidden | Revealed with the label's hover; own hover `hover` fill, `ink-secondary` | `press` fill | Chevron turned and kept shown while open | `css:135–137` |
 | Completed row | `ink-secondary` | `ink` (`hoverIn` / `hoverOut`) | — | Chevron turned | `css:229` |
-| Ghost add row | Hidden | Shown in the landing slot (`hoverIn` / `hoverOut`) | Adds (§6) | — | `css:221` |
+| Empty space under the rows | — | Nothing | Clears the selection; a double-click adds (§5, §6) | — | `dc:1559–1572` |
 | Pane-header icon button | `ink-quiet`; at 55% in an unfocused pane | `hover` fill (radius 6), `ink-secondary` (`icon`) | `press` fill, `ink` | Split button `ink-secondary` while the detail pane is open | `css:151–154` |
 | Toolbar icon (sidebar toggle) | `ink-secondary` | `fill-track` circle, `ink` (`icon`) **Rex** | `press` fill | — | `css:93–94` |
 | Capsule button (Undo, Unarchive) | Tinted | Brightness 1.12 / 0.97 (`icon`) | Brightness 0.86 | — | `css:293–295` |
@@ -899,8 +897,8 @@ Where SwiftUI's defaults fight the design, and what to use instead.
 11. **Checked rows that wait.** A `pins: [TaskID: Placement]` map in the window state places checked/unchecked tasks
     where they were; a 1.5 s debounce (restarted by each check) clears it inside `withAnimation(PaneMotion.layout)`; a
     route change clears it too.
-12. **The add slot.** The empty space below the last open task is one `Color.clear.contentShape(Rectangle())` with
-    `.onHover` (shows the ghost row in the landing slot) and a tap that adds.
+12. **The empty space.** The space below the rows has no hover. A press clears the selection (or ends an edit); a press
+    with a click count of 2 adds a task as ⌘N does.
 13. **Held ⌘.** `NSEvent.addLocalMonitorForEvents(matching: .flagsChanged)`, 450 ms timer; any key or release hides.
 14. **Undo** registers on the window's `UndoManager` with `setActionName` (the names in §9) and the selection to
     restore.
@@ -972,7 +970,8 @@ Found by an audit of the spec against the prototype; each is what the prototype 
 - **Several tasks, or none, in the detail pane**: tasks from different lists show "Several lists" with a "…" tile and
   the List row reads "Mixed"; the trash's tooltip is "Delete 3 Tasks". With nothing selected the header shows only the ×
   (`dc:1947`).
-- **The Completed row** is only as wide as its content, so a press to its right lands in the add zone and adds a task.
+- **The Completed row** is only as wide as its content, so a press to its right lands on the empty space (it clears
+  the selection).
   Collapsing slides the done rows up into it while they fade; expanding fades them in where they sit. It disappears at
   once when its last task goes (`css:226`, `dc:1795–1820`).
 - **After a checked row settles** the selection doesn't move: in a collapsed list the done task stays selected though

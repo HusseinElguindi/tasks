@@ -33,8 +33,8 @@ struct TaskLayout {
     var labelOrder: [EntityID] = []
     /// A list's "› Completed 23" row.
     var completedY: CGFloat?
-    /// The landing slot under a list's open tasks (the ghost row and the add zone start here).
-    var ghostY: CGFloat?
+    /// The empty slot under a list's open tasks, where a new task lands (the Completed row sits one slot and 8pt below).
+    var landingY: CGFloat?
     var doneCount = 0
     var height: CGFloat = 0
     var empty: Empty?
@@ -133,7 +133,7 @@ struct TaskLayout {
             var y = L.top
             L.groups.append(Group(listID: listID, top: y, ids: open))
             for id in open { L.place(id, y, group: 0); y += pitch }
-            L.ghostY = y
+            L.landingY = y
             y += pitch
             L.doneCount = done.count
             if !done.isEmpty {
@@ -278,7 +278,7 @@ struct TaskLayout {
             let end = g.top + CGFloat(g.ids.count) * Self.pitch
             for r in yList.indices where yList[r] >= end && groupIndex[r] != gi { yList[r] -= shift }
             for (lid, y) in labels where y >= end { labels[lid] = y - shift }
-            if let gy = ghostY { ghostY = gy - shift }
+            if let gy = landingY { landingY = gy - shift }
             if let cy = completedY { completedY = cy - shift }
         }
         if gap {

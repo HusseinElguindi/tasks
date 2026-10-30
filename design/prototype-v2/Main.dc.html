@@ -53,7 +53,7 @@ body{margin:0}
 <button class="{{lp.detailBtnCls}}" type="button" aria-label="{{lp.detailTip}}" data-tip="{{lp.detailTip}}" data-keys="⌘D" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onToggleDetail}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="2"></rect><line x1="10" y1="3" x2="10" y2="13"></line></svg></button>
 </span>
 </header>
-<div class="pcs" ref="{{listScrollRef}}" onPointerDown="{{onScrollAreaDown}}">
+<div class="pcs" ref="{{listScrollRef}}" onPointerDown="{{onScrollAreaDown}}" onDoubleClick="{{onScrollAreaDbl}}">
 <div class="pcc" style="{{lp.contentStyle}}">
 <sc-if value="{{lp.banner}}">
 <div class="banner" style="position: absolute; left: 0; right: 0; top: 0;">
@@ -62,11 +62,11 @@ body{margin:0}
 <button class="btn tinted" type="button" onClick="{{onUnarchive}}">Unarchive</button>
 </div>
 </sc-if>
-<sc-if value="{{lp.hasZone}}">
-<div class="addzone" data-add="1" style="{{lp.zoneStyle}}" onPointerDown="{{onAddZoneDown}}">
-<sc-if value="{{lp.ghostShow}}"><div class="ghostrow" aria-hidden="true"><span class="check"></span><span class="gt">New Task</span></div></sc-if>
-</div>
-</sc-if>
+<!-- The empty space under the rows (v2 feedback 2): a press clears the selection, or only ends an edit
+     (onScrollAreaDown); a double-click adds a task as ⌘N does (onScrollAreaDbl). There is no add zone and no
+     hover "New Task" row: a single click never adds.
+     These lines stand in for the removed markup so the
+     spec's dc: citations keep their line numbers. -->
 <sc-for list="{{labels}}" as="g" hint-placeholder-count="0">
 <div class="{{g.cls}}" style="{{g.style}}">
 <div class="glabel"><span class="gl">{{g.name}}</span>
@@ -1561,14 +1561,14 @@ class Component extends DCLogic {
     if (this.state.edit) { this.endEdit(); return; }
     if (this.state.sel.length) this.setState({ sel: [] });
   };
-  // The empty space under a list's open tasks adds one. If something is being edited, the first press only ends that
-  // edit (an untitled new task just gets its caret back).
-  onAddZoneDown = (e) => {
-    e.stopPropagation();
+  // A double-click on the empty space under the rows (or anywhere in an empty pane) adds a task, as ⌘N does (v2
+  // feedback 2). Its first press already ended any edit and cleared the selection (onScrollAreaDown), so this
+  // starts from there: in Today the task goes to the default list.
+  onScrollAreaDbl = (e) => {
+    if (e.target !== e.currentTarget && !(e.target.classList && e.target.classList.contains('pcc'))) return;
     if (e.button !== 0) return;
-    if (this.untitledDraft()) { this.focusTitle(); return; }
-    if (this.state.edit) { this.endEdit(); return; }
     this.newTask();
+    // newTask puts the caret in the new task's title.
   };
   onToggleCompleted = () => { const id = this.state.route.id; this.setState({ completedOpen: { ...this.state.completedOpen, [id]: !this.state.completedOpen[id] } }); };
   onGroupPlus = (e) => { e.stopPropagation(); this.newTask({ listId: e.currentTarget.dataset.list }); };
@@ -1900,7 +1900,7 @@ class Component extends DCLogic {
     });
     const crowOpen = !!(routeList && s.completedOpen[routeList.id]);
     const emptyMap = {
-      list: { e1: 'No tasks', e2: 'Click anywhere here or press ⌘N to add one.', top: '34%', glyph: false, check: false },
+      list: { e1: 'No tasks', e2: 'Double-click anywhere here or press ⌘N to add one.', top: '34%', glyph: false, check: false },
       today: { e1: 'Nothing for today', e2: 'Tasks you plan for today, or that are due, show up here.', top: '34%', glyph: true, check: false },
       allDone: { e1: 'All done for today', e2: '', top: '40px', glyph: false, check: true },
     };
@@ -1919,9 +1919,9 @@ class Component extends DCLogic {
       newTip: inToday ? 'New Task in ' + ((s.sel.length && this.task(s.sel[0]) && this.list(this.task(s.sel[0]).list)) ? this.list(this.task(s.sel[0]).list).name : (this.list(this.defaultListId()) || { name: 'Inbox' }).name) : 'New Task',
       detailTip: detailOpen ? 'Hide Details' : 'Show Details', detailBtnCls: 'hb' + (detailOpen ? ' on' : ''),
       contentStyle: 'height: ' + L.height + 'px',
-      hasZone: !inToday && !(routeList && routeList.archivedAt && false),
-      zoneStyle: 'top: ' + (L.ghostY != null ? L.ghostY : 0) + 'px',
-      ghostShow: !inToday && !(d && d.phase === 'drag') && !s.tasks.some((t) => t.draft),   // a draft is the one "New Task" row
+      // No add zone and no hover "New Task" row (v2 feedback 2); a double-click on the empty space adds.
+      hasZone: false, zoneStyle: '',
+      ghostShow: false,
       crow: !inToday && L.done > 0, crowCls: 'crow' + (Date.now() - (this.crowEnterAt || 0) < MOTION_WINDOW_MS ? ' enter' : ''), crowStyle: 'transform: translateY(' + (L.crowY || 0) + 'px)', crowCount: String(L.done), chevCls: 'gchev' + (crowOpen ? ' open' : ''),
       empty: !!em, emptyStyle: em ? 'top: ' + em.top : '', e1: em ? em.e1 : '', e2: em ? em.e2 : '', hasE2: !!(em && em.e2), glyph: !!(em && em.glyph), emptyCheck: !!(em && em.check),
       banner: !!(routeList && routeList.archivedAt), bannerDate: routeList && routeList.archivedAt ? 'Archived ' + md(ymdOf(new Date(routeList.archivedAt))) : '',
@@ -2072,7 +2072,7 @@ class Component extends DCLogic {
       onKey: this.onKey, onKeyUp: this.onKeyUp, onRootMouseDown: this.onRootMouseDown, onRootPointerDownCapture: this.onRootPointerDownCapture, onRootClickCapture: this.onRootClickCapture, onRootContextMenu: this.onRootContextMenu, onRootFocusCapture: this.onRootFocusCapture,
       onRowDown: this.onRowDown, onRowMove: this.onRowMove, onRowUp: this.onRowUp, onRowDbl: this.onRowDbl, onRowCtx: this.onRowCtx,
       onCheck: this.onCheck, stopPD: this.stopPD, onChip: this.onChip, onOpen: this.onOpen, onListPaneDown: this.onListPaneDown, onScrollAreaDown: this.onScrollAreaDown,
-      onAddZoneDown: this.onAddZoneDown, onToggleCompleted: this.onToggleCompleted, onGroupPlus: this.onGroupPlus,
+      onScrollAreaDbl: this.onScrollAreaDbl, onToggleCompleted: this.onToggleCompleted, onGroupPlus: this.onGroupPlus,
       onEditChange: this.onEditChange, onEditFocus: this.onEditFocus, onEditBlur: this.onEditBlur, onEditKey: this.onEditKey,
       onDetailDown: this.onDetailDown, onDTitleFocus: this.onDTitleFocus, onDTitleChange: this.onDTitleChange, onDTitleKey: this.onDTitleKey, onDTitleBlur: this.onDTitleBlur,
       onNotesDown: this.onNotesDown, onNotesChange: this.onNotesChange, onNotesKey: this.onNotesKey, onNotesBlur: this.onNotesBlur, onNotesFocus: this.onNotesFocus,

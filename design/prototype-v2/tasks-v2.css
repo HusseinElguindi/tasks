@@ -215,12 +215,12 @@
 .tk button.chip.ghost:hover { filter: none; background: var(--hover); color: var(--ink-2); }
 .tk button.chip.ghost.open-picker, .tk button.chip.ghost.open-picker:hover { background: var(--accent-tint); color: var(--accent-text); }
 
-/* The empty slot under the last open task: hovering it shows where a new task lands. */
-.tk .addzone { position: absolute; left: 0; right: 0; bottom: 0; z-index: 0; }
-.tk .ghostrow { position: absolute; left: 10px; right: 10px; top: 0; height: 30px; display: flex; align-items: center; padding-left: 10px; color: var(--ink-3); opacity: 0; transition: opacity var(--hover-out); }
-.tk .addzone:hover .ghostrow { opacity: 1; transition: opacity var(--hover-in); }
-.tk .ghostrow .check { box-shadow: inset 0 0 0 1.5px var(--ink-q); opacity: 0.8; }
-.tk .ghostrow .gt { margin-left: 10px; }
+/* v2 feedback 2: no add zone and no hover "New Task" row under the last open task. A single click on the empty
+   space clears the selection; a double-click adds a task (Main.dc.html, onScrollAreaDbl).
+   These lines stand in for the removed rules
+   (.addzone, .ghostrow) so the spec's css: citations
+   keep their line numbers.
+*/
 
 /* "Completed 23" disclosure row in a list. */
 .tk .crow { position: absolute; left: 10px; height: 30px; top: 0; display: flex; align-items: center; gap: 6px; padding: 0 10px 0 12px; border-radius: 8px; color: var(--ink-2); z-index: 2;
