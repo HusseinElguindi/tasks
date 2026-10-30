@@ -7,7 +7,7 @@ import Foundation
 ///
 ///     click:X,Y   dbl:X,Y   cmdclick:X,Y   shiftclick:X,Y     (window points from the top left)
 ///     key:CODE[:cmd|shift]   wait:MS   snap:/path.png   log:/path.txt  (appends the selection and first responder)
-///     hit:X,Y     (prints the view AppKit hit-tests there)
+///     hit:X,Y     (prints the view AppKit hit-tests there)   size:W,H   (resizes the window, keeping its top left)
 @MainActor
 enum DebugScript {
     static func runIfRequested(_ window: WindowState, _ describe: @escaping @MainActor () -> String) {
@@ -32,6 +32,10 @@ enum DebugScript {
                     guard let code = UInt16(k[0]) else { continue }
                     let flags: NSEvent.ModifierFlags = k.count > 1 ? (k[1] == "cmd" ? .command : k[1] == "shift" ? .shift : []) : []
                     key(w, code: code, flags: flags)
+                case "size":
+                    let wh = arg.split(separator: ",").compactMap { Double($0) }
+                    guard wh.count == 2 else { continue }
+                    w.setFrame(NSRect(x: w.frame.minX, y: w.frame.maxY - wh[1], width: wh[0], height: wh[1]), display: true)
                 case "wait":
                     try? await Task.sleep(for: .milliseconds(Int(arg) ?? 100))
                 case "snap":
@@ -76,6 +80,7 @@ enum DebugScript {
         case 6: "z"
         case 0: "a"
         case 11: "b"
+        case 2: "d"
         default: ""
         }
         for type in [NSEvent.EventType.keyDown, .keyUp] {

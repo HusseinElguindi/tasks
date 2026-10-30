@@ -12,12 +12,14 @@ struct ListPane: View {
 
     var body: some View {
         let focused = window.focus == .list
+        // Alone in the window (the detail pane closed), the pane has no focus look (v2 feedback 3).
+        let single = !window.detailOpen
         let actions = WindowActions(store: store, window: window)
         VStack(spacing: 0) {
-            ListPaneHeader(store: store, window: window, focused: focused, leadingInset: leadingInset, actions: actions)
+            ListPaneHeader(store: store, window: window, focused: focused, single: single, leadingInset: leadingInset, actions: actions)
             TaskListRepresentable(store: store, window: window, palette: tk)
         }
-        .paneChrome(focused: focused)
+        .paneChrome(focused: focused, single: single)
         .overlay(alignment: .bottomTrailing) {
             NoticeView(overlays: window.overlays, actions: actions).padding(12)
         }
@@ -28,12 +30,14 @@ struct ListPaneHeader: View {
     let store: Store
     @Bindable var window: WindowState
     let focused: Bool
+    let single: Bool
     let leadingInset: CGFloat
     let actions: WindowActions
     @Environment(\.tk) private var tk
 
     var body: some View {
         let p = store.projection
+        let lit = focused || single
         let listID = window.route.listID
         let list = listID.flatMap { p.listModel($0) }
         HStack(spacing: 8) {
@@ -41,7 +45,7 @@ struct ListPaneHeader: View {
                 TileView(monogram: list.monogram, color: tk.listColor(slot: list.colorSlot), size: .small)
                 Text(list.name.isEmpty ? "New List" : list.name)
                     .font(Font(TK.Font.bodyMedium))
-                    .foregroundStyle((focused ? tk.ink : tk.ink2).swiftUI)
+                    .foregroundStyle((lit ? tk.ink : tk.ink2).swiftUI)
                     .lineLimit(1)
                 if list.isArchived {
                     Text("Archived").font(Font(TK.Font.body)).foregroundStyle(tk.ink2.swiftUI).lineLimit(1)
@@ -50,7 +54,7 @@ struct ListPaneHeader: View {
                 GlyphView(glyph: .sun, size: 14, color: tk.ansiYellow.swiftUI)
                 Text("Today")
                     .font(Font(TK.Font.bodyMedium))
-                    .foregroundStyle((focused ? tk.ink : tk.ink2).swiftUI)
+                    .foregroundStyle((lit ? tk.ink : tk.ink2).swiftUI)
                 Text(DateLabel.long(p.dayModel.day.date, today: p.dayModel.day.date))
                     .font(Font(TK.Font.body))
                     .foregroundStyle(tk.ink2.swiftUI)
@@ -62,8 +66,8 @@ struct ListPaneHeader: View {
                 HeaderIconButton(glyph: .split, tip: window.detailOpen ? "Hide Details" : "Show Details", keys: "⌘D",
                                  on: window.detailOpen, overlays: window.overlays) { actions.toggleDetail() }
             }
-            .opacity(focused ? 1 : 0.55)
-            .animation(TK.Motion.focus, value: focused)
+            .opacity(lit ? 1 : 0.55)
+            .paneLookAnimation(focused: focused, single: single)
         }
         .padding(.leading, leadingInset)
         .padding(.trailing, 8)
@@ -95,22 +99,31 @@ struct ListPaneHeader: View {
 // MARK: - Pane chrome (§4 Pane focus)
 
 extension View {
-    /// `surface-base` and a 1pt inset `line-pane` edge when focused, `surface-dim` and `line-pane-dim` when not, on
-    /// `focus` (60 ms); radius 10 (css:142–144).
-    func paneChrome(focused: Bool) -> some View { modifier(PaneChromeModifier(focused: focused)) }
+    /// `surface-base` and a 1pt inset `line-pane` edge when focused, `surface-dim` and `line-pane-dim` when not; radius
+    /// 10 (css:142–144). A pane alone in the window (`single`) shows no focus, whatever has the keys: the unfocused
+    /// fill and edge, its header and selected rows as in a focused pane (v2 feedback 3).
+    func paneChrome(focused: Bool, single: Bool) -> some View { modifier(PaneChromeModifier(focused: focused, single: single)) }
+
+    /// Focus changes on `focus` (60 ms); becoming or ceasing to be the only pane rides the detail pane's open and
+    /// close (`natural`), and wins when both change at once (it's the inner one).
+    func paneLookAnimation(focused: Bool, single: Bool) -> some View {
+        animation(TK.Motion.natural, value: single).animation(TK.Motion.focus, value: focused)
+    }
 }
 
 private struct PaneChromeModifier: ViewModifier {
     let focused: Bool
+    let single: Bool
     @Environment(\.tk) private var tk
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: TK.M.paneRadius, style: .circular)
+        let lit = focused && !single
         content
-            .background((focused ? tk.base : tk.dim).swiftUI, in: shape)
-            .overlay(shape.strokeBorder((focused ? tk.linePane : tk.linePaneDim).swiftUI, lineWidth: 1))
+            .background((lit ? tk.base : tk.dim).swiftUI, in: shape)
+            .overlay(shape.strokeBorder((lit ? tk.linePane : tk.linePaneDim).swiftUI, lineWidth: 1))
             .clipShape(shape)
-            .animation(TK.Motion.focus, value: focused)
+            .paneLookAnimation(focused: focused, single: single)
     }
 }
 

@@ -195,7 +195,8 @@ final class TaskListView: NSView {
         let inToday = state.route == .today
         let today = p.day.date
         let detailOpen = state.detailOpen
-        let paneFocused = state.focus == .list
+        // Alone in the window the pane shows no focus: selected rows keep the focused fill (v2 feedback 3).
+        let paneFocused = state.focus == .list || !detailOpen
         let selection = state.selection
         let rename = state.rename?.kind == .task ? state.rename : nil
         let picker = state.overlays.picker

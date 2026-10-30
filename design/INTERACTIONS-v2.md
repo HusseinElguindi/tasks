@@ -3,9 +3,14 @@
 Status: **final, 2026-10-30.** The user reviewed the prototype and made the four open choices
 (`docs/TASK-interaction-decisions.md`). This replaces `design/INTERACTIONS.md`.
 
-**Changed after the user tried the app (`docs/TASK-v2-feedback.md` item 2):** a single click on empty list space no
-longer adds a task; it clears the selection (or ends an edit). A double-click there adds one, as ⌘N does, and the hover
-"New Task" row is gone. §5, §6, §13, §16, §18.12 and §21 say so, and the prototype source matches.
+**Changed after the user tried the app (`docs/TASK-v2-feedback.md`):**
+
+- Item 2: a single click on empty list space no longer adds a task; it clears the selection (or ends an edit). A
+  double-click there adds one, as ⌘N does, and the hover "New Task" row is gone. §5, §6, §13, §16, §18.12 and §21 say
+  so.
+- Item 3: a pane alone in the window shows no focus; the focused look appears only with two panes (§4 Pane focus).
+
+The prototype source matches both.
 
 **The prototype is the reference implementation:** https://claude.ai/artifact/QetdV1H57SC6kLXtNzJRXM (press Play on the
 main board, then click inside it once so it has the keys). Its source is in `design/prototype-v2/`, and this spec cites
@@ -81,18 +86,18 @@ what to search for in the prototype.
 |---|---|---|---|---|
 | `surface-ground` | `--ground` | #181818 **Rex** | #F5F5F5 | Window, sidebar |
 | `surface-base` | `--base` | #1C1C1C **Rex** | #FFFFFF | Focused pane |
-| `surface-dim` | `--dim` | #181818 | #FAFAFA | Unfocused pane |
+| `surface-dim` | `--dim` | #181818 | #FAFAFA | Unfocused pane; a pane alone in the window |
 | `surface-popover` (new) | `--popover` | #262626 | #FFFFFF | Menus, date popover, notices, tooltips |
 | `fill-lift` (new) | `--lift` | #2C2C2C | #FFFFFF | The dragged row |
 | `line-pane` | `--line-pane` | #323334 | #D4D5D6 | Focused pane's 1pt inset edge |
-| `line-pane-dim` | `--line-pane-dim` | #282929 | #EBEBEC | Unfocused pane's edge |
+| `line-pane-dim` | `--line-pane-dim` | #282929 | #EBEBEC | Unfocused pane's edge; a pane alone in the window |
 | `line-separator` | `--line-sep` | #363738 | #E7E8E8 | Hairlines; ghost chip ring |
 | `line-field` | `--line-field` | #696B6E | #848689 | Checkbox ring |
 | `ink` | `--ink` | #E6EDF3 | #1F2328 | Titles, task text |
 | `ink-secondary` | `--ink-2` | #A8ADB1 **Rex** | #626568 | Sidebar titles at rest, labels, values |
 | `ink-tertiary` | `--ink-3` | #7F8386 **Rex** | #6C6F72 | Group labels, counts, placeholders, untitled rows |
 | `ink-quiet` | `--ink-q` | #6D7072 **Rex** | #888A8D | Pane-header icons at rest, strike-through, other months' days |
-| `fill-row-selected` (new) | `--sel` | #333333 | #E6E6E8 | Selected task rows, focused pane |
+| `fill-row-selected` (new) | `--sel` | #333333 | #E6E6E8 | Selected task rows, focused pane or a pane alone |
 | `fill-row-selected-dim` (new) | `--sel-dim` | #292929 | #EFEFF0 | Selected task rows, unfocused pane |
 | `fill-control` | `--fill-control` | #2D2E2E | #EDEDEE | Chips, the date field, a list being renamed, the archive banner |
 | `fill-track` | `--fill-track` | #303132 | #E9E9EA | Toolbar icon hover circle, capsule buttons, quick-pick hover |
@@ -265,6 +270,14 @@ inset `line-pane` edge. Unfocused: `surface-dim`, `line-pane-dim`, header icons 
 show unfocused; the sidebar has no focus look of its own. Selected rows in an unfocused pane use
 `fill-row-selected-dim`.
 
+**Only with two panes** (user feedback, `docs/TASK-v2-feedback.md` item 3). A pane alone in the window (the list with
+the detail pane closed, or the narrow window's detail pane) shows no focus, whatever has the keys: `surface-dim` and
+`line-pane-dim`, header icons at 100% and the title in `ink`, selected rows in `fill-row-selected`. With both panes
+open the rule above applies. Becoming or ceasing to be the only pane rides the detail pane's open and close: the fill,
+edge, icons and title change on `natural` while the pane slides (in the prototype the list pane takes `.swap` for the
+460 ms of the move); selected rows switch at once, as they always do (`css:144`, `css:149–150`, `css:183`, `dc:748`,
+`dc:754`, `dc:1912`).
+
 ---
 
 ## 5. Selection and moving around
@@ -284,7 +297,7 @@ show unfocused; the sidebar has no focus look of its own. Selected rows in an un
 | Click › | Selects only that row and shows the details `dc:1557` |
 
 **Look.** A selected row fills with `fill-row-selected` at radius 8 (`fill-row-selected-dim` when its pane isn't
-focused). Adjacent selected rows join into one block: the inner corners go square and the 2pt gap between them is
+focused and isn't alone, §4). Adjacent selected rows join into one block: the inner corners go square and the 2pt gap between them is
 filled (`css:182–186`, `dc:1868–1872`). Selection
 never animates. Task titles stay `ink` at rest and selected.
 
@@ -792,7 +805,7 @@ checkbox is the exception: it shrinks over 80 ms ease-out and comes back on `sna
 | Group label's + / chevron | Hidden | Revealed with the label's hover; own hover `hover` fill, `ink-secondary` | `press` fill | Chevron turned and kept shown while open | `css:135–137` |
 | Completed row | `ink-secondary` | `ink` (`hoverIn` / `hoverOut`) | — | Chevron turned | `css:229` |
 | Empty space under the rows | — | Nothing | Clears the selection; a double-click adds (§5, §6) | — | `dc:1559–1572` |
-| Pane-header icon button | `ink-quiet`; at 55% in an unfocused pane | `hover` fill (radius 6), `ink-secondary` (`icon`) | `press` fill, `ink` | Split button `ink-secondary` while the detail pane is open | `css:151–154` |
+| Pane-header icon button | `ink-quiet`; at 55% in an unfocused pane (never in a pane alone, §4) | `hover` fill (radius 6), `ink-secondary` (`icon`) | `press` fill, `ink` | Split button `ink-secondary` while the detail pane is open | `css:151–154` |
 | Toolbar icon (sidebar toggle) | `ink-secondary` | `fill-track` circle, `ink` (`icon`) **Rex** | `press` fill | — | `css:93–94` |
 | Capsule button (Undo, Unarchive) | Tinted | Brightness 1.12 / 0.97 (`icon`) | Brightness 0.86 | — | `css:293–295` |
 | Quick pick (popover) | `fill-control` | `fill-track`, brightness 1.12 (`icon`) | — | Matches the typing: `accent-tint` | `css:322–324` |

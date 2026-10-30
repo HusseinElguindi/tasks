@@ -745,12 +745,12 @@ class Component extends DCLogic {
     if (this.state.detail === 'open' || this.state.detail === 'opening') return;
     clearTimeout(this.detailTimer);
     this.setState({ detail: 'opening' });
-    requestAnimationFrame(() => requestAnimationFrame(() => this.setState({ detail: 'open' })));
+    requestAnimationFrame(() => requestAnimationFrame(() => { this.paneSwapAt = Date.now(); this.setState({ detail: 'open' }); }));
   }
   closeDetail() {
     if (this.state.detail === 'closed' || this.state.detail === 'closing') return;
     this.endEdit();
-    this.setState({ detail: 'closing', focus: this.state.focus === 'detail' ? 'list' : this.state.focus });
+    this.paneSwapAt = Date.now(); this.setState({ detail: 'closing', focus: this.state.focus === 'detail' ? 'list' : this.state.focus });
     clearTimeout(this.detailTimer);
     this.detailTimer = setTimeout(() => this.setState({ detail: 'closed' }), DETAIL_CLOSE_MS);
     this.focusRoot();
@@ -1909,7 +1909,7 @@ class Component extends DCLogic {
     // ----- Header
     const todayCount = s.tasks.filter((t) => !t.deleted && !t.draft && t.completedAt == null && this.isActive(t.list) && this.inTodayDates(t)).length;
     const lp = {
-      cls: 'pane lp' + (s.focus === 'list' ? ' focused' : ''),
+      cls: 'pane lp' + (!detailOpen ? ' single' : s.focus === 'list' ? ' focused' : '') + (Date.now() - (this.paneSwapAt || 0) < DETAIL_CLOSE_MS ? ' swap' : ''),   // alone: no focus look; the change rides the detail pane (v2 feedback 3)
       style: 'left: ' + (s.sbVisible ? SB_W : GUTTER) + 'px; right: ' + (detailOpen ? GUTTER + DETAIL_W + GUTTER : GUTTER) + 'px',
       headStyle: s.sbVisible ? '' : 'padding-left: 124px',
       isToday: inToday, isList: !inToday,

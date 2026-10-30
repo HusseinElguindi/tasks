@@ -118,12 +118,26 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
    untitled draft open; the spec (§5, §6, §13, §16, §18.12, §21) and the prototype source were updated to match and
    checked in Chrome.
 
+3. **The focused look only with two panes.** A pane alone in the window (the list with the detail pane closed, or the
+   narrow window's detail pane) shows no focus whatever has the keys: `surface-dim` with the `line-pane-dim` edge (the
+   unfocused fill, so the lit color only ever means "this one of the two"), header icons at 100%, the title in `ink`,
+   selected rows in `fill-row-selected`. With both panes open nothing changed. Opening or closing the detail pane
+   changes the list's fill, edge, icons and title on the pane's own spring (sampled every ~70 ms: the fill moves from
+   one color to the other while the pane slides, not at the end); selected rows switch at once, as always. Checked in
+   every state (one or two panes × list, detail or sidebar focused, and the narrow window), the prototype in Chrome the
+   same way; spec §4 and the token table updated. If "plain neutral" was meant as `surface-base`, it's one line
+   (`PaneChromeModifier`, and `.single` in the CSS).
+
 ## Notes for whoever drives the UI next
 
 - Scratch tools (not committed) are in the session scratchpad's `tools/`: `ui` (window-relative HID input that only
   targets the "Tasks Dev" bundle and refuses if another window is on top), `cdp.mjs` (drives the prototype in
   headless Chrome), `imgdiff`/`px` (pixel comparisons), `track` (per-frame samples from a recording). The prototype's
   runtime (`support.js`) came from the canvas artifact.
+- While someone is using the Mac, don't take the screen: launch with `open -g` (never activated) and drive it with
+  `-debugScript` (in-process events; `size:W,H` resizes the window), and capture with `screencapture -l<window id>`,
+  which works while the window is covered. Clicks reach only views that accept the first mouse (rows don't, the list's
+  empty space, the sidebar, the headers' buttons and the detail pane do), and key events don't arrive at all.
 - Launch the scratch app through LaunchServices (`open -n … --args …`): run directly from a shell, it has no
   accessibility windows. Its windows are owned by "Tasks" (the display name), so find them by bundle id or PID.
 - Debug flags are in `app/README.md` (`-demoData`, `-demoBulk`, `-debugRoute`, `-debugSelect`, `-debugDetail`,

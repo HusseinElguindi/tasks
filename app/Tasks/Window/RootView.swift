@@ -60,7 +60,7 @@ struct MainLayout: View {
                     }
                     if window.detailOpen {
                         // v1's transition, kept exactly (§4).
-                        DetailPane(store: store, window: window)
+                        DetailPane(store: store, window: window, single: narrow)
                             .frame(width: narrow ? nil : TK.M.detail)
                             .transition(.move(edge: .trailing).combined(with: .opacity))
                     }

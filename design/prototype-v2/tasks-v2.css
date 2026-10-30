@@ -141,13 +141,13 @@
 /* ---------- Panes ---------- */
 .tk .pane { position: absolute; top: 8px; bottom: 8px; border-radius: 10px; overflow: hidden; background: var(--dim); box-shadow: inset 0 0 0 1px var(--line-pane-dim);
   transition: background-color var(--focus), box-shadow var(--focus), right var(--dur-natural) var(--ease-natural), left var(--decel); }
-.tk .pane.focused { background: var(--base); box-shadow: inset 0 0 0 1px var(--line-pane); }
+.tk .pane.focused { background: var(--base); box-shadow: inset 0 0 0 1px var(--line-pane); }   /* .single: alone in the window, no focus look (v2 feedback 3); .swap: that change rides the detail pane's open/close */ .tk .pane.swap { transition: background-color var(--dur-natural) var(--ease-natural), box-shadow var(--dur-natural) var(--ease-natural), right var(--dur-natural) var(--ease-natural), left var(--decel); }
 .tk .ph { position: absolute; left: 0; right: 0; top: 0; height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 12px; transition: padding-left var(--decel); }
 .tk .ph .pt { font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tk .ph .ps { color: var(--ink-2); white-space: nowrap; }
 .tk .ph .acts { margin-left: auto; display: flex; gap: 2px; transition: opacity var(--focus); }
-.tk .pane:not(.focused) .ph .acts { opacity: 0.55; }
-.tk .pane:not(.focused) .ph .pt { color: var(--ink-2); }
+.tk .pane:not(.focused):not(.single) .ph .acts { opacity: 0.55; } .tk .pane.swap .ph .acts { transition: opacity var(--dur-natural) var(--ease-natural); }
+.tk .pane:not(.focused):not(.single) .ph .pt { color: var(--ink-2); } .tk .pane.swap .ph .pt { transition: color var(--dur-natural) var(--ease-natural); }
 .tk .hb { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; color: var(--ink-q); transition: background-color var(--icon), color var(--icon); }
 .tk .hb:hover { background: var(--hover); color: var(--ink-2); }
 .tk .hb:active { background: var(--press); color: var(--ink); transition: none; }
@@ -180,7 +180,7 @@
 
 /* Selection: the row's own fill, joined across adjacent rows. Instant, never animated. */
 .tk .row.sel { background: var(--sel); }
-.tk .pane:not(.focused) .row.sel { background: var(--sel-dim); }
+.tk .pane:not(.focused):not(.single) .row.sel { background: var(--sel-dim); }
 .tk .row.sel.sj-t { border-top-left-radius: 0; border-top-right-radius: 0; }
 .tk .row.sel.sj-b { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
 .tk .row.sel.sj-b::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; background: inherit; }
