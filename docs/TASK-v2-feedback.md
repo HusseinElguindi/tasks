@@ -80,3 +80,22 @@ At the moment, the List, When and Deadline rows, the divider and Notes are all i
 - Keep the vertical rhythm. Re-check the label column width and the "today" relative label so nothing crowds.
 - Cover the multi-select and "no task" states, and the new-task draft.
 - Update the spec and the prototype source, then commit, rebuild Release and report back.
+
+## 7. A flicker while dragging a task across sidebar lists
+
+The user's words: "drag a task and hold it over one list, then another list, there is flicker there. can you try doing that and fixing it"
+
+**Reproduce:** drag a task row into the sidebar, hold it over list A, then move it onto list B without dropping. Something flickers as the target changes.
+
+**Likely suspects:**
+- list A's drop highlight clearing a frame before list B's appears, or both drawing at once;
+- the "Move to <list>" badge on the dragged copy being torn down and rebuilt, or its width snapping;
+- the copy's chips or opacity resetting;
+- the gap in the task list (the rows parting) collapsing and reopening as the pointer leaves the task list;
+- the sidebar's hover state fighting the drop highlight.
+
+**Find it frame by frame,** as in item 5: record at 60–120 fps on the scratch instance and step through the frames.
+- Also test moving quickly over several lists, moving back into the task list, and hovering Today or the archive group (where a drop isn't allowed).
+- The transition from one target to the next should be continuous: either a crossfade or an instant swap, whichever the prototype does. Fix the prototype too if it has the same problem.
+
+When it's fixed: commit, rebuild Release and report back.
