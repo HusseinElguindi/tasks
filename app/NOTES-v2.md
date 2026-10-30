@@ -102,6 +102,15 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
 - The List pop-up in the detail pane, and the notice holding while hovered.
 - Light mode in daily use.
 
+## Feedback fixes (docs/TASK-v2-feedback.md)
+
+1. **"New Task" twice.** While a new task is being added, the empty-area ghost row no longer shows: the draft's row is
+   the only "New Task" (pressing the empty area still does what §6 says: caret back to the title, or write it). Checked
+   live after ⌘N, the header +, a press on the empty area, a titled draft, in an empty list and in Today, and after
+   the draft is written, dropped with Esc, or dropped by hiding the pane (the ghost comes back on hover). The
+   prototype had the same bug (`ghostShow`, dc:1924); fixed there too, in the source only (the published canvas
+   wasn't republished).
+
 ## Notes for whoever drives the UI next
 
 - Scratch tools (not committed) are in the session scratchpad's `tools/`: `ui` (window-relative HID input that only

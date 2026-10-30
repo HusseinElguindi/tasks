@@ -474,10 +474,12 @@ final class TaskListView: NSView {
         } else {
             completedRow.isHidden = true
         }
-        // The ghost row and the add zone (a list, not during a drag).
+        // The ghost row and the add zone (a list, not during a drag). While a new task is being added the ghost never
+        // shows: the draft's own row is the one "New Task" (the add zone then only puts the caret back or writes it, §6).
         if let gy = L.ghostY, state.route.listID != nil {
             ghost.isHidden = false
             ghost.configure(palette: palette)
+            if state.draft != nil { ghost.show(false, animated: false) }
             if ghost.frame.minY != gy || ghost.frame.width != rowW { place(ghost, y: gy, width: rowW) }
         } else {
             ghost.isHidden = true
@@ -687,7 +689,7 @@ final class TaskListView: NSView {
         if case .row(let id, let pt) = t { hoveredRow = id; part = pt }
         for (id, v) in rows { v.setHover(row: id == hoveredRow, part: id == hoveredRow ? part : nil) }
         completedRow.setHover(t == .completed)
-        ghost.show(t == .addZone && state.drag == nil)
+        ghost.show(t == .addZone && state.drag == nil && state.draft == nil, animated: state.draft == nil)
         for (key, v) in labels {
             if case .label(let k, let plus) = t, k == key { v.setHover(true, overPlus: plus) } else { v.setHover(false, overPlus: false) }
         }

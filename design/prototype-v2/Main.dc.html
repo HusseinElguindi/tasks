@@ -1921,7 +1921,7 @@ class Component extends DCLogic {
       contentStyle: 'height: ' + L.height + 'px',
       hasZone: !inToday && !(routeList && routeList.archivedAt && false),
       zoneStyle: 'top: ' + (L.ghostY != null ? L.ghostY : 0) + 'px',
-      ghostShow: !inToday && !(d && d.phase === 'drag'),
+      ghostShow: !inToday && !(d && d.phase === 'drag') && !s.tasks.some((t) => t.draft),   // a draft is the one "New Task" row
       crow: !inToday && L.done > 0, crowCls: 'crow' + (Date.now() - (this.crowEnterAt || 0) < MOTION_WINDOW_MS ? ' enter' : ''), crowStyle: 'transform: translateY(' + (L.crowY || 0) + 'px)', crowCount: String(L.done), chevCls: 'gchev' + (crowOpen ? ' open' : ''),
       empty: !!em, emptyStyle: em ? 'top: ' + em.top : '', e1: em ? em.e1 : '', e2: em ? em.e2 : '', hasE2: !!(em && em.e2), glyph: !!(em && em.glyph), emptyCheck: !!(em && em.check),
       banner: !!(routeList && routeList.archivedAt), bannerDate: routeList && routeList.archivedAt ? 'Archived ' + md(ymdOf(new Date(routeList.archivedAt))) : '',
