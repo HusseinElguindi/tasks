@@ -35,6 +35,12 @@ final class WindowState {
     var expandedCompleted: Set<EntityID> = []
     var movePickerPresented = false
     var renamingList: EntityID?
+    /// The task row under the pointer, and the one it just left (which lingers 300 ms, as in Rex). One of each per
+    /// window: entering a row moves the hover at once, and leaving the list clears it, so a missed exit event in the
+    /// table can never leave a row looking hovered (design/INTERACTIONS.md).
+    var hoveredTaskID: EntityID?
+    var lingeringTaskID: EntityID?
+    @ObservationIgnored private var lingerTask: Task<Void, Never>?
     /// The window's undo manager, captured from the environment so commands can register with it.
     @ObservationIgnored weak var undoManager: UndoManager?
 
@@ -44,6 +50,35 @@ final class WindowState {
         case .list(let id): id
         case .archive: archiveSelection
         case .today: nil
+        }
+    }
+
+    func isHovered(task id: EntityID) -> Bool { hoveredTaskID == id || lingeringTaskID == id }
+
+    func hover(task id: EntityID, inside: Bool) {
+        if inside {
+            if lingeringTaskID == id { lingeringTaskID = nil }
+            guard hoveredTaskID != id else { return }
+            withAnimation(PaneMotion.hoverIn) { hoveredTaskID = id }
+        } else if hoveredTaskID == id {
+            leaveHoveredTask()
+        }
+    }
+
+    /// The pointer left the list entirely.
+    func leaveTaskList() {
+        if hoveredTaskID != nil { leaveHoveredTask() }
+    }
+
+    private func leaveHoveredTask() {
+        let id = hoveredTaskID
+        hoveredTaskID = nil
+        lingeringTaskID = id
+        lingerTask?.cancel()
+        lingerTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: PaneMotion.hoverLinger)
+            guard !Task.isCancelled, let self, self.lingeringTaskID == id else { return }
+            withAnimation(PaneMotion.hoverOut) { self.lingeringTaskID = nil }
         }
     }
 

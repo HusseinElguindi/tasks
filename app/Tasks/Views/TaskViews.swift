@@ -11,6 +11,7 @@ struct TaskListView: View {
     @Bindable var window: WindowState
     let mode: Mode
     @Environment(\.pane) private var pane
+    @FocusState private var listFocused: Bool
 
     var body: some View {
         let actions = WindowActions(store: store, window: window)
@@ -41,11 +42,20 @@ struct TaskListView: View {
             window.open(id)
             return .handled
         }
+        .onKeyPress(.space) {
+            guard window.quickAdd == nil, !actions.targetIDs.isEmpty else { return .ignored }
+            actions.toggleComplete()
+            return .handled
+        }
         .onDeleteCommand { actions.delete() }
+        .onHover { inside in if !inside { window.leaveTaskList() } }
         .onExitCommand {
             if window.quickAdd != nil { window.quickAdd = nil } else if window.detailTaskID != nil { window.detailTaskID = nil }
         }
-        .simultaneousGesture(TapGesture().onEnded { window.focus = .list })
+        // Track pane focus from the table's own focus: a tap gesture on a List keeps the table from becoming first
+        // responder, which silently breaks ↑ ↓, Space and Return.
+        .focused($listFocused)
+        .onChange(of: listFocused) { _, focused in if focused { window.focus = .list } }
     }
 }
 
@@ -69,7 +79,15 @@ struct TodayGroup: View {
     var body: some View {
         let ids = store.projection.todayTasks(in: listID).ids
         if !ids.isEmpty, let list = store.projection.listModel(listID) {
+            // The label is a plain row, not a section header: List pins headers on a band, and Rex's group
+            // labels are just text.
             Section {
+                PaneGroupLabel(text: list.name.isEmpty ? "Untitled" : list.name)
+                    .padding(.leading, 10)
+                    .padding(.top, 8)
+                    .frame(maxWidth: .infinity, minHeight: 24, alignment: .bottomLeading)
+                    .paneRow()
+                    .selectionDisabled()
                 ForEach(ids, id: \.self) { id in
                     TaskRowCell(store: store, window: window, taskID: id, context: .today)
                 }
@@ -77,10 +95,6 @@ struct TodayGroup: View {
                     guard let r = Ordering.anchor(moving: from, to: to, in: ids) else { return }
                     store.reorder(r.moving, in: listID, at: r.anchor, undoManager: window.undoManager)
                 }
-            } header: {
-                PaneGroupLabel(text: list.name.isEmpty ? "Untitled" : list.name)
-                    .padding(.leading, 10)
-                    .padding(.top, 6)
             }
             .listSectionSeparator(.hidden)
         }
@@ -96,11 +110,10 @@ struct TodayDone: View {
         let ids = store.projection.todayDone.ids
         if !ids.isEmpty {
             Section {
+                Color.clear.frame(height: 12).paneRow().selectionDisabled()
                 ForEach(ids, id: \.self) { id in
                     TaskRowCell(store: store, window: window, taskID: id, context: .todayDone)
                 }
-            } header: {
-                Color.clear.frame(height: 4)
             }
             .listSectionSeparator(.hidden)
         }
@@ -135,6 +148,7 @@ struct ListContent: View {
         if !completed.isEmpty {
             let expanded = window.expandedCompleted.contains(listID)
             Section {
+                Color.clear.frame(height: 8).paneRow().selectionDisabled()
                 CompletedToggle(count: completed.count, expanded: expanded) {
                     if expanded { window.expandedCompleted.remove(listID) } else { window.expandedCompleted.insert(listID) }
                 }
@@ -145,8 +159,6 @@ struct ListContent: View {
                         TaskRowCell(store: store, window: window, taskID: id, context: .list)
                     }
                 }
-            } header: {
-                Color.clear.frame(height: 4)
             }
             .listSectionSeparator(.hidden)
         }
@@ -168,14 +180,15 @@ struct TaskRowCell: View {
         #endif
         ZStack {
             if let model = store.projection.taskModel(taskID) {
-                TaskRow(model: model, store: store, dayModel: store.projection.dayModel, context: context,
-                        isSelected: window.selection.contains(taskID)) {
+                TaskRow(model: model, store: store, window: window, dayModel: store.projection.dayModel, context: context,
+                        isSelected: window.selection.contains(taskID), isHovered: window.isHovered(task: taskID)) {
                     store.toggleComplete([taskID], undoManager: window.undoManager)
                 }
             }
         }
         .paneRow()
         .itemProvider { dragProvider() }
+        .onHover { inside in window.hover(task: taskID, inside: inside) }
         #if DEBUG
         .onAppear { DebugTiming.rowAppeared() }
         #endif
@@ -206,41 +219,42 @@ struct TaskRow: View {
 
     let model: TaskModel
     let store: Store
+    let window: WindowState
     let dayModel: DayModel
     let context: Context
     let isSelected: Bool
+    let isHovered: Bool
     let onToggle: () -> Void
     @Environment(\.pane) private var pane
-    @State private var hovering = false
 
+    /// Hover never fills a row (design/INTERACTIONS.md): it only reveals the trailing •••. Selection fills.
     var body: some View {
         HStack(spacing: 10) {
             Button(action: onToggle) { PaneCheckbox(isDone: model.isDone) }
-                .buttonStyle(.plain)
+                .buttonStyle(PanePressStyle())
                 .accessibilityLabel(model.isDone ? "Mark \(model.title) not done" : "Complete \(model.title)")
             Text(model.title.isEmpty ? "New task" : model.title)
                 .foregroundStyle(model.isDone || model.title.isEmpty ? pane.inkSecondary : pane.ink)
                 .strikethrough(model.isDone, color: pane.inkQuiet)
                 .lineLimit(1)
                 .truncationMode(.tail)
+                .animation(PaneMotion.snappy, value: model.isDone)
             Spacer(minLength: 8)
             chips
+            PaneRowMenu(visible: isHovered || isSelected, help: "Actions") {
+                TaskContextMenu(store: store, window: window, ids: [model.id])
+            }
+            .padding(.trailing, -6)
         }
         .font(PaneFont.body)
         .padding(.horizontal, 10)
         .frame(minHeight: PaneSize.sidebarRow)
         .background {
-            if isSelected || hovering {
-                RoundedRectangle(cornerRadius: PaneRadius.row, style: .continuous)
-                    .fill(pane.selected.opacity(isSelected ? 1 : 0.55))
+            if isSelected {
+                RoundedRectangle(cornerRadius: PaneRadius.row, style: .continuous).fill(pane.selected)
             }
         }
-        .overlay(alignment: .leading) {
-            if hovering && context != .todayDone && !model.isDone { PaneGrip().offset(x: 1) }
-        }
         .contentShape(Rectangle())
-        .onHover { hovering = $0 }
-        .animation(PaneMotion.snappy, value: model.isDone)
     }
 
     @ViewBuilder private var chips: some View {
@@ -298,7 +312,7 @@ struct CompletedToggle: View {
             .frame(minHeight: PaneSize.sidebarRow)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PanePressStyle())
         .accessibilityAddTraits(.isButton)
         .accessibilityValue(expanded ? "Expanded" : "Collapsed")
         .animation(PaneMotion.snappy, value: expanded)
@@ -327,7 +341,7 @@ struct EmptyListRow: View {
                 .frame(minHeight: PaneSize.sidebarRow)
                 .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(PanePressStyle())
             Text(hasCompleted ? "Everything here is done." : "Type a task and press Return, or drag tasks here from another list.")
                 .font(PaneFont.subheadline)
                 .foregroundStyle(pane.inkSecondary)

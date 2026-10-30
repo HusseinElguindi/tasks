@@ -8,7 +8,7 @@
 #   # restart wrangler dev with a new --persist-to directory: the server log is wiped
 #   app/Scripts/e2e.sh /tmp/tasks-e2e phase2    # both Macs recover the log; a fresh fourth Mac sees everything
 set -u
-APP="${APP:-$(cd "$(dirname "$0")/.." && pwd)/.build/DerivedData/Build/Products/Debug/Tasks.app/Contents/MacOS/Tasks}"
+APP="${APP:-$(cd "$(dirname "$0")/.." && pwd)/.build/DerivedData/Build/Products/Debug/Tasks Dev.app/Contents/MacOS/Tasks Dev}"
 E=$1
 TOKEN="${TASKS_DEV_TOKEN:-$(sed -n "s/^API_TOKEN=//p" "$(cd "$(dirname "$0")/../.." && pwd)/server/.dev.vars")}"
 GOOD="${TASKS_DEV_URL:-http://127.0.0.1:8791}"

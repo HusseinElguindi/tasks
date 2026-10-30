@@ -20,6 +20,7 @@ struct RootView: View {
                         DebugSnapshot.runIfRequested()
                         DebugAutomation.runIfRequested(store)
                         DebugTiming.runIfRequested(store, window)
+                        DebugKeyLog.installIfRequested()
                         #endif
                     }
             }
@@ -33,38 +34,36 @@ struct RootView: View {
     }
 }
 
-/// Rex's layout: the sidebar on the ground, then panes with 8pt gutters. Opening a task splits a detail pane to
-/// the right; under about 900pt it replaces the list instead (A3's drill-in).
+/// Rex's layout: the sidebar on the ground, then panes with 8pt gutters. Collapsing the sidebar slides the panes over
+/// it (the sidebar stays put underneath) while the traffic lights and the toggle stay where they are. Opening a task
+/// splits a detail pane to the right; under about 900pt it replaces the list instead (A3's drill-in).
 struct MainLayout: View {
     let store: Store
     @Bindable var window: WindowState
     @Environment(\.pane) private var pane
 
+    /// Room the leftmost pane header leaves for the traffic lights and the toggle when the panes cover the sidebar.
+    static let windowControlsInset: CGFloat = 96
+
     var body: some View {
         GeometryReader { geo in
-            HStack(spacing: 0) {
-                if window.sidebarVisible {
-                    Sidebar(store: store, window: window)
-                        .frame(width: PaneSize.sidebar)
-                        .transition(.move(edge: .leading).combined(with: .opacity))
+            ZStack(alignment: .topLeading) {
+                Sidebar(store: store, window: window)
+                    .frame(width: PaneSize.sidebar)
+                    .frame(maxHeight: .infinity, alignment: .top)
+                Panes(store: store, window: window, narrow: geo.size.width < 900,
+                      leadingHeaderInset: window.sidebarVisible ? 0 : Self.windowControlsInset)
+                    .padding([.top, .trailing, .bottom], 8)
+                    .padding(.leading, window.sidebarVisible ? 0 : 8)
+                    .background(pane.ground)
+                    .padding(.leading, window.sidebarVisible ? PaneSize.sidebar : 0)
+                // Window actions right after the traffic lights, above everything, as in Rex.
+                PaneIconButton("sidebar.left", help: window.sidebarVisible ? "Hide Sidebar ⌃⌘S" : "Show Sidebar ⌃⌘S") {
+                    withAnimation(PaneMotion.sidebar) { window.sidebarVisible.toggle() }
                 }
-                VStack(spacing: 0) {
-                    if !window.sidebarVisible {
-                        HStack(spacing: 0) {
-                            Spacer().frame(width: 76)
-                            PaneIconButton("sidebar.left", help: "Show Sidebar") {
-                                withAnimation(PaneMotion.natural) { window.sidebarVisible = true }
-                            }
-                            .foregroundStyle(pane.inkSecondary)
-                            Spacer()
-                        }
-                        .frame(height: 30)
-                    }
-                    Panes(store: store, window: window, narrow: geo.size.width < 900)
-                        .padding(.top, window.sidebarVisible ? 8 : 0)
-                        .padding(.leading, window.sidebarVisible ? 0 : 8)
-                        .padding([.trailing, .bottom], 8)
-                }
+                .environment(\.paneGhostLevel, .secondary)
+                .padding(.leading, 76)
+                .padding(.top, 13)
             }
         }
     }
@@ -74,13 +73,17 @@ struct Panes: View {
     let store: Store
     @Bindable var window: WindowState
     let narrow: Bool
+    /// Header room for the window controls, given to the leftmost pane only.
+    var leadingHeaderInset: CGFloat = 0
 
     var body: some View {
         HStack(spacing: 8) {
             if narrow, let id = window.detailTaskID {
                 DetailPane(store: store, window: window, taskID: id, showsBack: true)
+                    .environment(\.paneHeaderInset, leadingHeaderInset)
             } else {
                 primary
+                    .environment(\.paneHeaderInset, leadingHeaderInset)
                 if let id = window.detailTaskID {
                     DetailPane(store: store, window: window, taskID: id, showsBack: false)
                         .frame(width: 420)
@@ -107,6 +110,7 @@ struct Panes: View {
             if let id = window.archiveSelection {
                 ListPane(store: store, window: window, listID: id)
                     .id(id)
+                    .environment(\.paneHeaderInset, 0)
             }
         }
     }

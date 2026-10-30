@@ -54,8 +54,8 @@ struct PaneActions: View {
     var listID: EntityID? = nil
 
     var body: some View {
-        PaneIconButton("plus", help: "New Task (⌘N)") { actions.newTask() }
-        PaneIconButton("sidebar.right", help: window.detailTaskID == nil ? "Show Details (⌘D)" : "Hide Details (⌘D)") {
+        PaneIconButton("plus", help: "New Task ⌘N") { actions.newTask() }
+        PaneIconButton("sidebar.right", help: window.detailTaskID == nil ? "Show Details ⌘D" : "Hide Details ⌘D") {
             actions.toggleDetail()
         }
         Menu {
@@ -73,7 +73,7 @@ struct PaneActions: View {
             Image(systemName: "ellipsis").font(.system(size: 12, weight: .bold)).frame(width: 22, height: 22)
         }
         .menuStyle(.button)
-        .buttonStyle(.plain)
+        .buttonStyle(PaneGhostButtonStyle())
         .menuIndicator(.hidden)
         .fixedSize()
         .help("More")
@@ -132,7 +132,11 @@ struct ListPane: View {
         .padding(.horizontal, 10)
         .frame(height: 30)
         .background(pane.selected, in: RoundedRectangle(cornerRadius: PaneRadius.row, style: .continuous))
-        .overlay { RoundedRectangle(cornerRadius: PaneRadius.row, style: .continuous).strokeBorder(pane.focusRing, lineWidth: 2) }
+        .overlay {
+            RoundedRectangle(cornerRadius: PaneRadius.row, style: .continuous)
+                .strokeBorder(pane.focusRing, lineWidth: 2)
+                .opacity(renameFocused ? 1 : 0)
+        }
         .padding(EdgeInsets(top: 4, leading: 12, bottom: 6, trailing: 12))
         .onAppear {
             nameDraft = list.name

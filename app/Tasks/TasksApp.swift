@@ -34,6 +34,7 @@ struct ThemedRoot<Content: View>: View {
             .environment(\.pane, colors)
             .environment(\.paneInterfaceStyle, model.interfaceStyle)
             .tint(colors.accent)
+            .paneRespectsReduceMotion()
             .preferredColorScheme(model.theme == .system ? nil : (dark ? .dark : .light))
     }
 }
@@ -82,6 +83,11 @@ struct TasksCommands: Commands {
                 .disabled(!hasTarget)
         }
         CommandGroup(after: .sidebar) {
+            Button(window?.sidebarVisible == false ? "Show Sidebar" : "Hide Sidebar") {
+                withAnimation(PaneMotion.natural) { window?.sidebarVisible.toggle() }
+            }
+            .keyboardShortcut("s", modifiers: [.command, .control])
+            .disabled(window == nil)
             Button("Sync Now") { store?.requestSync(force: true) }
                 .keyboardShortcut("r")
                 .disabled(store == nil)

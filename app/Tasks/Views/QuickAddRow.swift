@@ -54,7 +54,7 @@ struct QuickAddRow: View {
                             PaneChip(text: "No list — create or unarchive one", kind: .late)
                         }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PanePressStyle())
                     .popover(isPresented: $listPicker, arrowEdge: .bottom) { listMenu(target) }
                     Button { whenPicker = true } label: {
                         if let when = draft.when {
@@ -63,7 +63,7 @@ struct QuickAddRow: View {
                             PaneChip(text: "When", systemImage: "calendar", kind: .ghost)
                         }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PanePressStyle())
                     .popover(isPresented: $whenPicker, arrowEdge: .bottom) {
                         DatePopover(title: "When", date: draft.when, other: draft.deadline, today: today) { picked in
                             window.quickAdd?.when = picked
@@ -77,7 +77,7 @@ struct QuickAddRow: View {
                             PaneChip(text: "Deadline", systemImage: "flag", kind: .ghost)
                         }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PanePressStyle())
                     .popover(isPresented: $deadlinePicker, arrowEdge: .bottom) {
                         DatePopover(title: "Deadline", date: draft.deadline, other: draft.when, today: today) { picked in
                             window.quickAdd?.deadline = picked
@@ -95,7 +95,11 @@ struct QuickAddRow: View {
             .padding(EdgeInsets(top: 8, leading: 10, bottom: 10, trailing: 10))
             .background(pane.selected, in: RoundedRectangle(cornerRadius: PaneRadius.row, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: PaneRadius.row, style: .continuous).strokeBorder(pane.focusRing, lineWidth: 2)
+                // The ring shows only while one of the editor's fields has focus.
+                RoundedRectangle(cornerRadius: PaneRadius.row, style: .continuous)
+                    .strokeBorder(pane.focusRing, lineWidth: 2)
+                    .opacity(field == nil ? 0 : 1)
+                    .animation(PaneMotion.snappy, value: field == nil)
             }
             .padding(.vertical, 4)
             .onExitCommand { window.quickAdd = nil }

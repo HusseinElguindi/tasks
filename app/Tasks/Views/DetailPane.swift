@@ -16,12 +16,12 @@ struct DetailPane: View {
                 if showsBack {
                     PaneIconButton("chevron.left", help: "Back to the list") { window.detailTaskID = nil }
                 }
-                PaneIconButton("arrow.right", help: "Move to… (⇧⌘M)") { window.movePickerPresented = true }
-                PaneIconButton("trash", help: "Delete (⌘⌫)") {
+                PaneIconButton("arrow.right", help: "Move to… ⇧⌘M") { window.movePickerPresented = true }
+                PaneIconButton("trash", help: "Delete ⌘⌫") {
                     window.selection = [taskID]
                     actions.delete()
                 }
-                PaneIconButton("xmark", help: "Close (⌘D)") {
+                PaneIconButton("xmark", help: "Close ⌘D") {
                     window.detailTaskID = nil
                     window.focus = .list
                 }
@@ -48,6 +48,8 @@ struct TaskDetail: View {
     @State private var deadlinePicker = false
     @State private var titleCommit: Task<Void, Never>?
     @State private var notesCommit: Task<Void, Never>?
+    /// Opening a task doesn't take keyboard focus from the list; choosing Edit does.
+    @State private var userChoseMode = false
     @FocusState private var focus: Field?
 
     enum Field { case title, notes }
@@ -61,7 +63,7 @@ struct TaskDetail: View {
                     Button { store.toggleComplete([model.id], undoManager: window.undoManager) } label: {
                         PaneCheckbox(isDone: model.isDone)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PanePressStyle())
                     .padding(.top, 2)
                     TextField("Title", text: $title, axis: .vertical)
                         .textFieldStyle(.plain)
@@ -126,9 +128,10 @@ struct TaskDetail: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Spacer()
-                PaneSegmented(options: [(NotesMode.edit, "Edit"), (.preview, "Preview")], selection: $notesMode)
+                PaneSegmented(options: [(NotesMode.edit, "Edit"), (.preview, "Preview")],
+                              selection: Binding(get: { notesMode }, set: { notesMode = $0; userChoseMode = true }))
                     .onChange(of: notesMode) { _, mode in
-                        if mode == .edit { focus = .notes } else { commitNotes() }
+                        if mode == .edit { if userChoseMode { focus = .notes } } else { commitNotes() }
                     }
             }
             if notesMode == .edit {
@@ -147,10 +150,10 @@ struct TaskDetail: View {
                     .foregroundStyle(pane.inkQuiet)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
-                    .onTapGesture { notesMode = .edit }
+                    .onTapGesture { userChoseMode = true; notesMode = .edit }
             } else {
                 PaneMarkdownText(source: notes)
-                    .onTapGesture(count: 2) { notesMode = .edit }
+                    .onTapGesture(count: 2) { userChoseMode = true; notesMode = .edit }
             }
         }
         .padding(.leading, 26)
@@ -183,7 +186,7 @@ struct TaskDetail: View {
                     }
                 }
                 .menuStyle(.button)
-                .buttonStyle(.plain)
+                .buttonStyle(PanePressStyle())
                 .menuIndicator(.hidden)
                 .fixedSize()
             }
@@ -195,7 +198,7 @@ struct TaskDetail: View {
                         PaneChip(text: "Add date", kind: .ghost, large: true)
                     }
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PanePressStyle())
                 .popover(isPresented: $whenPicker, arrowEdge: .bottom) {
                     DatePopover(title: "When", date: model.when, other: model.deadline, today: today) { picked in
                         store.setWhen([model.id], picked, undoManager: window.undoManager)
@@ -217,7 +220,7 @@ struct TaskDetail: View {
                         PaneChip(text: "Add date", kind: .ghost, large: true)
                     }
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PanePressStyle())
                 .popover(isPresented: $deadlinePicker, arrowEdge: .bottom) {
                     DatePopover(title: "Deadline", date: model.deadline, other: model.when, today: today) { picked in
                         store.setDeadline([model.id], picked, undoManager: window.undoManager)
@@ -373,7 +376,7 @@ struct MonthGrid: View {
                         .overlay { if d == other && !isPicked { Capsule().strokeBorder(pane.attention, lineWidth: 1.5) } }
                         .contentShape(Capsule())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PanePressStyle())
             }
         }
     }

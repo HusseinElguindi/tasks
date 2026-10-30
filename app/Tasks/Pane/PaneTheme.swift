@@ -233,7 +233,17 @@ private struct PaneInterfaceStyleKey: EnvironmentKey {
     static let defaultValue: PaneInterfaceStyle = .classic
 }
 
+private struct PaneHeaderInsetKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 0
+}
+
 public extension EnvironmentValues {
+    /// Tasks: extra leading room in a pane header, for window controls drawn over it.
+    var paneHeaderInset: CGFloat {
+        get { self[PaneHeaderInsetKey.self] }
+        set { self[PaneHeaderInsetKey.self] = newValue }
+    }
+
     var pane: PaneColors {
         get { self[PaneColorsKey.self] }
         set { self[PaneColorsKey.self] = newValue }
@@ -417,11 +427,9 @@ private struct PaneButtonBody: View {
             .padding(.horizontal, size == .small ? 12 : 16)
             .frame(height: size == .small ? PaneSize.controlSmall : PaneSize.control)
             .background(fillColor, in: Capsule())
-            .overlay {
-                if configuration.isPressed {
-                    Capsule().fill(Color.black.opacity(0.14))
-                }
-            }
+            // Tasks: pressed darkens to 86%, as Pane's CSS `brightness(0.86)`, and eases back over duration-hover.
+            .colorMultiply(configuration.isPressed ? Color(white: 0.86) : .white)
+            .animation(configuration.isPressed ? nil : PaneMotion.icon, value: configuration.isPressed)
             .opacity(isEnabled ? 1 : 0.45)
             .contentShape(Capsule())
     }
@@ -598,6 +606,7 @@ public struct PaneChrome<Actions: View, Content: View>: View {
     private let content: Content
     @Environment(\.pane) private var pane
     @Environment(\.paneInterfaceStyle) private var style
+    @Environment(\.paneHeaderInset) private var headerInset
 
     public init(_ title: String, systemImage: String? = nil, isActive: Bool,
                 @ViewBuilder actions: () -> Actions, @ViewBuilder content: () -> Content) {
@@ -632,8 +641,12 @@ public struct PaneChrome<Actions: View, Content: View>: View {
                 Spacer(minLength: PaneSpace.s8)
                 HStack(spacing: PaneSpace.s4) { actions }
                     .foregroundStyle(pane.inkQuiet)
+                    // Tasks: an unfocused pane's header icons fade, as in Rex.
+                    .opacity(isActive ? 1 : 0.55)
             }
             .padding(.horizontal, PaneSpace.s12)
+            // Tasks: room for the window controls when the sidebar is collapsed and this is the leftmost pane.
+            .padding(.leading, headerInset)
             .frame(height: PaneSize.paneHeader)
 
             content
@@ -644,7 +657,8 @@ public struct PaneChrome<Actions: View, Content: View>: View {
         .overlay {
             shape.strokeBorder(isActive ? pane.paneEdge : pane.paneEdgeDim, lineWidth: 1)
         }
-        .animation(PaneMotion.snappy, value: isActive)
+        // Tasks: Rex's measured focus change is ~60 ms.
+        .animation(.easeOut(duration: 0.06), value: isActive)
     }
 
     @ViewBuilder
@@ -707,7 +721,8 @@ public struct PaneIconButton: View {
                 .frame(width: 22, height: 22)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        // Tasks: hover brightens the glyph one step, pressed goes to ink (design/INTERACTIONS.md).
+        .buttonStyle(PaneGhostButtonStyle())
         .help(help)
         .accessibilityLabel(help)
     }

@@ -42,6 +42,8 @@ targets:
         # so a development build can never pick up the real app's server, token or data.
         Debug:
           PRODUCT_BUNDLE_IDENTIFIER: com.elguindi.Tasks.dev
+          # A different process name too, so window tools that look for "Tasks" never find a dev build.
+          PRODUCT_NAME: Tasks Dev
       base:
         PRODUCT_NAME: Tasks
         PRODUCT_BUNDLE_IDENTIFIER: com.elguindi.Tasks
