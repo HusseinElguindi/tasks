@@ -1,5 +1,7 @@
 # Tasks — interaction rules
 
+**Superseded by `design/INTERACTIONS-v2.md` (final, 2026-10-30). Kept as the record of v1.**
+
 Status: 2026-10-30. How every control in the macOS app responds to the pointer, the keyboard and drags.
 
 Built from `design/REX-REFERENCE.md` (Rex measured live: sampled colors, scripted hovers, 60 fps recordings), with

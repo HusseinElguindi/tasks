@@ -1,27 +1,94 @@
 {
   "v": 3,
-  "createdOnFiles": { "v": 1, "at": "2026-10-30T17:44:34Z" },
-  "title": "Tasks · Interactions v2",
-  "launch": { "view": "canvas" },
-  "pages": [],
+  "attachments": {},
   "boards": {
-    "Main.dc.html": { "x": 0, "y": 0, "w": 1180, "h": 764, "title": "Prototype · everything works here (the strip below switches Light, variants and two open behaviours)", "is_interactive": true, "radius": 12 },
-    "QuickAddA.dc.html": { "x": 0, "y": 1164, "w": 1000, "h": 620, "title": "Add · A · Inline row where the task lands", "is_interactive": true, "radius": 12 },
-    "QuickAddB.dc.html": { "x": 1080, "y": 1164, "w": 1000, "h": 620, "title": "Add · B · Inline row that reads dates as you type", "is_interactive": true, "radius": 12 },
-    "QuickAddC.dc.html": { "x": 2160, "y": 1164, "w": 1000, "h": 620, "title": "Add · C · Straight into the detail pane", "is_interactive": true, "radius": 12 },
-    "DatesA.dc.html": { "x": 0, "y": 2184, "w": 1000, "h": 620, "title": "Dates · A · Calendar popover", "is_interactive": true, "radius": 12 },
-    "DatesB.dc.html": { "x": 1080, "y": 2184, "w": 1000, "h": 620, "title": "Dates · B · Suggestion list, calendar on request", "is_interactive": true, "radius": 12 }
+    "Add.dc.html": {
+      "h": 620,
+      "is_interactive": true,
+      "radius": 12,
+      "title": "Adding · ⌘N opens the new task in the details",
+      "w": 1000,
+      "x": 0,
+      "y": 1164
+    },
+    "Dates.dc.html": {
+      "h": 620,
+      "is_interactive": true,
+      "radius": 12,
+      "title": "Dates · the calendar popover",
+      "w": 1000,
+      "x": 1080,
+      "y": 1164
+    },
+    "Main.dc.html": {
+      "h": 764,
+      "is_interactive": true,
+      "radius": 12,
+      "title": "Prototype · the reference for the build (the strip below switches Light)",
+      "w": 1180,
+      "x": 0,
+      "y": 0
+    }
   },
-  "order": ["Main.dc.html", "QuickAddA.dc.html", "QuickAddB.dc.html", "QuickAddC.dc.html", "DatesA.dc.html", "DatesB.dc.html"],
-  "notes": {
-    "title": { "x": 0, "y": -300, "text": "Tasks · interactions v2", "kind": "title1", "maxW": 3160 },
-    "howto": { "x": -560, "y": 0, "w": 480, "size": "m", "text": "How to try it\n\n• Press Play on the prototype, then click inside it once so it has the keys.\n• Add: ⌥N (the browser keeps ⌘N), the + in the pane header, or click the empty space under a list's last task. Return adds and starts the next one. Esc drops an empty row.\n• Rename: double-click a title, or select it and press Return. Lists too.\n• Dates: select a task, ⌘S (When) or ⇧⌘D (Deadline), type tom, fri, 3d or nov 9, Return. Or click a chip.\n• Drag rows to reorder, or onto a sidebar list to move them. Drag lists to reorder.\n• Right-click rows and lists. ⌘Z undoes everything; delete, move and archive also show Undo.\n• Press ? for every key." },
-    "qa_title": { "x": 0, "y": 864, "text": "Pick one: how adding a task works", "kind": "title1", "maxW": 3160 },
-    "qa_note": { "x": -560, "y": 1164, "w": 480, "size": "m", "text": "Each board starts mid-add. Click into the row (or the title in C), or press Esc and try ⌥N.\n\nA · The new row appears where the task will land. Type, Return, type the next. Dates come after (⌘S, a chip, or the details).\n\nB · The same row, and trailing date words become dates as you type: \"fri\", \"tomorrow\", \"due nov 9\". The chips light up before Return; the words leave the title.\n\nC · ⌘N creates the task and opens it in the detail pane with the cursor in its title. Return moves to notes; Esc is done." },
-    "dp_title": { "x": 0, "y": 1884, "text": "Pick one: the date picker's shape", "kind": "title1", "maxW": 2080 },
-    "dp_note": { "x": -560, "y": 2184, "w": 480, "size": "m", "text": "Both open from a chip, ⌘S or ⇧⌘D, and read the same words: tod, tom, fri, next fri, weekend, next week, 3d, 2w, nov 9, 11/9. ⌫ in an empty field clears the date.\n\nA · Field, quick picks and the month. Typing moves the highlighted day, arrows nudge it, Return sets it.\n\nB · A command-palette list that updates as you type; ↑↓ and Return. The month appears only when you ask for it." }
+  "createdOnFiles": {
+    "at": "2026-10-30T17:44:34Z",
+    "v": 1
   },
   "designSystems": [
-    { "title": "Pane", "namespace": "pane", "artifact": "https://claude.ai/artifact/MS3VdrN9VHU7A7pTUTzpm8", "version": "1793379585-5267", "copiedAt": "2026-10-30T17:44:34Z" }
-  ]
+    {
+      "artifact": "https://claude.ai/artifact/MS3VdrN9VHU7A7pTUTzpm8",
+      "copiedAt": "2026-10-30T17:44:34Z",
+      "namespace": "pane",
+      "title": "Pane",
+      "version": "1793379585-5267"
+    }
+  ],
+  "launch": {
+    "view": "canvas"
+  },
+  "noteOrder": [
+    "title",
+    "howto",
+    "starts_title",
+    "starts_note"
+  ],
+  "notes": {
+    "howto": {
+      "size": 24,
+      "text": "How to try it\n\n• Press Play on the prototype, then click inside it once so it has the keys.\n• Add: ⌥N (the browser keeps ⌘N), the + in the pane header, or click the empty space under a list's last task. The new task opens in the details with the cursor in its title. Return goes on to the notes; Esc is done. Left untitled, it's dropped.\n• Rename: double-click a title, or select it and press Return. Lists too.\n• Dates: select a task, ⌘S (When) or ⇧⌘D (Deadline), type tom, fri, 3d or nov 9, Return. Or click a chip.\n• Drag rows to reorder, or onto a sidebar list to move them. Drag lists to reorder.\n• Right-click rows and lists. ⌘Z undoes everything; delete, move and archive also show Undo.\n• Press ? for every key.",
+      "w": 480,
+      "x": -560,
+      "y": 0
+    },
+    "starts_note": {
+      "size": 24,
+      "text": "Both boards start part-way through and are fully live.\n\nAdding · ⌘N was just pressed in School: the new task's row sits at the bottom of the list, and its title is typed in the details but not saved yet. Click the title to keep typing; Return goes on to the notes, Esc finishes, clicking elsewhere saves it.\n\nDates · The When popover is open on a task in Today with \"fri\" typed. Arrows move the highlighted day, Return sets it, Esc closes.",
+      "w": 480,
+      "x": -560,
+      "y": 1164
+    },
+    "starts_title": {
+      "kind": "title1",
+      "maxW": 2080,
+      "text": "Starting points",
+      "w": 240,
+      "x": 0,
+      "y": 864
+    },
+    "title": {
+      "kind": "title1",
+      "maxW": 3160,
+      "text": "Tasks · interactions v2",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Add.dc.html",
+    "Dates.dc.html"
+  ],
+  "pages": [],
+  "title": "Tasks · Interactions v2"
 }

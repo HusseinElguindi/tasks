@@ -163,12 +163,11 @@
 .tk .row.leave { opacity: 0; pointer-events: none; }
 .tk .row.enter { animation: tk-fade-in 180ms ease-out both; }
 .tk .row.dragsrc { opacity: 0; transition: none; }
-.tk .row.dragsrc.linemode { opacity: 0.35; }
-.tk .row.editing { background: var(--base); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.tk .row.editing { background: var(--base); box-shadow: inset 0 0 0 1.5px var(--accent); }   /* renaming in place */
 .tk .row .tt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; margin-left: 10px; transform: translateY(-0.5px);
   -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
   transition: color 200ms ease-out; }
-.tk .row .tt.empty { color: var(--ink-3); }
+.tk .row .tt.untitled { color: var(--ink-3); }   /* an empty title shows "New Task" */
 .tk .row .ri { flex: 1; min-width: 0; margin-left: 10px; height: 30px; color: var(--ink); }
 .tk .row.done .tt { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-q); }
 .tk .row .where { color: var(--ink-3); font-size: 12px; margin-left: 8px; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
@@ -199,6 +198,7 @@
 .tk .check.on { background: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); color: var(--on-accent); }
 .tk .check.on .ck path { stroke-dashoffset: 0; }
 .tk .check.pop { animation: tk-pop var(--dur-snappy) var(--ease-snappy); }
+/* A new task's box until its title commits: a quiet placeholder ring that can't be clicked. */
 .tk .check.new { box-shadow: inset 0 0 0 1.5px var(--ink-q); opacity: 0.7; }
 .tk .check.new::after { display: none; }
 
@@ -210,8 +210,7 @@
 .tk button.chip:active { filter: brightness(0.86); transition: none; }
 .tk .chip.due { background: var(--attn-tint); color: var(--attn); }
 .tk .chip.late { background: var(--danger-tint); color: var(--danger); }
-.tk .chip.open-picker, .tk .chip.pending { background: var(--accent-tint); color: var(--accent-text); }
-.tk .chip.pending { box-shadow: inset 0 0 0 1px var(--accent); }
+.tk .chip.open-picker { background: var(--accent-tint); color: var(--accent-text); }
 .tk .chip.lg { height: 22px; padding: 0 9px; border-radius: 11px; font-size: 12px; gap: 5px; }
 .tk .chip.ghost { background: transparent; color: var(--ink-3); box-shadow: inset 0 0 0 1px var(--line-sep); }
 .tk button.chip.ghost:hover { filter: none; background: var(--hover); color: var(--ink-2); }
@@ -226,6 +225,7 @@
 /* "Completed 23" disclosure row in a list. */
 .tk .crow { position: absolute; left: 10px; height: 30px; top: 0; display: flex; align-items: center; gap: 6px; padding: 0 10px 0 12px; border-radius: 8px; color: var(--ink-2); z-index: 2;
   transition: transform var(--dur-layout) var(--ease-layout), color var(--hover-out); }
+.tk .crow.enter { animation: tk-fade-in 180ms ease-out both; }
 .tk .crow:hover { color: var(--ink); transition: transform var(--dur-layout) var(--ease-layout), color var(--hover-in); }
 .tk .crow .cl { font-weight: 500; }
 .tk .crow .cn { color: var(--ink-3); font-variant-numeric: tabular-nums; }
@@ -233,9 +233,10 @@
 /* Today's group labels sit on the row grid; "+" reveals on hover. */
 .tk .tglabel { position: absolute; left: 10px; right: 10px; top: 0; height: 32px; z-index: 2; transition: transform var(--dur-layout) var(--ease-layout), opacity 150ms ease-out; }
 .tk .tglabel.hidden { display: none; }
-.tk .tglabel.leave { opacity: 0; }
+.tk .tglabel.leave { opacity: 0; pointer-events: none; }
+.tk .tglabel.enter { animation: tk-fade-in 180ms ease-out both; }
 
-/* Drag: the lifted copy, the insertion line, the count badge. */
+/* Drag: the lifted copy and its count badge. */
 .tk .lifted { position: absolute; height: 30px; display: flex; align-items: center; padding: 0 10px; border-radius: 8px; background: var(--lift); box-shadow: var(--shadow-lift); z-index: 60; pointer-events: none;
   transition: width 160ms ease-out, opacity 150ms ease-out; }
 .tk .lifted.cap { border-radius: 15px; background: var(--fill-strong); color: var(--ink); }
@@ -247,8 +248,6 @@
 .tk .lifted .chip.late { background: var(--danger-tint); }
 .tk .lifted .chip.due { background: var(--attn-tint); }
 .tk .badge { position: absolute; right: -7px; top: -7px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: var(--on-accent); font: 600 11px/18px var(--font); text-align: center; }
-.tk .iline { position: absolute; height: 2px; border-radius: 1px; background: var(--accent); z-index: 5; pointer-events: none; }
-.tk .iline::before { content: ""; position: absolute; left: -8px; top: -3px; width: 8px; height: 8px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--accent); background: var(--base); }
 
 /* ---------- Detail pane ---------- */
 .tk .dp { right: 8px; width: 420px; transform: translateX(0); opacity: 1;
@@ -281,6 +280,10 @@
 .tk .md a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; cursor: pointer; }
 .tk .md code { font: 12px/16px var(--mono); background: var(--fill-control); padding: 1px 4px; border-radius: 4px; }
 .tk .dmeta { margin: 14px 0 0 26px; font-size: 11px; line-height: 14px; color: var(--ink-3); }
+/* Under an untitled new task's title: dimmed and deaf to the pointer until the title has text. The sections fade back
+   on `icon`; the checkbox and the trash button (which have their own transitions) switch at once. */
+.tk .dp .props, .tk .dp .dsep, .tk .dp .notes, .tk .dp .dmeta { transition: opacity var(--icon); }
+.tk .dp .inert, .tk .dp .hb.inert, .tk .dp .check.inert { opacity: 0.45; pointer-events: none; }
 .tk .banner { margin: 6px 10px 2px; padding: 9px 10px 9px 12px; border-radius: 8px; background: var(--fill-control); display: flex; align-items: center; gap: 10px; }
 .tk .banner .bt { flex: 1; min-width: 0; }
 .tk .banner .bs { color: var(--ink-2); font-size: 12px; }
@@ -336,12 +339,6 @@
 .tk .pv .pvt { flex: 1; min-width: 0; color: var(--ink); }
 .tk .pv .pvt.none { color: var(--ink-3); }
 .tk .kbd { font: 500 11px/14px var(--font); color: var(--ink-3); }
-.tk .sug { margin-top: 6px; }
-.tk .sg { height: 26px; display: flex; align-items: center; gap: 8px; padding: 0 9px; border-radius: 6px; }
-.tk .sg .sd { margin-left: auto; color: var(--ink-3); font-size: 12px; white-space: nowrap; }
-.tk .sg.hot { background: var(--accent); color: var(--on-accent); }
-.tk .sg.hot .sd { color: rgba(255, 255, 255, 0.78); }
-.tk .sg.dim { color: var(--ink-3); }
 
 .tk .notice { position: absolute; right: 12px; bottom: 12px; z-index: 70; height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 5px 0 12px; border-radius: 10px; background: var(--popover); box-shadow: var(--shadow-popover); white-space: nowrap;
   animation: tk-notice-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
@@ -355,6 +352,7 @@
 .tk .stage { position: absolute; left: 0; right: 0; bottom: 0; height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 6px 0 10px; border-radius: 10px; background: var(--ground); box-shadow: var(--win-edge); font-size: 11px; line-height: 14px; color: var(--stage-ink); white-space: nowrap; overflow: hidden; }
 .tk .stage .sl { color: var(--stage-ink); margin-left: 6px; }
 .tk .stage .sl:first-child { margin-left: 0; font-weight: 600; }
+.tk .stage .sn { margin-left: 6px; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .tk .seg { display: inline-flex; padding: 2px; gap: 2px; border-radius: 999px; background: var(--fill-track); }
 .tk .seg button { height: 20px; padding: 0 8px; border-radius: 999px; color: var(--stage-ink); font-size: 11px; }
 .tk .seg button:hover { color: var(--stage-ink-strong); }

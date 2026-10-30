@@ -160,7 +160,9 @@ Specified in INTERACTIONS-v2 and drawn in the prototype; each is a candidate Pan
 - **Notice**: one-line status with an Undo capsule, bottom-right of a pane, 5 s, held while hovered (Rex has notices;
   their corner and timing are §20 question 1).
 - **Tooltip with keys** ("New Task ⌘N"): Rex draws its own since preview.23 (its style is §20 question 2).
-- **Date popover**, two shapes (calendar; suggestion list).
+- **Date popover**: a field, quick picks and the month (INTERACTIONS-v2 §11).
+- **A new item's untitled state**: until a new task has a title, everything under it in the detail pane is drawn at 45%
+  and ignores the pointer (INTERACTIONS-v2 §6). Pane has no disabled token; menus in the prototype use 40%.
 - **Group-label reveal** (⊕ or chevron in the trailing slot on hover), which Rex has on session headers.
 - **Ghost add row**: the landing slot under a list, revealed on hover.
 - **Drag**: lifted copy (`fill-lift` #2C2C2C dark, `shadow-lift`), count badge, row gap, and a compact tag over drop

@@ -49,7 +49,7 @@ body{margin:0}
 <span class="pt">{{lp.title}}</span>
 <span class="ps">{{lp.sub}}</span>
 <span class="acts">
-<button class="hb" type="button" aria-label="{{lp.newTip}}" data-tip="{{lp.newTip}}" data-keys="⌘N" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onNewTaskBtn}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"></path></svg></button>
+<button class="hb" type="button" data-add="1" aria-label="{{lp.newTip}}" data-tip="{{lp.newTip}}" data-keys="⌘N" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onNewTaskBtn}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"></path></svg></button>
 <button class="{{lp.detailBtnCls}}" type="button" aria-label="{{lp.detailTip}}" data-tip="{{lp.detailTip}}" data-keys="⌘D" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onToggleDetail}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="2"></rect><line x1="10" y1="3" x2="10" y2="13"></line></svg></button>
 </span>
 </header>
@@ -63,15 +63,14 @@ body{margin:0}
 </div>
 </sc-if>
 <sc-if value="{{lp.hasZone}}">
-<div class="addzone" style="{{lp.zoneStyle}}" onPointerDown="{{onAddZoneDown}}">
+<div class="addzone" data-add="1" style="{{lp.zoneStyle}}" onPointerDown="{{onAddZoneDown}}">
 <sc-if value="{{lp.ghostShow}}"><div class="ghostrow" aria-hidden="true"><span class="check"></span><span class="gt">New Task</span></div></sc-if>
 </div>
 </sc-if>
-<sc-if value="{{lp.line}}"><div class="iline" style="{{lp.lineStyle}}"></div></sc-if>
 <sc-for list="{{labels}}" as="g" hint-placeholder-count="0">
 <div class="{{g.cls}}" style="{{g.style}}">
 <div class="glabel"><span class="gl">{{g.name}}</span>
-<sc-if value="{{g.plus}}"><button class="gbtn reveal" type="button" data-list="{{g.id}}" aria-label="{{g.tipText}}" data-tip="{{g.tipText}}" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onPointerDown="{{stopPD}}" onClick="{{onGroupPlus}}"><svg class="i i--sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"></path></svg></button></sc-if>
+<sc-if value="{{g.plus}}"><button class="gbtn reveal" type="button" data-add="1" data-list="{{g.id}}" aria-label="{{g.tipText}}" data-tip="{{g.tipText}}" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onPointerDown="{{stopPD}}" onClick="{{onGroupPlus}}"><svg class="i i--sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"></path></svg></button></sc-if>
 </div>
 </div>
 </sc-for>
@@ -90,7 +89,7 @@ body{margin:0}
 </div>
 </sc-for>
 <sc-if value="{{lp.crow}}">
-<button class="crow" type="button" style="{{lp.crowStyle}}" aria-label="Completed tasks" onPointerDown="{{stopPD}}" onClick="{{onToggleCompleted}}"><svg class="i i--sm {{lp.chevCls}}" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4l4 4-4 4"></path></svg><span class="cl">Completed</span><span class="cn">{{lp.crowCount}}</span></button>
+<button class="{{lp.crowCls}}" type="button" style="{{lp.crowStyle}}" aria-label="Completed tasks" onPointerDown="{{stopPD}}" onClick="{{onToggleCompleted}}"><svg class="i i--sm {{lp.chevCls}}" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4l4 4-4 4"></path></svg><span class="cl">Completed</span><span class="cn">{{lp.crowCount}}</span></button>
 </sc-if>
 <sc-if value="{{lp.empty}}">
 <div class="empty" style="{{lp.emptyStyle}}">
@@ -117,7 +116,7 @@ body{margin:0}
 <sc-if value="{{dp.multi}}"><span class="{{dp.headTile}}">{{dp.headMono}}</span><span class="pt" style="color: var(--ink-2); font-weight: 400;">{{dp.headName}}</span></sc-if>
 <span class="acts">
 <sc-if value="{{dp.none}}"><span></span></sc-if>
-<sc-if value="{{dp.single}}"><button class="hb" type="button" aria-label="Delete" data-tip="{{dp.deleteTip}}" data-keys="⌘⌫" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onDDelete}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9"></path></svg></button></sc-if>
+<sc-if value="{{dp.single}}"><button class="{{dp.deleteCls}}" type="button" aria-label="Delete" data-tip="{{dp.deleteTip}}" data-keys="⌘⌫" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onDDelete}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9"></path></svg></button></sc-if>
 <sc-if value="{{dp.multi}}"><button class="hb" type="button" aria-label="Delete" data-tip="{{dp.deleteTip}}" data-keys="⌘⌫" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onDDelete}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9"></path></svg></button></sc-if>
 <button class="hb" type="button" aria-label="Hide Details" data-tip="Hide Details" data-keys="⌘D" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onDClose}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"></path></svg></button>
 </span>
@@ -127,12 +126,12 @@ body{margin:0}
 <sc-if value="{{dp.single}}">
 <div class="dtitle">
 <button class="{{dp.checkCls}}" type="button" aria-label="Complete" onClick="{{onDCheck}}"><svg class="ck" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.8 8.4l2.7 2.7 5.7-6.2"></path></svg></button>
-<textarea rows="1" value="{{dp.titleValue}}" placeholder="New Task" spellCheck="false" aria-label="Title" autoFocus="{{dp.autoTitle}}" onFocus="{{onDTitleFocus}}" onChange="{{onDTitleChange}}" onKeyDown="{{onDTitleKey}}" onBlur="{{onDTitleBlur}}"></textarea>
+<textarea rows="1" value="{{dp.titleValue}}" placeholder="New Task" spellCheck="false" aria-label="Title" onFocus="{{onDTitleFocus}}" onChange="{{onDTitleChange}}" onKeyDown="{{onDTitleKey}}" onBlur="{{onDTitleBlur}}"></textarea>
 </div>
 </sc-if>
 <sc-if value="{{dp.multi}}"><div class="dmulti">{{dp.multiTitle}}</div></sc-if>
 <sc-if value="{{dp.headName}}">
-<div class="props">
+<div class="{{dp.propsCls}}">
 <div class="prow"><span class="pl"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M3 8h10M3 11.5h10"></path></svg>List</span>
 <button class="popup" type="button" aria-label="List" onClick="{{onDList}}"><span class="{{dp.listTile}}">{{dp.listMono}}</span>{{dp.listName}}<svg class="i i--sm ud" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 6.5L8 3.5l3 3M5 9.5l3 3 3-3"></path></svg></button>
 </div>
@@ -153,14 +152,14 @@ body{margin:0}
 </div>
 </sc-if>
 <sc-if value="{{dp.single}}">
-<div class="dsep"></div>
-<div class="notes">
+<div class="{{dp.sepCls}}"></div>
+<div class="{{dp.notesCls}}">
 <sc-if value="{{dp.notesEditing}}"><textarea value="{{dp.notesText}}" placeholder="Notes" aria-label="Notes" autoFocus="{{true}}" onChange="{{onNotesChange}}" onKeyDown="{{onNotesKey}}" onBlur="{{onNotesBlur}}" onFocus="{{onNotesFocus}}"></textarea></sc-if>
 <sc-if value="{{dp.notesView}}">
 <div class="{{dp.mdCls}}" onPointerDown="{{onNotesDown}}"><sc-if value="{{dp.noNotes}}">Notes</sc-if><sc-for list="{{dp.md}}" as="m" hint-placeholder-count="0"><sc-if value="{{m.plain}}">{{m.s}}</sc-if><sc-if value="{{m.b}}"><b>{{m.s}}</b></sc-if><sc-if value="{{m.i}}"><i>{{m.s}}</i></sc-if><sc-if value="{{m.code}}"><code>{{m.s}}</code></sc-if><sc-if value="{{m.a}}"><a href="{{m.href}}" onClick="{{onLinkClick}}">{{m.s}}</a></sc-if></sc-for></div>
 </sc-if>
 </div>
-<div class="dmeta">{{dp.meta}}</div>
+<div class="{{dp.metaCls}}">{{dp.meta}}</div>
 </sc-if>
 </div>
 </section>
@@ -201,23 +200,13 @@ body{margin:0}
 <sc-if value="{{pk.show}}">
 <div class="picker" style="{{pk.style}}" role="dialog" aria-label="Choose a date" onMouseDown="{{onPickerDown}}">
 <label class="pf"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg><input value="{{pk.text}}" placeholder="{{pk.placeholder}}" aria-label="Type a date" spellCheck="false" autoFocus="{{pk.autoFocus}}" onChange="{{onPickerText}}" onKeyDown="{{onPickerKey}}"></label>
-<sc-if value="{{pk.isA}}">
 <div class="qp"><sc-for list="{{pk.quick}}" as="q" hint-placeholder-count="0"><button class="{{q.cls}}" type="button" data-date="{{q.date}}" onClick="{{onPickQuick}}">{{q.label}}</button></sc-for></div>
-</sc-if>
-<sc-if value="{{pk.isB}}">
-<div class="sug">
-<sc-for list="{{pk.sug}}" as="g" hint-placeholder-count="0"><div class="{{g.cls}}" data-idx="{{g.idx}}" onMouseEnter="{{onSugEnter}}" onClick="{{onPickSug}}"><span>{{g.label}}</span><span class="sd">{{g.detail}}</span></div></sc-for>
-<sc-if value="{{pk.noSug}}"><div class="sg dim">No date matches</div></sc-if>
-</div>
-</sc-if>
-<sc-if value="{{pk.showCal}}">
 <div class="mon"><span class="mt">{{pk.monthTitle}}</span><button class="nb" type="button" aria-label="Previous month" data-dir="-1" onClick="{{onPickMonth}}"><svg class="i i--sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 4l-4 4 4 4"></path></svg></button><button class="nb" type="button" aria-label="Next month" data-dir="1" onClick="{{onPickMonth}}"><svg class="i i--sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4l4 4-4 4"></path></svg></button></div>
 <div class="cal">
 <sc-for list="{{pk.dows}}" as="w" hint-placeholder-count="0"><span class="dw">{{w}}</span></sc-for>
 <sc-for list="{{pk.days}}" as="c" hint-placeholder-count="0"><span class="{{c.cls}}" data-date="{{c.date}}" onClick="{{onPickDay}}">{{c.label}}</span></sc-for>
 </div>
-</sc-if>
-<sc-if value="{{pk.isA}}"><div class="pv"><span class="{{pk.previewCls}}">{{pk.preview}}</span><span class="kbd">↩</span></div></sc-if>
+<div class="pv"><span class="{{pk.previewCls}}">{{pk.preview}}</span><span class="kbd">↩</span></div>
 </div>
 </sc-if>
 
@@ -228,14 +217,7 @@ body{margin:0}
 <div class="stage" aria-label="Prototype controls">
 <span class="sl">Prototype</span>
 <span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
-<span class="sl">Add</span>
-<span class="seg"><sc-for list="{{stage.qa}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
-<span class="sl">Dates</span>
-<span class="seg"><sc-for list="{{stage.dp}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
-<span class="sl">Drag</span>
-<span class="seg"><sc-for list="{{stage.dragMode}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
-<span class="sl">Checked rows</span>
-<span class="seg"><sc-for list="{{stage.settle}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
+<span class="sn">The browser keeps ⌘N, ⌘T and ⌘1–9, so ⌥N, ⌥T and ⌃1–9 also work here.</span>
 <span style="flex: 1;"></span>
 <button class="lnk" type="button" data-k="reset" data-v="1" onClick="{{onStage}}">Reset</button>
 <button class="lnk" type="button" data-k="keys" data-v="1" data-keys-toggle="1" onClick="{{onStage}}">Keys ?</button>
@@ -245,7 +227,7 @@ body{margin:0}
 <sc-if value="{{keysOpen}}">
 <div class="keys" role="dialog" aria-label="Keyboard shortcuts">
 <div class="kh">Tasks</div>
-<div class="kr"><span class="kk">⌘N (⌥N here)</span><span>New task where it will land. Return adds and starts the next.</span></div>
+<div class="kr"><span class="kk">⌘N (⌥N here)</span><span>New task, opened in the details with the cursor in its title. Return goes on to the notes; Esc is done.</span></div>
 <div class="kr"><span class="kk">↩ · double-click</span><span>Rename. Esc cancels.</span></div>
 <div class="kr"><span class="kk">Space · ⌘K</span><span>Complete or uncomplete</span></div>
 <div class="kr"><span class="kk">⌘D · ›</span><span>Show or hide details</span></div>
@@ -266,7 +248,7 @@ body{margin:0}
 </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"qa":{"editor":"enum","options":["A","B","C"],"default":"A"},"dp":{"editor":"enum","options":["A","B"],"default":"A"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
 // ---------- Calendar dates: "YYYY-MM-DD" strings, never instants (SPEC §2). ----------
 const DAY_MS = 86400000;
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -320,11 +302,10 @@ function deadlineChip(s, today) {
 
 // ---------- Typed dates ----------
 function normDate(text) { return text.trim().toLowerCase().replace(/[,.]/g, ' ').replace(/\s+/g, ' ').trim(); }
-function weekdayOf(word, strict) {
+function weekdayOf(word) {
   if (!word) return null;
   for (let i = 0; i < 7; i++) if (WDL[i].toLowerCase() === word) return i;
   const abbr = { mon: 1, tue: 2, tues: 2, wed: 3, weds: 3, thu: 4, thur: 4, thurs: 4, fri: 5, sat: 6, sun: 0 };
-  if (strict) { if (word === 'sat' || word === 'sun') return null; return abbr[word] ?? null; }
   if (abbr[word] !== undefined) return abbr[word];
   if (word.length >= 2) {
     const hits = [];
@@ -353,30 +334,29 @@ function resolveMonthDay(m, d, yearText, today) {
 function nextWeekStart(today) { return nextWeekday(today, 1); }
 function weekendOf(today) { const w = weekdayIdx(today); return w === 6 || w === 0 ? today : nextWeekday(today, 6); }
 
-// Exact parse of a whole phrase. strict = the quick-add title tokens, which must not eat ordinary words.
-function parseDate(text, today, strict) {
+// Exact parse of a whole phrase (the grammar in INTERACTIONS-v2 §11).
+function parseDate(text, today) {
   const s = normDate(text);
   if (!s) return null;
   let m;
-  if (/^(today|tod|tdy)$/.test(s) || (!strict && /^(toda|now)$/.test(s))) return today;
-  if (/^(tomorrow|tom|tmr|tmrw)$/.test(s) || (!strict && /^(tomo|tomor|tomorr|tomorro)$/.test(s))) return addDays(today, 1);
-  if (!strict && /^(yesterday|yest)$/.test(s)) return addDays(today, -1);
+  if (/^(today|tod|tdy|toda|now)$/.test(s)) return today;
+  if (/^(tomorrow|tom|tmr|tmrw|tomo|tomor|tomorr|tomorro)$/.test(s)) return addDays(today, 1);
+  if (/^(yesterday|yest)$/.test(s)) return addDays(today, -1);
   if ((m = s.match(/^(?:in\s+)?(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten)\s*(d|day|days|w|wk|wks|week|weeks|mo|mos|month|months|m|y|yr|yrs|year|years)$/))) {
     const n = /^\d+$/.test(m[1]) ? parseInt(m[1], 10) : NUMW[m[1]];
-    if (strict && !/^\d/.test(m[1]) && !s.startsWith('in ')) return null;
     const u = m[2];
     if (u[0] === 'd') return addDays(today, n);
     if (u[0] === 'w') return addDays(today, 7 * n);
     if (u[0] === 'y') return addMonths(today, 12 * n);
     return addMonths(today, n);
   }
-  if (!strict && (m = s.match(/^\+(\d+)$/))) return addDays(today, parseInt(m[1], 10));
+  if ((m = s.match(/^\+(\d+)$/))) return addDays(today, parseInt(m[1], 10));
   if (/^(this\s+)?(weekend|wknd)$/.test(s)) return weekendOf(today);
   if (/^next\s+weekend$/.test(s)) return addDays(nextWeekday(today, 6), weekdayIdx(today) === 6 ? 0 : 7);
   if (/^next\s+(week|wk)$/.test(s)) return nextWeekStart(today);
   if (/^next\s+(month|mo)$/.test(s)) { const d = dOf(today); return ymdOf(new Date(d.getFullYear(), d.getMonth() + 1, 1)); }
   if ((m = s.match(/^(?:(next|this|on)\s+)?([a-z]+)$/))) {
-    const w = weekdayOf(m[2], strict);
+    const w = weekdayOf(m[2]);
     if (w !== null) {
       if (m[1] === 'next') { const start = nextWeekStart(today); return addDays(start, (w + 6) % 7); }
       return nextWeekday(today, w);
@@ -386,7 +366,7 @@ function parseDate(text, today, strict) {
   if ((m = s.match(/^(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]+)(?:\s+(\d{2,4}))?$/))) { const mo = monthOf(m[2]); if (mo !== null) return resolveMonthDay(mo, +m[1], m[3], today); }
   if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) return validYMD(+m[1], +m[2] - 1, +m[3]);
   if ((m = s.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/))) return resolveMonthDay(+m[1] - 1, +m[2], m[3], today);
-  if (!strict && (m = s.match(/^(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?$/))) {
+  if ((m = s.match(/^(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?$/))) {
     const day = +m[1], t = dOf(today);
     if (day < 1 || day > 31) return null;
     for (let k = 0; k < 3; k++) {
@@ -398,62 +378,16 @@ function parseDate(text, today, strict) {
   return null;
 }
 
-function labelForParse(s, date, today) {
-  const n = normDate(s);
-  if (date === today) return 'Today';
-  if (/^(yesterday|yest)$/.test(n)) return 'Yesterday';
-  if (date === addDays(today, 1) && /^t/.test(n)) return 'Tomorrow';
-  if (/weekend/.test(n)) return 'This Weekend';
-  if (/^next\s+(week|wk)$/.test(n)) return 'Next Week';
-  if (/^next\s+(month|mo)$/.test(n)) return 'Next Month';
-  let m;
-  if ((m = n.match(/^(?:in\s+)?(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten)\s*(d|day|days|w|wk|wks|week|weeks|mo|mos|month|months|m|y|yr|yrs|year|years)$/))) {
-    const k = /^\d+$/.test(m[1]) ? +m[1] : NUMW[m[1]], u = m[2][0];
-    const unit = u === 'd' ? 'day' : u === 'w' ? 'week' : u === 'y' ? 'year' : 'month';
-    return 'In ' + k + ' ' + unit + (k === 1 ? '' : 's');
-  }
-  if (/^[a-z]+$/.test(n) || /^(next|this|on)\s+[a-z]+$/.test(n)) return (n.startsWith('next ') ? 'Next ' : '') + WDL[weekdayIdx(date)];
-  return longDate(date, today);
-}
-
-// Suggestions while typing: the exact parse first, then phrases the text begins.
+// What the date field's text means while it's typed: the exact parse, else the first phrase it begins
+// ("th" → Thursday, "next" → Next Week, "this" → This Weekend).
 const PHRASES = ['Today', 'Tomorrow', 'This Weekend', 'Next Week', 'Next Month', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-function dateSuggestions(text, today, max) {
-  const s = normDate(text), out = [], seen = new Set();
-  const push = (label, date) => { if (!date || seen.has(date)) return; seen.add(date); out.push({ label, date }); };
-  if (!s) {
-    push('Today', today);
-    push('Tomorrow', addDays(today, 1));
-    push('This Weekend', weekendOf(today));
-    push('Next Week', nextWeekStart(today));
-    return out.slice(0, max);
-  }
-  const exact = parseDate(s, today, false);
-  if (exact) push(labelForParse(s, exact, today), exact);
-  for (const p of PHRASES) if (p.toLowerCase().startsWith(s)) push(p, parseDate(p, today, false));
-  if (/^\d{1,2}$/.test(s)) { const n = +s; push('In ' + n + ' days', addDays(today, n)); push('In ' + n + ' weeks', addDays(today, 7 * n)); }
-  return out.slice(0, max);
-}
-
-// Quick add variant B: trailing date words in a title ("Call dentist fri", "Essay due nov 9").
-function extractDateWords(text, today) {
-  let title = text, when = null, deadline = null, whenWords = '', deadlineWords = '';
-  const tail = (str) => {
-    const words = str.trim().split(/\s+/);
-    for (let k = Math.min(3, words.length - 1); k >= 1; k--) {
-      const t = words.slice(-k).join(' '), d = parseDate(t, today, true);
-      if (d) return { rest: words.slice(0, -k).join(' '), date: d, words: t };
-    }
-    return null;
-  };
-  const m = title.match(/^(.*\S)\s+(?:due|by)\s+(.+)$/i);
-  if (m) {
-    const d = parseDate(m[2], today, true);
-    if (d) { deadline = d; deadlineWords = m[2]; title = m[1]; }
-  }
-  const r = tail(title);
-  if (r && r.rest) { when = r.date; whenWords = r.words; title = r.rest; }
-  return { title: title.trim(), when, deadline, whenWords, deadlineWords };
+function matchDate(text, today) {
+  const s = normDate(text);
+  if (!s) return null;
+  const exact = parseDate(s, today);
+  if (exact) return exact;
+  const p = PHRASES.find((x) => x.toLowerCase().startsWith(s));
+  return p ? parseDate(p, today) : null;
 }
 
 // ---------- Constants: Rex's row grid ----------
@@ -461,10 +395,21 @@ const PITCH = 32;          // rows are 30pt shapes on a 32pt pitch
 const SB_W = 230;          // sidebar width
 const SB_TOP = 50;         // first sidebar row, under the 50pt toolbar band
 const PANE_TOP = 8, HEAD_H = 34, GUTTER = 8, DETAIL_W = 420;
-const SETTLE_MS = 1500;    // checked tasks stay put this long before they move
-const NOTICE_MS = 5000;
-const TIP_DELAY = 600;
-const DRAG_SLOP = 4;
+// ---------- Timing (ms). Curves and durations of motion are in tasks-v2.css. ----------
+const SETTLE_MS = 1500;        // checked tasks stay put this long before they move
+const NOTICE_MS = 5000;        // a notice with Undo
+const NOTICE_INFO_MS = 1800;   // a notice without a button ("Undo Delete")
+const NOTICE_REARM_MS = 2000;  // a hovered notice leaves this long after the pointer does
+const NOTICE_OUT_MS = 170;     // its 160 ms exit, then it's removed
+const TIP_DELAY = 600;         // tooltips appear after this...
+const TIP_WARM_MS = 600;       // ...and at once for this long after the last one closed
+const HINT_HOLD_MS = 450;      // holding ⌘ this long shows ⌘1–9 in the sidebar
+const TYPE_SELECT_MS = 1000;   // type-to-select keeps adding letters within this
+const DETAIL_CLOSE_MS = 460;   // the detail pane's 450 ms exit, then it's removed
+const FLY_MS = 170;            // a dropped copy's 160 ms flight, then the change is written
+const MOTION_WINDOW_MS = 240;  // rows keep their entering or leaving look this long
+const DRAG_SLOP = 4;           // points a press moves before it becomes a drag
+const SCROLL_EDGE = 24, SCROLL_STEP = 8;   // drag autoscroll: within 24pt of an edge, 8pt per 16 ms
 const COLOR_CLASS = { ink: 'c-ink', blue: 'c-blue', magenta: 'c-magenta', green: 'c-green', cyan: 'c-cyan', yellow: 'c-yellow', red: 'c-red' };
 const COLORS = ['blue', 'magenta', 'green', 'cyan', 'yellow', 'red', 'ink'];
 
@@ -558,10 +503,6 @@ class Component extends DCLogic {
     const seed = makeSeed(this.today);
     this.state = {
       theme: props.theme === 'light' ? 'light' : 'dark',
-      qa: ['A', 'B', 'C'].includes(props.qa) ? props.qa : 'A',
-      dp: ['A', 'B'].includes(props.dp) ? props.dp : 'A',
-      dragMode: 'gap',
-      settle: 'pause',
       lists: seed.lists,
       tasks: seed.tasks,
       route: this.routeFromProp(props.start, seed.lists),
@@ -569,7 +510,7 @@ class Component extends DCLogic {
       focus: 'list',
       detail: 'closed',        // closed | opening | open | closing
       sbVisible: true,
-      edit: null,              // {kind: task|list|dtitle|notes, id, text, orig, isNew, selectAll, caret, opened}
+      edit: null,              // {kind: task (row rename) | list | dtitle (detail title) | notes, id, text, orig, isNew, selectAll, caret}
       picker: null, menu: null, drag: null, sbDrag: null, notice: null, tip: null,
       completedOpen: {}, archiveOpen: false,
       pins: {}, pops: {},
@@ -601,6 +542,16 @@ class Component extends DCLogic {
   componentWillUnmount() { for (const k of ['settleTimer', 'noticeTimer', 'tipTimer', 'cmdTimer', 'cleanTimer', 'detailTimer', 'animTimer', 'scrollTimer']) clearTimeout(this[k]); }
   componentDidUpdate() {
     if (this.scrollToId) { const id = this.scrollToId; this.scrollToId = null; this.ensureVisible(id); }
+    if (this.wantTitle) {
+      // A new task's title takes the keys once the detail pane is on screen (autoFocus would miss a pane that was already open).
+      const el = this.rootRef.current && this.rootRef.current.querySelector('.dtitle textarea');
+      if (el) {
+        const all = this.wantTitle === 'all';
+        this.wantTitle = null;
+        if (document.activeElement !== el) el.focus({ preventScroll: true });
+        try { if (all) el.select(); else el.setSelectionRange(el.value.length, el.value.length); } catch (err) { /* ignore */ }
+      }
+    }
   }
 
   // ---------- Small utilities ----------
@@ -624,9 +575,10 @@ class Component extends DCLogic {
   routeKey(r) { return r.kind === 'list' ? 'list:' + r.id : 'today'; }
   defaultListId() { const a = this.activeLists().filter((l) => !l.draft); return a.length ? a[0].id : null; }
 
-  snapshot() { return { lists: this.state.lists, tasks: this.state.tasks }; }
-  commit(label, patch, reveal) {
-    this.undoStack.push({ label, before: this.snapshot(), reveal: reveal || null, route: this.state.route, sel: this.state.sel });
+  // Drafts (a new task before its title commits, a new list before its name does) never reach undo.
+  snapshot() { return { lists: this.state.lists.filter((l) => !l.draft), tasks: this.state.tasks.filter((t) => !t.draft) }; }
+  commit(label, patch, reveal, selBefore) {
+    this.undoStack.push({ label, before: this.snapshot(), reveal: reveal || null, route: this.state.route, sel: selBefore || this.state.sel });
     if (this.undoStack.length > 200) this.undoStack.shift();
     this.redoStack = [];
     this.setState(patch);
@@ -707,17 +659,11 @@ class Component extends DCLogic {
     if (!g) return;
     const others = g.ids.filter((id) => !d.ids.includes(id));
     const k = d.ids.length;
-    const gap = this.state.dragMode === 'gap' && !d.over;
+    // Over the list, the other rows part to open a k-row gap at the target slot.
+    const gap = !d.over;
     const target = d.over ? others.length : clamp(d.target, 0, others.length);
     others.forEach((id, i) => L.ys.set(id, g.top + (i + (gap && i >= target ? k : 0)) * PITCH));
-    if (this.state.dragMode === 'line' && !d.over) {
-      // Rows stay put; the insertion line sits between the rows around the target.
-      g.ids.forEach((id, i) => L.ys.set(id, g.top + i * PITCH));
-      const before = target < others.length ? others[target] : null;
-      const idx = before ? g.ids.indexOf(before) : g.ids.length;
-      L.lineY = g.top + idx * PITCH - 1;
-    }
-    if (d.over && !gap) {
+    if (d.over) {
       // The group closes up: the dragged rows are leaving it.
       const shift = k * PITCH;
       const end = g.top + g.ids.length * PITCH;
@@ -783,9 +729,8 @@ class Component extends DCLogic {
   // ---------- Navigation ----------
   go(route, opts) {
     this.endEdit();
-    const pins = this.state.settle === 'leave' || true ? {} : this.state.pins;
-    clearTimeout(this.settleTimer);
-    const patch = { route, sel: (opts && opts.sel) || [], anchor: (opts && opts.sel && opts.sel[0]) || null, pins, picker: null, menu: null, focus: (opts && opts.focus) || this.state.focus };
+    clearTimeout(this.settleTimer);   // leaving a view settles its checked rows at once
+    const patch = { route, sel: (opts && opts.sel) || [], anchor: (opts && opts.sel && opts.sel[0]) || null, pins: {}, picker: null, menu: null, focus: (opts && opts.focus) || this.state.focus };
     if (this.routeKey(route) === this.routeKey(this.state.route)) { this.setState(patch); return; }
     this.instant(patch);
     if (this.listScrollRef.current) this.listScrollRef.current.scrollTop = 0;
@@ -796,8 +741,8 @@ class Component extends DCLogic {
   currentSidebarKey() { return this.state.route.kind === 'today' ? 'today' : this.state.route.id; }
 
   // ---------- Detail pane ----------
-  openDetail(focusTitle) {
-    if (this.state.detail === 'open' || this.state.detail === 'opening') { if (focusTitle) this.setState({ focus: 'detail' }); return; }
+  openDetail() {
+    if (this.state.detail === 'open' || this.state.detail === 'opening') return;
     clearTimeout(this.detailTimer);
     this.setState({ detail: 'opening' });
     requestAnimationFrame(() => requestAnimationFrame(() => this.setState({ detail: 'open' })));
@@ -807,7 +752,7 @@ class Component extends DCLogic {
     this.endEdit();
     this.setState({ detail: 'closing', focus: this.state.focus === 'detail' ? 'list' : this.state.focus });
     clearTimeout(this.detailTimer);
-    this.detailTimer = setTimeout(() => this.setState({ detail: 'closed' }), 460);
+    this.detailTimer = setTimeout(() => this.setState({ detail: 'closed' }), DETAIL_CLOSE_MS);
     this.focusRoot();
   }
   toggleDetail() { if (this.state.detail === 'open' || this.state.detail === 'opening') this.closeDetail(); else this.openDetail(); }
@@ -832,29 +777,21 @@ class Component extends DCLogic {
     const text = e.text.trim();
     if (e.kind === 'task') {
       const t = this.task(e.id);
-      if (!t) { this.setState({ edit: null }); return; }
-      if (e.isNew) {
-        if (!text) { this.dropDraft(e.id); return; }
-        let title = text, when = t.when, deadline = t.deadline;
-        if (this.state.qa === 'B') { const x = extractDateWords(text, this.today); if (x.title) { title = x.title; when = x.when || when; deadline = x.deadline || deadline; } }
-        const tasks = this.state.tasks.map((x) => (x.id === e.id ? { ...x, title, when, deadline, draft: false } : x));
-        this.commit('New Task', { tasks, edit: null, sel: [e.id], anchor: e.id }, { ids: [e.id] });
-        this.afterAdd(e.id);
-      } else {
-        if (e.text !== t.title) this.commit('Rename Task', { tasks: this.state.tasks.map((x) => (x.id === e.id ? { ...x, title: e.text } : x)), edit: null });
-        else this.setState({ edit: null });
-      }
+      if (t && e.text !== t.title) this.commit('Rename Task', { tasks: this.state.tasks.map((x) => (x.id === e.id ? { ...x, title: e.text } : x)), edit: null });
+      else this.setState({ edit: null });
     } else if (e.kind === 'dtitle') {
       const t = this.task(e.id);
       if (t && t.draft) {
-        if (!text) { this.dropDraft(e.id); this.closeDetail(); return; }
-        this.commit('New Task', { tasks: this.state.tasks.map((x) => (x.id === e.id ? { ...x, title: text, draft: false } : x)), edit: null }, { ids: [e.id] });
-        this.afterAdd(e.id);
+        // A new task is written when its title commits, with whatever text it has (trimmed). Untitled, it's dropped.
+        if (!text) { this.dropDraft(e.id); return; }
+        const selBefore = this.draftPrev ? this.draftPrev.sel : [];
+        this.draftPrev = null;
+        this.commit('New Task', { tasks: this.state.tasks.map((x) => (x.id === e.id ? { ...x, title: text, draft: false } : x)), edit: null }, { ids: [e.id] }, selBefore);
+        this.focusRoot();
       } else if (t && e.text !== t.title) this.commit('Rename Task', { tasks: this.state.tasks.map((x) => (x.id === e.id ? { ...x, title: e.text } : x)), edit: null });
       else this.setState({ edit: null });
     } else if (e.kind === 'notes') {
       const t = this.task(e.id);
-      if (t && t.draft) { this.setState({ tasks: this.state.tasks.map((x) => (x.id === e.id ? { ...x, notes: e.text } : x)), edit: null }); return; }
       if (t && e.text !== t.notes) this.commit('Edit Notes', { tasks: this.state.tasks.map((x) => (x.id === e.id ? { ...x, notes: e.text } : x)), edit: null });
       else this.setState({ edit: null });
     } else if (e.kind === 'list') {
@@ -873,22 +810,45 @@ class Component extends DCLogic {
   cancelEdit() {
     const e = this.state.edit;
     if (!e) return;
-    if ((e.kind === 'task' || e.kind === 'dtitle') && e.isNew) { this.dropDraft(e.id); if (e.kind === 'dtitle') this.closeDetail(); }
+    if (e.kind === 'dtitle' && e.isNew) this.dropDraft(e.id);
     else if (e.kind === 'list' && e.isNew) this.setState({ lists: this.state.lists.filter((x) => x.id !== e.id), edit: null });
     else this.setState({ edit: null });
     this.focusRoot();
   }
+  // An untitled new task leaves no trace: no op, no undo step. The selection goes back to what it was (unless the press
+  // that ended it selected something else), and so does the detail pane: it closes again if the add opened it.
   dropDraft(id) {
-    const prevSel = (this.draftPrevSel || []).filter((x) => x !== id);
-    this.setState({ tasks: this.state.tasks.filter((t) => t.id !== id), edit: null, sel: prevSel, anchor: prevSel[0] || null });
+    const s = this.state, prev = this.draftPrev;
+    this.draftPrev = null;
+    const untouched = s.sel.length === 1 && s.sel[0] === id;
+    const sel = untouched ? (prev ? prev.sel : []).filter((x) => x !== id && this.task(x)) : s.sel.filter((x) => x !== id);
+    this.setState({ tasks: s.tasks.filter((t) => t.id !== id), edit: null, sel, anchor: sel[0] || null, focus: s.focus === 'detail' ? 'list' : s.focus });
+    if (prev && !prev.paneOpen) this.closeDetail();
+    // The title field may stay on screen (showing the old selection): it gives the keys back to the list.
+    const ae = document.activeElement;
+    if (ae && ae.closest && ae.closest('.dtitle')) ae.blur();
     this.focusRoot();
   }
-  afterAdd(id) { this.focusRoot(); }
+  untitledDraft() { const ed = this.state.edit; return !!(ed && ed.kind === 'dtitle' && ed.isNew && !ed.text.trim()); }
+  // Put the caret in the detail title after the next render; a press that does this keeps it (see onRootMouseDown).
+  focusTitle(all) { this.wantTitle = all ? 'all' : 'end'; this.textFocusAt = performance.now(); this.forceUpdate(); }
 
-  // ---------- Adding ----------
+  // ---------- Adding: a new task opens in the detail pane ----------
   newTask(opts) {
     opts = opts || {};
-    if (this.state.edit && this.state.edit.isNew && !this.state.edit.text.trim() && !opts.chain) { this.focusEditor(); return; }
+    const s0 = this.state;
+    if (this.untitledDraft()) {
+      // Already adding and nothing typed yet: back to that title instead of a second task. From another Today group's +,
+      // the draft moves to that group first.
+      const dr = this.task(s0.edit.id);
+      if (dr && opts.listId && opts.listId !== dr.list) {
+        const max = s0.tasks.filter((t) => t.list === opts.listId).reduce((m, t) => Math.max(m, t.order), 0);
+        this.setState({ tasks: s0.tasks.map((t) => (t.id === dr.id ? { ...t, list: opts.listId, order: max + 1 } : t)) });
+        this.scrollToId = dr.id;
+      }
+      this.focusTitle();
+      return;
+    }
     this.endEdit();
     const s = this.state;
     let listId = opts.listId;
@@ -904,16 +864,12 @@ class Component extends DCLogic {
     const id = uid('n');
     const inToday = s.route.kind === 'today';
     const task = { id, list: listId, order: max + 1, title: '', notes: '', when: inToday ? this.today : null, deadline: null, completedAt: null, doneAt: null, deleted: false, createdAt: Date.now(), draft: true };
-    this.draftPrevSel = s.sel;
-    if (s.qa === 'C') {
-      this.setState({ tasks: s.tasks.concat(task), sel: [id], anchor: id, focus: 'detail', edit: { kind: 'dtitle', id, text: '', orig: '', isNew: true }, picker: null, menu: null });
-      this.openDetail(true);
-    } else {
-      this.setState({ tasks: s.tasks.concat(task), sel: [id], anchor: id, focus: 'list', edit: { kind: 'task', id, text: '', orig: '', isNew: true }, picker: null, menu: null });
-    }
+    this.draftPrev = { sel: s.sel, paneOpen: s.detail === 'open' || s.detail === 'opening' };
+    this.setState({ tasks: s.tasks.concat(task), sel: [id], anchor: id, cursor: id, focus: 'detail', edit: { kind: 'dtitle', id, text: '', orig: '', isNew: true }, picker: null, menu: null });
+    this.openDetail();
     this.scrollToId = id;
+    this.focusTitle();
   }
-  focusEditor() { const el = this.rootRef.current && this.rootRef.current.querySelector('.ri, .dtitle textarea'); if (el) el.focus(); }
   newList() {
     this.endEdit();
     const id = uid('l');
@@ -938,7 +894,7 @@ class Component extends DCLogic {
     this.commit(anyOpen ? (ids.length > 1 ? 'Complete ' + ids.length + ' Tasks' : 'Complete') : 'Mark Not Done', { tasks, pins, pops });
     clearTimeout(this.popTimer);
     this.popTimer = setTimeout(() => this.setState({ pops: {} }), 320);
-    if (this.state.settle === 'pause') this.armSettle();
+    this.armSettle();
   }
   armSettle() { clearTimeout(this.settleTimer); this.settleTimer = setTimeout(() => this.setState({ pins: {} }), SETTLE_MS); }
   nextSelAfterRemoving(ids) {
@@ -1054,13 +1010,13 @@ class Component extends DCLogic {
   showNotice(text, undoable) {
     clearTimeout(this.noticeTimer);
     this.setState({ notice: { id: uid('x'), text, undo: undoable, out: false } });
-    if (!this.noticeHover) this.noticeTimer = setTimeout(() => this.hideNotice(), undoable ? NOTICE_MS : 1800);
+    if (!this.noticeHover) this.noticeTimer = setTimeout(() => this.hideNotice(), undoable ? NOTICE_MS : NOTICE_INFO_MS);
   }
   hideNotice() {
     if (!this.state.notice) return;
     this.setState({ notice: { ...this.state.notice, out: true } });
     clearTimeout(this.noticeTimer);
-    this.noticeTimer = setTimeout(() => this.setState({ notice: null }), 170);
+    this.noticeTimer = setTimeout(() => this.setState({ notice: null }), NOTICE_OUT_MS);
   }
 
   // ---------- Menus ----------
@@ -1164,12 +1120,17 @@ class Component extends DCLogic {
     const other = field === 'when' ? t.deadline : t.when;
     const hot = cur || this.today;
     const { w, h } = this.winSize();
-    const pw = 288, ph = this.state.dp === 'A' ? 344 : 236;
+    const pw = 288, ph = 344;
     let x = clamp(anchor.left, 8, w - pw - 8), y = anchor.bottom + 6;
     if (y + ph > h - 8) y = Math.max(8, anchor.top - ph - 6);
-    this.setState({ picker: { field, ids, text: '', hot, cur, other, month: hot.slice(0, 7), sugHot: 0, showCal: false, x, y }, menu: null, tip: null });
+    this.setState({ picker: { field, ids, text: '', hot, cur, other, month: hot.slice(0, 7), x, y }, menu: null, tip: null });
   }
   openPickerForRows(field, ids) {
+    // From the focused detail pane showing these tasks, the popover hangs off its date chip; else off the row's chip,
+    // else the row's right end.
+    const s = this.state;
+    const dchip = s.focus === 'detail' && s.detail === 'open' && this.detailIds().join() === ids.join() && this.rootRef.current.querySelector('.dp [data-field="' + field + '"]');
+    if (dchip) { this.openPicker(field, ids, this.rectIn(dchip)); return; }
     const el = this.rowEl(ids[0]);
     const chip = el && el.querySelector('[data-field="' + field + '"]');
     const r = chip ? this.rectIn(chip) : el ? (() => { const rr = this.rectIn(el); return { left: rr.right - 300, right: rr.right, top: rr.top, bottom: rr.bottom }; })() : { left: 400, top: 100, bottom: 120 };
@@ -1180,31 +1141,21 @@ class Component extends DCLogic {
     if (!p) return;
     this.setDate(p.ids, p.field, ymd);
   }
-  pickerSuggestions() {
-    const p = this.state.picker;
-    const sug = dateSuggestions(p.text, this.today, 5);
-    const items = sug.map((x) => ({ label: x.label, date: x.date }));
-    if (this.state.dp === 'B') {
-      items.push({ cal: true, label: p.showCal ? 'Hide Calendar' : 'Choose on Calendar…' });
-      if (p.cur) items.push({ clear: true, label: 'Clear' });
-    }
-    return items;
-  }
   rowEl(id) { return this.rootRef.current && this.rootRef.current.querySelector('.row[data-id="' + id + '"]'); }
+  // The canvas's side boards start mid-way. They never take focus: several boards share one page.
   demoPicker() {
     const id = this.lastLayout && this.lastLayout.order[1];
     if (!id) return;
     this.select([id]);
-    setTimeout(() => { this.openPickerForRows('when', [id]); const p = this.state.picker; if (p) this.setState({ picker: { ...p, demo: true, text: 'fri', hot: parseDate('fri', this.today), month: parseDate('fri', this.today).slice(0, 7), sugHot: 0 } }); }, 30);
+    setTimeout(() => { this.openPickerForRows('when', [id]); const p = this.state.picker; if (p) this.setState({ picker: { ...p, demo: true, text: 'fri', hot: parseDate('fri', this.today), month: parseDate('fri', this.today).slice(0, 7) } }); }, 30);
   }
   demoAdd() {
     this.newTask();
+    this.wantTitle = null;
     const e = this.state.edit;
     if (!e) return;
-    const text = this.state.qa === 'B' ? 'Book a study room fri' : 'Book a study room';
-    const patch = { edit: { ...e, text, demo: true, focused: true } };
-    if (e.kind === 'dtitle') patch.tasks = this.state.tasks.map((t) => (t.id === e.id ? { ...t, title: text } : t));
-    this.setState(patch);
+    const text = 'Book a study room';
+    this.setState({ edit: { ...e, text, demo: true }, tasks: this.state.tasks.map((t) => (t.id === e.id ? { ...t, title: text } : t)) });
   }
 
   // ---------- Drag (tasks) ----------
@@ -1266,7 +1217,7 @@ class Component extends DCLogic {
     if (!sc || !this.state.drag || this.state.drag.phase !== 'drag') return;
     const { h } = this.winSize();
     const top = PANE_TOP + HEAD_H, bottom = h - PANE_TOP;
-    const dy = p.y < top + 24 ? -8 : p.y > bottom - 24 ? 8 : 0;
+    const dy = p.y < top + SCROLL_EDGE ? -SCROLL_STEP : p.y > bottom - SCROLL_EDGE ? SCROLL_STEP : 0;
     if (!dy) return;
     sc.scrollTop += dy;
     this.scrollTimer = setTimeout(() => this.autoScroll(p), 16);
@@ -1290,7 +1241,7 @@ class Component extends DCLogic {
         this.setState({ drag: null });
         if (d.over.kind === 'today') this.setDate(d.ids, 'when', this.today);
         else this.moveTasks(d.ids, key);
-      }, 170);
+      }, FLY_MS);
       return;
     }
     const g = L.groups.find((x) => x.listId === d.group);
@@ -1301,12 +1252,10 @@ class Component extends DCLogic {
     const contiguous = d.ids.every((id, i) => g.ids.indexOf(id) === g.ids.indexOf(d.ids[0]) + i);
     this.setState({ drag: { ...d, phase: 'fly', flyTo: { x: d.left, y: slotY } } });
     setTimeout(() => {
-      if (!(contiguous && d.target === origTarget) || this.state.dragMode === 'line') {
-        if (!(contiguous && d.target === origTarget)) this.reorder(d.group, d.ids, clamp(d.target, 0, others.length));
-      }
+      if (!(contiguous && d.target === origTarget)) this.reorder(d.group, d.ids, clamp(d.target, 0, others.length));
       this.setState({ drag: { ...d, phase: 'done' } });
       setTimeout(() => this.setState({ drag: null }), 40);
-    }, 170);
+    }, FLY_MS);
   }
 
   // ---------- Drag (sidebar lists) ----------
@@ -1347,7 +1296,7 @@ class Component extends DCLogic {
       if (!cancel && to !== from) this.moveList(d.id, to);
       this.setState({ sbDrag: { ...d, phase: 'done' } });
       setTimeout(() => this.setState({ sbDrag: null }), 40);
-    }, 170);
+    }, FLY_MS);
   }
 
   // ======================================================================
@@ -1363,6 +1312,8 @@ class Component extends DCLogic {
     const ae = document.activeElement;
     if (isTextTarget(ae) && this.rootRef.current.contains(ae)) {
       if ((this.textFocusAt || 0) >= (this.pressAt || 0)) return;
+      // An untitled new task keeps its caret when the press lands on its own (dimmed) details or on an add control.
+      if (this.untitledDraft() && t.closest && (t.closest('.dbody') || t.closest('[data-add]'))) return;
       ae.blur();
     }
     this.rootRef.current.focus({ preventScroll: true });
@@ -1390,8 +1341,8 @@ class Component extends DCLogic {
   onKey = (e) => {
     const s = this.state, k = e.key, meta = e.metaKey, ctrl = e.ctrlKey, alt = e.altKey, shift = e.shiftKey;
     const code = e.code || '';
-    const inText = isTextTarget(e.target);
-    if (k === 'Meta') { clearTimeout(this.cmdTimer); if (!e.repeat) this.cmdTimer = setTimeout(() => this.setState({ cmdHints: true }), 450); return; }
+    let inText = isTextTarget(e.target);
+    if (k === 'Meta') { clearTimeout(this.cmdTimer); if (!e.repeat) this.cmdTimer = setTimeout(() => this.setState({ cmdHints: true }), HINT_HOLD_MS); return; }
     if (s.cmdHints || this.cmdTimer) { clearTimeout(this.cmdTimer); this.cmdTimer = null; if (s.cmdHints) this.setState({ cmdHints: false }); }
 
     if (s.drag && s.drag.phase === 'drag') { if (k === 'Escape') { e.preventDefault(); this.endDrag(true); } return; }
@@ -1406,7 +1357,28 @@ class Component extends DCLogic {
     if ((cmd && shift && letter === 'n') || (alt && shift && !cmd && letter === 'n')) { e.preventDefault(); this.newList(); return; }
     if (cmd && letter === 'z' && !inText) { e.preventDefault(); if (shift) this.redo(); else this.undo(); return; }
     if (meta && ctrl && letter === 's') { e.preventDefault(); this.toggleSidebar(); return; }
-    if (inText) return;
+    if (inText) {
+      // Menu commands still work from a task's text fields (as on the Mac): the edit ends the way clicking away ends it,
+      // then the command runs. An untitled new task isn't a task yet, so only ⌘D (hide) and ⌘1–9 (go) apply to it.
+      const ed = s.edit;
+      const isCmd = (cmd && !shift && (letter === 'd' || letter === 'k' || letter === 's' || letter === 't')) || (cmd && shift && (letter === 'd' || letter === 'm')) || (cmd && /^Digit[1-9]$/.test(code));
+      if (!isCmd || !ed || ed.kind === 'list') return;
+      e.preventDefault();
+      const hide = cmd && !shift && letter === 'd';
+      if (this.untitledDraft() && !hide && !/^Digit/.test(code)) return;
+      if (hide) {
+        const wasOpen = s.detail === 'open' || s.detail === 'opening';
+        this.endEdit();
+        if (isTextTarget(document.activeElement)) document.activeElement.blur();
+        this.rootRef.current.focus({ preventScroll: true });
+        if (wasOpen) { this.closeDetail(); this.setState({ focus: 'list' }); } else this.openDetail();
+        return;
+      }
+      this.endEdit();
+      if (isTextTarget(document.activeElement)) document.activeElement.blur();
+      this.rootRef.current.focus({ preventScroll: true });
+      inText = false;
+    }
     if (cmd && /^Digit[1-9]$/.test(code)) {
       e.preventDefault();
       const keys = ['today'].concat(this.activeLists().filter((l) => !l.draft).map((l) => l.id)), n = +code.slice(5);
@@ -1436,6 +1408,13 @@ class Component extends DCLogic {
       case 'ArrowUp': e.preventDefault(); this.setState({ focus: 'list' }); this.moveSel(cmd ? -Infinity : -1, shift); return;
       case 'Home': e.preventDefault(); this.moveSel(-Infinity, shift); return;
       case 'End': e.preventDefault(); this.moveSel(Infinity, shift); return;
+      case 'PageUp': case 'PageDown': {
+        // A page of the list, less one row; the selection stays (NSTableView's behavior).
+        e.preventDefault();
+        const sc = this.listScrollRef.current;
+        if (sc) sc.scrollTop += (k === 'PageDown' ? 1 : -1) * Math.max(PITCH, sc.clientHeight - PITCH);
+        return;
+      }
       case 'ArrowLeft': if (s.focus === 'list') { e.preventDefault(); this.setState({ focus: 'sidebar' }); } return;
       case 'Enter': e.preventDefault(); if (ids.length === 1) this.startRename(ids[0], { selectAll: true }); else if (!ids.length) this.moveSel(1, false); return;
       case ' ': e.preventDefault(); this.toggleComplete(ids); return;
@@ -1470,7 +1449,7 @@ class Component extends DCLogic {
 
   typeSelect(ch, where) {
     const now = Date.now();
-    this.typeBuf = now - this.typeAt > 1000 ? ch.toLowerCase() : this.typeBuf + ch.toLowerCase();
+    this.typeBuf = now - this.typeAt > TYPE_SELECT_MS ? ch.toLowerCase() : this.typeBuf + ch.toLowerCase();
     this.typeAt = now;
     if (where === 'sidebar') {
       const l = this.activeLists().find((x) => x.name.toLowerCase().startsWith(this.typeBuf)) || (('today'.startsWith(this.typeBuf)) ? { id: 'today' } : null);
@@ -1582,9 +1561,12 @@ class Component extends DCLogic {
     if (this.state.edit) { this.endEdit(); return; }
     if (this.state.sel.length) this.setState({ sel: [] });
   };
+  // The empty space under a list's open tasks adds one. If something is being edited, the first press only ends that
+  // edit (an untitled new task just gets its caret back).
   onAddZoneDown = (e) => {
     e.stopPropagation();
     if (e.button !== 0) return;
+    if (this.untitledDraft()) { this.focusTitle(); return; }
     if (this.state.edit) { this.endEdit(); return; }
     this.newTask();
   };
@@ -1609,15 +1591,7 @@ class Component extends DCLogic {
     const ed = this.state.edit;
     if (!ed) return;
     const k = e.key;
-    if (k === 'Enter') {
-      e.preventDefault(); e.stopPropagation();
-      const chain = ed.kind === 'task' && ed.isNew && ed.text.trim();
-      const listId = ed.kind === 'task' ? this.task(ed.id).list : null;
-      this.commitEdit();
-      if (chain) this.newTask({ listId, chain: true });
-      else this.focusRoot();
-      return;
-    }
+    if (k === 'Enter') { e.preventDefault(); e.stopPropagation(); this.commitEdit(); this.focusRoot(); return; }
     if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); this.cancelEdit(); return; }
     if (k === 'Tab') { e.preventDefault(); e.stopPropagation(); this.commitEdit(); this.focusRoot(); return; }
     if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z')) e.stopPropagation();
@@ -1641,10 +1615,21 @@ class Component extends DCLogic {
       this.setState(patch);
     }
   };
+  // The detail title. Return and Tab go on to the notes. Esc is done: it keeps a new task's title but puts an existing
+  // one back. ⇧Tab and ⌘Return keep what's typed. Esc, ⇧Tab and ⌘Return hand the keys back to the list.
+  // An untitled new task is dropped by any of them.
   onDTitleKey = (e) => {
-    const ed = this.state.edit;
-    if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); const n = this.rootRef.current.querySelector('.notes textarea'); if (n) n.focus(); else this.startNotes(); return; }
-    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (ed && ed.isNew && !ed.text.trim()) { this.cancelEdit(); return; } if (ed && !ed.isNew) { this.setState({ edit: null }); } else this.commitEdit(); e.target.blur(); this.setState({ focus: 'list' }); this.focusRoot(); return; }
+    const ed = this.state.edit, k = e.key;
+    const forward = (k === 'Enter' && !e.metaKey && !e.ctrlKey) || (k === 'Tab' && !e.shiftKey);
+    if (forward || k === 'Escape' || k === 'Tab' || k === 'Enter') {
+      e.preventDefault(); e.stopPropagation();
+      if (this.untitledDraft()) { this.cancelEdit(); return; }
+      if (forward) { this.startNotes(); return; }
+      if (k === 'Escape' && ed && ed.kind === 'dtitle' && !ed.isNew) this.setState({ edit: null }); else this.commitEdit();
+      e.target.blur(); this.setState({ focus: 'list' }); this.focusRoot();
+      return;
+    }
+    if ((e.metaKey || e.ctrlKey) && (k === 'z' || k === 'Z')) e.stopPropagation();
   };
   onDTitleBlur = () => { const ed = this.state.edit; if (ed && ed.kind === 'dtitle') this.commitEdit(); };
   startNotes = () => {
@@ -1656,11 +1641,19 @@ class Component extends DCLogic {
   };
   onNotesDown = (e) => { if (e.target.closest && e.target.closest('a')) return; e.stopPropagation(); this.startNotes(); };
   onNotesChange = (e) => { const ed = this.state.edit; if (ed && ed.kind === 'notes') this.setState({ edit: { ...ed, text: e.target.value } }); };
+  // Notes. Return is a new line and Tab a tab character (NSTextView's defaults). Esc and ⌘Return are done and keep the
+  // text, handing the keys back to the list; ⇧Tab goes back to the title.
   onNotesKey = (e) => {
-    if (e.key === 'Escape' || (e.key === 'Enter' && (e.metaKey || e.ctrlKey))) { e.preventDefault(); e.stopPropagation(); this.commitEdit(); this.focusRoot(); }
-    else if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z')) e.stopPropagation();
+    const k = e.key;
+    if (k === 'Escape' || (k === 'Enter' && (e.metaKey || e.ctrlKey))) { e.preventDefault(); e.stopPropagation(); this.commitEdit(); e.target.blur(); this.setState({ focus: 'list' }); this.focusRoot(); return; }
+    if (k === 'Tab') {
+      e.preventDefault(); e.stopPropagation();
+      if (e.shiftKey) { this.commitEdit(); this.focusTitle(true); } else document.execCommand('insertText', false, '\t');
+      return;
+    }
+    if ((e.metaKey || e.ctrlKey) && (k === 'z' || k === 'Z')) e.stopPropagation();
   };
-  onNotesBlur = () => { const ed = this.state.edit; if (ed && ed.kind === 'notes') { const t = this.task(ed.id); if (t && t.draft) return; this.commitEdit(); } };
+  onNotesBlur = () => { const ed = this.state.edit; if (ed && ed.kind === 'notes') this.commitEdit(); };
   onNotesFocus = (e) => { const el = e.target, n = el.value.length; try { el.setSelectionRange(n, n); } catch (err) { /* ignore */ } };
   onDCheck = () => { const id = this.detailTaskId(); if (id) this.toggleComplete([id]); };
   onDChip = (e) => { const field = e.currentTarget.dataset.field; this.openPicker(field, this.detailIds(), this.rectIn(e.currentTarget)); };
@@ -1742,12 +1735,13 @@ class Component extends DCLogic {
   };
 
   // Picker
+  // Typing moves the highlighted day to the best reading of the text; arrows nudge it; Return sets it.
   onPickerText = (e) => {
     const p = this.state.picker;
     const text = e.target.value;
-    const patch = { ...p, text, sugHot: 0 };
-    const sug = dateSuggestions(text, this.today, 5);
-    if (text.trim() && sug.length) { patch.hot = sug[0].date; patch.month = sug[0].date.slice(0, 7); patch.none = false; }
+    const patch = { ...p, text };
+    const hit = matchDate(text, this.today);
+    if (text.trim() && hit) { patch.hot = hit; patch.month = hit.slice(0, 7); patch.none = false; }
     else if (text.trim()) patch.none = true;
     else { patch.none = false; patch.hot = p.cur || this.today; patch.month = patch.hot.slice(0, 7); }
     this.setState({ picker: patch });
@@ -1759,49 +1753,20 @@ class Component extends DCLogic {
     const moveDay = (n) => { const hot = addDays(p.hot, n); this.setState({ picker: { ...p, hot, month: hot.slice(0, 7), none: false } }); };
     if (k === 'Escape') { e.preventDefault(); this.setState({ picker: null }); this.focusRoot(); return; }
     if (k === 'Backspace' && !p.text) { e.preventDefault(); if (p.cur) this.pickerApply(null); return; }
-    if (this.state.dp === 'A' || p.showCal) {
-      if (k === 'ArrowLeft') { e.preventDefault(); moveDay(-1); return; }
-      if (k === 'ArrowRight') { e.preventDefault(); moveDay(1); return; }
-      if (k === 'ArrowUp' && this.state.dp === 'A') { e.preventDefault(); moveDay(-7); return; }
-      if (k === 'ArrowDown' && this.state.dp === 'A') { e.preventDefault(); moveDay(7); return; }
-      if (k === 'Enter' && (this.state.dp === 'A' || p.calKeys)) { e.preventDefault(); if (!p.none) this.pickerApply(p.hot); return; }
-    }
-    if (this.state.dp === 'B') {
-      const items = this.pickerSuggestions();
-      if (k === 'ArrowDown' || k === 'ArrowUp') {
-        e.preventDefault();
-        if (p.showCal && p.calKeys) { moveDay(k === 'ArrowDown' ? 7 : -7); return; }
-        const n = items.length, sugHot = ((p.sugHot || 0) + (k === 'ArrowDown' ? 1 : -1) + n) % n;
-        const it = items[sugHot];
-        this.setState({ picker: { ...p, sugHot, hot: it.date || p.hot, month: (it.date || p.hot).slice(0, 7) } });
-        return;
-      }
-      if (k === 'Enter') {
-        e.preventDefault();
-        const it = items[p.sugHot || 0];
-        if (!it) return;
-        if (it.cal) this.setState({ picker: { ...p, showCal: !p.showCal, calKeys: !p.showCal } });
-        else if (it.clear) this.pickerApply(null);
-        else this.pickerApply(it.date);
-      }
-    }
+    if (k === 'ArrowLeft') { e.preventDefault(); moveDay(-1); return; }
+    if (k === 'ArrowRight') { e.preventDefault(); moveDay(1); return; }
+    if (k === 'ArrowUp') { e.preventDefault(); moveDay(-7); return; }
+    if (k === 'ArrowDown') { e.preventDefault(); moveDay(7); return; }
+    if (k === 'Enter') { e.preventDefault(); if (!p.none) this.pickerApply(p.hot); }
   };
   onPickDay = (e) => { this.pickerApply(e.currentTarget.dataset.date); };
   onPickQuick = (e) => { const d = e.currentTarget.dataset.date; this.pickerApply(d === 'none' ? null : d); };
-  onPickSug = (e) => {
-    const i = +e.currentTarget.dataset.idx, p = this.state.picker, it = this.pickerSuggestions()[i];
-    if (!it) return;
-    if (it.cal) this.setState({ picker: { ...p, showCal: !p.showCal, sugHot: i } });
-    else if (it.clear) this.pickerApply(null);
-    else this.pickerApply(it.date);
-  };
-  onSugEnter = (e) => { const p = this.state.picker, i = +e.currentTarget.dataset.idx; if (p && p.sugHot !== i) { const it = this.pickerSuggestions()[i]; this.setState({ picker: { ...p, sugHot: i, hot: (it && it.date) || p.hot } }); } };
   onPickMonth = (e) => { const p = this.state.picker, n = +e.currentTarget.dataset.dir; const m = addMonths(p.month + '-01', n).slice(0, 7); this.setState({ picker: { ...p, month: m } }); const el = this.rootRef.current.querySelector('.picker input'); if (el) el.focus(); };
   onPickerDown = (e) => { if (!isTextTarget(e.target)) { e.preventDefault(); } };
 
   // Notice
   onNoticeEnter = () => { this.noticeHover = true; clearTimeout(this.noticeTimer); };
-  onNoticeLeave = () => { this.noticeHover = false; clearTimeout(this.noticeTimer); this.noticeTimer = setTimeout(() => this.hideNotice(), 2000); };
+  onNoticeLeave = () => { this.noticeHover = false; clearTimeout(this.noticeTimer); this.noticeTimer = setTimeout(() => this.hideNotice(), NOTICE_REARM_MS); };
   onNoticeUndo = () => { this.hideNotice(); this.undo(); };
 
   // Tooltips: name and shortcut after a delay; instant while moving between buttons.
@@ -1810,7 +1775,7 @@ class Component extends DCLogic {
     if (!text || this.state.drag || this.state.menu) return;
     clearTimeout(this.tipTimer);
     const show = () => { if (!el.isConnected) return; const r = this.rectIn(el); const { w } = this.winSize(); this.lastTipAt = Date.now(); this.setState({ tip: { text, keys, x: clamp(r.left + r.width / 2 - 60, 6, w - 160), y: r.bottom + 6 } }); };
-    if (Date.now() - (this.lastTipAt || 0) < 600) show(); else this.tipTimer = setTimeout(show, TIP_DELAY);
+    if (Date.now() - (this.lastTipAt || 0) < TIP_WARM_MS) show(); else this.tipTimer = setTimeout(show, TIP_DELAY);
   };
   tipOut = () => { clearTimeout(this.tipTimer); if (this.state.tip) { this.lastTipAt = Date.now(); this.setState({ tip: null }); } };
 
@@ -1820,7 +1785,6 @@ class Component extends DCLogic {
     if (k === 'theme') this.instant({ theme: v });
     else if (k === 'reset') { const seed = makeSeed(this.today); this.undoStack = []; this.redoStack = []; this.instant({ lists: seed.lists, tasks: seed.tasks, sel: [], edit: null, picker: null, menu: null, pins: {}, route: this.routeFromProp(this.props.start, seed.lists), detail: 'closed', notice: null, sbVisible: true }); }
     else if (k === 'keys') this.setState({ keysOpen: !this.state.keysOpen });
-    else this.setState({ [k]: v, picker: null });
     this.focusRoot();
   };
 
@@ -1840,10 +1804,19 @@ class Component extends DCLogic {
       }
       for (const id of L.ys.keys()) if (!this.prev.ys.has(id)) this.entering.set(id, now);
     } else if (!this.prev || this.prev.key !== L.key) { this.leaving.clear(); this.entering.clear(); }
-    for (const [id, v] of this.leaving) if (now - v.at > 240 || L.ys.has(id)) this.leaving.delete(id);
-    for (const [id, at] of this.entering) if (now - at > 240) this.entering.delete(id);
-    if (this.leaving.size || this.entering.size) { clearTimeout(this.cleanTimer); this.cleanTimer = setTimeout(() => this.forceUpdate(), 250); }
-    this.prev = { key: L.key, ys: new Map(L.ys) };
+    for (const [id, v] of this.leaving) if (now - v.at > MOTION_WINDOW_MS || L.ys.has(id)) this.leaving.delete(id);
+    for (const [id, at] of this.entering) if (now - at > MOTION_WINDOW_MS) this.entering.delete(id);
+    // Today's group labels and a list's Completed row come and go the same way as rows.
+    if (!this.lblLeaving) { this.lblLeaving = new Map(); this.lblEntering = new Map(); }
+    if (this.prev && this.prev.key === L.key && !s.noAnim) {
+      for (const [id, y] of this.prev.labels) if (!L.labels.has(id) && !this.lblLeaving.has(id)) this.lblLeaving.set(id, { y, at: now });
+      for (const id of L.labels.keys()) if (!this.prev.labels.has(id)) this.lblEntering.set(id, now);
+      if (L.crowY != null && this.prev.crowY == null) this.crowEnterAt = now;
+    } else if (!this.prev || this.prev.key !== L.key) { this.lblLeaving.clear(); this.lblEntering.clear(); this.crowEnterAt = 0; }
+    for (const [id, v] of this.lblLeaving) if (now - v.at > MOTION_WINDOW_MS || L.labels.has(id)) this.lblLeaving.delete(id);
+    for (const [id, at] of this.lblEntering) if (now - at > MOTION_WINDOW_MS) this.lblEntering.delete(id);
+    if (this.leaving.size || this.entering.size || this.lblLeaving.size || this.lblEntering.size || now - (this.crowEnterAt || 0) < MOTION_WINDOW_MS) { clearTimeout(this.cleanTimer); this.cleanTimer = setTimeout(() => this.forceUpdate(), MOTION_WINDOW_MS + 10); }
+    this.prev = { key: L.key, ys: new Map(L.ys), labels: new Map(L.labels), crowY: L.crowY };
   }
 
   trackSidebar(S) {
@@ -1853,9 +1826,9 @@ class Component extends DCLogic {
       for (const [k, y] of this.prevS) if (!S.ys.has(k) && !this.sbLeaving.has(k) && !k.startsWith('lbl')) this.sbLeaving.set(k, { y, at: now });
       for (const k of S.ys.keys()) if (!this.prevS.has(k) && !k.startsWith('lbl')) this.sbEntering.set(k, now);
     }
-    for (const [k, v] of this.sbLeaving) if (now - v.at > 240 || S.ys.has(k)) this.sbLeaving.delete(k);
-    for (const [k, at] of this.sbEntering) if (now - at > 240) this.sbEntering.delete(k);
-    if (this.sbLeaving.size || this.sbEntering.size) { clearTimeout(this.sbCleanTimer); this.sbCleanTimer = setTimeout(() => this.forceUpdate(), 250); }
+    for (const [k, v] of this.sbLeaving) if (now - v.at > MOTION_WINDOW_MS || S.ys.has(k)) this.sbLeaving.delete(k);
+    for (const [k, at] of this.sbEntering) if (now - at > MOTION_WINDOW_MS) this.sbEntering.delete(k);
+    if (this.sbLeaving.size || this.sbEntering.size) { clearTimeout(this.sbCleanTimer); this.sbCleanTimer = setTimeout(() => this.forceUpdate(), MOTION_WINDOW_MS + 10); }
     this.prevS = new Map(S.ys);
   }
 
@@ -1889,7 +1862,7 @@ class Component extends DCLogic {
       const done = t.completedAt != null;
       if (done) cls += ' done';
       if (this.entering.has(t.id) && !lv) cls += ' enter';
-      if (d && d.ids.includes(t.id) && d.phase !== 'done') cls += ' dragsrc' + (s.dragMode === 'line' ? ' linemode' : '');
+      if (d && d.ids.includes(t.id) && d.phase !== 'done') cls += ' dragsrc';
       const isEd = !!(ed && ed.kind === 'task' && ed.id === t.id);
       if (isEd) cls += ' editing';
       if (visSel(t.id) && !lv) {
@@ -1903,16 +1876,11 @@ class Component extends DCLogic {
         const opened = (f) => (pickerFor && pickerFor.has(t.id) && s.picker.field === f ? ' open-picker' : '');
         if (t.when && !(inToday && t.when <= T)) chips.push({ field: 'when', cal: true, flag: false, text: whenChipText(t.when, T), cls: 'chip' + opened('when') });
         if (t.deadline) { const dc = deadlineChip(t.deadline, T); chips.push({ field: 'deadline', cal: false, flag: true, text: dc.text, cls: 'chip ' + dc.tone + opened('deadline') }); }
-        if (isEd && ed.isNew && s.qa === 'B') {
-          const x = extractDateWords(ed.text, T);
-          if (x.when && x.title) { if (chips[0] && chips[0].field === 'when') chips.shift(); chips.unshift({ field: 'when', cal: true, flag: false, text: whenChipText(x.when, T), cls: 'chip pending' }); }
-          if (x.deadline && x.title) chips.push({ field: 'deadline', cal: false, flag: true, text: deadlineChip(x.deadline, T).text, cls: 'chip pending' });
-        }
       }
       const where = inToday && L.groupOf.get(t.id) === 'done' ? this.list(t.list).name : '';
       return {
         id: t.id, cls, style: 'transform: translateY(' + y + 'px)',
-        title: t.title || 'New Task', titleCls: 'tt' + (t.title ? '' : ' empty'),
+        title: t.title || 'New Task', titleCls: 'tt' + (t.title ? '' : ' untitled'),
         editing: isEd, notEditing: !isEd, editText: isEd ? ed.text : '', autoFocus: isEd && !ed.demo,
         checkCls: 'check' + (done ? ' on' : '') + (s.pops[t.id] ? ' pop' : '') + (t.draft ? ' new' : ''),
         checkLabel: (done ? 'Mark not done: ' : 'Complete: ') + (t.title || 'New Task'),
@@ -1922,11 +1890,15 @@ class Component extends DCLogic {
 
     // ----- Today's group labels, the Completed disclosure, the add slot, the empty states.
     const labels = s.lists.concat([{ id: 'done', name: 'Completed' }]).map((l) => {
-      const y = L.labels.get(l.id);
-      return { id: l.id, name: l.name, cls: 'tglabel' + (y == null || !inToday ? ' hidden' : ''), style: 'transform: translateY(' + (y || 0) + 'px)', plus: l.id !== 'done', tipText: 'New Task in ' + l.name };
+      let y = L.labels.get(l.id);
+      const lv = this.lblLeaving.get(l.id);
+      let cls = 'tglabel';
+      if (y == null && lv) { y = lv.y; cls += ' leave'; }
+      if (y == null || !inToday) cls += ' hidden';
+      else if (this.lblEntering.has(l.id) && !lv) cls += ' enter';
+      return { id: l.id, name: l.name, cls, style: 'transform: translateY(' + (y || 0) + 'px)', plus: l.id !== 'done', tipText: 'New Task in ' + l.name };
     });
     const crowOpen = !!(routeList && s.completedOpen[routeList.id]);
-    const lineY = L.lineY;
     const emptyMap = {
       list: { e1: 'No tasks', e2: 'Click anywhere here or press ⌘N to add one.', top: '34%', glyph: false, check: false },
       today: { e1: 'Nothing for today', e2: 'Tasks you plan for today, or that are due, show up here.', top: '34%', glyph: true, check: false },
@@ -1950,8 +1922,7 @@ class Component extends DCLogic {
       hasZone: !inToday && !(routeList && routeList.archivedAt && false),
       zoneStyle: 'top: ' + (L.ghostY != null ? L.ghostY : 0) + 'px',
       ghostShow: !inToday && !(d && d.phase === 'drag'),
-      crow: !inToday && L.done > 0, crowStyle: 'transform: translateY(' + (L.crowY || 0) + 'px)', crowCount: String(L.done), chevCls: 'gchev' + (crowOpen ? ' open' : ''),
-      line: lineY != null && !!d && d.phase === 'drag', lineStyle: 'top: ' + (lineY || 0) + 'px; left: 46px; right: 20px',
+      crow: !inToday && L.done > 0, crowCls: 'crow' + (Date.now() - (this.crowEnterAt || 0) < MOTION_WINDOW_MS ? ' enter' : ''), crowStyle: 'transform: translateY(' + (L.crowY || 0) + 'px)', crowCount: String(L.done), chevCls: 'gchev' + (crowOpen ? ' open' : ''),
       empty: !!em, emptyStyle: em ? 'top: ' + em.top : '', e1: em ? em.e1 : '', e2: em ? em.e2 : '', hasE2: !!(em && em.e2), glyph: !!(em && em.glyph), emptyCheck: !!(em && em.check),
       banner: !!(routeList && routeList.archivedAt), bannerDate: routeList && routeList.archivedAt ? 'Archived ' + md(ymdOf(new Date(routeList.archivedAt))) : '',
     };
@@ -1979,10 +1950,14 @@ class Component extends DCLogic {
       dpo.deadline = dateRow('deadline', items[0].deadline, !same('deadline'));
       dpo.deleteTip = one ? 'Delete' : 'Delete ' + items.length + ' Tasks';
     }
+    // An untitled new task is only its title: everything under it is dimmed and ignores the pointer until there's text.
+    const inert = !!(one && one.draft && !one.title.trim());
+    dpo.propsCls = 'props' + (inert ? ' inert' : ''); dpo.sepCls = 'dsep' + (inert ? ' inert' : ''); dpo.notesCls = 'notes' + (inert ? ' inert' : ''); dpo.metaCls = 'dmeta' + (inert ? ' inert' : '');
+    dpo.deleteCls = 'hb' + (inert ? ' inert' : '');
     if (one) {
       const dEd = ed && ed.kind === 'dtitle' && ed.id === one.id;
       dpo.titleValue = dEd ? ed.text : one.title;
-      dpo.checkCls = 'check' + (one.completedAt != null ? ' on' : '') + (s.pops[one.id] ? ' pop' : '');
+      dpo.checkCls = 'check' + (one.completedAt != null ? ' on' : '') + (s.pops[one.id] ? ' pop' : '') + (one.draft ? ' new' : '') + (inert ? ' inert' : '');
       const nEd = ed && ed.kind === 'notes' && ed.id === one.id;
       dpo.notesEditing = !!nEd; dpo.notesView = !nEd;
       dpo.notesText = nEd ? ed.text : '';
@@ -1990,7 +1965,6 @@ class Component extends DCLogic {
       dpo.mdCls = 'md' + (one.notes ? '' : ' md-ph');
       dpo.hasNotes = !!one.notes; dpo.noNotes = !one.notes;
       dpo.meta = 'Created ' + md(ymdOf(new Date(one.createdAt))) + (one.completedAt ? ' · Completed ' + md(ymdOf(new Date(one.completedAt))) : '');
-      dpo.autoTitle = !!(ed && ed.kind === 'dtitle' && ed.isNew && !ed.demo);
     }
     if (many) dpo.multiTitle = many.length + ' tasks selected';
 
@@ -2023,7 +1997,8 @@ class Component extends DCLogic {
     for (const l of s.lists) {
       const arch = !!l.archivedAt;
       const count = arch ? '' : String(s.tasks.filter((t) => t.list === l.id && !t.deleted && !t.draft && t.completedAt == null).length || '');
-      mkRow(l.id, { name: l.name || (l.draft ? '' : 'Untitled'), count, tileCls: 'tile ' + COLOR_CLASS[l.color], mono: monogram(l.name), arch });
+      const typing = ed && ed.kind === 'list' && ed.id === l.id;   // the tile's letter follows the name as it's typed
+      mkRow(l.id, { name: l.name || (l.draft ? '' : 'Untitled'), count, tileCls: 'tile ' + COLOR_CLASS[l.color], mono: monogram(typing ? ed.text : l.name), arch });
     }
     const archY = S.ys.get('lbl-arch');
     sbItems.push({ isRow: false, isLabel: true, key: 'lbl-arch', cls: 'sbi glabel' + (archY == null ? ' hidden' : ''), style: 'transform: translateY(' + (archY || 0) + 'px)', name: 'Archive', plus: false, chev: true, revealCls: 'gbtn reveal' + (s.archiveOpen ? ' on' : ''), chevCls: 'gchev' + (s.archiveOpen ? ' open' : '') });
@@ -2069,13 +2044,12 @@ class Component extends DCLogic {
       const mo = dOf(p.month + '-01');
       const quick = [['Today', T], ['Tomorrow', addDays(T, 1)], ['Next Week', nextWeekStart(T)]].map(([label, date]) => ({ label, date, cls: 'qb' + (date === hot && p.text ? ' hot' : '') }));
       if (p.cur) quick.push({ label: 'Clear', date: 'none', cls: 'qb clear' });
-      const sug = this.pickerSuggestions().map((it, i) => ({ idx: String(i), cls: 'sg' + (i === (p.sugHot || 0) ? ' hot' : '') + (it.cal || it.clear ? ' dim' : ''), label: it.label, detail: it.date ? longDate(it.date, T) : it.clear ? '⌫' : '' }));
       pk = {
-        show: true, isA: s.dp === 'A', isB: s.dp === 'B', style: 'left: ' + p.x + 'px; top: ' + p.y + 'px; width: 288px', text: p.text,
+        show: true, style: 'left: ' + p.x + 'px; top: ' + p.y + 'px; width: 288px', text: p.text,
         placeholder: p.field === 'when' ? 'When: try tom, fri, 3d, nov 9' : 'Deadline: try fri, nov 9, 2w',
         quick, monthTitle: MOL[mo.getMonth()] + ' ' + mo.getFullYear(), days, dows: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
         preview: p.none ? 'No date matches “' + p.text.trim() + '”' : longDate(hot, T) + ' · ' + relText(hot, T), previewCls: 'pvt' + (p.none ? ' none' : ''),
-        autoFocus: !p.demo, sug, noSug: s.dp === 'B' && !!p.text.trim() && !sug.some((x) => x.detail && x.detail !== '⌫'), showCal: s.dp === 'A' || !!p.showCal,
+        autoFocus: !p.demo,
       };
     }
 
@@ -2085,10 +2059,6 @@ class Component extends DCLogic {
     const seg = (k, opts) => opts.map(([v, label]) => ({ k, v, label, cls: s[k] === v ? 'on' : '' }));
     const stage = { show: stageOn,
       theme: seg('theme', [['dark', 'Dark'], ['light', 'Light']]),
-      qa: seg('qa', [['A', 'A Inline'], ['B', 'B Date words'], ['C', 'C Detail']]),
-      dp: seg('dp', [['A', 'A Calendar'], ['B', 'B List']]),
-      dragMode: seg('dragMode', [['gap', 'Gap'], ['line', 'Line']]),
-      settle: seg('settle', [['pause', 'Move after 1.5 s'], ['leave', 'Move on leave']]),
     };
 
     return {
