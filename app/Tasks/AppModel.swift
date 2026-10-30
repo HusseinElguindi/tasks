@@ -52,8 +52,13 @@ final class AppModel {
         if let path = defaults.string(forKey: Keys.dataDirectory), !path.isEmpty {
             dataDirectory = URL(fileURLWithPath: (path as NSString).expandingTildeInPath, isDirectory: true)
         } else {
+            #if DEBUG
+            let folder = "Tasks Dev" // never the real app's data
+            #else
+            let folder = "Tasks"
+            #endif
             dataDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-                .appendingPathComponent("Tasks", isDirectory: true)
+                .appendingPathComponent(folder, isDirectory: true)
         }
         serverURL = defaults.string(forKey: Keys.serverURL) ?? ""
         theme = ThemeChoice(rawValue: defaults.string(forKey: Keys.theme) ?? "") ?? .system
@@ -77,6 +82,12 @@ final class AppModel {
               let token = UserDefaults.standard.string(forKey: Keys.syncToken) ?? Keychain.token(), !token.isEmpty else {
             return nil
         }
+        #if DEBUG
+        // Development builds only ever talk to a local `wrangler dev`, unless explicitly told otherwise.
+        guard ["127.0.0.1", "localhost"].contains(url.host ?? "") || UserDefaults.standard.bool(forKey: "allowRemoteServer") else {
+            return nil
+        }
+        #endif
         return SyncConfig(url: url, token: token)
     }
 
@@ -126,7 +137,8 @@ final class AppModel {
 
 /// The sync token lives in the login Keychain (spec §7), never in defaults or files.
 enum Keychain {
-    private static let service = "com.elguindi.Tasks.sync"
+    /// "com.elguindi.Tasks.sync" for the app; Debug builds (com.elguindi.Tasks.dev) get their own item.
+    private static let service = (Bundle.main.bundleIdentifier ?? "com.elguindi.Tasks") + ".sync"
     private static let account = "API_TOKEN"
 
     static func token() -> String? {

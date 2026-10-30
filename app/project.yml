@@ -37,6 +37,11 @@ targets:
             UTTypeDescription: Task List
             UTTypeConformsTo: [public.data]
     settings:
+      configs:
+        # Debug builds are a separate app to macOS: their own defaults, saved state, Keychain item and data folder,
+        # so a development build can never pick up the real app's server, token or data.
+        Debug:
+          PRODUCT_BUNDLE_IDENTIFIER: com.elguindi.Tasks.dev
       base:
         PRODUCT_NAME: Tasks
         PRODUCT_BUNDLE_IDENTIFIER: com.elguindi.Tasks
