@@ -146,12 +146,21 @@ extension TK {
     enum M {
         static let pitch: CGFloat = 32            // PITCH: 30pt rows on a 32pt pitch (Rex)
         static let row: CGFloat = 30
-        static let sidebar: CGFloat = 230         // SB_W
+        static let sidebar: CGFloat = 230         // SB_W: the default; dragging its edge resizes it (v2 feedback 4)
+        static let sidebarMin: CGFloat = 180
+        static let sidebarMax: CGFloat = 400
         static let sidebarTop: CGFloat = 50       // SB_TOP: the first sidebar row
         static let paneTop: CGFloat = 8           // PANE_TOP
         static let header: CGFloat = 34           // HEAD_H
         static let gutter: CGFloat = 8            // GUTTER
-        static let detail: CGFloat = 420          // DETAIL_W
+        static let detail: CGFloat = 420          // DETAIL_W: the default; dragging the gap before it resizes it
+        static let detailMin: CGFloat = 340
+        /// The list pane never gets narrower than this from a divider; with the detail pane at its minimum beside it
+        /// that can't hold, the window is narrow (the detail pane replaces the list). 220 keeps the defaults' 900.
+        static let listMin: CGFloat = 220
+        static let narrowWidth: CGFloat = 900
+        /// The sidebar divider's grab zone, centered on the list pane's left edge; the detail divider is the gutter.
+        static let dividerHit: CGFloat = 8
         static let paneRadius: CGFloat = 10
         /// The list pane header's left padding with the sidebar hidden, so its tile starts at window x 132 (css:146,
         /// dc:1914).

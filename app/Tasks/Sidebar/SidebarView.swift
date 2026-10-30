@@ -28,6 +28,8 @@ final class SidebarView: FlippedLayerView {
 
     private(set) var model = SidebarModel()
     private var rowLayers: [SidebarModel.Key: SidebarRowLayer] = [:]
+    /// The capsules' width: the sidebar's, less the 10 / 11 margins (it can be resized, v2 feedback 4).
+    private(set) var rowWidth = SB.rowWidth(sidebar: TK.M.sidebar)
     /// Rows fading out, with a token so a row that comes back isn't removed.
     private var leaving: [SidebarModel.Key: Int] = [:]
     private var leaveToken = 0
@@ -117,6 +119,18 @@ final class SidebarView: FlippedLayerView {
         super.layout()
         let top = TK.M.sidebarTop
         scroll.frame = CGRect(x: 0, y: top, width: bounds.width, height: max(0, bounds.height - top))
+        let w = SB.rowWidth(sidebar: bounds.width)
+        if w != rowWidth {
+            // Resized: the capsules follow at once; the rename field and the accessibility frames on the next render.
+            rowWidth = w
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            for l in rowLayers.values { l.rowWidth = w }
+            listsLabel.rowWidth = w
+            archiveLabel.rowWidth = w
+            CATransaction.commit()
+            scheduleRender()
+        }
         sizeContent()
     }
 
@@ -163,7 +177,7 @@ final class SidebarView: FlippedLayerView {
     /// The sidebar row a task drag is over (window point, top-left origin, y down): Today unless the view is Today,
     /// or an active list other than `groupList`. Archived lists and labels aren't targets (dc:1183–1192).
     func dropTarget(at windowPoint: CGPoint, groupList: EntityID?) -> WindowState.Drag.Over? {
-        guard ui.sidebarVisible, windowPoint.x < TK.M.sidebar - 4, let p = contentPoint(fromWindowTopLeft: windowPoint),
+        guard ui.sidebarVisible, windowPoint.x < bounds.width - 4, let p = contentPoint(fromWindowTopLeft: windowPoint),
               scroll.frame.contains(convert(p, from: content)) else { return nil }
         guard let row = model.rows.first(where: { p.y >= $0.y && p.y < $0.y + SB.rowHeight }) else { return nil }
         switch row.key {
@@ -188,7 +202,7 @@ final class SidebarView: FlippedLayerView {
 
     // MARK: - Coordinates
 
-    private func rowRect(_ y: CGFloat) -> CGRect { CGRect(x: SB.rowX, y: y, width: SB.rowWidth, height: SB.rowHeight) }
+    private func rowRect(_ y: CGFloat) -> CGRect { CGRect(x: SB.rowX, y: y, width: rowWidth, height: SB.rowHeight) }
 
     private var windowHeight: CGFloat { window?.contentView?.bounds.height ?? 0 }
 
@@ -284,6 +298,7 @@ final class SidebarView: FlippedLayerView {
                 }
             } else {
                 let layer = SidebarRowLayer()
+                layer.rowWidth = rowWidth
                 layer.position = CGPoint(x: SB.rowX, y: r.y)
                 layer.update(r, palette: palette, hovered: hovered, animated: false)
                 layer.setScaleDeep(scale)
@@ -419,7 +434,7 @@ final class SidebarView: FlippedLayerView {
         let inset = Self.fieldTextInset
         let h = Self.fieldHeight
         let x = SB.rowX + SB.titleX - inset.x
-        let frame = CGRect(x: x, y: rowY + 7 - inset.y, width: SB.rowX + SB.rowWidth - SB.fieldRightPad - x, height: h)
+        let frame = CGRect(x: x, y: rowY + 7 - inset.y, width: SB.rowX + rowWidth - SB.fieldRightPad - x, height: h)
         if f.frame != frame { f.frame = frame }
     }
 
@@ -460,7 +475,7 @@ final class SidebarView: FlippedLayerView {
 
     /// The row or label at a point in the content: rows and labels by their boxes, then each 2pt gap split 1/1.
     private func hit(at p: CGPoint) -> Hit? {
-        guard p.x >= SB.rowX, p.x < SB.rowX + SB.rowWidth else { return nil }
+        guard p.x >= SB.rowX, p.x < SB.rowX + rowWidth else { return nil }
         if let r = model.rows.first(where: { p.y >= $0.y && p.y < $0.y + SB.rowHeight }) { return .row(r.key) }
         if p.y >= model.listsLabelY && p.y < model.listsLabelY + SB.labelHeight { return .label(.lists) }
         if let a = model.archiveLabelY, p.y >= a && p.y < a + SB.labelHeight { return .label(.archive) }
@@ -473,13 +488,13 @@ final class SidebarView: FlippedLayerView {
 
     private func buttonRect(_ l: Label) -> CGRect? {
         guard let y = labelY(l) else { return nil }
-        return SB.buttonFrame.offsetBy(dx: SB.rowX, dy: y)
+        return SB.buttonFrame(rowWidth: rowWidth).offsetBy(dx: SB.rowX, dy: y)
     }
 
     /// The Archive label's text button (`.gl`, dc:31): from the text's left to the label's end, 14 tall.
     private func archiveTextRect() -> CGRect? {
         guard let y = model.archiveLabelY else { return nil }
-        return CGRect(x: SB.rowX + SB.labelTextX, y: y + SB.labelTextTop, width: SB.rowWidth - SB.labelTextX, height: 14)
+        return CGRect(x: SB.rowX + SB.labelTextX, y: y + SB.labelTextTop, width: rowWidth - SB.labelTextX, height: 14)
     }
 
     func pointerMoved(to p: CGPoint?) {
@@ -658,7 +673,7 @@ final class SidebarView: FlippedLayerView {
         ui.drag = .init(kind: .list(id), target: i)
 
         let name = store.projection.listModel(id)?.name ?? ""
-        let copy = SidebarLiftLayer(name: name, monogram: SB.monogram(name), slot: row.slot, palette: palette)
+        let copy = SidebarLiftLayer(name: name, monogram: SB.monogram(name), slot: row.slot, rowWidth: rowWidth, palette: palette)
         copy.setScaleDeep(window?.backingScaleFactor ?? 2)
         let parent = ui.dragOverlay?.layer ?? layer
         copy.setInstant { parent?.addSublayer(copy) }
@@ -868,8 +883,8 @@ final class SidebarView: FlippedLayerView {
     }
 
     var labelFrames: (lists: CGRect, archive: CGRect?) {
-        (CGRect(x: SB.rowX, y: model.listsLabelY, width: SB.rowWidth, height: SB.labelHeight),
-         model.archiveLabelY.map { CGRect(x: SB.rowX, y: $0, width: SB.rowWidth, height: SB.labelHeight) })
+        (CGRect(x: SB.rowX, y: model.listsLabelY, width: rowWidth, height: SB.labelHeight),
+         model.archiveLabelY.map { CGRect(x: SB.rowX, y: $0, width: rowWidth, height: SB.labelHeight) })
     }
 
     func accessibilityNewList() { actions.newList() }
@@ -964,7 +979,7 @@ final class SidebarContentView: FlippedLayerView {
         let labels = owner.labelFrames
         let plus = SidebarAXElement(role: .button) { [weak owner] in owner?.accessibilityNewList() }
         plus.setAccessibilityLabel("New List")
-        plus.setAccessibilityFrameInParentSpace(SB.buttonFrame.offsetBy(dx: labels.lists.minX, dy: labels.lists.minY))
+        plus.setAccessibilityFrameInParentSpace(SB.buttonFrame(rowWidth: labels.lists.width).offsetBy(dx: labels.lists.minX, dy: labels.lists.minY))
         plus.setAccessibilityParent(self)
         out.insert(plus, at: min(1, out.count))
         if let a = labels.archive {

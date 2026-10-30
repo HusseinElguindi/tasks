@@ -18,13 +18,17 @@ final class SidebarRowLayer: CALayer {
     private(set) var row: SidebarModel.Row?
     private(set) var hovered = false
     private var palette = TK.Palette.dark
+    /// The capsule's width, from the sidebar's (`SB.rowWidth(sidebar:)`).
+    var rowWidth: CGFloat = SB.rowWidth(sidebar: TK.M.sidebar) {
+        didSet { if rowWidth != oldValue { placeAcross() } }
+    }
 
     nonisolated(unsafe) static let hintFont = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)   // .ct.hint
 
     override init() {
         super.init()
         anchorPoint = .zero
-        bounds = CGRect(x: 0, y: 0, width: SB.rowWidth, height: SB.rowHeight)
+        bounds = CGRect(x: 0, y: 0, width: rowWidth, height: SB.rowHeight)
         cornerRadius = SB.radius
         // Inset box-shadows (css:109, 115, 119): the 1pt inner edge, the 0.5pt outer edge on top of it, or the accent ring.
         for l in [edgeInner, edgeOuter, ring] {
@@ -69,15 +73,23 @@ final class SidebarRowLayer: CALayer {
         title.isHidden = r.editing
         let tc = titleColor
         title.set(r.name, font: TK.Font.body, color: first || !animated ? tc : NSColor(cgColor: title.foregroundColor ?? tc.cgColor) ?? tc)
-        title.place(x: SB.titleX, lineTop: SB.titleLineTop, lineHeight: 16, width: SB.titleWidth)
-        fade.update(width: SB.titleWidth, height: title.bounds.height, fade: SB.titleFade, end: SB.titleFadeEnd)
         if animated && !first { setTitleColor(tc) }
 
         let cc: NSColor = r.drop ? p.accentText : r.hint ? p.ink2 : r.current ? p.ink2 : p.ink3
         count.set(r.count, font: r.hint ? Self.hintFont : TK.Font.count, color: cc)
-        // A right-aligned box ending 8 short of the capsule's right edge; the line box is the row's 16pt one, centered.
+        placeAcross()
+    }
+
+    /// What depends on the capsule's width: its box and edges, the title's width and fade, the count's box (right-
+    /// aligned, ending 8 short of the capsule's right edge, on the row's centered 16pt line).
+    private func placeAcross() {
+        bounds = CGRect(x: 0, y: 0, width: rowWidth, height: SB.rowHeight)
+        for l in [edgeInner, edgeOuter, ring] { l.frame = bounds }
+        let titleWidth = rowWidth - SB.titleX
+        title.place(x: SB.titleX, lineTop: SB.titleLineTop, lineHeight: 16, width: titleWidth)
+        fade.update(width: titleWidth, height: title.bounds.height, fade: SB.titleFade, end: SB.titleFadeEnd)
         let countWidth: CGFloat = 80
-        count.place(x: SB.rowWidth - SB.countRight - countWidth, lineTop: (SB.rowHeight - 16) / 2, lineHeight: 16, width: countWidth)
+        count.place(x: rowWidth - SB.countRight - countWidth, lineTop: (SB.rowHeight - 16) / 2, lineHeight: 16, width: countWidth)
     }
 
     /// The pointer arrived or left: the title goes to `ink` on `hoverIn`, back on `hoverOut`.
@@ -115,17 +127,25 @@ final class SidebarLabelLayer: CALayer {
     let button: IconButtonLayer
     private(set) var titleText = ""
     private var chevronOpen = false
+    var rowWidth: CGFloat = SB.rowWidth(sidebar: TK.M.sidebar) {
+        didSet {
+            guard rowWidth != oldValue else { return }
+            bounds.size.width = rowWidth
+            button.position = SB.buttonFrame(rowWidth: rowWidth).origin
+            text.place(x: SB.labelTextX, lineTop: SB.labelTextTop, lineHeight: 14, width: rowWidth - SB.labelTextX)
+        }
+    }
 
     init(title: String, glyph: Glyph) {
         button = IconButtonLayer(glyph, size: SB.buttonSize, glyphSize: 12, radius: 6)
         titleText = title
         super.init()
         anchorPoint = .zero
-        bounds = CGRect(x: 0, y: 0, width: SB.rowWidth, height: SB.labelHeight)
+        bounds = CGRect(x: 0, y: 0, width: rowWidth, height: SB.labelHeight)
         addSublayer(text)
         addSublayer(button)
         button.anchorPoint = .zero
-        button.position = SB.buttonFrame.origin
+        button.position = SB.buttonFrame(rowWidth: rowWidth).origin
         button.reveal(false, animated: false)
     }
 
@@ -138,7 +158,7 @@ final class SidebarLabelLayer: CALayer {
 
     func setPalette(_ p: TK.Palette) {
         text.set(titleText, font: TK.Font.label, color: p.ink3)
-        text.place(x: SB.labelTextX, lineTop: SB.labelTextTop, lineHeight: 14, width: SB.rowWidth - SB.labelTextX)
+        text.place(x: SB.labelTextX, lineTop: SB.labelTextTop, lineHeight: 14, width: rowWidth - SB.labelTextX)
         text.masksToBounds = true
         button.setPalette(p)
     }
@@ -166,10 +186,10 @@ final class SidebarLiftLayer: CALayer {
     private let label = TextLayer()
     private let fade = FadeMask()
 
-    init(name text: String, monogram: String, slot: Int, palette p: TK.Palette) {
+    init(name text: String, monogram: String, slot: Int, rowWidth: CGFloat, palette p: TK.Palette) {
         super.init()
         anchorPoint = .zero
-        bounds = CGRect(x: 0, y: 0, width: SB.rowWidth, height: SB.rowHeight)
+        bounds = CGRect(x: 0, y: 0, width: rowWidth, height: SB.rowHeight)
         cornerRadius = SB.radius
         backgroundColor = p.fillStrong.cgColor
         shadowColor = p.liftShadow.cgColor
@@ -187,7 +207,7 @@ final class SidebarLiftLayer: CALayer {
         tile.position = CGPoint(x: SB.tileX + tile.bounds.width / 2, y: SB.rowHeight / 2)
         addSublayer(tile)
         // `.tt`: 7 after the tile to the 10pt right padding, centered on the row (no nudge here).
-        let width = SB.rowWidth - SB.titleX - 10
+        let width = rowWidth - SB.titleX - 10
         label.set(text, font: TK.Font.body, color: p.ink)
         label.place(x: SB.titleX, lineTop: (SB.rowHeight - 16) / 2, lineHeight: 16, width: width)
         fade.update(width: width, height: label.bounds.height, fade: 24)

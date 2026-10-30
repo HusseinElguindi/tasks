@@ -4,9 +4,11 @@ import TasksCore
 /// The sidebar's geometry, in points (css:97–140, dc:395–396). Row positions are in the scrolled content, whose
 /// top is the window's y 50 (`TK.M.sidebarTop`).
 enum SB {
-    /// `.sbi`: the capsule, x 10–219, 30 tall, radius 15 **Rex**.
+    /// `.sbi`: the capsule, x 10–219 in the 230pt sidebar (11 short of its right edge), 30 tall, radius 15 **Rex**.
+    /// The sidebar can be resized (v2 feedback 4); the capsule spans it the same way.
     static let rowX: CGFloat = 10
-    static let rowWidth: CGFloat = 209
+    static let rowRightPad: CGFloat = 11
+    static func rowWidth(sidebar width: CGFloat) -> CGFloat { max(0, width - rowX - rowRightPad) }
     static let rowHeight: CGFloat = 30
     static let radius: CGFloat = 15
     /// `.srow` padding-left: the tile, 20×16, sits 10 in.
@@ -14,7 +16,6 @@ enum SB {
     /// `.tl`: 7 after the tile, nudged up 0.5 (`translateY(-0.5px)`), to the capsule's end (its 34pt right padding
     /// stays inside the box, under the mask).
     static let titleX: CGFloat = 37
-    static let titleWidth: CGFloat = 172
     static let titleLineTop: CGFloat = 6.5
     /// css:112: `#000 calc(100% − 46px), transparent calc(100% − 30px)`: a 16pt fade ending 30 before the capsule's
     /// right edge, clear of the count.
@@ -38,7 +39,7 @@ enum SB {
     static let archiveGap: CGFloat = 8
 
     /// The + / chevron button, in the label's coordinates.
-    static var buttonFrame: CGRect {
+    static func buttonFrame(rowWidth: CGFloat) -> CGRect {
         CGRect(x: rowWidth - buttonRight - buttonSize, y: buttonTop, width: buttonSize, height: buttonSize)
     }
 

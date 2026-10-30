@@ -101,6 +101,8 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
 - ⌘Z inside text fields (each field has its own undo), and opening a link from the notes.
 - The List pop-up in the detail pane, and the notice holding while hovered.
 - Light mode in daily use.
+- The dividers (feedback 4) with a real pointer: the resize cursor over the sidebar's edge and the detail gap, the
+  one-way cursor at a limit, a drag's smoothness in a long list, and a double-click reset.
 
 ## Feedback fixes (docs/TASK-v2-feedback.md)
 
@@ -127,6 +129,18 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
    every state (one or two panes × list, detail or sidebar focused, and the narrow window), the prototype in Chrome the
    same way; spec §4 and the token table updated. If "plain neutral" was meant as `surface-base`, it's one line
    (`PaneChromeModifier`, and `.single` in the CSS).
+
+4. **Resizable panes.** The sidebar's edge (8 wide, centered on the list pane's edge) and the 8pt gap before the detail
+   pane are dividers (`Window/PaneDivider.swift`): no handle, the column-resize cursor (one-way at a limit), live
+   resizing with no animation, a double-click springs back to 230 / 420 on `natural`. Limits: sidebar 180–400, detail
+   340 and up, and the list never under 220 from a divider. Both widths are kept in the app's defaults (`sidebarWidth`,
+   `detailWidth`; the default removes the key) and the detail pane reopens at its last width. A window narrower than
+   the widths keeps the sidebar, lets the detail pane give way to 340, then goes narrow (drill-in) as before; the
+   defaults still switch at 900. The sidebar's rows now span its width (they were a fixed 209). Checked in the app with
+   in-process drags: each limit, both resets (the 600 → 420 spring sampled over ~300 ms), widths kept across a relaunch
+   and the detail pane reopening at 714, the window at 1000 (detail 364, list 220) and 960 (narrow), the detail pane
+   closing smoothly at 544. The prototype does the same in Chrome (limits, cursors, reset, `localStorage` across a
+   reload). Not checked with a real pointer: the cursor itself and the feel of a live drag (the Mac was in use).
 
 ## Notes for whoever drives the UI next
 

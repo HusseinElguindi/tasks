@@ -16,7 +16,7 @@ body{margin:0}
 <div class="{{rootCls}}" style="{{rootStyle}}" tabIndex="0" ref="{{rootRef}}" onKeyDown="{{onKey}}" onKeyUp="{{onKeyUp}}" onMouseDown="{{onRootMouseDown}}" onPointerDownCapture="{{onRootPointerDownCapture}}" onClickCapture="{{onRootClickCapture}}" onContextMenu="{{onRootContextMenu}}" onFocusCapture="{{onRootFocusCapture}}">
 <div class="win" style="{{winStyle}}" ref="{{winRef}}">
 
-<nav class="sb" aria-label="Lists" onPointerDown="{{onSidebarDown}}" onContextMenu="{{onSidebarCtx}}">
+<nav class="sb" style="{{sbStyle}}" aria-label="Lists" onPointerDown="{{onSidebarDown}}" onContextMenu="{{onSidebarCtx}}">
 <div class="sbs" ref="{{sbScrollRef}}">
 <div class="sbc" style="{{sb.contentStyle}}">
 <sc-for list="{{sb.items}}" as="it" hint-placeholder-count="8">
@@ -107,10 +107,10 @@ body{margin:0}
 <sc-if value="{{notice.undo}}"><button class="btn tinted" type="button" onClick="{{onNoticeUndo}}">Undo<span class="nk">⌘Z</span></button></sc-if>
 </div>
 </sc-if>
-</section>
+</section><sc-if value="{{dv.sb}}"><div class="{{dv.sbCls}}" style="{{dv.sbStyle}}" role="separator" aria-label="Sidebar width" onPointerDown="{{onSbDivDown}}" onDoubleClick="{{onSbDivDbl}}"></div></sc-if><sc-if value="{{dv.dp}}"><div class="{{dv.dpCls}}" style="{{dv.dpStyle}}" role="separator" aria-label="Details width" onPointerDown="{{onDpDivDown}}" onDoubleClick="{{onDpDivDbl}}"></div></sc-if>
 
 <sc-if value="{{dp.show}}">
-<section class="{{dp.cls}}" aria-label="Task details" onPointerDown="{{onDetailDown}}">
+<section class="{{dp.cls}}" style="{{dp.style}}" aria-label="Task details" onPointerDown="{{onDetailDown}}">
 <header class="ph">
 <sc-if value="{{dp.single}}"><span class="{{dp.headTile}}">{{dp.headMono}}</span><span class="pt" style="color: var(--ink-2); font-weight: 400;">{{dp.headName}}</span></sc-if>
 <sc-if value="{{dp.multi}}"><span class="{{dp.headTile}}">{{dp.headMono}}</span><span class="pt" style="color: var(--ink-2); font-weight: 400;">{{dp.headName}}</span></sc-if>
@@ -392,9 +392,9 @@ function matchDate(text, today) {
 
 // ---------- Constants: Rex's row grid ----------
 const PITCH = 32;          // rows are 30pt shapes on a 32pt pitch
-const SB_W = 230;          // sidebar width
+const SB_W = 230, SB_MIN = 180, SB_MAX = 400;   // sidebar width: the default; its edge is a divider (v2 feedback 4)
 const SB_TOP = 50;         // first sidebar row, under the 50pt toolbar band
-const PANE_TOP = 8, HEAD_H = 34, GUTTER = 8, DETAIL_W = 420;
+const PANE_TOP = 8, HEAD_H = 34, GUTTER = 8, DETAIL_W = 420, DETAIL_MIN = 340, LIST_MIN = 220;   // DETAIL_W is the default
 // ---------- Timing (ms). Curves and durations of motion are in tasks-v2.css. ----------
 const SETTLE_MS = 1500;        // checked tasks stay put this long before they move
 const NOTICE_MS = 5000;        // a notice with Undo
@@ -509,7 +509,7 @@ class Component extends DCLogic {
       sel: [], anchor: null,
       focus: 'list',
       detail: 'closed',        // closed | opening | open | closing
-      sbVisible: true,
+      sbVisible: true, sbW: this.storedWidth('sbW', SB_W), detailW: this.storedWidth('detailW', DETAIL_W), resize: null,   // dividers (v2 feedback 4)
       edit: null,              // {kind: task (row rename) | list | dtitle (detail title) | notes, id, text, orig, isNew, selectAll, caret}
       picker: null, menu: null, drag: null, sbDrag: null, notice: null, tip: null,
       completedOpen: {}, archiveOpen: false,
@@ -1181,7 +1181,7 @@ class Component extends DCLogic {
     const p = this.winXY(e);
     const x = p.x - d.offX, y = p.y - d.offY;
     let over = null;
-    if (this.state.sbVisible && p.x < SB_W - 4) {
+    if (this.state.sbVisible && p.x < this.state.sbW - 4) {
       const sc = this.sbScrollRef.current ? this.sbScrollRef.current.scrollTop : 0;
       const sy = p.y - SB_TOP + sc;
       const S = this.lastSidebar;
@@ -1910,7 +1910,7 @@ class Component extends DCLogic {
     const todayCount = s.tasks.filter((t) => !t.deleted && !t.draft && t.completedAt == null && this.isActive(t.list) && this.inTodayDates(t)).length;
     const lp = {
       cls: 'pane lp' + (!detailOpen ? ' single' : s.focus === 'list' ? ' focused' : '') + (Date.now() - (this.paneSwapAt || 0) < DETAIL_CLOSE_MS ? ' swap' : ''),   // alone: no focus look; the change rides the detail pane (v2 feedback 3)
-      style: 'left: ' + (s.sbVisible ? SB_W : GUTTER) + 'px; right: ' + (detailOpen ? GUTTER + DETAIL_W + GUTTER : GUTTER) + 'px',
+      style: 'left: ' + (s.sbVisible ? s.sbW : GUTTER) + 'px; right: ' + (detailOpen ? GUTTER + s.detailW + GUTTER : GUTTER) + 'px',
       headStyle: s.sbVisible ? '' : 'padding-left: 124px',
       isToday: inToday, isList: !inToday,
       title: inToday ? 'Today' : routeList ? routeList.name || 'New List' : '',
@@ -1931,7 +1931,7 @@ class Component extends DCLogic {
     const dIds = this.detailIds();
     const one = dIds.length === 1 ? this.task(dIds[0]) : null;
     const many = dIds.length > 1 ? dIds.map((id) => this.task(id)) : null;
-    const dpo = { show: s.detail !== 'closed', cls: 'pane dp' + (s.focus === 'detail' ? ' focused' : '') + (s.detail === 'opening' || s.detail === 'closing' ? ' out' : '') };
+    const dpo = { show: s.detail !== 'closed', cls: 'pane dp' + (s.focus === 'detail' ? ' focused' : '') + (s.detail === 'opening' || s.detail === 'closing' ? ' out' : ''), style: 'width: ' + s.detailW + 'px' };
     dpo.single = !!one; dpo.multi = !!many; dpo.none = !one && !many;
     const dateRow = (field, value, mixed) => {
       if (mixed) return { has: false, mixed: true, ghost: 'Mixed', text: '', cls: 'chip lg ghost', rel: '', relCls: 'rel' };
@@ -2017,7 +2017,7 @@ class Component extends DCLogic {
     if (sbd && sbd.phase !== 'done') {
       const l = this.list(sbd.id);
       const y = sbd.phase === 'fly' ? sbd.flyTo : sbd.y;
-      sbLift = { show: true, cls: 'lifted cap' + (sbd.phase === 'fly' ? ' flying' : ''), style: 'transform: translate(10px, ' + y + 'px); width: 209px', name: l ? l.name : '', tileCls: 'tile ' + (l ? COLOR_CLASS[l.color] : ''), mono: l ? monogram(l.name) : '' };
+      sbLift = { show: true, cls: 'lifted cap' + (sbd.phase === 'fly' ? ' flying' : ''), style: 'transform: translate(10px, ' + y + 'px); width: ' + (s.sbW - 21) + 'px', name: l ? l.name : '', tileCls: 'tile ' + (l ? COLOR_CLASS[l.color] : ''), mono: l ? monogram(l.name) : '' };
     }
 
     const mapMenu = (items, hot, level) => {
@@ -2062,12 +2062,12 @@ class Component extends DCLogic {
     };
 
     return {
-      rootCls: 'tk ' + s.theme + (s.noAnim ? ' no-anim' : '') + (s.detail === 'open' || s.detail === 'opening' ? ' detail-open' : ''),
+      rootCls: 'tk ' + s.theme + (s.noAnim ? ' no-anim' : '') + (s.detail === 'open' || s.detail === 'opening' ? ' detail-open' : '') + (s.resize ? ' resizing' : '') + (Date.now() - (this.springbackAt || 0) < DETAIL_CLOSE_MS ? ' springback' : ''),
       rootStyle: 'width: ' + w + 'px; height: ' + (h + (stageOn ? 44 : 0)) + 'px',
       winStyle: 'height: ' + h + 'px',
       rootRef: this.rootRef, winRef: this.winRef, listScrollRef: this.listScrollRef, sbScrollRef: this.sbScrollRef, liftRef: this.liftRef,
       sb: { contentStyle: 'height: ' + S.height + 'px', items: sbItems },
-      sbTip: s.sbVisible ? 'Hide Sidebar' : 'Show Sidebar',
+      sbTip: s.sbVisible ? 'Hide Sidebar' : 'Show Sidebar', sbStyle: 'width: ' + s.sbW + 'px', dv: this.dividerVM(detailOpen),
       lp, rows, labels, dp: dpo, drag, sbLift, menu, pk, notice, tip: tipv, stage, keysOpen: s.keysOpen,
       onKey: this.onKey, onKeyUp: this.onKeyUp, onRootMouseDown: this.onRootMouseDown, onRootPointerDownCapture: this.onRootPointerDownCapture, onRootClickCapture: this.onRootClickCapture, onRootContextMenu: this.onRootContextMenu, onRootFocusCapture: this.onRootFocusCapture,
       onRowDown: this.onRowDown, onRowMove: this.onRowMove, onRowUp: this.onRowUp, onRowDbl: this.onRowDbl, onRowCtx: this.onRowCtx,
@@ -2083,8 +2083,64 @@ class Component extends DCLogic {
       onPickerText: this.onPickerText, onPickerKey: this.onPickerKey, onPickDay: this.onPickDay, onPickQuick: this.onPickQuick, onPickSug: this.onPickSug, onSugEnter: this.onSugEnter, onPickMonth: this.onPickMonth, onPickerDown: this.onPickerDown,
       onNoticeEnter: this.onNoticeEnter, onNoticeLeave: this.onNoticeLeave, onNoticeUndo: this.onNoticeUndo,
       tipIn: this.tipIn, tipOut: this.tipOut, onStage: this.onStage,
+      onSbDivDown: this.onSbDivDown, onDpDivDown: this.onDpDivDown, onSbDivDbl: this.onSbDivDbl, onDpDivDbl: this.onDpDivDbl,
     };
   }
+
+  // ---------- Dividers (v2 feedback 4): the sidebar's edge and the gutter before the detail pane ----------
+  // Widths are kept in localStorage. Dragging resizes with no animation (.resizing); a double-click springs back to the
+  // default on `natural` (.springback). The list pane never gets narrower than LIST_MIN from a divider.
+  storedWidth(key, def) { try { const v = Number(localStorage.getItem('tasks-v2.' + key)); return v > 0 ? v : def; } catch (e) { return def; } }
+  storeWidth(key, v, def) { try { if (v === def) localStorage.removeItem('tasks-v2.' + key); else localStorage.setItem('tasks-v2.' + key, String(v)); } catch (e) {} }
+  winWidth() { return this.winRef.current ? this.winRef.current.clientWidth : 1180; }
+  divRange(kind) {
+    const s = this.state, W = this.winWidth();
+    if (kind === 'sb') return [SB_MIN, Math.max(SB_MIN, Math.min(SB_MAX, W - GUTTER - (s.detail === 'open' ? s.detailW + GUTTER : 0) - LIST_MIN))];
+    return [DETAIL_MIN, Math.max(DETAIL_MIN, W - (s.sbVisible ? s.sbW : GUTTER) - 2 * GUTTER - LIST_MIN)];
+  }
+  dividerVM(detailOpen) {
+    const s = this.state, W = this.winWidth();
+    // The column-resize cursor, or the one-way one at a limit (the pointer goes right to grow the sidebar, left to grow
+    // the detail pane).
+    const cls = (kind) => {
+      const [lo, hi] = this.divRange(kind), w = kind === 'sb' ? s.sbW : s.detailW;
+      const grow = w < hi, shrink = w > lo, right = kind === 'sb' ? grow : shrink, left = kind === 'sb' ? shrink : grow;
+      return 'pdiv' + (left && right ? '' : left ? ' lim-l' : right ? ' lim-r' : '');
+    };
+    return {
+      sb: s.sbVisible, sbCls: cls('sb'), sbStyle: 'left: ' + (s.sbW - 4) + 'px; width: 8px',
+      dp: detailOpen, dpCls: cls('dp'), dpStyle: 'left: ' + (W - 2 * GUTTER - s.detailW) + 'px; width: ' + GUTTER + 'px',
+    };
+  }
+  divDown(kind, e) {
+    if (e.button !== 0) return;
+    // The caret and the focused pane stay as they are.
+    e.preventDefault(); e.stopPropagation();
+    const key = kind === 'sb' ? 'sbW' : 'detailW', sign = kind === 'sb' ? 1 : -1, x0 = e.clientX, w0 = this.state[key];
+    this.setState({ resize: kind });
+    const move = (ev) => {
+      const [lo, hi] = this.divRange(kind);
+      this.setState({ [key]: Math.round(Math.min(hi, Math.max(lo, w0 + sign * (ev.clientX - x0)))) });
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move, true); window.removeEventListener('pointerup', up, true);
+      this.storeWidth(key, this.state[key], kind === 'sb' ? SB_W : DETAIL_W);
+      this.setState({ resize: null });
+    };
+    // Capture: rows and the sidebar stop their own pointer events.
+    window.addEventListener('pointermove', move, true); window.addEventListener('pointerup', up, true);
+  }
+  divReset(kind) {
+    const key = kind === 'sb' ? 'sbW' : 'detailW', def = kind === 'sb' ? SB_W : DETAIL_W;
+    this.springbackAt = Date.now();
+    this.setState({ [key]: def });
+    this.storeWidth(key, def, def);
+    setTimeout(() => this.setState({}), DETAIL_CLOSE_MS);   // drops .springback
+  }
+  onSbDivDown = (e) => this.divDown('sb', e);
+  onDpDivDown = (e) => this.divDown('dp', e);
+  onSbDivDbl = () => this.divReset('sb');
+  onDpDivDbl = () => this.divReset('dp');
 }
 
 </script>

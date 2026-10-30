@@ -9,8 +9,10 @@ Status: **final, 2026-10-30.** The user reviewed the prototype and made the four
   double-click there adds one, as ⌘N does, and the hover "New Task" row is gone. §5, §6, §13, §16, §18.12 and §21 say
   so.
 - Item 3: a pane alone in the window shows no focus; the focused look appears only with two panes (§4 Pane focus).
+- Item 4: the sidebar's edge and the gap before the detail pane are dividers that resize the panes (§4 Resizing the
+  panes).
 
-The prototype source matches both.
+The prototype source matches all three.
 
 **The prototype is the reference implementation:** https://claude.ai/artifact/QetdV1H57SC6kLXtNzJRXM (press Play on the
 main board, then click inside it once so it has the keys). Its source is in `design/prototype-v2/`, and this spec cites
@@ -134,7 +136,7 @@ tooltips 11/14. Tiles and inline code use SF Mono. Counts and day numbers use ta
 | Row grid | Every row is a 30pt shape on a 32pt pitch **Rex** | `dc:394` |
 | Toolbar band | 50 tall. Traffic lights 14pt circles 9 apart, first at (18, 18), so centers x 25, 48, 71, y 25 **Rex** | `css:87–89` |
 | Sidebar toggle | 28pt circle at (93, 11), center (107, 25) **Rex**; glyph 16pt | `css:92–95` |
-| Sidebar | 230 wide **Rex**; rows start at y 50 | `dc:395`, `dc:396` |
+| Sidebar | 230 wide **Rex** by default, 180–400 by its divider (§4); rows start at y 50 | `dc:395`, `dc:396` |
 | Sidebar row | Capsule x 10–219 (209 wide), 30 tall, radius 15 **Rex**; tile 10 in; title 7 after the tile, nudged up 0.5 **Rex**; count right-aligned 8 from the capsule's right edge | `css:102–105`, `css:107–120` |
 | List tile | 20×16, radius 4, 700 10pt mono glyph; dark `fill-strong` with a white 10% 0.5pt ring, light #E3E3E4 with a #1F2328 10% ring. Small (headers, menus): 16×13, radius 3.5, 8.5pt | `css:123–125` |
 | Group label | A 32pt slot: 11/14 semibold `ink-tertiary`, 12 in from the row edge, text top 10 **Rex**. Reveal button 22×22, radius 6, 5 from the right, top 6 | `css:131–139` |
@@ -144,7 +146,7 @@ tooltips 11/14. Tiles and inline code use SF Mono. Counts and day numbers use ta
 | Task row | 10 in from the pane's sides, 30 tall, radius 8; the first row 4 below the header (64 in an archived list, under the banner). Padding 10 left, 5 right. Checkbox at 10; title 10 after it, nudged up 0.5, its last 24pt fading out; chips 8 after the title, 6 apart; › 22×22 (radius 6) 4 after the chips, 5 from the right edge, its slot always kept | `css:159–179`, `dc:611` |
 | Checkbox | 16 circle, 1.5 ring; check glyph 10, stroke 2.2, round; hit area 30×30 | `css:190–202` |
 | Chip | 18 tall, radius 9, padding 7, gap 4, 11/14 medium, icon 11. Large (detail pane): 22 tall, radius 11, padding 9, gap 5, 12pt | `css:205–215` |
-| Detail pane | 420 wide; body padding 8 / 18 / 18; title row: checkbox 2 down, 10 to the title (15/20 semibold); property rows 32 tall from 12 below the title, indented 26, label column 76 | `css:253–282` |
+| Detail pane | 420 wide by default, 340 and up by its divider (§4); body padding 8 / 18 / 18; title row: checkbox 2 down, 10 to the title (15/20 semibold); property rows 32 tall from 12 below the title, indented 26, label column 76 | `css:253–282` |
 | Menu (stand-in) | 216 wide (submenu 204), padding 5, radius 10; items 24 tall, radius 5, padding 9 / 10; separator 1pt inset 9 | `css:306–315` |
 | Date popover | 288 wide, padding 8, radius 12; field 28 tall, radius 8; quick picks 22 tall; day cells 28 tall, radius 14 | `css:317–342` |
 | Notice | 34 tall, radius 10, 12 from the list pane's bottom-right corner | `css:344–347` |
@@ -245,7 +247,7 @@ if let id = window.detailTaskID {
 ```
 
 The list pane narrows on the same spring while the detail slides in from the right and fades up; closing reverses it.
-The prototype copies this: the pane mounts at x +428 and opacity 0, and two frames later moves to 0 / 1 on `natural`
+The prototype copies this: the pane mounts its own width plus 8 to the right (+428 at the default width) and at opacity 0, and two frames later moves to 0 / 1 on `natural`
 while the list pane's right edge moves on the same curve; closing runs it backwards and removes the pane after 460 ms
 (`css:253–255`, `dc:744–758`).
 
@@ -260,6 +262,26 @@ while the list pane's right edge moves on the same curve; closing runs it backwa
 
 Header of the detail pane: the task's list tile (small) and name in `ink-secondary`, regular weight; trash and × at the
 right `dc:113–123`.
+
+### Resizing the panes
+
+User feedback (`docs/TASK-v2-feedback.md` item 4). `design/REX-REFERENCE.md` doesn't cover dividers, so this is the
+plain native behaviour:
+
+| | |
+|---|---|
+| Where | The sidebar's edge: 8 wide, centered on the list pane's left edge (while the sidebar shows). The gap between the list and the detail pane: the 8pt gutter itself (while the pane is beside the list). Nothing is drawn. |
+| Pointer | The column-resize cursor over a divider; at a limit, the one-way cursor (`NSCursor.columnResize(directions:)`, or `resizeLeft`/`resizeRight` before macOS 15). It stays while dragging. |
+| Drag | Resizes at once, no animation; the other panes and their contents follow live. A press there doesn't end an edit or move focus. |
+| Limits | Sidebar 180–400; detail pane 340 and up; the list pane never goes under 220 from a divider (a divider stops there, with the other pane as it is). |
+| Double-click | Springs back to the default (230 or 420) on `natural`. |
+| Remembered | Both widths, across launches. The detail pane opens at its last width, and its open and close (above) work at any width. |
+| Window narrower than the widths | The sidebar keeps its width; the detail pane gives way down to 340 so the list keeps 220; below that, or under 900 wide, the window is narrow (the detail pane replaces the list). |
+
+The prototype draws the dividers as `.pdiv` (`.lim-l`/`.lim-r` at a limit), keeps the widths in `localStorage`, and
+switches the panes' transitions off while dragging (`.resizing`) and to `natural` for a double-click (`.springback`); its
+`.dp.out` slides by its own width plus 8. Source: `Main.dc.html` after the view model ("Dividers"), the CSS at the end
+of `tasks-v2.css`.
 
 ### Pane focus (Rex's rule)
 

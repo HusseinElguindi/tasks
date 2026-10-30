@@ -23,7 +23,7 @@ struct RootView: View {
                         DebugKeyLog.installIfRequested()
                         DebugScript.runIfRequested(window) {
                             let titles = window.selection.compactMap { store.projection.task($0)?.title }.sorted()
-                            return "selection=\(titles) focus=\(window.focus) detail=\(window.detailOpen) draft=\(window.draft.map { "'\($0.title)'" } ?? "-")"
+                            return "selection=\(titles) focus=\(window.focus) detail=\(window.detailOpen) draft=\(window.draft.map { "'\($0.title)'" } ?? "-") widths=\(Int(window.sidebarWidth))/\(Int(window.detailWidth))"
                         }
                         #endif
                     }
@@ -41,7 +41,7 @@ struct RootView: View {
 /// The window (§4): the sidebar on the ground, then the list pane and the detail pane with 8pt gutters. Hiding the
 /// sidebar slides the panes over it (it stays put underneath) while the traffic lights and the toggle stay where they
 /// are, on the y = 25 line with every pane's title and buttons. Under ~900pt the detail pane replaces the list
-/// (A3's drill-in).
+/// (A3's drill-in). The sidebar's edge and the gap before the detail pane are dividers (`PaneGeometry`).
 struct MainLayout: View {
     let store: Store
     @Bindable var window: WindowState
@@ -49,10 +49,12 @@ struct MainLayout: View {
 
     var body: some View {
         GeometryReader { geo in
-            let narrow = geo.size.width < 900
+            let g = PaneGeometry(width: geo.size.width, window: window)
+            let narrow = g.narrow
+            let paneHeight = max(0, geo.size.height - 2 * TK.M.gutter)
             ZStack(alignment: .topLeading) {
                 SidebarRepresentable(store: store, window: window, palette: tk)
-                    .frame(width: TK.M.sidebar)
+                    .frame(width: g.sidebar)
                     .frame(maxHeight: .infinity, alignment: .top)
                 HStack(spacing: TK.M.gutter) {
                     if !(narrow && window.detailOpen) {
@@ -61,13 +63,24 @@ struct MainLayout: View {
                     if window.detailOpen {
                         // v1's transition, kept exactly (§4).
                         DetailPane(store: store, window: window, single: narrow)
-                            .frame(width: narrow ? nil : TK.M.detail)
+                            .frame(width: narrow ? nil : g.detail)
                             .transition(.move(edge: .trailing).combined(with: .opacity))
                     }
                 }
                 .animation(TK.Motion.natural, value: window.detailOpen)
                 .padding([.top, .bottom, .trailing], TK.M.gutter)
-                .padding(.leading, window.sidebarVisible ? TK.M.sidebar : TK.M.gutter)
+                .padding(.leading, g.lead)
+                if window.sidebarVisible {
+                    PaneDividerRepresentable(kind: .sidebar, window: window, geometry: g)
+                        .frame(width: TK.M.dividerHit, height: paneHeight)
+                        .offset(x: g.sidebar - TK.M.dividerHit / 2, y: TK.M.gutter)
+                }
+                if g.detailBeside(window) {
+                    // Exactly the gutter: the detail pane takes any press inside its frame (`PanePressMonitor`).
+                    PaneDividerRepresentable(kind: .detail, window: window, geometry: g)
+                        .frame(width: TK.M.gutter, height: paneHeight)
+                        .offset(x: geo.size.width - 2 * TK.M.gutter - g.detail, y: TK.M.gutter)
+                }
                 // The window's controls, above everything (Rex): the toggle's 28pt circle at (93, 11).
                 ToolbarToggle(window: window, actions: WindowActions(store: store, window: window))
                     .offset(x: 93, y: 11)

@@ -959,7 +959,7 @@ final class TaskListView: NSView {
         d.lastPoint = p
         drag = d
         var over: WindowState.Drag.Over?
-        if state.sidebarVisible, p.x < TK.M.sidebar - 4 {
+        if state.sidebarVisible, p.x < (state.sidebarView?.bounds.width ?? TK.M.sidebar) - 4 {
             over = state.sidebarView?.dropTarget(at: p, groupList: d.group)
             if over == .today && state.route == .today { over = nil }
         }

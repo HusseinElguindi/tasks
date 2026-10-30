@@ -83,6 +83,10 @@ final class WindowState {
     var focus: Focus = .list
     var detailOpen = false
     var sidebarVisible = true
+    /// The sidebar's and the detail pane's widths as set by their dividers, remembered across launches (v2 feedback
+    /// 4); `PaneGeometry` fits them to the window.
+    var sidebarWidth = PaneWidth.sidebar.stored
+    var detailWidth = PaneWidth.detail.stored
     var completedOpen: Set<EntityID> = []
     var archiveOpen = false
     var pins: [EntityID: Pin] = [:]
