@@ -157,6 +157,30 @@ extension Op: Codable {
     }
 }
 
+/// A pending op and the exact JSON it is sent as (spec §8 "Pending ops are sent verbatim"). For a local op that's
+/// the JSON this client wrote; for an op recovered from the log after a 409 it's the server's text, which may hold
+/// keys and types this client can't decode, so it is never re-encoded.
+public struct PendingOp: Hashable, Sendable {
+    public var op: Op
+    public var json: Data
+
+    public init(_ op: Op) {
+        self.op = op
+        json = op.jsonData
+    }
+
+    public init(op: Op, json: Data) {
+        self.op = op
+        self.json = json
+    }
+
+    /// Decodes a verbatim op line; nil if it has no readable id and target.
+    public init?(json: Data) {
+        guard let op = try? JSONDecoder().decode(Op.self, from: json) else { return nil }
+        self.init(op: op, json: json)
+    }
+}
+
 // MARK: - Canonical JSON
 
 extension Op {

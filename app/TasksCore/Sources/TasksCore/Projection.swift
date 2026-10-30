@@ -7,8 +7,8 @@ import Foundation
 public final class Projection {
     /// The state reduced from the log `[0, cursor)`.
     public private(set) var confirmed: AppState
-    /// Local ops not yet seen in the log, oldest first.
-    public private(set) var pending: [Op]
+    /// Local ops not yet seen in the log, oldest first, each with its verbatim JSON.
+    public private(set) var pending: [PendingOp]
 
     private var pendingTaskCount: [EntityID: Int] = [:]
     private var pendingListCount: [EntityID: Int] = [:]
@@ -58,11 +58,15 @@ public final class Projection {
     private(set) var taskModels: [EntityID: TaskModel] = [:]
     private(set) var listModels: [EntityID: ListModel] = [:]
 
-    public init(confirmed: AppState = AppState(), pending: [Op] = [], day: Day) {
+    public init(confirmed: AppState = AppState(), pending: [PendingOp] = [], day: Day) {
         self.confirmed = confirmed
         self.pending = pending
         self.dayModel = DayModel(day)
         rebuildAll()
+    }
+
+    public convenience init(confirmed: AppState = AppState(), pendingOps: [Op], day: Day) {
+        self.init(confirmed: confirmed, pending: pendingOps.map(PendingOp.init), day: day)
     }
 
     // MARK: - Reading
@@ -119,9 +123,13 @@ public final class Projection {
 
     /// Applies local ops to the overlay (optimistic UI). The changed set is the ops' targets.
     public func perform(_ ops: [Op]) {
-        for op in ops {
-            pending.append(op)
-            applyToOverlay(op, counting: true)
+        perform(ops.map(PendingOp.init))
+    }
+
+    public func perform(_ ops: [PendingOp]) {
+        for p in ops {
+            pending.append(p)
+            applyToOverlay(p.op, counting: true)
         }
         commit()
     }
@@ -146,18 +154,21 @@ public final class Projection {
 
     /// Applies a page of log entries: to confirmed, then drops our confirmed ops from pending, then updates visible
     /// state for touched ids only (spec §9 "After a sync").
+    ///
+    /// While recovering from a 409 (`touchingAll`), every id in the page counts as touched, ours included, because
+    /// our own ops can come back in a different order than the overlay applied them (spec §5).
     @discardableResult
-    public func confirm(_ entries: [LogEntry]) -> Path {
-        confirm(entries.map(\.op))
+    public func confirm(_ entries: [LogEntry], touchingAll: Bool = false) -> Path {
+        confirm(entries.map(\.op), touchingAll: touchingAll)
     }
 
     @discardableResult
-    public func confirm(_ ops: [Op]) -> Path {
+    public func confirm(_ ops: [Op], touchingAll: Bool = false) -> Path {
         guard !ops.isEmpty else { return .none }
 
         // Fast path: the new entries are exactly the head of the pending queue. Visible state already reflects
         // them, so nothing redraws; ids left with no pending ops just lose their overlay entry.
-        if ops.count <= pending.count, zip(ops, pending).allSatisfy({ $0 == $1 }) {
+        if !touchingAll, ops.count <= pending.count, zip(ops, pending).allSatisfy({ $0 == $1.op }) {
             for op in ops { confirmed.apply(op) }
             pending.removeFirst(ops.count)
             for op in ops { dropPending(op) }
@@ -167,7 +178,7 @@ public final class Projection {
         // General path: remote ops are interleaved with ours.
         var pendingByID: [String: Op] = [:]
         pendingByID.reserveCapacity(pending.count)
-        for op in pending where pendingByID[op.id] == nil { pendingByID[op.id] = op }
+        for p in pending where pendingByID[p.op.id] == nil { pendingByID[p.op.id] = p.op }
         var ours: [Op] = []
         var oursIDs: Set<String> = []
         var touchedTasks: Set<EntityID> = []
@@ -177,6 +188,7 @@ public final class Projection {
         }
         for op in ops {
             confirmed.apply(op)
+            if touchingAll { touch(op) }
             if let mine = pendingByID[op.id], !oursIDs.contains(op.id) {
                 ours.append(mine)
                 oursIDs.insert(op.id)
@@ -187,11 +199,11 @@ public final class Projection {
             }
         }
         // Our confirmed ops are normally the head of pending, in order. If not, their overlays can't be trusted.
-        if !ours.elementsEqual(pending.prefix(ours.count), by: { $0.id == $1.id }) {
+        if !ours.elementsEqual(pending.prefix(ours.count), by: { $0.id == $1.op.id }) {
             for op in ours { touch(op) }
         }
         if !oursIDs.isEmpty {
-            pending.removeAll { oursIDs.contains($0.id) }
+            pending.removeAll { oursIDs.contains($0.op.id) }
             for op in ours { dropPending(op) }
         }
         rebuild(tasks: touchedTasks, lists: touchedLists)
@@ -201,18 +213,20 @@ public final class Projection {
 
     /// `invalid_op`: drops the op from pending and rebuilds its entity from confirmed + remaining pending.
     @discardableResult
-    public func reject(opID: String) -> Op? {
-        guard let i = pending.firstIndex(where: { $0.id == opID }) else { return nil }
-        let op = pending.remove(at: i)
-        dropPending(op)
-        rebuild(tasks: op.type.isTask ? [op.target] : [], lists: op.type.isList ? [op.target] : [])
+    public func reject(opID: String) -> PendingOp? {
+        guard let i = pending.firstIndex(where: { $0.op.id == opID }) else { return nil }
+        let p = pending.remove(at: i)
+        dropPending(p.op)
+        rebuild(tasks: p.op.type.isTask ? [p.op.target] : [], lists: p.op.type.isList ? [p.op.target] : [])
         commit()
-        return op
+        return p
     }
 
-    /// `409`: the log is gone; confirmed state restarts empty and pending is replayed on top of it.
-    public func resetConfirmed() {
+    /// `409` recovery (spec §5): confirmed state restarts empty and every known op becomes pending. The overlay is
+    /// then a replay of the old log + pending, which is what was already on screen.
+    public func recover(pending queue: [PendingOp]) {
         confirmed = AppState()
+        pending = queue
         rebuildAll()
     }
 
@@ -241,11 +255,11 @@ public final class Projection {
         guard !tasks.isEmpty || !lists.isEmpty else { return }
         for id in tasks { taskOverlay[id] = nil }
         for id in lists { listOverlay[id] = nil }
-        for op in pending {
-            if op.type.isTask, tasks.contains(op.target) {
-                applyToOverlay(op, counting: false)
-            } else if op.type.isList, lists.contains(op.target) {
-                applyToOverlay(op, counting: false)
+        for p in pending {
+            if p.op.type.isTask, tasks.contains(p.op.target) {
+                applyToOverlay(p.op, counting: false)
+            } else if p.op.type.isList, lists.contains(p.op.target) {
+                applyToOverlay(p.op, counting: false)
             }
         }
         dirtyTasks.formUnion(tasks)
@@ -371,7 +385,7 @@ public final class Projection {
         pendingListCount = [:]
         dirtyTasks = []
         dirtyLists = []
-        for op in pending { applyToOverlay(op, counting: true) }
+        for p in pending { applyToOverlay(p.op, counting: true) }
         dirtyTasks = []
         dirtyLists = []
 

@@ -186,23 +186,41 @@ final class ProjectionTests: XCTestCase {
         let bad = m.updateTask("a", Patch(order: "a 0", title: "y"))
         p.perform([bad, m.updateTask("a", Patch(notes: "kept"))])
         XCTAssertEqual(p.task("a")?.order, "a 0")
-        XCTAssertEqual(p.reject(opID: bad.id), bad)
+        XCTAssertEqual(p.reject(opID: bad.id)?.op, bad)
         XCTAssertEqual(p.task("a")?.title, "x")
         XCTAssertEqual(p.task("a")?.order, "a0")
         XCTAssertEqual(p.task("a")?.notes, "kept")
         assertMatchesRebuild(p, "after reject")
     }
 
-    func testResetConfirmedReplaysPendingOnEmpty() {
-        let create = m.createTask("a", list: "L", order: "a0", title: "x")
-        let p = Projection(confirmed: AppState.replay([m.createList("L", name: "L", order: "a0"), create]), day: day)
+    /// 409 recovery: confirmed restarts empty and log + pending become pending. The screen doesn't jump.
+    func testRecoverKeepsVisibleState() {
+        let log = [m.createList("L", name: "L", order: "a0"), m.createTask("a", list: "L", order: "a0", title: "x"),
+                   m.updateTask("a", Patch(when: .some(day.date)))]
+        let p = Projection(confirmed: AppState.replay(log), day: day)
         p.perform([m.updateTask("a", Patch(title: "y")), m.createTask("b", list: "L", order: "a1")])
-        let model = p.taskModel("b")!
-        p.resetConfirmed()
-        XCTAssertNil(p.task("a"), "an update on an unknown id is ignored")
-        XCTAssertEqual(p.task("b")?.list, "L")
-        XCTAssertEqual(model.list, "L")
-        assertMatchesRebuild(p, "after reset")
+        let model = p.taskModel("a")!
+        let before = (p.task("a"), p.task("b"), p.openTasks(in: "L").ids, p.todayTasks(in: "L").ids)
+        let titleChanged = Flag()
+        withObservationTracking { _ = model.title } onChange: { titleChanged.set() }
+        p.recover(pending: log.map(PendingOp.init) + p.pending)
+        XCTAssertEqual(p.confirmed, AppState())
+        XCTAssertEqual(p.pending.count, 5)
+        XCTAssertEqual(p.task("a"), before.0)
+        XCTAssertEqual(p.task("b"), before.1)
+        XCTAssertEqual(p.openTasks(in: "L").ids, before.2)
+        XCTAssertEqual(p.todayTasks(in: "L").ids, before.3)
+        XCTAssertFalse(titleChanged.value)
+        assertMatchesRebuild(p, "after recover")
+        // The log comes back from a restored server in a different order, behind another Mac's op.
+        var other = OpMaker(counter: 500)
+        let remote = other.updateTask("a", Patch(title: "remote"))
+        p.confirm([log[0], remote, log[1]] , touchingAll: true)
+        assertMatchesRebuild(p, "recovery page 1")
+        p.confirm(p.pending.map(\.op), touchingAll: true)
+        XCTAssertTrue(p.pending.isEmpty)
+        XCTAssertEqual(p.task("a")?.title, "y")
+        assertMatchesRebuild(p, "recovery done")
     }
 }
 
@@ -220,6 +238,17 @@ final class RebaseTests: XCTestCase {
                 log.append(op)
             }
         }
+
+        /// Restored from an older backup (or wiped, k = 0).
+        mutating func restore(to k: Int) {
+            log = Array(log.prefix(k))
+            ids = Set(log.map(\.id))
+        }
+
+        /// The 409 check: `from > head`, or the hash chain at `from − 1` differs (i.e. any earlier entry differs).
+        func mismatches(_ macLog: [Op]) -> Bool {
+            macLog.count > log.count || !macLog.map(\.id).elementsEqual(log.prefix(macLog.count).map(\.id))
+        }
     }
 
     @MainActor
@@ -227,6 +256,9 @@ final class RebaseTests: XCTestCase {
         let name: String
         let projection: Projection
         var cursor = 0
+        /// The Mac's log.jsonl (ops only).
+        var log: [Op] = []
+        var recovering = false
         var maker: OpMaker
         var rng: SeededRandom
         var listIDs: [EntityID] = []
@@ -247,11 +279,19 @@ final class RebaseTests: XCTestCase {
 
     func testRandomInterleavingsMatchFullReplay() {
         for seed: UInt64 in [1, 2, 3, 4] {
-            run(seed: seed, macs: seed % 2 == 0 ? 3 : 2, steps: 600)
+            run(seed: seed, macs: seed % 2 == 0 ? 3 : 2, steps: 600, restores: false)
         }
     }
 
-    func run(seed: UInt64, macs count: Int, steps: Int) {
+    /// The same, with the server restored to an older point (or wiped) at random moments: Macs that 409 re-push
+    /// every op they know (spec §5). The server must end up holding every op id any Mac ever had.
+    func testRandomServerRestoresLoseNothing() {
+        for seed: UInt64 in [11, 12, 13, 14, 15, 16] {
+            run(seed: seed, macs: seed % 2 == 0 ? 3 : 2, steps: 600, restores: true)
+        }
+    }
+
+    func run(seed: UInt64, macs count: Int, steps: Int, restores: Bool) {
         var rng = SeededRandom(seed: seed &* 7919)
         let cal: Calendar = {
             var c = Calendar(identifier: .gregorian)
@@ -261,10 +301,13 @@ final class RebaseTests: XCTestCase {
         var now = Date(timeIntervalSince1970: 1_761_840_000)
         var day = Day(containing: now, calendar: cal)
         var server = Server()
+        var everyOpID: Set<String> = []
+        func record(_ mac: Mac) { for p in mac.projection.pending { everyOpID.insert(p.op.id) } }
         let macs = (0..<count).map { Mac(name: "m\($0)", seed: seed * 10 + UInt64($0), day: day) }
         // Every Mac seeds the Inbox on first launch, with its own clock: same op id, different `at`.
         for mac in macs {
             mac.projection.perform([Seed.inboxIfMissing(listExists: { mac.projection.list($0) != nil }, now: mac.maker.next().1)!])
+            record(mac)
         }
 
         func check(_ mac: Mac, _ what: String) {
@@ -272,19 +315,36 @@ final class RebaseTests: XCTestCase {
             // Rows on screen: materialize every list's model and some task models, as views would.
             for id in p.allListIDs { _ = p.listModel(id) }
             for id in p.allTaskIDs where id.hashValue % 3 == 0 { _ = p.taskModel(id) }
-            XCTAssertEqual(p.confirmed, AppState.replay(server.log.prefix(mac.cursor)), "seed \(seed) \(mac.name) \(what): confirmed")
+            XCTAssertEqual(mac.cursor, mac.log.count)
+            XCTAssertEqual(p.confirmed, AppState.replay(mac.log), "seed \(seed) \(mac.name) \(what): confirmed")
             assertMatchesRebuild(p, "seed \(seed) \(mac.name) \(what)")
         }
 
-        func sync(_ mac: Mac, inFlightOps: Bool) {
+        /// One request: 409 → recovery; otherwise push a prefix of pending and apply one page.
+        func sync(_ mac: Mac, inFlightOps: Bool, fullPush: Bool = false) {
             let p = mac.projection
-            let pushCount = Int.random(in: 0...p.pending.count, using: &rng)
-            server.append(Array(p.pending.prefix(pushCount)))
-            let limit = Int.random(in: 1...12, using: &rng)
+            if server.mismatches(mac.log) {
+                // Recovery: log ops (seq order) then pending, first occurrence of each id; confirmed restarts empty.
+                var seen: Set<String> = []
+                let queue = (mac.log.map(PendingOp.init) + p.pending).filter { seen.insert($0.op.id).inserted }
+                p.recover(pending: queue)
+                mac.log = []
+                mac.cursor = 0
+                mac.recovering = true
+                check(mac, "after 409 recovery began")
+            }
+            let pushCount = fullPush ? min(p.pending.count, 500) : Int.random(in: 0...p.pending.count, using: &rng)
+            server.append(p.pending.prefix(pushCount).map(\.op))
+            let limit = fullPush ? 1000 : Int.random(in: 1...12, using: &rng)
             let page = Array(server.log[mac.cursor..<min(server.log.count, mac.cursor + limit)])
-            if inFlightOps { randomOps(mac, day: day, count: Int.random(in: 1...3, using: &rng)) }
-            p.confirm(page)
+            if inFlightOps {
+                randomOps(mac, day: day, count: Int.random(in: 1...3, using: &rng))
+                record(mac)
+            }
+            p.confirm(page, touchingAll: mac.recovering)
             mac.cursor += page.count
+            mac.log += page
+            if mac.recovering, mac.cursor == server.log.count, p.pending.isEmpty { mac.recovering = false }
             check(mac, "after sync")
         }
 
@@ -293,8 +353,13 @@ final class RebaseTests: XCTestCase {
             switch Int.random(in: 0..<10, using: &rng) {
             case 0..<5:
                 randomOps(mac, day: day, count: Int.random(in: 1...3, using: &rng))
+                record(mac)
                 if step % 7 == 0 { check(mac, "after local ops") }
             case 5..<9:
+                if restores, Int.random(in: 0..<12, using: &rng) == 0 {
+                    // Restored from a backup somewhere in the past, sometimes wiped.
+                    server.restore(to: Bool.random(using: &rng) ? 0 : Int.random(in: 0...server.log.count, using: &rng))
+                }
                 sync(mac, inFlightOps: Bool.random(using: &rng))
             default:
                 // Time passes; sometimes past midnight.
@@ -305,15 +370,18 @@ final class RebaseTests: XCTestCase {
             }
         }
 
-        // Drain: everyone pushes everything and pulls to the head; all converge.
-        for _ in 0..<2 {
+        // Drain: everyone syncs until nothing is pending and they're at the head; all converge.
+        for _ in 0..<3 {
             for mac in macs {
-                server.append(mac.projection.pending)
-                mac.projection.confirm(Array(server.log[mac.cursor...]))
-                mac.cursor = server.log.count
-                check(mac, "drain")
+                var guardRail = 0
+                while (server.mismatches(mac.log) || !mac.projection.pending.isEmpty || mac.cursor < server.log.count) && guardRail < 1000 {
+                    sync(mac, inFlightOps: false, fullPush: true)
+                    guardRail += 1
+                }
             }
         }
+        XCTAssertTrue(everyOpID.isSubset(of: server.ids),
+                      "seed \(seed): the server lost \(everyOpID.subtracting(server.ids).count) op ids")
         let first = macs[0].projection
         for mac in macs.dropFirst() {
             let p = mac.projection

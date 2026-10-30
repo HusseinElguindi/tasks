@@ -138,6 +138,33 @@ public struct SyncPage: Sendable {
 public enum JSONSlices {
     public enum Failure: Error { case malformed, missing }
 
+    /// The exact bytes of a top-level member's value, e.g. the `op` of a log line (for the 409 recovery queue).
+    public static func member(named name: String, in data: Data) throws -> Data {
+        try data.withUnsafeBytes { (buf: UnsafeRawBufferPointer) -> Data in
+            var s = Scanner(bytes: buf.bindMemory(to: UInt8.self))
+            s.skipSpace()
+            try s.expect(UInt8(ascii: "{"))
+            let wanted = Array(name.utf8)
+            s.skipSpace()
+            if s.peek == UInt8(ascii: "}") { throw Failure.missing }
+            while true {
+                s.skipSpace()
+                let key = try s.string()
+                s.skipSpace()
+                try s.expect(UInt8(ascii: ":"))
+                s.skipSpace()
+                let start = s.i
+                try s.skipValue()
+                if key.elementsEqual(wanted) {
+                    return Scanner.minified(UnsafeBufferPointer(rebasing: s.bytes[start..<s.i]))
+                }
+                s.skipSpace()
+                if s.peek == UInt8(ascii: ",") { s.i += 1; continue }
+                throw Failure.missing
+            }
+        }
+    }
+
     public static func arrayElements(named name: String, in data: Data) throws -> [Data] {
         try data.withUnsafeBytes { (buf: UnsafeRawBufferPointer) -> [Data] in
             var s = Scanner(bytes: buf.bindMemory(to: UInt8.self))
