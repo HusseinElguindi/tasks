@@ -8,7 +8,7 @@ The user tried the v2 interactions prototype in Claude Design (https://claude.ai
 - **The build spec** is `design/INTERACTIONS-v2.md`, finalized with the user's picks.
 - **The user's picks and praise** are in `docs/TASK-interaction-decisions.md`:
   - The date picker is A, add-task is C (opens in the detail pane), drag opens a gap, and checked tasks move after 1.5 s.
-  - Keep exactly the animations, the hover states, the ••• at the top right aligned with the collapse-sidebar control, and the sidebar buttons after collapse.
+  - Keep exactly the animations, the hover states, the window-controls line (traffic lights on one line with the sidebar toggle, the pane titles and each pane's top-right buttons; spec §4; there is no ••• button), and the sidebar buttons after collapse.
 - **What went wrong in v1** is in `design/INTERACTIONS.md` and `app/NOTES-overnight.md`. The user found v1 "clunky".
   - Known v1 failures: hover lingered, elements overlapped, and the drag-and-drop bugs.
   - Rex's measured values are in `design/REX-REFERENCE.md`.
