@@ -1,7 +1,18 @@
 # Overnight notes (macOS app)
 
-Work log for docs/TASK-overnight-mac.md and docs/TASK-interaction-mac.md. In progress; this file is also the resume
-point if the session is compacted.
+What changed overnight (docs/TASK-overnight-mac.md, docs/TASK-interaction-mac.md, docs/TASK-sidebar-hover.md), what's
+left, and how to install the new build. Everything below was checked on a scratch "Tasks Dev" instance with its own
+data folder and a local `wrangler dev`; your app, its data and the production server were never touched.
+
+## Install the new build
+
+The Release build of `6d8e828` is at `app/.build/DerivedData/Build/Products/Release/Tasks.app` (ad-hoc signed,
+`com.elguindi.Tasks`, same data folder and settings as the one you run).
+
+1. Quit Tasks (⌘Q), so it writes everything down.
+2. `rm -rf ~/Applications/Tasks.app && cp -R app/.build/DerivedData/Build/Products/Release/Tasks.app ~/Applications/`
+3. Open it. Ad-hoc builds change signature every build, so macOS may ask whether Tasks may use the
+   `com.elguindi.Tasks.sync` Keychain item: choose Always Allow. Nothing else migrates or changes.
 
 ## Done
 
@@ -17,8 +28,8 @@ point if the session is compacted.
 - **Interaction redesign** (design/INTERACTIONS.md, built from design/REX-REFERENCE.md), verified live on a scratch
   instance with screenshots:
   - No hover fills anywhere. A hovered task row reveals only its trailing •••; sidebar titles rest in ink-secondary
-    and brighten on hover, with the list's ••• taking the count's place; rows linger 300 ms after the pointer leaves
-    (one hover model per window, so a missed exit can't leave a row looking hovered).
+    and brighten on hover, with the list's ••• taking the count's place. (This first pass lingered 300 ms on
+    hover-out; that's gone, see below.)
   - Selection is the strong state: `fill-selected` rows, the current sidebar row a `fill-strong` capsule with •••.
   - Icon buttons as in Rex: a rounded-square fill in pane headers, a circular fill for the sidebar toggle (now right
     after the traffic lights), 100 ms; tooltips "Name ⌘X".
@@ -82,18 +93,43 @@ point if the session is compacted.
   legibility). Easy to flip if you want Rex's dim-then-brighten on task rows too.
 - The default list is shown only by the quick-add list chip now (the sidebar "+" read as stray).
 
+## Checks (after the last change)
+
+- `swift test` in app/TasksCore: 101 tests, 0 failures (the live-server test is skipped without its env vars).
+- Release benchmarks, all within budget and unchanged: launch 22 ms, snapshot decode 18 ms, local edit 3 µs,
+  1,000 remote ops 0.9 ms, reorder in 2,000 tasks 0.18 ms, midnight rebuild 0.46 ms, full replay of 100k ops 0.31 s.
+- End-to-end (`app/Scripts/e2e.sh`, local wrangler with wiped state): phase 1 converged (two Macs with offline edits
+  and a fresh third), phase 2 converged after a server wipe (both recover, a fresh fourth sees everything), no
+  backups left behind.
+
+## Known issues, not done
+
+- Switching lists takes 16–43 ms to first rows (SPEC §9 wants one frame). Next step: Instruments' SwiftUI template.
+- Drags use the system's drag image and leave the source row as it is; A1 drew a lifted copy with `shadow-lift` and
+  the source at 35%. The list's drop line is the system's, in the system accent color.
+- Rex's traffic lights sit lower (centered with the pane titles, y 25) than ours (y 16, the standard title bar).
+  Matching would mean a toolbar-style title bar; I left it.
+
+## Spec and design notes
+
+- Pending ops live in `pending.jsonl` (one verbatim op per line, appended), not the spec's `pending.json`.
+- The layout is a custom split, not `NavigationSplitView`: on macOS 27 that adds a toolbar band and a glass sidebar
+  button Rex doesn't have.
+- The Inbox seed op has the same id on every Mac but its own `at`, so confirming pending ops compares whole ops, not
+  ids. Archiving or unarchiving a list rescans "done today".
+- ⌘W closes the window; the detail pane closes with ⌘D or Esc.
+- The detail pane says "Created Oct 30" without A1's "in School" (the List row right above it says that).
+- Pane's dark `ink-secondary` and `ink-tertiary` now follow Rex (design/PANE-UPSTREAM.md), so every dimmed text in the
+  app is a little brighter (secondary) or dimmer (tertiary) than Pane's canvases.
+
 ## Notes for whoever drives the UI next
 
+- Debug aids: `-debugHover` hovers items in offscreen renders (`-snapshotTo`), and `-debugKeyLog <file>` also logs
+  hover changes. The scratchpad's `ui/` tools refuse any process that isn't "Tasks Dev", post clicks and keys only
+  after checking that the scratch app is frontmost and owns the topmost window at the point, and move the pointer via
+  HID. Type with HID keys (`key`), not per-process Unicode events.
 - Something else on this Mac was sending keystrokes to whatever app was frontmost: while my scratch window was in
   front it received "c", "o", "m" before any event of mine. Name-based window tools can also match the wrong
   "Tasks"; dev builds are "Tasks Dev" now to avoid that.
-- My UI tools (scratchpad `ui/`) refuse any process that isn't "Tasks Dev", post clicks and keys only after checking
-  that the scratch app is frontmost and owns the topmost window at the point, and move the pointer via HID.
 - Local server for tests and e2e: `wrangler dev` on 127.0.0.1:8791 in the Rex tab "mac: wrangler dev :8791"
-  (block `block:01a18be2-f05e-747c-b5e2-b87cbc1c1e2b`), state in the scratchpad.
-
-## Still to do (TASK-overnight list)
-
-- Item 2: remaining C5 gaps vs. the A1 boards (light theme pass, empty states, archive).
-- Item 3: full test suite, release benchmarks, e2e (`app/Scripts/e2e.sh`, now pointing at "Tasks Dev").
-- Item 4: finish this file with install steps for the new Release build.
+  (block `block:01a18c2e-c02d-7c83-b9fa-1aa5cd47c049`), state in the scratchpad.
