@@ -287,13 +287,13 @@ public final class Persistence: @unchecked Sendable {
         try? data.write(to: pendingURL, options: .atomic)
     }
 
-    /// An op the server rejected (`invalid_op`), kept for debugging.
-    public func appendRejected(_ op: Op, error: ErrorBody, at: Int) {
+    /// An op the server rejected (`invalid_op`), kept verbatim for debugging.
+    public func appendRejected(_ opJSON: Data, error: ErrorBody, at: Int) {
         queue.async {
             var line = Data(#"{"at":\#(at),"error":"#.utf8)
             line.append((try? JSONEncoder().encode(error)) ?? Data("null".utf8))
             line.append(Data(#","op":"#.utf8))
-            line.append(op.jsonData)
+            line.append(opJSON)
             line.append(Data("}\n".utf8))
             var handle: FileHandle? = nil
             if let h = self.handle(&handle, self.rejectedURL) {

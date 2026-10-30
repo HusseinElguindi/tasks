@@ -14,9 +14,10 @@ final class FixtureTests: XCTestCase {
         var response: Response
     }
 
-    /// One fixture pair, with its response body kept as raw JSON (for SyncPage.decode / ErrorBody).
+    /// One fixture pair, with its request and response bodies kept as the exact JSON bytes (whitespace aside).
     struct Loaded {
         var pair: Pair
+        var requestBody: Data?
         var responseBody: Data
     }
 
@@ -30,10 +31,10 @@ final class FixtureTests: XCTestCase {
         return try files.map { url in
             let data = try Data(contentsOf: url)
             let pair = try JSONDecoder().decode(Pair.self, from: data)
-            let object = try JSONSerialization.jsonObject(with: data) as! [String: Any]
-            let response = object["response"] as! [String: Any]
-            let body = try JSONSerialization.data(withJSONObject: response["body"]!)
-            return Loaded(pair: pair, responseBody: body)
+            let request = try JSONSlices.member(named: "request", in: data)
+            let response = try JSONSlices.member(named: "response", in: data)
+            return Loaded(pair: pair, requestBody: try? JSONSlices.member(named: "body", in: request),
+                          responseBody: try JSONSlices.member(named: "body", in: response))
         }
     }
 
