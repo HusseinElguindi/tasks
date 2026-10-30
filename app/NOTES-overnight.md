@@ -1,12 +1,12 @@
 # Overnight notes (macOS app)
 
-What changed overnight (docs/TASK-overnight-mac.md, docs/TASK-interaction-mac.md, docs/TASK-sidebar-hover.md), what's
-left, and how to install the new build. Everything below was checked on a scratch "Tasks Dev" instance with its own
+What changed overnight (docs/TASK-overnight-mac.md, docs/TASK-interaction-mac.md, docs/TASK-sidebar-hover.md, then
+docs/TASK-next-mac.md: see "Second batch" below), what's left, and how to install the new build. Everything below was checked on a scratch "Tasks Dev" instance with its own
 data folder and a local `wrangler dev`; your app, its data and the production server were never touched.
 
 ## Install the new build
 
-The Release build of `6d8e828` is at `app/.build/DerivedData/Build/Products/Release/Tasks.app` (ad-hoc signed,
+The Release build of the last commit (see `git log -1 -- app/`) is at `app/.build/DerivedData/Build/Products/Release/Tasks.app` (ad-hoc signed,
 `com.elguindi.Tasks`, same data folder and settings as the one you run).
 
 1. Quit Tasks (⌘Q), so it writes everything down.
@@ -14,7 +14,59 @@ The Release build of `6d8e828` is at `app/.build/DerivedData/Build/Products/Rele
 3. Open it. Ad-hoc builds change signature every build, so macOS may ask whether Tasks may use the
    `com.elguindi.Tasks.sync` Keychain item: choose Always Allow. Nothing else migrates or changes.
 
-## Done
+## Second batch (since 9dd6eca): list switching, lifted drag row, window controls
+
+- **List switching, 2–3× faster** (21fbc2f). Profiling (Time Profiler with signposts; SwiftUI's own instrument records
+  nothing under `xctrace`) showed the time was SwiftUI's `List` (an NSTableView) diffing every row out and in on each
+  switch, then measuring and preparing each new row (automatic row heights 30%, row preparation 22%). Our row code
+  was ~5%. What changed:
+  - The task list is a lazy stack whose rows are positional slots. A switch updates the rows already built (a task
+    row shows another task) instead of building new ones.
+  - Today and lists are one pane, so moving between them updates the header in place.
+  - The sidebar's current row and hover use per-row flags, and its fills stay in place and change opacity. Inserting
+    the current capsule rebuilt it on every switch.
+  - A row's ••• menu is a real `Menu` only under the pointer. A `Menu` took ~3.5 ms to build.
+  - One drop target for the whole list instead of one per row.
+  - The pane header's ••• menu no longer depends on which list is open (it reads the open list when an item is
+    chosen), so a list switch doesn't rebuild it.
+
+  Main-thread work per switch, optimized build, medians of 8 rounds, with latency to the first new row in brackets:
+
+  | Switch | Before (List): latency | Now: work (latency) |
+  |---|---|---|
+  | between lists that reuse rows (School → Tasks app, Home → Errands) | 30–38 ms | 15–16 ms |
+  | to a list with one more row (Tasks app → Home) | 31–35 ms | 16 ms (13) |
+  | Today → a list | 40–49 ms | 19–20 ms (16–17) |
+  | to a longer list (Inbox 2 → School 7) | 41–44 ms | 25 ms (22) |
+  | into the 2,000-task list | 53–69 ms | 40 ms (36–37) |
+  | out of it, to Today | 95–102 ms | 29–31 ms |
+
+  The one-frame budget (16.7 ms) is met only by the first two rows. The rest comes from building new rows (~2 ms
+  each, mostly SwiftUI's own work) and a fixed ~6 ms (sidebar ~3, pane ~3). Next steps would be hover, click and drag
+  handled once for the list instead of per row, and cheaper rows. `app/Scripts/switch-bench.sh` runs the benchmark
+  (each switch is also a "switch" interval in Instruments' Points of Interest) and fails above 45 ms as a regression
+  guard.
+- **Lifted drag row** (A1): a dragged task is a raised copy of the row with `shadow-lift`, plus a count when several
+  move; the source rows stay at 35% until the drag ends; our insertion line, inset to the row text, marks the drop.
+  I couldn't measure Rex's drag: that means dragging in Rex, which the rules rule out.
+- **Window controls**: the traffic lights and the sidebar toggle are where Rex has them (circles 18–32pt from the
+  corner, centers 25/48/71; toggle centered at 107; all on the pane titles' line). Hit-testing shows the pane-header
+  buttons still get their clicks under the taller title bar.
+- **Keys from the start**: the task list has keyboard focus when the window opens, so ↑ ↓ work without a click.
+
+### Verified, and not yet
+
+The screen locked again around 06:45, so this batch was checked offscreen: renders after every kind of switch (the
+first try at recycling rows showed stale tasks and was replaced), and events posted inside the app for ↑ ↓, ⇧↓,
+Space, Return and Esc (`-debugScript`). Clicks and ⌘-shortcuts can't be checked that way, because a window that isn't
+key drops first clicks and menu commands. **Still to check live**: click, ⌘-click and ⇧-click selection,
+double-click to open, hover •••, drags (lifted row, insertion line, drop on a sidebar list, list reorder), ⌘N in a
+long list, ⌘Z, and the traffic lights through a resize and full screen.
+
+Compared with the `List`, these aren't there yet: ⌘A to select all, type-to-select, Home/End/Page Up/Page Down,
+scrolling while dragging near an edge, and the table's VoiceOver semantics.
+
+## Done (first batch)
 
 - **Debug builds can't touch the real app** (6f6ef97, then "Tasks Dev"): Debug is `com.elguindi.Tasks.dev`, product and
   process name "Tasks Dev", its own defaults, saved state, Keychain item and data folder (`Application Support/Tasks Dev`),
@@ -89,13 +141,14 @@ The Release build of `6d8e828` is at `app/.build/DerivedData/Build/Products/Rele
 
 ## For the user to decide
 
-- Task titles stay `ink` at rest (Rex dims its sidebar titles; dimming every task title would cost the list its
-  legibility). Easy to flip if you want Rex's dim-then-brighten on task rows too.
+- **Task titles at rest**: they stay full brightness (`ink`). Rex dims its sidebar titles until hovered; doing that
+  to every task title would cost the list its legibility for a hover effect. It's a one-line change if you want it.
 - The default list is shown only by the quick-add list chip now (the sidebar "+" read as stray).
 
 ## Checks (after the last change)
 
-- `swift test` in app/TasksCore: 101 tests, 0 failures (the live-server test is skipped without its env vars).
+- `swift test` in app/TasksCore: 101 tests, 0 failures (the live-server test is skipped without its env vars); re-run
+  after the second batch.
 - Release benchmarks, all within budget and unchanged: launch 22 ms, snapshot decode 18 ms, local edit 3 µs,
   1,000 remote ops 0.9 ms, reorder in 2,000 tasks 0.18 ms, midnight rebuild 0.46 ms, full replay of 100k ops 0.31 s.
 - End-to-end (`app/Scripts/e2e.sh`, local wrangler with wiped state): phase 1 converged (two Macs with offline edits
@@ -104,11 +157,7 @@ The Release build of `6d8e828` is at `app/.build/DerivedData/Build/Products/Rele
 
 ## Known issues, not done
 
-- Switching lists takes 16–43 ms to first rows (SPEC §9 wants one frame). Next step: Instruments' SwiftUI template.
-- Drags use the system's drag image and leave the source row as it is; A1 drew a lifted copy with `shadow-lift` and
-  the source at 35%. The list's drop line is the system's, in the system accent color.
-- Rex's traffic lights sit lower (centered with the pane titles, y 25) than ours (y 16, the standard title bar).
-  Matching would mean a toolbar-style title bar; I left it.
+- Switching lists is within a frame only between lists of similar length (see "Second batch").
 
 ## Spec and design notes
 
@@ -133,3 +182,6 @@ The Release build of `6d8e828` is at `app/.build/DerivedData/Build/Products/Rele
   "Tasks"; dev builds are "Tasks Dev" now to avoid that.
 - Local server for tests and e2e: `wrangler dev` on 127.0.0.1:8791 in the Rex tab "mac: wrangler dev :8791"
   (block `block:01a18c2e-c02d-7c83-b9fa-1aa5cd47c049`), state in the scratchpad.
+- `-debugScript "click:X,Y; key:125; snap:/p.png; log:/p.txt; hit:X,Y"` posts events inside the app and renders
+  snapshots, for checks while the screen is locked (keys work; first clicks and menu commands need a key window).
+- `-debugThenRoute list:<name>` switches 0.8 s after launch, to render the state after a switch.

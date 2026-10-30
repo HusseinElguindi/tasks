@@ -26,7 +26,10 @@ struct TodayEmpty: View {
 struct PaneActions: View {
     @Bindable var window: WindowState
     let actions: WindowActions
-    var listID: EntityID? = nil
+    /// The pane shows a list (Rename, Archive or Unarchive). Which list is read when an item is chosen, so switching
+    /// between lists doesn't rebuild the menu (spec §9).
+    var showsList = false
+    var listArchived = false
 
     var body: some View {
         PaneIconButton("plus", help: "New Task ⌘N") { actions.newTask() }
@@ -34,12 +37,14 @@ struct PaneActions: View {
             actions.toggleDetail()
         }
         Menu {
-            if let listID {
-                Button("Rename…") { window.renamingList = listID }
-                if actions.store.projection.list(listID)?.archivedAt == nil {
-                    Button("Archive List") { actions.archive(list: listID) }
+            if showsList {
+                Button("Rename…") { if let id = window.currentListID { window.renamingList = id } }
+                if listArchived {
+                    Button("Unarchive") {
+                        if let id = window.currentListID { actions.store.unarchive(list: id, undoManager: window.undoManager) }
+                    }
                 } else {
-                    Button("Unarchive") { actions.store.unarchive(list: listID, undoManager: window.undoManager) }
+                    Button("Archive List") { if let id = window.currentListID { actions.archive(list: id) } }
                 }
                 Divider()
             }
@@ -83,7 +88,7 @@ struct TaskPane: View {
             }
         } actions: {
             if list?.isArchived == true { PaneChip(text: "Archived") }
-            PaneActions(window: window, actions: actions, listID: listID)
+            PaneActions(window: window, actions: actions, showsList: listID != nil, listArchived: list?.isArchived == true)
         } content: {
             VStack(spacing: 0) {
                 if let list, window.renamingList == list.id {
