@@ -13,8 +13,10 @@ Status: **final, 2026-10-30.** The user reviewed the prototype and made the four
   panes).
 - Item 5: no flicker on a rename or a drop. The rename field and the label swap in one frame, on the same pixels and at
   the same weight (§7); a dropped copy fades out over its row instead of vanishing while the row fades in (§14).
+- Item 6: the detail pane's rows, separator, notes and footer start at the checkbox's left edge and span the width
+  (§21 Detail-pane spacing).
 
-The prototype source matches all four (item 5's rename part is the app's drawing; the browser has no equivalent).
+The prototype source matches all five (item 5's rename part is the app's drawing; the browser has no equivalent).
 
 **The prototype is the reference implementation:** https://claude.ai/artifact/QetdV1H57SC6kLXtNzJRXM (press Play on the
 main board, then click inside it once so it has the keys). Its source is in `design/prototype-v2/`, and this spec cites
@@ -148,7 +150,7 @@ tooltips 11/14. Tiles and inline code use SF Mono. Counts and day numbers use ta
 | Task row | 10 in from the pane's sides, 30 tall, radius 8; the first row 4 below the header (64 in an archived list, under the banner). Padding 10 left, 5 right. Checkbox at 10; title 10 after it, nudged up 0.5, its last 24pt fading out; chips 8 after the title, 6 apart; › 22×22 (radius 6) 4 after the chips, 5 from the right edge, its slot always kept | `css:159–179`, `dc:611` |
 | Checkbox | 16 circle, 1.5 ring; check glyph 10, stroke 2.2, round; hit area 30×30 | `css:190–202` |
 | Chip | 18 tall, radius 9, padding 7, gap 4, 11/14 medium, icon 11. Large (detail pane): 22 tall, radius 11, padding 9, gap 5, 12pt | `css:205–215` |
-| Detail pane | 420 wide by default, 340 and up by its divider (§4); body padding 8 / 18 / 18; title row: checkbox 2 down, 10 to the title (15/20 semibold); property rows 32 tall from 12 below the title, indented 26, label column 76 | `css:253–282` |
+| Detail pane | 420 wide by default, 340 and up by its divider (§4); body padding 8 / 18 / 18; title row: checkbox 2 down, 10 to the title (15/20 semibold); property rows 32 tall from 12 below the title, from the checkbox's left edge, label column 81 (the icon centered in the checkbox's 16pt column, the word at 26 with the title's text); the separator, notes and footer span the content width like the title row | `css:253–282` |
 | Menu (stand-in) | 216 wide (submenu 204), padding 5, radius 10; items 24 tall, radius 5, padding 9 / 10; separator 1pt inset 9 | `css:306–315` |
 | Date popover | 288 wide, padding 8, radius 12; field 28 tall, radius 8; quick picks 22 tall; day cells 28 tall, radius 14 | `css:317–342` |
 | Notice | 34 tall, radius 10, 12 from the list pane's bottom-right corner | `css:344–347` |
@@ -1009,10 +1011,12 @@ Found by an audit of the spec against the prototype; each is what the prototype 
   (rounded) under 60, else "in N months"; past: "N days ago" under 14, else "N weeks ago" (`dc:276–283`).
 - **The detail pane's Deadline chip** takes the row chip's tone: `danger` when overdue, `attention` when due today
   (`dc:1939`).
-- **Detail-pane spacing**: the label's icon sits 7 before its word; the value starts 8 after the 76pt label column; the
-  relative date sits 26 past a set chip (room for its ×); the separator is 1pt, 10 below the rows and 12 above the
-  notes, indented 26; the notes area is at least 120 tall; "3 tasks selected" is indented 26
-  (`css:261–277`, `css:260`).
+- **Detail-pane spacing**: everything under the title starts at the checkbox's left edge and spans the content width,
+  as the title row does (user feedback, `docs/TASK-v2-feedback.md` item 6). The label's icon is centered in the
+  checkbox's 16pt column and its word sits 10 after it, at 26, in line with the title's text; the value starts 8 after
+  the 81pt label column; the relative date sits 26 past a set chip (room for its ×); the separator is 1pt, 10 below the
+  rows and 12 above the notes; the notes area is at least 120 tall; "3 tasks selected" is indented 26, in line with a
+  title's text and the labels (`css:261–277`, `css:260`).
 - **Several tasks, or none, in the detail pane**: tasks from different lists show "Several lists" with a "…" tile and
   the List row reads "Mixed"; the trash's tooltip is "Delete 3 Tasks". With nothing selected the header shows only the ×
   (`dc:1947`).

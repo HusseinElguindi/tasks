@@ -158,6 +158,15 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
    - Prototype: the same drop hand-off (`.landed`, `.settle`; it also built the 'done' state from the pre-flight drag,
      so its copy had no position), checked in Chrome.
 
+6. **Detail fields from the checkbox's edge, full width.** List, When and Deadline, the separator, Notes and the
+   "Created" line start at the checkbox's left edge and span the content width, as the title row does. Each row's icon
+   is centered in the checkbox's 16pt column and its word sits 10 after it, in line with the title's text (label
+   column 81, so the 55pt for the word and the 8 before the value are as before; the values gain 21pt). "3 tasks
+   selected" stays at 26, in line with the labels. Measured on captures: icon centers on the checkbox's center (the
+   flag glyph 0.5pt off, its shape), the label's first pixel on the title's, the separator from the checkbox's edge to
+   the title row's right inset. Checked one task, two selected, a new task (dimmed), no task, and the pane at its 340pt
+   minimum (the relative date still clears the edge). The prototype measures the same in Chrome.
+
 ## Notes for whoever drives the UI next
 
 - Scratch tools (not committed) are in the session scratchpad's `tools/`: `ui` (window-relative HID input that only

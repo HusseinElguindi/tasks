@@ -258,9 +258,9 @@
 .tk .dtitle .check { margin-top: 2px; }
 .tk .dtitle textarea { flex: 1; min-width: 0; resize: none; font: 600 15px/20px var(--font); color: var(--ink); field-sizing: content; min-height: 20px; overflow: hidden; }
 .tk .dmulti { font: 600 15px/20px var(--font); color: var(--ink); padding-left: 26px; }
-.tk .props { margin: 12px 0 0 26px; display: flex; flex-direction: column; }
+.tk .props { margin: 12px 0 0; display: flex; flex-direction: column; }   /* from the checkbox's left edge, full width (v2 feedback 6) */
 .tk .prow { position: relative; height: 32px; display: flex; align-items: center; gap: 8px; }
-.tk .prow .pl { width: 76px; flex: none; display: flex; align-items: center; gap: 7px; color: var(--ink-2); }
+.tk .prow .pl { width: 81px; flex: none; display: flex; align-items: center; gap: 10px; color: var(--ink-2); } .tk .prow .pl .i { margin: 0 1px; }   /* the icon centered in the checkbox's 16px column, the word at the title's 26 */
 .tk .prow .rel { color: var(--ink-3); font-size: 12px; white-space: nowrap; }
 .tk .chipwrap { position: relative; display: inline-flex; align-items: center; }
 .tk .clr { position: absolute; right: -24px; top: 0; width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; color: var(--ink-3); opacity: 0;
@@ -272,14 +272,14 @@
 .tk .popup:hover { background: var(--hover); }
 .tk .popup:active { background: var(--press); transition: none; }
 .tk .popup .ud { color: var(--ink-3); }
-.tk .dsep { height: 1px; background: var(--line-sep); margin: 10px 0 12px 26px; flex: none; }
-.tk .notes { margin-left: 26px; flex: 1; min-height: 120px; display: flex; flex-direction: column; }
+.tk .dsep { height: 1px; background: var(--line-sep); margin: 10px 0 12px; flex: none; }
+.tk .notes { flex: 1; min-height: 120px; display: flex; flex-direction: column; }
 .tk .notes textarea { flex: 1; width: 100%; resize: none; font: 13px/19px var(--font); color: var(--ink); min-height: 120px; }
 .tk .md { font: 13px/19px var(--font); color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; flex: 1; cursor: text; }
 .tk .md.md-ph { color: var(--ink-3); }
 .tk .md a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; cursor: pointer; }
 .tk .md code { font: 12px/16px var(--mono); background: var(--fill-control); padding: 1px 4px; border-radius: 4px; }
-.tk .dmeta { margin: 14px 0 0 26px; font-size: 11px; line-height: 14px; color: var(--ink-3); }
+.tk .dmeta { margin: 14px 0 0; font-size: 11px; line-height: 14px; color: var(--ink-3); }
 /* Under an untitled new task's title: dimmed and deaf to the pointer until the title has text. The sections fade back
    on `icon`; the checkbox and the trash button (which have their own transitions) switch at once. */
 .tk .dp .props, .tk .dp .dsep, .tk .dp .notes, .tk .dp .dmeta { transition: opacity var(--icon); }

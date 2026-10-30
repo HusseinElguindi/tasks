@@ -56,7 +56,8 @@ struct DetailPane: View {
             SingleDetail(store: store, window: window, item: items[0], refs: refs, actions: actions, viewport: size.height)
                 .id(items[0].id)
         } else if items.count > 1 {
-            // "3 tasks selected" (15/20 semibold, indented 26), then the rows that apply to all (css:260).
+            // "3 tasks selected" (15/20 semibold, indented 26, where a title's text starts), then the rows that apply
+            // to all, from the content's left edge as under one task (css:260–261).
             VStack(alignment: .leading, spacing: 0) {
                 Text("\(items.count) tasks selected")
                     .font(Font(TK.Font.detailTitle))
@@ -65,7 +66,6 @@ struct DetailPane: View {
                     .padding(.leading, 26)
                 DetailProps(store: store, window: window, items: items, actions: actions)
                     .padding(.top, 12)
-                    .padding(.leading, 26)
             }
             .padding(.top, 8)
             .padding(.horizontal, 18)
@@ -289,20 +289,19 @@ private struct SingleDetail: View {
         ScrollView(.vertical) {
             DetailColumn(minHeight: max(0, viewport - 8 - 18), flexIndex: 3, flexMin: 12 + 120) {
                 titleRow(inert: inert)
+                // Everything under the title starts at the checkbox's left edge and spans the content width, as the
+                // title row does (v2 feedback 6).
                 DetailProps(store: store, window: window, items: [item], actions: actions)
                     .padding(.top, 12)
-                    .padding(.leading, 26)
                     .dimmed(inert)
                 Rectangle()
                     .fill(tk.lineSep.swiftUI)
                     .frame(height: 1)
                     .padding(.top, 10)
-                    .padding(.leading, 26)
                     .dimmed(inert)
                 NotesField(store: store, window: window, refs: refs, id: item.id, notes: item.notes, inert: inert,
                            palette: tk, layoutTick: notesTick, onLayoutChange: { notesTick &+= 1 })
                     .padding(.top, 12)
-                    .padding(.leading, 26)
                     .dimmed(inert)
                 Text(meta)
                     .font(Font(TK.Font.caption))
@@ -310,7 +309,6 @@ private struct SingleDetail: View {
                     .lineLimit(1)
                     .frame(height: 14)
                     .padding(.top, 14)
-                    .padding(.leading, 26)
                     .dimmed(inert)
             }
             .padding(.top, 8)

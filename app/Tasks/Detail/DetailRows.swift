@@ -42,8 +42,9 @@ struct DetailItem: Equatable {
 
 // MARK: - The rows (css:261–274, dc:1936–1949)
 
-/// List, When and Deadline: 32 tall, from 12 below the title, indented 26. Each label is an icon 7 before its word in
-/// `ink-secondary`, in a 76pt column; the value starts 8 after it.
+/// List, When and Deadline: 32 tall, from 12 below the title, from the checkbox's left edge. Each label is an icon
+/// centered in the checkbox's column and its word 10 after it (at the title's 26) in `ink-secondary`, in an 81pt
+/// column; the value starts 8 after it.
 struct DetailProps: View {
     let store: Store
     let window: WindowState
@@ -88,11 +89,14 @@ private struct PropRow<Value: View>: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            HStack(spacing: 7) {
+            // The icon centered in the checkbox's 16pt column, the label 10 after it, where the title's text starts
+            // (26); 55 for the label, as before (v2 feedback 6, css:263).
+            HStack(spacing: 10) {
                 GlyphView(glyph: glyph, size: 14, color: tk.ink2.swiftUI)
+                    .frame(width: TK.M.check)
                 Text(label).font(Font(TK.Font.body)).foregroundStyle(tk.ink2.swiftUI).frame(height: 16)
             }
-            .frame(width: 76, alignment: .leading)
+            .frame(width: 81, alignment: .leading)
             content(hovered)
                 .padding(.leading, 8)
             Spacer(minLength: 0)

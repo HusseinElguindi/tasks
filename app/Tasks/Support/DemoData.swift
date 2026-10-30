@@ -72,7 +72,7 @@ enum DemoData {
         }
     }
 
-    /// `-debugRoute today|list:<name>`, `-debugSelect <title>`, `-debugDetail YES`, `-debugAdd YES`,
+    /// `-debugRoute today|list:<name>`, `-debugSelect <title>[|<title>…]`, `-debugDetail YES`, `-debugAdd YES`,
     /// `-debugThenRoute …` (0.8 s later).
     static func applyDebugRoute(_ store: Store, _ window: WindowState) {
         let d = UserDefaults.standard
@@ -82,8 +82,10 @@ enum DemoData {
         if let route = d.string(forKey: "debugRoute") {
             if route.hasPrefix("list:"), let id = list(String(route.dropFirst(5))) { window.route = .list(id) } else { window.route = .today }
         }
-        if let title = d.string(forKey: "debugSelect"), let id = p.allTaskIDs.first(where: { p.task($0)?.title == title }) {
-            actions.select([id])
+        if let titles = d.string(forKey: "debugSelect")?.split(separator: "|").map(String.init) {
+            // Several titles, separated by "|", select them all.
+            let ids = titles.compactMap { t in p.allTaskIDs.first(where: { p.task($0)?.title == t }) }
+            if !ids.isEmpty { actions.select(ids) }
         }
         if d.bool(forKey: "debugDetail") { window.detailOpen = true }
         if d.bool(forKey: "debugAdd") {
