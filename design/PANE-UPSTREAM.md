@@ -105,3 +105,64 @@ screenshots sampled in sRGB with `.uitools/px.swift`, Rex Beta, dark theme), and
 - **Rex:** the traffic lights' circles span 18–32pt (centers 25, 48, 71 at y 25), on the line of the pane titles, and
   the toolbar icons follow on the same line (sidebar toggle centered at x 107, then 145, 175, 205).
 - **Proposal:** specify Rex's 50pt toolbar band: window controls and toolbar icons centered 25pt from the top.
+
+## Interactions v2 (2026-10-30)
+
+From `design/INTERACTIONS-v2.md` and its prototype. Rex has no task lists, popovers or notices to measure against in
+`design/REX-REFERENCE.md`, so most of these are gaps in Pane rather than measured differences; the ones that need a Rex
+measurement are listed in INTERACTIONS-v2 §20.
+
+### `fill-selected` for content rows
+- **Pane:** `fill-selected` #272728 (dark), "selected row in a sidebar or list".
+- **Rex:** no content lists; its one selection is the #444444 capsule with the two-step edge (measured).
+- **Tasks:** on a #1C1C1C pane #272728 is about 1.1:1 and selection was hard to find. Task rows use #333333 in the
+  focused pane and #292929 in an unfocused one (light #E6E6E8 / #EFEFF0), and adjacent selected rows join into one
+  block.
+- **Proposal:** add `fill-row-selected` and `fill-row-selected-dim` with these values; keep `fill-selected` for
+  settings sidebars.
+
+### Popover surface
+- **Pane:** popovers and menus on `surface-card` (#1F1F1F dark) with `shadow-popover` (DIRECTIONS).
+- **Rex:** context menus are native; its own popups were not sampled.
+- **Tasks:** #1F1F1F over a #1C1C1C pane is 1.07:1, so only the shadow separates it. The date popover, notices and
+  tooltips use #262626 with a 0.5pt white 14% hairline.
+- **Proposal:** add `surface-popover` (dark #262626, light #FFFFFF) and put the hairline in `shadow-popover`.
+
+### Text on accent in menus and checkboxes
+- **Pane:** `on-accent` is the theme background in dark (#1C1C1C), "never white".
+- **Rex:** native menus draw the highlighted item white on the accent.
+- **Tasks:** keeps Pane's cut-out label for capsule buttons, but highlighted menu items, suggestion rows and the
+  checkmark in a checked box are white.
+- **Proposal:** say so in Pane: `on-accent` for capsule buttons, white wherever the system draws the highlight.
+
+### Icon-button hover and press fills
+- **Pane:** `PaneIconButton` has no hover; v1 used `fill-selected` behind pane-header icons.
+- **Rex:** "a small fill appears behind the glyph" (rounded square in pane headers, circle in the toolbar), ~100 ms;
+  the fill's value wasn't sampled.
+- **Tasks:** translucent fills that work on any surface: hover white 7%, press white 12% (light: #1F2328 6% / 11%).
+- **Proposal:** `fill-hover` and `fill-press` tokens with those values; `duration-icon` 100 ms.
+
+### Layout motion
+- **Pane:** `snappy`, `natural`, `reveal`; nothing for rows that move.
+- **Tasks:** one spring for every row that moves (reorder, insert, remove, a checked task settling, drag gaps):
+  `.smooth(duration: 0.25)`. Switching lists stays instant (Rex: tab switches don't animate).
+- **Proposal:** `motion-layout` = `.smooth(duration: 0.25)`.
+
+### Text entry focus
+- **Pane:** "a solid 2px `focus-ring` with a 1px gap" on fields.
+- **Rex:** not measured (how its inline tab rename looks is INTERACTIONS-v2 §20 question 3).
+- **Tasks:** a row being renamed shows a 1.5pt inset accent ring on the row itself; always-editable fields (the detail
+  title and notes) show only the caret.
+- **Proposal:** Pane's ring for form fields; this lighter treatment for in-place edits.
+
+### Components Pane doesn't have yet
+Specified in INTERACTIONS-v2 and drawn in the prototype; each is a candidate Pane component:
+- **Notice**: one-line status with an Undo capsule, bottom-right of a pane, 5 s, held while hovered (Rex has notices;
+  their corner and timing are §20 question 1).
+- **Tooltip with keys** ("New Task ⌘N"): Rex draws its own since preview.23 (its style is §20 question 2).
+- **Date popover**, two shapes (calendar; suggestion list).
+- **Group-label reveal** (⊕ or chevron in the trailing slot on hover), which Rex has on session headers.
+- **Ghost add row**: the landing slot under a list, revealed on hover.
+- **Drag**: lifted copy (`fill-lift` #2C2C2C dark, `shadow-lift`), count badge, row gap, and a compact tag over drop
+  targets.
+- **Held-⌘ shortcut hints** in the sidebar (Rex preview.16).

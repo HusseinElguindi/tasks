@@ -45,7 +45,7 @@
 /* ---------- Themes ---------- */
 .tk.dark {
   --ground: #181818; --base: #1C1C1C; --dim: #181818; --popover: #262626; --lift: #2C2C2C;
-  --line-pane: #323334; --line-pane-dim: #282929; --line-sep: #313233; --line-field: #6A6D70;
+  --line-pane: #323334; --line-pane-dim: #282929; --line-sep: #363738; --line-field: #696B6E;
   --ink: #E6EDF3; --ink-2: #A8ADB1; --ink-3: #7F8386; --ink-q: #6D7072;
   --sel: #333333; --sel-dim: #292929;
   --fill-control: #2D2E2E; --fill-track: #303132; --fill-thumb: #4A4C4D; --fill-strong: #444444;
@@ -62,10 +62,10 @@
 }
 .tk.light {
   --ground: #F5F5F5; --base: #FFFFFF; --dim: #FAFAFA; --popover: #FFFFFF; --lift: #FFFFFF;
-  --line-pane: #D4D5D6; --line-pane-dim: #E6E6E7; --line-sep: #E7E8E8; --line-field: #8A8C8F;
-  --ink: #1F2328; --ink-2: #5C6064; --ink-3: #6C6F72; --ink-q: #8A8D90;
+  --line-pane: #D4D5D6; --line-pane-dim: #EBEBEC; --line-sep: #E7E8E8; --line-field: #848689;
+  --ink: #1F2328; --ink-2: #626568; --ink-3: #6C6F72; --ink-q: #888A8D;
   --sel: #E6E6E8; --sel-dim: #EFEFF0;
-  --fill-control: #EDEDEE; --fill-track: #E6E6E7; --fill-thumb: #FFFFFF; --fill-strong: #E0E0E1;
+  --fill-control: #EDEDEE; --fill-track: #E9E9EA; --fill-thumb: #FFFFFF; --fill-strong: #E0E0E1;
   --edge-outer: #CFCFD0; --edge-inner: #D6D6D7;
   --hover: rgba(31, 35, 40, 0.06); --press: rgba(31, 35, 40, 0.11);
   --accent: #0969DA; --accent-text: #0969DA; --accent-tint: #E6F0FB; --on-accent: #FFFFFF; --text-sel: rgba(9, 105, 218, 0.25);

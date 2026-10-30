@@ -16,7 +16,7 @@ body{margin:0}
 <div class="{{rootCls}}" style="{{rootStyle}}" tabIndex="0" ref="{{rootRef}}" onKeyDown="{{onKey}}" onKeyUp="{{onKeyUp}}" onMouseDown="{{onRootMouseDown}}" onPointerDownCapture="{{onRootPointerDownCapture}}" onClickCapture="{{onRootClickCapture}}" onContextMenu="{{onRootContextMenu}}" onFocusCapture="{{onRootFocusCapture}}">
 <div class="win" style="{{winStyle}}" ref="{{winRef}}">
 
-<nav class="sb" aria-label="Lists" onPointerDown="{{onSidebarDown}}">
+<nav class="sb" aria-label="Lists" onPointerDown="{{onSidebarDown}}" onContextMenu="{{onSidebarCtx}}">
 <div class="sbs" ref="{{sbScrollRef}}">
 <div class="sbc" style="{{sb.contentStyle}}">
 <sc-for list="{{sb.items}}" as="it" hint-placeholder-count="8">
@@ -1703,6 +1703,12 @@ class Component extends DCLogic {
     const p = this.winXY(e);
     this.listMenu(key, p.x, p.y);
   };
+  onSidebarCtx = (e) => {
+    e.preventDefault();
+    if (e.target.closest && e.target.closest('.srow')) return;
+    const p = this.winXY(e);
+    this.openMenu(p.x, p.y, [{ label: 'New List', keys: '⇧⌘N', action: () => this.newList() }]);
+  };
   onArchiveLabel = () => this.setState({ archiveOpen: !this.state.archiveOpen });
   onNewListBtn = (e) => { e.stopPropagation(); this.newList(); };
   onNewTaskBtn = () => this.newTask();
@@ -2101,7 +2107,7 @@ class Component extends DCLogic {
       onDetailDown: this.onDetailDown, onDTitleFocus: this.onDTitleFocus, onDTitleChange: this.onDTitleChange, onDTitleKey: this.onDTitleKey, onDTitleBlur: this.onDTitleBlur,
       onNotesDown: this.onNotesDown, onNotesChange: this.onNotesChange, onNotesKey: this.onNotesKey, onNotesBlur: this.onNotesBlur, onNotesFocus: this.onNotesFocus,
       onDCheck: this.onDCheck, onDChip: this.onDChip, onDClear: this.onDClear, onDList: this.onDList, onDDelete: this.onDDelete, onDClose: this.onDClose, onLinkClick: this.onLinkClick,
-      onSidebarDown: this.onSidebarDown, onSbRowDown: this.onSbRowDown, onSbRowMove: this.onSbRowMove, onSbRowUp: this.onSbRowUp, onSbRowDbl: this.onSbRowDbl, onSbRowCtx: this.onSbRowCtx,
+      onSidebarDown: this.onSidebarDown, onSidebarCtx: this.onSidebarCtx, onSbRowDown: this.onSbRowDown, onSbRowMove: this.onSbRowMove, onSbRowUp: this.onSbRowUp, onSbRowDbl: this.onSbRowDbl, onSbRowCtx: this.onSbRowCtx,
       onArchiveLabel: this.onArchiveLabel, onNewListBtn: this.onNewListBtn, onNewTaskBtn: this.onNewTaskBtn, onToggleDetail: this.onToggleDetail, onToggleSidebar: this.onToggleSidebar, onUnarchive: this.onUnarchive,
       onMenuEnter: this.onMenuEnter, onMenuLeave: this.onMenuLeave, onMenuClick: this.onMenuClick,
       onPickerText: this.onPickerText, onPickerKey: this.onPickerKey, onPickDay: this.onPickDay, onPickQuick: this.onPickQuick, onPickSug: this.onPickSug, onSugEnter: this.onSugEnter, onPickMonth: this.onPickMonth, onPickerDown: this.onPickerDown,
