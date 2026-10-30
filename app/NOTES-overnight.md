@@ -38,6 +38,9 @@ point if the session is compacted.
    tweaks. Bisect those, then re-test with the key logger (`-debugKeyLog <file>`).
 2. Drag (reorder within a list, drop on a sidebar list, list reorder) not yet re-verified on screen.
 3. The detail pane's tap gesture (`DetailPane.swift`) may have the same first-responder problem for its fields.
+4. The UI reviewer subagent (reviewing the 2b367c9 code, stopped as stale) was last chasing an exception in one of its
+   probes ("this run hung instead of crashing; I'll catch the throw under lldb"). Unknown whether it was the app or its
+   probe; reproduce with the current build before assuming either.
 
 ## For the user to decide
 
