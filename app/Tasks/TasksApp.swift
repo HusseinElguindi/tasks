@@ -51,12 +51,15 @@ struct TasksCommands: Commands {
         return WindowActions(store: store, window: window)
     }
 
-    /// A task to act on: the selection, or a titled draft (which is written first).
+    /// A task to act on: the selection, or a titled draft (which is written first). While the date popover is open
+    /// its field has the keys, and task commands do nothing (as in the prototype).
     private var hasTarget: Bool {
-        guard let a = actions else { return false }
+        guard let a = actions, a.overlays.picker == nil else { return false }
         if let d = a.window.draft, a.window.selection == [d.id] { return !a.untitledDraft }
         return !a.targetIDs.isEmpty
     }
+
+    private var pickerOpen: Bool { window?.overlays.picker != nil }
 
     /// Text is being typed somewhere: ⌘⌫ belongs to the field.
     private var typing: Bool {
@@ -82,7 +85,7 @@ struct TasksCommands: Commands {
         CommandMenu("Task") {
             Button(window?.detailOpen == true ? "Hide Details" : "Show Details") { actions?.toggleDetail() }
                 .keyboardShortcut("d")
-                .disabled(actions == nil)
+                .disabled(actions == nil || pickerOpen)
             Divider()
             Button(completeTitle) { run { $0.toggleComplete() } }
                 .keyboardShortcut("k")
@@ -114,10 +117,11 @@ struct TasksCommands: Commands {
         CommandGroup(before: .sidebar) {
             Button("Today") { actions?.goNumber(1) }
                 .keyboardShortcut("1")
-                .disabled(actions == nil)
+                .disabled(actions == nil || pickerOpen)
             ForEach(Array(listNames.enumerated()), id: \.offset) { i, name in
                 Button(name) { actions?.goNumber(i + 2) }
                     .keyboardShortcut(KeyEquivalent(Character("\(i + 2)")))
+                    .disabled(pickerOpen)
             }
             Divider()
         }

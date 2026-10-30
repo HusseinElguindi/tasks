@@ -18,6 +18,9 @@ struct OverlayLayer: View {
             TooltipView(overlays: window.overlays)
         }
         .frame(width: size.width, height: size.height, alignment: .topLeading)
+        #if DEBUG
+        .onAppear { DebugPicker.runIfRequested(store, window) }
+        #endif
     }
 }
 
@@ -87,10 +90,10 @@ private struct PopoverSurface: ViewModifier {
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: radius, style: .circular)
+        // The surface alone casts the shadow (its children mustn't).
         content
-            .background(tk.popover.swiftUI, in: shape)
+            .background(shape.fill(tk.popover.swiftUI).shadow(color: tk.popoverShadow.swiftUI, radius: 16, x: 0, y: 12))
             .overlay(shape.stroke(tk.popoverRing.swiftUI, lineWidth: 0.5).padding(-0.25))
-            .shadow(color: tk.popoverShadow.swiftUI, radius: 16, x: 0, y: 12)
     }
 }
 
@@ -170,8 +173,8 @@ private struct CapsuleStyle: ButtonStyle {
             .foregroundStyle(fg.swiftUI)
             .padding(.horizontal, 12)
             .frame(height: 24)
-            .background(bg.swiftUI, in: Capsule())
-            .contentShape(Capsule())
+            .background(bg.swiftUI, in: Capsule(style: .circular))
+            .contentShape(Capsule(style: .circular))
             .animation(configuration.isPressed ? nil : TK.Motion.icon, value: hovered)
             .animation(configuration.isPressed ? nil : TK.Motion.icon, value: configuration.isPressed)
     }

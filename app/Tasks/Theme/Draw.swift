@@ -273,7 +273,8 @@ final class TileLayer: CALayer {
             letter.isHidden = true
             sun.isHidden = false
             sun.color = color
-            sun.position = CGPoint(x: d.width / 2, y: d.height / 2)
+            // 1pt below center, as the prototype's tile lays its sun out (measured in Chrome).
+            sun.position = CGPoint(x: d.width / 2, y: d.height / 2 + 1)
         }
     }
 }
