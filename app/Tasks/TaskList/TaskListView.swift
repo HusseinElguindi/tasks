@@ -920,6 +920,9 @@ final class TaskListView: NSView {
         copy.joinBottom = false
         copy.dragSource = false
         copy.renaming = false
+        // The copy's chips are text only (the prototype's drag template, dc:171).
+        copy.chips = copy.chips.map { var c = $0; c.content.glyph = nil; return c }
+        copy.pickerField = nil
         state.dragOverlay?.beginTaskCopy(copy, palette: palette, frame: frame, count: ids.count)
         state.drag = .init(kind: .tasks(ids: ids, group: gid), target: target)
         updateDrag(windowPoint: windowPoint(now))

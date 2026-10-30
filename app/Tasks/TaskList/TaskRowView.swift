@@ -460,8 +460,8 @@ final class GhostRowView: NSView {
 
 final class EmptyStateView: NSView {
     private let glyph = GlyphLayer(.sun, size: 22)
-    private let title = NSTextField(labelWithString: "")
-    private let text = NSTextField(wrappingLabelWithString: "")
+    private let title = TextLayer()
+    private let text = CATextLayer()
 
     override var isFlipped: Bool { true }
 
@@ -469,18 +469,22 @@ final class EmptyStateView: NSView {
         super.init(frame: .zero)
         wantsLayer = true
         layer?.addSublayer(glyph)
-        for f in [title, text] {
-            f.alignment = .center
-            f.isSelectable = false
-            addSubview(f)
-        }
-        title.font = TK.Font.bodyMedium
-        text.font = TK.Font.small
+        layer?.addSublayer(title)
+        layer?.addSublayer(text)
+        title.alignmentMode = .center
+        text.isWrapped = true
+        text.alignmentMode = .center
+        for l in [glyph, title, text] as [CALayer] { l.actions = TaskRowView.noActions }
     }
 
     required init?(coder: NSCoder) { fatalError() }
 
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func viewDidChangeBackingProperties() {
+        super.viewDidChangeBackingProperties()
+        layer?.setScaleDeep(window?.backingScaleFactor ?? 2)
+    }
 
     func configure(_ kind: TaskLayout.Empty, palette: TK.Palette, width: CGFloat) {
         let (e1, e2): (String, String) = switch kind {
@@ -507,20 +511,21 @@ final class EmptyStateView: NSView {
                 y = 22 + 4 + 6
             }
         }
-        title.stringValue = e1
-        title.textColor = palette.ink2
-        title.sizeToFit()
-        title.frame = CGRect(x: 24, y: y - 0.5, width: max(0, width - 48), height: 16)
-        y += 16 + 6
+        let tw = min(280, max(0, width - 48))
         let para = NSMutableParagraphStyle()
         para.alignment = .center
         para.minimumLineHeight = 16
         para.maximumLineHeight = 16
-        text.attributedStringValue = NSAttributedString(string: e2, attributes: [.font: TK.Font.small, .foregroundColor: palette.ink3, .paragraphStyle: para])
-        text.isHidden = e2.isEmpty
-        let tw = min(280, max(0, width - 48))
-        let h = text.attributedStringValue.boundingRect(with: CGSize(width: tw, height: 200), options: [.usesLineFragmentOrigin]).height
-        text.frame = CGRect(x: (width - tw) / 2 - 2, y: y, width: tw + 4, height: ceil(h) + 2)
+        let body = NSAttributedString(string: e2, attributes: [.font: TK.Font.small, .foregroundColor: palette.ink3, .paragraphStyle: para])
+        let h = ceil(body.boundingRect(with: CGSize(width: tw, height: 200), options: [.usesLineFragmentOrigin]).height)
+        layer?.setInstant {
+            title.set(e1, font: TK.Font.bodyMedium, color: palette.ink2)
+            title.place(x: 24, lineTop: y, lineHeight: 16, width: max(0, width - 48))
+            text.string = body
+            text.isHidden = e2.isEmpty
+            text.frame = CGRect(x: (width - tw) / 2, y: y + 16 + 6 - 0.5, width: tw, height: h + 2)
+        }
+        y += 16 + 6
         frame.size = CGSize(width: width, height: y + h)
     }
 }
@@ -530,7 +535,7 @@ final class EmptyStateView: NSView {
 final class BannerView: NSView {
     private let bg = CALayer()
     private let icon = GlyphLayer(.archive, size: 14)
-    private let text = NSTextField(wrappingLabelWithString: "")
+    private let text = CATextLayer()
     private let button = CALayer()
     private let buttonLabel = TextLayer()
     private var palette = TK.Palette.dark
@@ -549,9 +554,9 @@ final class BannerView: NSView {
         layer?.addSublayer(icon)
         layer?.addSublayer(button)
         button.addSublayer(buttonLabel)
-        text.isSelectable = false
-        addSubview(text)
-        for l in [bg, icon, button, buttonLabel] as [CALayer] { l.actions = TaskRowView.noActions }
+        text.isWrapped = true
+        layer?.addSublayer(text)
+        for l in [bg, icon, button, buttonLabel, text] as [CALayer] { l.actions = TaskRowView.noActions }
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -575,11 +580,11 @@ final class BannerView: NSView {
         para.maximumLineHeight = 16
         let s = NSMutableAttributedString(string: "Archived \(archivedOn)", attributes: [.font: TK.Font.body, .foregroundColor: palette.ink, .paragraphStyle: para])
         s.append(NSAttributedString(string: " · Not in Today or Move to. Everything still edits.", attributes: [.font: TK.Font.small, .foregroundColor: palette.ink2, .paragraphStyle: para]))
-        text.attributedStringValue = s
         let th = ceil(s.boundingRect(with: CGSize(width: textW, height: 400), options: [.usesLineFragmentOrigin]).height)
         let h = max(24, th) + 18
-        text.frame = CGRect(x: textX - 2, y: (h - th) / 2, width: textW + 4, height: th + 1)
         layer?.setInstant {
+            text.string = s
+            text.frame = CGRect(x: textX, y: (h - th) / 2, width: textW, height: th + 2)
             bg.frame = CGRect(x: 0, y: 0, width: width, height: h)
             bg.backgroundColor = palette.fillControl.cgColor
             icon.color = palette.ink2
