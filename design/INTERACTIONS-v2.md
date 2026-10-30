@@ -156,7 +156,7 @@ The prototype can't run SwiftUI springs, so it samples them into CSS `linear()` 
 | `layout` (new) | critically damped spring | `.smooth(duration: 0.25)` (sampled over 380 ms) | Every row that moves: reorder, insert, remove, settle, drag gaps, sidebar rows | `css:10–11` |
 | `snappy` | slight overshoot (to 1.006) | `.snappy(duration: 0.2)` (sampled over 300 ms) | The checkbox pop | `css:12–13` |
 | Fade in | opacity 0 → 1, 180 ms ease-out | `.easeOut(duration: 0.18)` | A row, a Today group label, a list's Completed row or a sidebar row appearing | `css:369`, `css:164` |
-| Fade out | opacity → 0, 150 ms ease-out, while `layout` carries it | `.easeOut(duration: 0.15)` | Rows and labels leaving | `css:163` |
+| Fade out | opacity → 0, 150 ms ease-out, while `layout` carries it | `.easeOut(duration: 0.15)` | Rows and labels leaving | `css:160–161`, `css:163` |
 | Popover in | 120 ms, cubic-bezier(0, 0, 0.2, 1): opacity 0 → 1, y −3 → 0, scale 0.985 → 1 about its center | | Date popover (menus are native) | `css:370`, `css:317` |
 | Notice in / out | In: 220 ms, cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0 → 1, y +8 → 0. Out: 160 ms ease-in to opacity 0, y +4 | | Notices | `css:343–345`, `css:372–373` |
 | Tooltip in | opacity 0 → 1, 100 ms ease-out; out at once | | Tooltips | `css:348` |
