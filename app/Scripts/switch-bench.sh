@@ -3,14 +3,13 @@
 # hooks (bundle com.elguindi.Tasks.dev, its own data folder, local-only sync), fills a scratch data folder with the
 # design-board demo data plus a 2,000-task list "Big", walks the sidebar ROUNDS times and prints, per transition, the
 # median main-thread work (route change → update, layout and draw done) and the median latency (→ the first newly
-# built row; "-" when every row was reused). Each switch is also a "switch" interval in Instruments' Points of
-# Interest. Fails when any median work exceeds MAX_MS: a regression guard set just above today's worst (into the
-# 2,000-task list), not the budget.
+# rendered row, which for the v2 AppKit list is the end of its render). Each switch is also a "switch" interval in
+# Instruments' Points of Interest. Fails when any median work exceeds MAX_MS: one frame (SPEC §9).
 #
-#   app/Scripts/switch-bench.sh [rounds]        MAX_MS=45 by default
+#   app/Scripts/switch-bench.sh [rounds]        MAX_MS=16.7 by default
 set -eu
 ROUNDS=${1:-8}
-MAX_MS=${MAX_MS:-45}
+MAX_MS=${MAX_MS:-16.7}
 APP_DIR=$(cd "$(dirname "$0")/.." && pwd)
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/tasks-switch-bench.XXXXXX")
 trap 'rm -rf "$WORK"' EXIT
