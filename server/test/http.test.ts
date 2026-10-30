@@ -89,6 +89,36 @@ describe("check order: route, auth, size, parse, validate", () => {
   it("413 for too many ops before per-op validation", async () => {
     await expectError(await post({ from: 0, base: null, ops: new Array(501).fill(0) }), 413, "too_large");
   });
+  // The Worker's checks come before the DO's log check, so a stale cursor never turns a client bug into a 409.
+  it("400 bad_request before 409", async () => {
+    await expectError(await post({ from: 5, base: null, ops: [] }), 400, "bad_request");
+  });
+  it("400 invalid_op before 409", async () => {
+    const res = await post({ from: 5, base: "a".repeat(64), ops: [{ id: "x", at: 0, type: "task.update", target: "t", set: { order: "a 0" } }] });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({ error: "invalid_op", index: 0, field: "set.order" });
+  });
+  it("413 too_large before 409", async () => {
+    await expectError(await post({ from: 5, base: "a".repeat(64), ops: new Array(501).fill(0) }), 413, "too_large");
+  });
+});
+
+describe("body size without Content-Length", () => {
+  const streamed = (bytes: Uint8Array) =>
+    call("/v1/sync", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${TOKEN}` },
+      body: new ReadableStream({ start(c) { c.enqueue(bytes); c.close(); } }),
+    });
+
+  it("413 for a streamed body over 1 MiB", async () => {
+    const body = new TextEncoder().encode(PULL + " ".repeat((1 << 20) - PULL.length + 1));
+    const res = await streamed(body);
+    await expectError(res, 413, "too_large");
+  });
+  it("accepts a small streamed body", async () => {
+    expect((await streamed(new TextEncoder().encode(PULL))).status).toBe(200);
+  });
 });
 
 describe("response encoding", () => {
@@ -109,6 +139,18 @@ describe("response encoding", () => {
     const err = await post(PULL, { token: "nope", headers: { "Accept-Encoding": accept } });
     expect(err.status).toBe(401);
     expect(err.headers.get("Content-Encoding")).toBe(expected);
+  });
+
+  it("prefers cf.clientAcceptEncoding, the header before Cloudflare rewrote it", async () => {
+    const send = (cf: string, header: string) =>
+      call("/v1/sync", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${TOKEN}`, "Accept-Encoding": header },
+        body: PULL,
+        cf: { clientAcceptEncoding: cf },
+      } as RequestInit);
+    expect((await send("gzip, deflate, br", "gzip")).headers.get("Content-Encoding")).toBe("br");
+    expect((await send("gzip", "br")).headers.get("Content-Encoding")).toBe("gzip");
   });
 
   it("no Accept-Encoding, no Content-Encoding", async () => {

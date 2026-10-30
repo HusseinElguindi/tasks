@@ -9,6 +9,10 @@ import { createHash } from "node:crypto";
 import type { PreparedOp } from "./validate";
 
 export const PAGE_SIZE = 1000;
+// A page also stops at this many UTF-16 units of op text, but always holds at least one entry. RPC caps a
+// return value at 32 MiB and serializes a string with any non-Latin-1 character at 2 bytes per unit, and
+// 1,000 near-limit notes would exceed that on every retry. 4M units is ≤ 8 MB over RPC, ≤ 12 MB as UTF-8.
+export const PAGE_CHARS = 4_000_000;
 
 export type SyncResult = { ok: true; body: string } | { ok: false; message: string };
 
@@ -41,7 +45,7 @@ export class UserLog extends DurableObject<Env> {
     this.last = row ? row.hash : "";
   }
 
-  /** Log check (409), append, then the page [from, from + PAGE_SIZE) ∩ [from, head). */
+  /** Log check (409), append, then the page: up to PAGE_SIZE entries (and PAGE_CHARS) from `from`. */
   sync(from: number, base: string | null, ops: PreparedOp[]): SyncResult {
     if (from > this.head) return { ok: false, message: `from ${from} is past head ${this.head}.` };
     if (from > 0 && base !== this.hashAt(from - 1)) {
@@ -77,13 +81,17 @@ export class UserLog extends DurableObject<Env> {
 
   /** The response body, built from the stored op text without re-parsing it. */
   private page(from: number): string {
-    const end = Math.min(from + PAGE_SIZE, this.head);
     const entries: string[] = [];
-    if (end > from) {
-      for (const [seq, received, hash, op] of this.sql.exec(PAGE, from, end).raw()) {
+    let next = from;
+    let chars = 0;
+    if (from < this.head) {
+      for (const [seq, received, hash, op] of this.sql.exec(PAGE, from, Math.min(from + PAGE_SIZE, this.head)).raw()) {
+        chars += (op as string).length;
+        if (chars > PAGE_CHARS && entries.length > 0) break;
         entries.push(`{"seq":${seq},"received":${received},"hash":"${hash}","op":${op}}`);
+        next = (seq as number) + 1;
       }
     }
-    return `{"entries":[${entries.join(",")}],"head":${this.head},"more":${end < this.head}}`;
+    return `{"entries":[${entries.join(",")}],"head":${this.head},"more":${next < this.head}}`;
   }
 }

@@ -35,3 +35,7 @@ resources. Deploying does: see `DEPLOY.md`.
 - **Head on startup** is `MAX(seq) + 1` through the primary key (O(log n)) rather than `COUNT(*)` (a scan);
   the two are equal because `seq` is dense.
 - **Dedup** is `INSERT … ON CONFLICT (id) DO NOTHING`, one statement per op.
+- **Pages stop at 1,000 entries or 4M UTF-16 units of op text**, whichever comes first, and always hold at least
+  one entry. Without the second bound, 1,000 near-limit notes would exceed the 32 MiB RPC limit and that `from`
+  would fail forever. Normal entries are ~250 characters, so in practice pages are exactly 1,000. Clients must
+  advance by the entries they receive (`last seq + 1`), never by 1,000.

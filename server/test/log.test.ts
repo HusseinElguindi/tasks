@@ -1,6 +1,7 @@
 // S3: the UserLog DO: append with dedup, hash chain, page read with `more`, 409 (SPEC §5–§7).
 import { evictDurableObject, reset, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it, vi } from "vitest";
+import { PAGE_CHARS } from "../src/log";
 import {
   INBOX, logStub, NOW, ok, opText, pullAll, seed, sha256, sync, taskUpdate, TASK, type Entry, type Op,
 } from "./helpers";
@@ -112,6 +113,33 @@ describe("append", () => {
     const page = await ok(2, HASH_1, [op]);
     expect(page.entries.map((e) => [e.seq, e.op])).toEqual([[2, op]]);
     expect(page.head).toBe(3);
+  });
+});
+
+describe("a failed append", () => {
+  it("rolls back storage and leaves the cached head and hash matching it", async () => {
+    const first = taskUpdate();
+    await ok(0, null, [first]);
+    type After = { head: number; last: string; rows: { hash: string }[] };
+    const after = await runInDurableObject(logStub(), (log, state): After => {
+      const instance = log as unknown as { sql: SqlStorage; head: number; last: string; sync: Function };
+      const sql = instance.sql;
+      let inserts = 0;
+      instance.sql = {
+        exec(query: string, ...args: unknown[]) {
+          if (query.startsWith("INSERT") && ++inserts === 2) throw new Error("disk full");
+          return sql.exec(query, ...args);
+        },
+      } as SqlStorage;
+      const op = (o: Op) => ({ id: o.id, text: opText(o) });
+      expect(() => instance.sync(1, instance.last, [op(taskUpdate()), op(taskUpdate()), op(taskUpdate())])).toThrow("disk full");
+      instance.sql = sql;
+      return { head: instance.head, last: instance.last, rows: state.storage.sql.exec<{ hash: string }>("SELECT hash FROM log").toArray() };
+    });
+    expect(after).toEqual({ head: 1, last: sha256("\n" + opText(first)), rows: [{ hash: sha256("\n" + opText(first)) }] });
+    const next = taskUpdate();
+    expect((await ok(1, after.last, [next])).entries.map((e) => [e.seq, e.op])).toEqual([[1, next]]);
+    expectChain(await pullAll());
   });
 });
 
@@ -249,6 +277,25 @@ describe("pagination", () => {
 
   it("an empty log", async () => {
     expect(await ok(0, null)).toEqual({ entries: [], head: 0, more: false });
+  });
+
+  it("a page of large ops stops at PAGE_CHARS, before RPC's 32 MiB limit", async () => {
+    // 250 ops with near-limit notes, including a non-Latin-1 character (2 bytes per unit over RPC): 5M units.
+    const big = Array.from({ length: 250 }, (_, i) => taskUpdate({ notes: "’" + "x".repeat(19_999) }, { id: `big-${i}` }));
+    let head = 0;
+    let last: string | null = null;
+    for (let i = 0; i < big.length; i += 40) {
+      const page = await ok(head, last, big.slice(i, i + 40)); // 40 ops ≈ 800 KB, under the 1 MiB body limit
+      [head, last] = [page.head, page.entries.at(-1)!.hash];
+    }
+    const p1 = await ok(0, null);
+    expect(p1.entries.length).toBeGreaterThan(150);
+    expect(p1.entries.length).toBeLessThan(250);
+    expect(p1).toMatchObject({ head: 250, more: true });
+    expect(p1.entries.reduce((n, e) => n + opText(e.op).length, 0)).toBeLessThanOrEqual(PAGE_CHARS);
+    const all = await pullAll(); // advances by the last seq received, not by 1,000
+    expect(all.map((e) => e.op)).toEqual(big);
+    expectChain(all);
   });
 });
 
