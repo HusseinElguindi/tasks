@@ -5,7 +5,7 @@ The SwiftUI client from `docs/SPEC.md` (§8–§9) in the A1 · Split design (`d
 | Path | What |
 |------|------|
 | `TasksCore/` | Swift package: ops and the reducer, fractional index ordering, the Today predicate, the projection (pending overlay, maintained indexes, per-entity `@Observable` models), persistence (`log.jsonl`, `pending.jsonl`, `snapshot.json`, 409 recovery) and the sync client. No UI. |
-| `Tasks/` | The macOS 14+ app: views only. `Pane/` is `design/PaneTheme.swift` plus the new tokens and components DIRECTIONS.md lists. |
+| `Tasks/` | The macOS 14+ app: views only, rebuilt for v2 from `design/prototype-v2/` (`design/INTERACTIONS-v2.md`). `Theme/` has the prototype's tokens (`TK`) and the AppKit drawing pieces; `Window/` the window state, every action, the menus and the panes' chrome; `TaskList/` and `Sidebar/` are AppKit lists; `Detail/` and `Overlay/` (date popover, notice, tooltip, the drag copy) are SwiftUI with AppKit fields. `Pane/` is the v1 theme, still used by Settings. |
 | `project.yml` | XcodeGen spec for `Tasks.xcodeproj` (generated, not checked in). |
 | `Scripts/e2e.sh` | The end-to-end check against a local `wrangler dev`. |
 
@@ -60,7 +60,10 @@ Compiled out of Release builds.
 
 | Argument | Effect |
 |----------|--------|
-| `-demoData YES` | Fills an empty data folder with the design boards' lists and tasks. |
-| `-debugRoute today\|archive\|list:<name>`, `-debugOpen <title>`, `-debugQuickAdd YES` | Sets up the window. |
+| `-demoData YES` | Fills an empty data folder with the prototype's seed (`design/prototype-v2/Main.dc.html` dc:426), for side-by-side checks. `-demoBulk N` adds a list "Big" with N tasks. |
+| `-debugRoute today\|list:<name>`, `-debugSelect <title>`, `-debugDetail YES`, `-debugAdd YES`, `-debugThenRoute …` | Sets up the window. |
 | `-snapshotTo <png>` (`-snapshotQuit YES`, `-snapshotDelay`, `-debugWindowSize WxH`) | Renders the window to a PNG. |
+| `-debugScript "<steps>"` | Posts clicks and keys inside the app, then quits (see `Support/DebugScript.swift`). |
+| `-debugRenderTimes <file>` | Logs each task-list render's duration and phases. |
+| `-debugMeasureSwitch <file>` | The list-switch benchmark (`Scripts/switch-bench.sh`). |
 | `-debugActions '<json>'`, `-debugDumpTo <json>` | Performs actions through the Store, syncs, dumps state, quits (used by `Scripts/e2e.sh`). |

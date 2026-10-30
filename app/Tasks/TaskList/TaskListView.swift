@@ -697,7 +697,8 @@ final class TaskListView: NSView {
                 overlays.hoverTip("New Task in \(actions.listName(key))", for: windowRect(v.plus.frame, from: v), windowWidth: window?.frame.width ?? 1200)
             }
         default:
-            overlays.hideTip()
+            // Only the tips this list showed: the pointer may have moved onto another control with its own.
+            if case .row(_, .open) = old { overlays.hideTip() } else if case .label(_, plus: true) = old { overlays.hideTip() }
         }
     }
 
