@@ -1,0 +1,31 @@
+{
+  "name": "09-not-found",
+  "spec": "§5 HTTP table",
+  "description": "Any path other than /v1/sync.",
+  "setup": {
+    "log": []
+  },
+  "request": {
+    "method": "POST",
+    "path": "/v1/push",
+    "headers": {
+      "Authorization": "Bearer test-token",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "from": 0,
+      "base": null,
+      "ops": []
+    }
+  },
+  "response": {
+    "status": 404,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "body": {
+      "error": "not_found",
+      "message": "No such path: /v1/push."
+    }
+  }
+}

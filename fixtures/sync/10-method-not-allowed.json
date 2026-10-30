@@ -1,0 +1,27 @@
+{
+  "name": "10-method-not-allowed",
+  "spec": "§5 HTTP table",
+  "description": "Any method other than POST on /v1/sync, with an Allow header.",
+  "setup": {
+    "log": []
+  },
+  "request": {
+    "method": "GET",
+    "path": "/v1/sync",
+    "headers": {
+      "Authorization": "Bearer test-token",
+      "Content-Type": "application/json"
+    }
+  },
+  "response": {
+    "status": 405,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8",
+      "Allow": "POST"
+    },
+    "body": {
+      "error": "method_not_allowed",
+      "message": "Use POST for /v1/sync."
+    }
+  }
+}

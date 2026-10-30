@@ -1,0 +1,39 @@
+{
+  "name": "03b-resend-without-rejected",
+  "spec": "§5 worked example 3",
+  "description": "The client resends the request from example 3 with only ops[0].",
+  "setup": {
+    "log": [
+      {"id":"00000000-0000-0000-0000-000000000002","at":1761811200000,"type":"list.create","target":"00000000-0000-0000-0000-000000000001","set":{"name":"Inbox","order":"a0"}},
+      {"id":"5b0c6c1e-3f0a-4c8e-9d61-0f4f6f1a2b3c","at":1761811260000,"type":"task.create","target":"9f8e7d6c-5b4a-4321-8fed-cba987654321","set":{"list":"00000000-0000-0000-0000-000000000001","order":"a0","title":"Buy milk","when":"2026-10-30"}}
+    ]
+  },
+  "request": {
+    "method": "POST",
+    "path": "/v1/sync",
+    "headers": {
+      "Authorization": "Bearer test-token",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "from": 2,
+      "base": "184ceb4c3d11bd53025385963c25f50298c2d652f84d5989941d2ec13a66fd79",
+      "ops": [
+        {"id":"7d1e0a2b-4c3d-4e5f-8a6b-7c8d9e0f1a2b","at":1761811300000,"type":"task.update","target":"9f8e7d6c-5b4a-4321-8fed-cba987654321","set":{"title":"Buy oat milk"}}
+      ]
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "body": {
+      "entries": [
+        {"seq":2,"received":1761811261234,"hash":"7bfc5ad3d2e94964b99470faf0882afcb43a71c0bb4e1fb2b772a35f17ff92fe","op":{"id":"7d1e0a2b-4c3d-4e5f-8a6b-7c8d9e0f1a2b","at":1761811300000,"type":"task.update","target":"9f8e7d6c-5b4a-4321-8fed-cba987654321","set":{"title":"Buy oat milk"}}}
+      ],
+      "head": 3,
+      "more": false
+    }
+  }
+}

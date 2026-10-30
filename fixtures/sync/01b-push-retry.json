@@ -1,0 +1,43 @@
+{
+  "name": "01b-push-retry",
+  "spec": "§5 worked example 1",
+  "description": "The same request sent again returns the same body: both op ids are deduplicated.",
+  "setup": {
+    "log": [
+      {"id":"00000000-0000-0000-0000-000000000002","at":1761811200000,"type":"list.create","target":"00000000-0000-0000-0000-000000000001","set":{"name":"Inbox","order":"a0"}},
+      {"id":"5b0c6c1e-3f0a-4c8e-9d61-0f4f6f1a2b3c","at":1761811260000,"type":"task.create","target":"9f8e7d6c-5b4a-4321-8fed-cba987654321","set":{"list":"00000000-0000-0000-0000-000000000001","order":"a0","title":"Buy milk","when":"2026-10-30"}}
+    ]
+  },
+  "request": {
+    "method": "POST",
+    "path": "/v1/sync",
+    "headers": {
+      "Authorization": "Bearer test-token",
+      "Content-Type": "application/json",
+      "Accept-Encoding": "gzip, deflate, br"
+    },
+    "body": {
+      "from": 0,
+      "base": null,
+      "ops": [
+        {"id":"00000000-0000-0000-0000-000000000002","at":1761811200000,"type":"list.create","target":"00000000-0000-0000-0000-000000000001","set":{"name":"Inbox","order":"a0"}},
+        {"id":"5b0c6c1e-3f0a-4c8e-9d61-0f4f6f1a2b3c","at":1761811260000,"type":"task.create","target":"9f8e7d6c-5b4a-4321-8fed-cba987654321","set":{"list":"00000000-0000-0000-0000-000000000001","order":"a0","title":"Buy milk","when":"2026-10-30"}}
+      ]
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8",
+      "Content-Encoding": "br"
+    },
+    "body": {
+      "entries": [
+        {"seq":0,"received":1761811261234,"hash":"bc2a6e3a4de77a2ce16c4a38c6f4d76237a98434f7d213049e3fd77dde66dacd","op":{"id":"00000000-0000-0000-0000-000000000002","at":1761811200000,"type":"list.create","target":"00000000-0000-0000-0000-000000000001","set":{"name":"Inbox","order":"a0"}}},
+        {"seq":1,"received":1761811261234,"hash":"184ceb4c3d11bd53025385963c25f50298c2d652f84d5989941d2ec13a66fd79","op":{"id":"5b0c6c1e-3f0a-4c8e-9d61-0f4f6f1a2b3c","at":1761811260000,"type":"task.create","target":"9f8e7d6c-5b4a-4321-8fed-cba987654321","set":{"list":"00000000-0000-0000-0000-000000000001","order":"a0","title":"Buy milk","when":"2026-10-30"}}}
+      ],
+      "head": 2,
+      "more": false
+    }
+  }
+}

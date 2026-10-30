@@ -1,0 +1,34 @@
+{
+  "name": "05-log-mismatch",
+  "spec": "§5 worked example 5",
+  "description": "The server log was restored and grew a different entry 1, so base does not match.",
+  "setup": {
+    "log": [
+      {"id":"00000000-0000-0000-0000-000000000002","at":1761811200000,"type":"list.create","target":"00000000-0000-0000-0000-000000000001","set":{"name":"Inbox","order":"a0"}},
+      {"id":"6c1d7d2f-4a1b-4d9f-8e72-1a5a7a2b3c4d","at":1761811270000,"type":"task.create","target":"9f8e7d6c-5b4a-4321-8fed-cba987654321","set":{"list":"00000000-0000-0000-0000-000000000001","order":"a0","title":"Buy bread"}}
+    ]
+  },
+  "request": {
+    "method": "POST",
+    "path": "/v1/sync",
+    "headers": {
+      "Authorization": "Bearer test-token",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "from": 2,
+      "base": "184ceb4c3d11bd53025385963c25f50298c2d652f84d5989941d2ec13a66fd79",
+      "ops": []
+    }
+  },
+  "response": {
+    "status": 409,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "body": {
+      "error": "log_mismatch",
+      "message": "base does not match the log at seq 1."
+    }
+  }
+}

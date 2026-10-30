@@ -1,0 +1,39 @@
+{
+  "name": "03-invalid-op",
+  "spec": "§5 worked example 3",
+  "description": "ops[1].set.order contains a space. Nothing is appended, not even ops[0].",
+  "setup": {
+    "log": [
+      {"id":"00000000-0000-0000-0000-000000000002","at":1761811200000,"type":"list.create","target":"00000000-0000-0000-0000-000000000001","set":{"name":"Inbox","order":"a0"}},
+      {"id":"5b0c6c1e-3f0a-4c8e-9d61-0f4f6f1a2b3c","at":1761811260000,"type":"task.create","target":"9f8e7d6c-5b4a-4321-8fed-cba987654321","set":{"list":"00000000-0000-0000-0000-000000000001","order":"a0","title":"Buy milk","when":"2026-10-30"}}
+    ]
+  },
+  "request": {
+    "method": "POST",
+    "path": "/v1/sync",
+    "headers": {
+      "Authorization": "Bearer test-token",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "from": 2,
+      "base": "184ceb4c3d11bd53025385963c25f50298c2d652f84d5989941d2ec13a66fd79",
+      "ops": [
+        {"id":"7d1e0a2b-4c3d-4e5f-8a6b-7c8d9e0f1a2b","at":1761811300000,"type":"task.update","target":"9f8e7d6c-5b4a-4321-8fed-cba987654321","set":{"title":"Buy oat milk"}},
+        {"id":"8e2f1b3c-5d4e-4f60-9b7c-8d9e0f1a2b3c","at":1761811301000,"type":"task.update","target":"9f8e7d6c-5b4a-4321-8fed-cba987654321","set":{"list":"00000000-0000-0000-0000-000000000001","order":"a 0"}}
+      ]
+    }
+  },
+  "response": {
+    "status": 400,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "body": {
+      "error": "invalid_op",
+      "message": "ops[1].set.order must match ^[0-9A-Za-z]{1,128}$",
+      "index": 1,
+      "field": "set.order"
+    }
+  }
+}

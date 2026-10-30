@@ -1,0 +1,38 @@
+{
+  "name": "05b-resync-from-zero",
+  "spec": "§5 worked example 5",
+  "description": "After the 409 the client resyncs from 0 (its pending queue is empty here).",
+  "setup": {
+    "log": [
+      {"id":"00000000-0000-0000-0000-000000000002","at":1761811200000,"type":"list.create","target":"00000000-0000-0000-0000-000000000001","set":{"name":"Inbox","order":"a0"}},
+      {"id":"6c1d7d2f-4a1b-4d9f-8e72-1a5a7a2b3c4d","at":1761811270000,"type":"task.create","target":"9f8e7d6c-5b4a-4321-8fed-cba987654321","set":{"list":"00000000-0000-0000-0000-000000000001","order":"a0","title":"Buy bread"}}
+    ]
+  },
+  "request": {
+    "method": "POST",
+    "path": "/v1/sync",
+    "headers": {
+      "Authorization": "Bearer test-token",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "from": 0,
+      "base": null,
+      "ops": []
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "body": {
+      "entries": [
+        {"seq":0,"received":1761811261234,"hash":"bc2a6e3a4de77a2ce16c4a38c6f4d76237a98434f7d213049e3fd77dde66dacd","op":{"id":"00000000-0000-0000-0000-000000000002","at":1761811200000,"type":"list.create","target":"00000000-0000-0000-0000-000000000001","set":{"name":"Inbox","order":"a0"}}},
+        {"seq":1,"received":1761811261234,"hash":"d26a435858c180d340e58ccc240e66e280a27dbb8a68c6581cea8c5e7341448b","op":{"id":"6c1d7d2f-4a1b-4d9f-8e72-1a5a7a2b3c4d","at":1761811270000,"type":"task.create","target":"9f8e7d6c-5b4a-4321-8fed-cba987654321","set":{"list":"00000000-0000-0000-0000-000000000001","order":"a0","title":"Buy bread"}}}
+      ],
+      "head": 2,
+      "more": false
+    }
+  }
+}
