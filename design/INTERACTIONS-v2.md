@@ -3,6 +3,10 @@
 Status: **final, 2026-10-30.** The user reviewed the prototype and made the four open choices
 (`docs/TASK-interaction-decisions.md`). This replaces `design/INTERACTIONS.md`.
 
+**Changed after the user tried the app (`docs/TASK-v2-feedback.md` item 2):** a single click on empty list space no
+longer adds a task; it clears the selection (or ends an edit). A double-click there adds one, as ⌘N does, and the hover
+"New Task" row is gone. §5, §6, §13, §16, §18.12 and §21 say so, and the prototype source matches.
+
 **The prototype is the reference implementation:** https://claude.ai/artifact/QetdV1H57SC6kLXtNzJRXM (press Play on the
 main board, then click inside it once so it has the keys). Its source is in `design/prototype-v2/`, and this spec cites
 it by line:

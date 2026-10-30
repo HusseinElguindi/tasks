@@ -111,6 +111,13 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
    prototype had the same bug (`ghostShow`, dc:1924); fixed there too, in the source only (the published canvas
    wasn't republished).
 
+2. **A click on empty space no longer adds a task.** It clears the selection, as in Rex and Finder; with a task being
+   added or something renamed, the first click only ends that (a new task is written, or dropped if untitled). A
+   double-click there adds a task as ⌘N does. The hover "New Task" row is gone, and an empty list says "Double-click
+   anywhere here or press ⌘N to add one." Checked live in a list, an empty list and Today, with a titled and an
+   untitled draft open; the spec (§5, §6, §13, §16, §18.12, §21) and the prototype source were updated to match and
+   checked in Chrome.
+
 ## Notes for whoever drives the UI next
 
 - Scratch tools (not committed) are in the session scratchpad's `tools/`: `ui` (window-relative HID input that only
