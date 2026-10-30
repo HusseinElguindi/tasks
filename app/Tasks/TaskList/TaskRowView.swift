@@ -270,6 +270,47 @@ final class TaskRowView: NSView {
 
     override func isAccessibilityElement() -> Bool { true }
     override func accessibilityRole() -> NSAccessibility.Role? { .row }
+
+    // MARK: Accessibility: the checkbox and the › as their own elements (§18.15)
+
+    /// Set by the list: what the checkbox and the › do when VoiceOver presses them.
+    var onCheck: (() -> Void)?
+    var onOpen: (() -> Void)?
+    private lazy var checkElement = PressElement(role: .checkBox, parent: self)
+    private lazy var openElement = PressElement(role: .button, parent: self)
+
+    override func accessibilityChildren() -> [Any]? {
+        guard let m = model, style == .row else { return [] }
+        let title = m.untitled ? "New Task" : m.title
+        checkElement.setAccessibilityLabel((m.done ? "Mark not done: " : "Complete: ") + title)
+        checkElement.setAccessibilityValue(m.done ? 1 : 0)
+        checkElement.setAccessibilityFrameInParentSpace(CGRect(x: check.frame.minX, y: bounds.height - check.frame.maxY, width: check.frame.width, height: check.frame.height))
+        checkElement.onPress = onCheck
+        var children: [Any] = m.draft ? [] : [checkElement]
+        if m.openAllowed {
+            openElement.setAccessibilityLabel("Show details")
+            openElement.setAccessibilityFrameInParentSpace(CGRect(x: open.frame.minX, y: bounds.height - open.frame.maxY, width: open.frame.width, height: open.frame.height))
+            openElement.onPress = onOpen
+            children.append(openElement)
+        }
+        return children
+    }
+}
+
+/// An accessibility element that VoiceOver can press.
+final class PressElement: NSAccessibilityElement {
+    var onPress: (() -> Void)?
+
+    init(role: NSAccessibility.Role, parent: NSView) {
+        super.init()
+        setAccessibilityRole(role)
+        setAccessibilityParent(parent)
+    }
+
+    override func accessibilityPerformPress() -> Bool {
+        onPress?()
+        return onPress != nil
+    }
 }
 
 extension CheckLayer {

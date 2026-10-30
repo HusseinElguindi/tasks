@@ -301,6 +301,11 @@ final class TaskListView: NSView {
             m.dragSource = dragIDs.contains(id)
             m.openAllowed = !m.renaming && !m.done && !detailOpen
             if let picker, picker.ids.contains(id) { m.pickerField = picker.field }
+            if isNew {
+                let a = actions
+                v.onCheck = { a.toggleComplete([id]) }
+                v.onOpen = { a.select([id]); a.openDetail() }
+            }
             if v.model != m || paletteChanged || isNew || v.frame.width != rowW {
                 v.configure(m, palette: palette, width: rowW, animated: !isNew && animate)
             }
