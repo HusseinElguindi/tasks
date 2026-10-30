@@ -26,3 +26,13 @@ The coordinator's call, which the user can overrule:
 - **⌘N and the + button are unchanged.**
 
 Update `design/INTERACTIONS-v2.md` (§6 and anywhere else that mentions the empty-space click or the ghost row) and the prototype source to match. Commit, rebuild Release and report back.
+
+## 3. Show the active-pane colour only when there are two or more panes
+
+The user's words: "i want the active pane color to only appear when there is more than 1 pane."
+
+- **With one pane** (the detail pane closed): the list pane shows no focused or active treatment. Use the plain neutral surface and edge, the same in every key-focus state.
+- **With two panes:** the focused pane keeps its current colour, and the other one dims as now.
+- **The change between the two** follows the detail pane's open and close transition rather than snapping at the end.
+
+Check this against Rex: does a lone pane in a Rex tab show the focus colour? Note what you find; the user's rule wins either way. Update the spec and the prototype source.
