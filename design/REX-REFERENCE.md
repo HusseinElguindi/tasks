@@ -26,7 +26,7 @@ Frame strips are in `.uitools/rex-*.png` (gitignored); tooling in `.uitools/*.sw
 | Interaction | Timing |
 |---|---|
 | Row hover in | near-instant: ~80% on the first frame, settled in ~50–70 ms |
-| Row hover out | holds ~300 ms after the pointer leaves, then fades out over ~85 ms (forgiving, so the trailing × stays reachable) |
+| Row hover out | **prompt**: fades out over ~85 ms as soon as the pointer leaves. (An earlier ~300 ms "hold" reading was an artifact of the synthetic mouse warp; the user confirmed Rex does not linger.) |
 | Icon-button hover in/out | ~100 ms ease-out, no delay either way |
 | Pane focus change | ~60 ms (2 frames) |
 | Tab switch | instant (no cross-fade) |
@@ -36,6 +36,6 @@ Frame strips are in `.uitools/rex-*.png` (gitignored); tooling in `.uitools/*.sw
 ## What this means for Tasks
 - Task rows: no full-width hover fill. Brighten ink on hover, fade in trailing actions only.
 - Selection is the one strong state: the capsule fill + hairline edge.
-- Hover-out grace (~300 ms) and instant hover-in; ~100 ms for icon buttons; tooltips with shortcuts.
+- Instant hover-in, prompt ~85 ms hover-out with no hold; ~100 ms for icon buttons; tooltips with shortcuts.
 - Pane open/close (the detail pane): match the split motion above. The user already likes this one.
 - Don't animate list/tab switches.
