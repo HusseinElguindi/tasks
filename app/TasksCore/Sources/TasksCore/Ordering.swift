@@ -1,3 +1,5 @@
+import Foundation
+
 /// An item in a manually ordered sequence: a task in its list, or a list in the sidebar.
 public struct OrderedItem: Hashable, Sendable {
     public var id: EntityID
@@ -73,6 +75,19 @@ public enum Ordering {
             return rebalance(moving, at: p, in: rest)
         }
         return rekeyed + zip(moving, keys).map { OrderedItem(id: $0, order: $1) }
+    }
+
+    /// Maps a list drag (offsets into the displayed ids, and the destination offset in that same array) to an
+    /// anchor: right after the item above the drop point, or, at the top, right before the item below it. In
+    /// Today the displayed ids are one group, and the anchor then applies to the full list (spec §4).
+    public static func anchor(moving offsets: IndexSet, to destination: Int, in ids: [EntityID]) -> (moving: [EntityID], anchor: Anchor)? {
+        let moving = offsets.filter { ids.indices.contains($0) }.map { ids[$0] }
+        guard !moving.isEmpty else { return nil }
+        let movingSet = Set(moving)
+        let d = min(max(destination, 0), ids.count)
+        if let above = ids[..<d].last(where: { !movingSet.contains($0) }) { return (moving, .after(above)) }
+        if let below = ids[d...].first(where: { !movingSet.contains($0) }) { return (moving, .before(below)) }
+        return nil
     }
 
     /// Keys for appending `count` items after `last` (new tasks and lists go to the bottom).

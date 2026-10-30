@@ -139,6 +139,28 @@ final class OrderingTests: XCTestCase {
         XCTAssertLessThanOrEqual(rebalances, 4)
     }
 
+    /// A List drag maps to "after the task above the drop point", or "before the task below" at the top (spec §4),
+    /// skipping the dragged rows themselves.
+    func testAnchorFromListMove() {
+        let ids = ["a", "b", "c", "d"]
+        XCTAssertEqual(Ordering.anchor(moving: [3], to: 1, in: ids)?.anchor, .after("a"))
+        XCTAssertEqual(Ordering.anchor(moving: [3], to: 0, in: ids)?.anchor, .before("a"))
+        XCTAssertEqual(Ordering.anchor(moving: [0], to: 4, in: ids)?.anchor, .after("d"))
+        XCTAssertEqual(Ordering.anchor(moving: [0, 1], to: 2, in: ids)?.anchor, .before("c"), "dropped where they were, at the top")
+        XCTAssertEqual(Ordering.anchor(moving: [1, 3], to: 3, in: ids)?.moving, ["b", "d"])
+        XCTAssertEqual(Ordering.anchor(moving: [1, 3], to: 3, in: ids)?.anchor, .after("c"))
+        XCTAssertNil(Ordering.anchor(moving: [0], to: 1, in: ["a"]))
+        // Today: the group holds a subset of the list; the anchor applies to the full list.
+        let list = items([("a", "a0"), ("x", "a1"), ("b", "a2"), ("y", "a3"), ("c", "a4")])
+        let group = ["a", "b", "c"]
+        let r = Ordering.anchor(moving: [2], to: 1, in: group)!
+        XCTAssertEqual(r.anchor, .after("a"))
+        XCTAssertEqual(apply(Ordering.place(r.moving, at: r.anchor, in: list), to: list), ["a", "c", "x", "b", "y"])
+        let top = Ordering.anchor(moving: [1], to: 0, in: group)!
+        XCTAssertEqual(top.anchor, .before("a"))
+        XCTAssertEqual(apply(Ordering.place(top.moving, at: top.anchor, in: list), to: list), ["b", "a", "x", "y", "c"])
+    }
+
     /// Keys that aren't valid fractional keys (another client, hand-edited data) fall back to a rebalance.
     func testInvalidNeighborKeysRebalance() {
         let list = items([("a", "0"), ("b", "zz")])

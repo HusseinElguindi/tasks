@@ -1,0 +1,67 @@
+# The Xcode project is generated from this file: `xcodegen generate` (XcodeGen 2.46, installed with mise).
+# The generated Tasks.xcodeproj is not checked in.
+name: Tasks
+options:
+  bundleIdPrefix: com.elguindi
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+packages:
+  TasksCore:
+    path: TasksCore
+targets:
+  Tasks:
+    type: application
+    platform: macOS
+    sources:
+      # A synchronized folder: files added under Tasks/ are picked up without regenerating the project.
+      - path: Tasks
+        type: syncedFolder
+    dependencies:
+      - package: TasksCore
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: Tasks
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "1"
+        LSApplicationCategoryType: public.app-category.productivity
+        LSMinimumSystemVersion: "14.0"
+        NSHumanReadableCopyright: ""
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.elguindi.tasks.task-ids
+            UTTypeDescription: Tasks
+            UTTypeConformsTo: [public.data]
+          - UTTypeIdentifier: com.elguindi.tasks.list-id
+            UTTypeDescription: Task List
+            UTTypeConformsTo: [public.data]
+    settings:
+      base:
+        PRODUCT_NAME: Tasks
+        PRODUCT_BUNDLE_IDENTIFIER: com.elguindi.Tasks
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        # No Apple Developer account: ad-hoc "Sign to Run Locally", no sandbox (spec §7).
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        ENABLE_HARDENED_RUNTIME: NO
+        ENABLE_APP_SANDBOX: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        COMBINE_HIDPI_IMAGES: YES
+schemes:
+  Tasks:
+    build:
+      targets:
+        Tasks: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - package: TasksCore/TasksCoreTests
+    archive:
+      config: Release

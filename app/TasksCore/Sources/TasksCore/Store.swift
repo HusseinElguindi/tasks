@@ -73,7 +73,7 @@ public final class Store {
     /// when a page reaches the head: anything still pending then was lost (a restored server) and goes out again.
     @ObservationIgnored private var inServerLog: Set<String> = []
     @ObservationIgnored private var recoveryIDs: Set<String> = []
-    @ObservationIgnored private var isSyncing = false
+    @ObservationIgnored private var currentSync: Task<Void, Never>?
     @ObservationIgnored private var syncAgain = false
     @ObservationIgnored private var trigger: Task<Void, Never>?
     @ObservationIgnored private var snapshotTask: Task<Void, Never>?
@@ -214,23 +214,28 @@ public final class Store {
     }
 
     /// Cancels a scheduled sync (a debounce or a backoff timer). Tests drive `sync()` directly.
-    func cancelScheduledSync() {
+    public func cancelScheduledSync() {
         trigger?.cancel()
         trigger = nil
     }
 
-    /// Runs requests until up to date, stopped or backing off. Overlapping calls coalesce into one more pass.
+    /// Runs requests until up to date, stopped or backing off. A call during a sync asks for one more pass and
+    /// returns when that pass is done.
     public func sync() async {
-        if isSyncing {
+        if let running = currentSync {
             syncAgain = true
+            await running.value
             return
         }
-        isSyncing = true
-        defer { isSyncing = false }
-        repeat {
-            syncAgain = false
-            await runSync()
-        } while syncAgain && !stopped && retryAt == nil
+        let task = Task { @MainActor in
+            repeat {
+                syncAgain = false
+                await runSync()
+            } while syncAgain && !stopped && retryAt == nil
+        }
+        currentSync = task
+        await task.value
+        currentSync = nil
     }
 
     private func runSync() async {
