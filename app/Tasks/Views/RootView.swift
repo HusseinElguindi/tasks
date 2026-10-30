@@ -21,6 +21,11 @@ struct RootView: View {
                         DebugAutomation.runIfRequested(store)
                         DebugTiming.runIfRequested(store, window)
                         DebugKeyLog.installIfRequested()
+                        DebugScript.runIfRequested(window) {
+                            let titles = window.selection.compactMap { store.projection.task($0)?.title }.sorted()
+                            let detail = window.detailTaskID.flatMap { store.projection.task($0)?.title } ?? "-"
+                            return "selection=\(titles) detail=\(detail) quickAdd=\(window.quickAdd.map { "'\($0.title)'" } ?? "-")"
+                        }
                         #endif
                     }
             }
@@ -43,7 +48,7 @@ struct MainLayout: View {
     @Environment(\.pane) private var pane
 
     /// Room the leftmost pane header leaves for the traffic lights and the toggle when the panes cover the sidebar.
-    static let windowControlsInset: CGFloat = 96
+    static let windowControlsInset: CGFloat = 116
 
     var body: some View {
         GeometryReader { geo in
@@ -62,8 +67,9 @@ struct MainLayout: View {
                     withAnimation(PaneMotion.sidebar) { window.sidebarVisible.toggle() }
                 }
                 .environment(\.paneGhostLevel, .secondary)
-                .padding(.leading, 76)
-                .padding(.top, 13)
+                // Rex's toggle: centered 107pt in, on the traffic lights' line (y 25).
+                .padding(.leading, 96)
+                .padding(.top, 14)
             }
         }
     }
@@ -98,17 +104,14 @@ struct Panes: View {
     }
 
     @ViewBuilder private var primary: some View {
-        switch window.route {
-        case .today:
-            TodayPane(store: store, window: window)
-        case .list(let id):
-            // No .id(listID): switching lists keeps one List and diffs its rows instead of rebuilding the table.
-            ListPane(store: store, window: window, listID: id)
-        case .archive:
+        // Today and lists are the same pane at the same place, so switching updates it instead of rebuilding it.
+        if let mode = window.route.taskMode {
+            TaskPane(store: store, window: window, mode: mode)
+        } else {
             ArchivePane(store: store, window: window)
                 .frame(width: window.archiveSelection == nil ? nil : 380)
             if let id = window.archiveSelection {
-                ListPane(store: store, window: window, listID: id)
+                TaskPane(store: store, window: window, mode: .list(id))
                     .id(id)
                     .environment(\.paneHeaderInset, 0)
             }

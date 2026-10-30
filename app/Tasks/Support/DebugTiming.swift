@@ -1,12 +1,15 @@
 #if DEBUG
 import AppKit
 import Foundation
+import OSLog
 import QuartzCore
 import TasksCore
 
 /// Debug aid for the last §9 budget, "switching lists ≤ 1 frame (16 ms) to first rows": `-debugMeasureSwitch <file>`
-/// switches between lists and records the time from changing the route to the first row of the new list appearing
-/// (our work plus SwiftUI's), then quits. `-debugBulk N` first adds a list "Big" with N open tasks.
+/// switches between lists and records, per switch, the time from changing the route to the first row of the new list
+/// appearing (latency, which includes waiting for the display's update cycle) and the main-thread work the switch
+/// costs (the route change, then the window's update and layout forced right away: our work plus SwiftUI's), then
+/// quits. `-debugBulk N` first adds a list "Big" with N open tasks; `-debugRounds N` (default 3) sets the rounds.
 @MainActor
 enum DebugTiming {
     private static var started: CFTimeInterval?
@@ -14,12 +17,17 @@ enum DebugTiming {
     private static var token = 0
     /// Row bodies evaluated since the last switch.
     static var rowBodies = 0
+    /// Each measured switch is a "switch" interval in Instruments' Points of Interest.
+    private static let signposter = OSSignposter(subsystem: "com.elguindi.Tasks.dev", category: .pointsOfInterest)
+    private static var interval: OSSignpostIntervalState?
 
     /// Called by every task row's onAppear.
     static func rowAppeared() {
         guard let start = started, let c = waiting else { return }
         started = nil
         waiting = nil
+        if let interval { signposter.endInterval("switch", interval) }
+        interval = nil
         c.resume(returning: (CACurrentMediaTime() - start) * 1000)
     }
 
@@ -46,15 +54,24 @@ enum DebugTiming {
             var previous = "start"
             window.route = .today
             try? await Task.sleep(for: .milliseconds(300))
-            for round in 0..<4 {
+            let rounds = Int(arg("debugRounds") ?? "") ?? 3
+            for round in 0...rounds {
                 for (name, route) in routes.dropFirst() + [routes[0]] {
                     token += 1
                     let mine = token
                     rowBodies = 0
+                    var work = 0.0
                     let ms = await withCheckedContinuation { c in
                         waiting = c
-                        started = CACurrentMediaTime()
+                        interval = signposter.beginInterval("switch", "\(previous) → \(name)")
+                        let t0 = CACurrentMediaTime()
+                        started = t0
                         window.route = route
+                        if let view = NSApp.windows.first(where: { $0.isVisible })?.contentView {
+                            view.layoutSubtreeIfNeeded()
+                            view.displayIfNeeded()
+                        }
+                        work = (CACurrentMediaTime() - t0) * 1000
                         Task { @MainActor in
                             try? await Task.sleep(for: .seconds(2))
                             // An empty list shows no rows; give up on this one only.
@@ -62,7 +79,9 @@ enum DebugTiming {
                         }
                     }
                     try? await Task.sleep(for: .milliseconds(200))
-                    if round > 0 { lines.append(String(format: "%@ → %@\t%.2f ms\t%d row bodies", previous, name, ms, rowBodies)) }
+                    if round > 0 {
+                        lines.append(String(format: "%@ → %@\t%.2f ms\t%.2f ms work\t%d row bodies", previous, name, ms, work, rowBodies))
+                    }
                     previous = name
                 }
             }

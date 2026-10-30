@@ -85,6 +85,17 @@ enum DemoData {
             WindowActions(store: store, window: window).newTask()
             window.quickAdd?.title = "Call the dentist about the crown"
         }
+        // `-debugThenRoute today|list:<name>`: a second route, 0.8 s later, to render the state after a switch.
+        if let then = d.string(forKey: "debugThenRoute") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                if then == "today" {
+                    window.route = .today
+                } else if then.hasPrefix("list:"),
+                          let id = store.projection.activeLists.ids.first(where: { store.projection.list($0)?.name == String(then.dropFirst(5)) }) {
+                    window.route = .list(id)
+                }
+            }
+        }
         // After the window has settled: launch layout (and -debugWindowSize) moves views under the pointer, whose
         // own hover events would otherwise replace these.
         let hovers = (d.string(forKey: "debugHover") ?? "").split(separator: ",").map(String.init)

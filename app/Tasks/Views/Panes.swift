@@ -1,31 +1,6 @@
 import SwiftUI
 import TasksCore
 
-/// Today: tasks whose `when` or deadline has arrived, grouped by list in sidebar order (spec §4).
-struct TodayPane: View {
-    let store: Store
-    @Bindable var window: WindowState
-    @Environment(\.pane) private var pane
-
-    var body: some View {
-        let actions = WindowActions(store: store, window: window)
-        let p = store.projection
-        let isEmpty = window.quickAdd == nil && p.todayDone.ids.isEmpty
-            && p.activeLists.ids.allSatisfy { p.todayTasks(in: $0).ids.isEmpty }
-        PaneChrome("Today", systemImage: "sun.max", subtitle: DateText.header(p.dayModel.day.date),
-                   isActive: window.focus == .list || window.detailTaskID == nil) {
-            PaneActions(window: window, actions: actions)
-        } content: {
-            if isEmpty {
-                TodayEmpty(actions: actions)
-            } else {
-                TaskListView(store: store, window: window, mode: .today)
-                    .padding(.top, 2)
-            }
-        }
-    }
-}
-
 struct TodayEmpty: View {
     let actions: WindowActions
     @Environment(\.pane) private var pane
@@ -80,43 +55,70 @@ struct PaneActions: View {
     }
 }
 
-/// A list screen: its open tasks in manual order, then a collapsed Completed section (spec §4). An archived list
-/// opens here too, with a banner; nothing about it is read-only.
-struct ListPane: View {
+/// Today and every list are one pane, so moving between them updates its header and rows in place rather than
+/// building a new pane (spec §9: a list switch within one frame). Today shows tasks whose `when` or deadline has
+/// arrived, grouped by list in sidebar order (spec §4). A list shows its open tasks in manual order, then a collapsed
+/// Completed section; an archived list opens here too, with a banner, and nothing about it is read-only.
+struct TaskPane: View {
     let store: Store
     @Bindable var window: WindowState
-    let listID: EntityID
+    let mode: TaskListView.Mode
     @Environment(\.pane) private var pane
     @FocusState private var renameFocused: Bool
     @State private var nameDraft = ""
 
+    private var listID: EntityID? {
+        if case .list(let id) = mode { id } else { nil }
+    }
+
     var body: some View {
         let actions = WindowActions(store: store, window: window)
-        if let list = store.projection.listModel(listID) {
-            let count = store.projection.openTasks(in: listID).count
-            PaneChrome(list.name.isEmpty ? "Untitled" : list.name,
-                       subtitle: count == 0 ? "No tasks" : count == 1 ? "1 task" : "\(count) tasks",
-                       isActive: window.focus == .list || window.detailTaskID == nil) {
+        let p = store.projection
+        let list = listID.flatMap { p.listModel($0) }
+        PaneChrome(title(list), subtitle: subtitle(list), isActive: window.focus == .list || window.detailTaskID == nil) {
+            if let list {
                 PaneListMark(monogram: list.monogram, color: pane.listColor(slot: list.colorSlot), size: 16)
-            } actions: {
-                if list.isArchived { PaneChip(text: "Archived") }
-                PaneActions(window: window, actions: actions, listID: listID)
-            } content: {
-                VStack(spacing: 0) {
-                    if window.renamingList == listID {
-                        renameField(list)
+            } else {
+                Image(systemName: "sun.max").font(.system(size: 12, weight: .medium)).foregroundStyle(pane.ink)
+            }
+        } actions: {
+            if list?.isArchived == true { PaneChip(text: "Archived") }
+            PaneActions(window: window, actions: actions, listID: listID)
+        } content: {
+            VStack(spacing: 0) {
+                if let list, window.renamingList == list.id {
+                    renameField(list)
+                }
+                if let list, let archivedAt = list.archivedAt {
+                    ArchivedBanner(archivedAt: archivedAt) {
+                        store.unarchive(list: list.id, undoManager: window.undoManager)
+                        window.route = .list(list.id)
                     }
-                    if let archivedAt = list.archivedAt {
-                        ArchivedBanner(archivedAt: archivedAt) {
-                            store.unarchive(list: listID, undoManager: window.undoManager)
-                            window.route = .list(listID)
-                        }
-                    }
-                    TaskListView(store: store, window: window, mode: .list(listID))
+                }
+                if listID == nil && todayIsEmpty {
+                    TodayEmpty(actions: actions)
+                } else {
+                    TaskListView(store: store, window: window, mode: mode)
                         .padding(.top, 2)
                 }
             }
         }
+    }
+
+    private func title(_ list: ListModel?) -> String {
+        guard listID != nil else { return "Today" }
+        return list.map { $0.name.isEmpty ? "Untitled" : $0.name } ?? ""
+    }
+
+    private func subtitle(_ list: ListModel?) -> String {
+        guard let listID else { return DateText.header(store.projection.dayModel.day.date) }
+        let count = store.projection.openTasks(in: listID).count
+        return count == 0 ? "No tasks" : count == 1 ? "1 task" : "\(count) tasks"
+    }
+
+    private var todayIsEmpty: Bool {
+        let p = store.projection
+        return window.quickAdd == nil && p.todayDone.ids.isEmpty && p.activeLists.ids.allSatisfy { p.todayTasks(in: $0).ids.isEmpty }
     }
 
     private func renameField(_ list: ListModel) -> some View {
@@ -125,7 +127,7 @@ struct ListPane: View {
                 .textFieldStyle(.plain)
                 .font(PaneFont.headline)
                 .focused($renameFocused)
-                .onSubmit { commitRename() }
+                .onSubmit { commitRename(list.id) }
                 .onExitCommand { window.renamingList = nil }
             PaneKeyHint(text: "↩ Rename")
         }
@@ -142,10 +144,10 @@ struct ListPane: View {
             nameDraft = list.name
             renameFocused = true
         }
-        .onChange(of: renameFocused) { _, focused in if !focused { commitRename() } }
+        .onChange(of: renameFocused) { _, focused in if !focused { commitRename(list.id) } }
     }
 
-    private func commitRename() {
+    private func commitRename(_ listID: EntityID) {
         guard window.renamingList == listID else { return }
         let name = nameDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         if !name.isEmpty { store.rename(list: listID, to: name, undoManager: window.undoManager) }

@@ -97,3 +97,11 @@ screenshots sampled in sRGB with `.uitools/px.swift`, Rex Beta, dark theme), and
   toolbar), ~100 ms; tooltips read "Name ⌘X"; unfocused panes also fade their header icons; actions that don't apply
   are drawn disabled.
 - **Proposal:** add the hover fills, tooltips with shortcuts and faded header icons to Pane's button and pane specs.
+
+## Window
+
+### Window controls
+- **Pane:** not specified; with a hidden title bar AppKit puts the traffic lights at centers (16, 16), 39 and 62.
+- **Rex:** the traffic lights' circles span 18–32pt (centers 25, 48, 71 at y 25), on the line of the pane titles, and
+  the toolbar icons follow on the same line (sidebar toggle centered at x 107, then 145, 175, 205).
+- **Proposal:** specify Rex's 50pt toolbar band: window controls and toolbar icons centered 25pt from the top.

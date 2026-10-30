@@ -1,46 +1,85 @@
 import AppKit
 import SwiftUI
 
-/// SwiftUI's `List` is an NSTableView on macOS. Pane draws its own selection (fill-selected at radius-row), so this
-/// turns off the table's highlight and background once the row is in the table.
-struct PaneTableStyle: NSViewRepresentable {
-    func makeNSView(context: Context) -> Probe { Probe() }
-    func updateNSView(_ nsView: Probe, context: Context) {}
-
-    final class Probe: NSView {
-        override func viewDidMoveToWindow() {
-            super.viewDidMoveToWindow()
-            var v: NSView? = superview
-            while let view = v, !(view is NSTableView) { v = view.superview }
-            guard let table = v as? NSTableView else { return }
-            if table.selectionHighlightStyle != .none { table.selectionHighlightStyle = .none }
-            if table.backgroundColor != .clear { table.backgroundColor = .clear }
-            if table.gridStyleMask != [] { table.gridStyleMask = [] }
-            table.enclosingScrollView?.drawsBackground = false
-        }
-    }
-}
-
-/// Lets the window be dragged by its empty background (the hidden title bar's area included).
+/// Lets the window be dragged by its empty background (the hidden title bar's area included), and puts the traffic
+/// lights where Rex has them: 9pt further in and down than AppKit's (close button centered 25pt from the corner), on
+/// the line of the pane titles. AppKit lays the title bar out again on resizes and key changes, so they are put back
+/// after each.
 struct WindowConfigurator: NSViewRepresentable {
     var ground: NSColor
 
+    /// Rex's window controls: the close button's circle spans 18–32pt from the window's top-left corner.
+    static let buttonsInset = CGSize(width: 18, height: 18)
+    static let buttonSpacing: CGFloat = 23
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
     func makeNSView(context: Context) -> NSView {
         let v = NSView()
-        DispatchQueue.main.async { configure(v.window) }
+        DispatchQueue.main.async { configure(v.window, context.coordinator) }
         return v
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-        DispatchQueue.main.async { configure(nsView.window) }
+        DispatchQueue.main.async { configure(nsView.window, context.coordinator) }
     }
 
-    private func configure(_ window: NSWindow?) {
+    private func configure(_ window: NSWindow?, _ coordinator: Coordinator) {
         guard let window else { return }
         window.isMovableByWindowBackground = true
         window.backgroundColor = ground
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
+        coordinator.watch(window)
+        Self.placeButtons(window)
+    }
+
+    @MainActor
+    static func placeButtons(_ window: NSWindow) {
+        guard !window.styleMask.contains(.fullScreen),
+              let close = window.standardWindowButton(.closeButton),
+              let titlebar = close.superview, let container = titlebar.superview else { return }
+        // Room for the lowered buttons: the title bar container grows to Rex's toolbar height.
+        let height: CGFloat = 50
+        if container.frame.height != height, let frame = container.superview?.bounds {
+            container.frame = NSRect(x: 0, y: frame.height - height, width: frame.width, height: height)
+        }
+        for (i, kind) in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].enumerated() {
+            guard let button = window.standardWindowButton(kind) else { continue }
+            let size = button.frame.size
+            // The circle is 14pt; center it on the button frame's slot.
+            let x = buttonsInset.width + CGFloat(i) * buttonSpacing - (size.width - 14) / 2
+            let top = buttonsInset.height - (size.height - 14) / 2
+            let origin = NSPoint(x: x, y: titlebar.isFlipped ? top : titlebar.bounds.height - top - size.height)
+            if button.frame.origin != origin { button.setFrameOrigin(origin) }
+        }
+    }
+
+    @MainActor
+    final class Coordinator: NSObject {
+        private weak var window: NSWindow?
+        nonisolated(unsafe) private var observers: [NSObjectProtocol] = []
+
+        func watch(_ window: NSWindow) {
+            guard self.window !== window else { return }
+            self.window = window
+            observers.forEach(NotificationCenter.default.removeObserver)
+            let names: [Notification.Name] = [NSWindow.didResizeNotification, NSWindow.didEndLiveResizeNotification,
+                                              NSWindow.didBecomeKeyNotification, NSWindow.didResignKeyNotification,
+                                              NSWindow.didExitFullScreenNotification, NSWindow.didChangeScreenNotification]
+            observers = names.map { name in
+                NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak window] _ in
+                    MainActor.assumeIsolated {
+                        guard let window else { return }
+                        WindowConfigurator.placeButtons(window)
+                        // AppKit may lay the title bar out once more after the notification.
+                        DispatchQueue.main.async { WindowConfigurator.placeButtons(window) }
+                    }
+                }
+            }
+        }
+
+        deinit { observers.forEach(NotificationCenter.default.removeObserver) }
     }
 }
 

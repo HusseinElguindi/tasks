@@ -27,7 +27,7 @@ struct Sidebar: View {
             // Today's capsule then spans 46–76, where Rex's first row sits.
             Color.clear.frame(height: 34)
 
-            NavRow(window: window, item: .today, title: "Today", count: todayCount, isCurrent: window.route == .today) {
+            NavRow(window: window, item: .today, title: "Today", count: todayCount) {
                 PaneListMark(monogram: "", color: pane.attention, systemImage: "sun.max")
             } action: {
                 window.route = .today
@@ -51,8 +51,7 @@ struct Sidebar: View {
             Spacer(minLength: 0)
 
             if !p.archivedLists.ids.isEmpty {
-                NavRow(window: window, item: .archive, title: "Archive", count: p.archivedLists.count,
-                       isCurrent: window.route == .archive) {
+                NavRow(window: window, item: .archive, title: "Archive", count: p.archivedLists.count) {
                     Image(systemName: "archivebox").font(.system(size: 13))
                 } action: {
                     window.route = .archive
@@ -61,7 +60,7 @@ struct Sidebar: View {
                     }
                 }
             }
-            NavRow(window: window, item: .newList, title: "New list", count: nil, isCurrent: false) {
+            NavRow(window: window, item: .newList, title: "New list", count: nil) {
                 Image(systemName: "plus").font(.system(size: 13))
             } action: {
                 actions.newList()
@@ -110,18 +109,17 @@ struct SidebarGroupLabel: View {
     }
 }
 
-/// A sidebar row whose hover lives in the window's sidebar region.
+/// A sidebar row whose hover and current state live in the window's sidebar flags.
 struct NavRow<Leading: View>: View {
     let window: WindowState
     var item: SidebarItem
     var title: String
     var count: Int?
-    var isCurrent: Bool
     @ViewBuilder var leading: Leading
     var action: () -> Void
 
     var body: some View {
-        SidebarRow(title: title, count: count, isCurrent: isCurrent, isHovered: window.sidebarHover.isHovered(item),
+        SidebarRow(title: title, count: count, isCurrent: window.sidebarCurrent.isOn(item), isHovered: window.sidebarHover.isHovered(item),
                    leading: { leading }, action: action)
             .onHover { window.sidebarHover.update(item, inside: $0) }
             .onDisappear { window.sidebarHover.vanished(item) }
@@ -135,6 +133,8 @@ struct NavRow<Leading: View>: View {
 struct SidebarRow<Leading: View>: View {
     var title: String
     var count: Int?
+    /// The count gives way to the row's ••• (it stays in the layout, hidden, so nothing is rebuilt).
+    var countHidden = false
     var isCurrent: Bool
     var isHovered = false
     var isDropTarget = false
@@ -152,16 +152,13 @@ struct SidebarRow<Leading: View>: View {
                     .foregroundStyle(isDropTarget ? pane.accentText : (isCurrent || isHovered ? pane.ink : pane.inkSecondary))
                     .offset(y: -1)
                 if let accessory { accessory }
-                ZStack(alignment: .trailing) {
-                    if let count, count > 0 {
-                        Text(verbatim: "\(count)")
-                            .monospacedDigit()
-                            .foregroundStyle(isDropTarget ? pane.accentText : pane.inkTertiary)
-                            .padding(.trailing, 3.5)
-                            .offset(y: -1)
-                    }
-                }
-                .frame(width: PaneSize.rowAction, alignment: .trailing)
+                Text(verbatim: count.map { $0 > 0 ? "\($0)" : "" } ?? "")
+                    .monospacedDigit()
+                    .foregroundStyle(isDropTarget ? pane.accentText : pane.inkTertiary)
+                    .padding(.trailing, 3.5)
+                    .offset(y: -1)
+                    .opacity(countHidden ? 0 : 1)
+                    .frame(width: PaneSize.rowAction, alignment: .trailing)
             }
             .font(PaneFont.body)
             .padding(.leading, 10)
@@ -187,10 +184,10 @@ struct ListSidebarRow: View {
             let item = SidebarItem.list(listID)
             let hovered = window.sidebarHover.isHovered(item)
             let targeted = drop == .tasks(listID)
-            let isCurrent = window.route == .list(listID)
+            let isCurrent = window.sidebarCurrent.isOn(item)
             let showMenu = (isCurrent || hovered) && drop == nil
             SidebarRow(title: list.name.isEmpty ? "Untitled" : list.name,
-                       count: showMenu ? nil : store.projection.openTasks(in: listID).count,
+                       count: store.projection.openTasks(in: listID).count, countHidden: showMenu,
                        isCurrent: isCurrent, isHovered: hovered, isDropTarget: targeted,
                        accessory: targeted ? AnyView(PaneChip(text: "Move to \(list.name)", systemImage: "arrow.right", kind: .accent)) : nil) {
                 PaneListMark(monogram: list.monogram, color: pane.listColor(slot: list.colorSlot))
@@ -198,7 +195,7 @@ struct ListSidebarRow: View {
                 window.route = .list(listID)
             }
             .overlay(alignment: .trailing) {
-                PaneRowMenu(visible: showMenu, help: "List Actions") {
+                PaneRowMenu(visible: showMenu, live: hovered, help: "List Actions") {
                     Button("Rename…") { window.route = .list(listID); window.renamingList = listID }
                     Button("Archive List") { WindowActions(store: store, window: window).archive(list: listID) }
                 }

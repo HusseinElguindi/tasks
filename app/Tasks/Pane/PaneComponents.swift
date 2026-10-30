@@ -440,19 +440,21 @@ struct PaneSidebarRowStyle: ButtonStyle {
         @Environment(\.pane) private var pane
         @Environment(\.paneForcedState) private var forced
 
+        /// The three fills are always there, shown by opacity: inserting a capsule when the current row changed made
+        /// SwiftUI build it on every list switch.
         var body: some View {
+            let pressed = (forced?.pressed ?? configuration.isPressed) && !isCurrent && !isDropTarget
             configuration.label
                 .background {
-                    if isDropTarget {
+                    ZStack {
+                        Capsule().fill(pane.selected).opacity(pressed ? 1 : 0)
+                        Capsule().fill(pane.strong).paneShadow(.capsule, in: Capsule()).opacity(isCurrent && !isDropTarget ? 1 : 0)
                         Capsule().fill(pane.accentTint)
                             .overlay { Capsule().strokeBorder(pane.focusRing, lineWidth: 2) }
-                    } else if isCurrent {
-                        Capsule().fill(pane.strong).paneShadow(.capsule, in: Capsule())
-                    } else if forced?.pressed ?? configuration.isPressed {
-                        Capsule().fill(pane.selected)
+                            .opacity(isDropTarget ? 1 : 0)
+                            .animation(isDropTarget ? PaneMotion.hoverIn : nil, value: isDropTarget)
                     }
                 }
-                .animation(isDropTarget ? PaneMotion.hoverIn : nil, value: isDropTarget)
                 .contentShape(Capsule())
         }
     }
@@ -478,28 +480,36 @@ private struct ReduceMotionOff: ViewModifier {
 
 /// A row's trailing •••: a menu in the `rowAction` slot the layout always reserves, revealed while the row is hovered
 /// or selected, as Rex reveals a session row's action (in with `hoverIn`, out with `hoverOut`). Never shifts the row.
-/// Rows place it `rowActionInset` from their trailing edge.
+/// Rows place it `rowActionInset` from their trailing edge. A SwiftUI `Menu` costs milliseconds to build, so it only
+/// exists while the pointer is on the row (`live`); a selected or current row shows the same dots, drawn.
 struct PaneRowMenu<Items: View>: View {
     var visible: Bool
+    var live: Bool
     var help: String
     @ViewBuilder var items: Items
+    @Environment(\.pane) private var pane
 
     var body: some View {
-        Menu { items } label: {
-            PaneDots()
-                .frame(width: PaneSize.rowAction, height: PaneSize.rowAction)
-                .contentShape(Rectangle())
+        ZStack {
+            if visible && live {
+                Menu { items } label: {
+                    PaneDots()
+                        .frame(width: PaneSize.rowAction, height: PaneSize.rowAction)
+                        .contentShape(Rectangle())
+                }
+                .menuStyle(.button)
+                .buttonStyle(PaneGhostButtonStyle())
+                .environment(\.paneGhostLevel, .row)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .help(help)
+                .transition(.opacity)
+            } else if visible {
+                PaneDots().foregroundStyle(pane.inkSecondary).transition(.opacity)
+            }
         }
-        .menuStyle(.button)
-        .buttonStyle(PaneGhostButtonStyle())
-        .environment(\.paneGhostLevel, .row)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .help(help)
-        .opacity(visible ? 1 : 0)
-        .allowsHitTesting(visible)
+        .frame(width: PaneSize.rowAction, height: PaneSize.rowAction)
         .animation(visible ? PaneMotion.hoverIn : PaneMotion.hoverOut, value: visible)
-        .accessibilityHidden(!visible)
     }
 }
 
@@ -520,7 +530,7 @@ struct PaneDots: View {
 /// clear it. Each item reads its own flag, so moving the pointer redraws the two rows involved, not every row.
 @MainActor
 final class PaneHoverRegion<Key: Hashable> {
-    private var flags: [Key: PaneHoverFlag] = [:]
+    private var flags: [Key: PaneFlag] = [:]
     private var current: Key?
 
     /// Read in a body: that view, and only it, follows the item's hover.
@@ -558,9 +568,9 @@ final class PaneHoverRegion<Key: Hashable> {
         if current == key { clear() }
     }
 
-    private func flag(_ key: Key) -> PaneHoverFlag {
+    private func flag(_ key: Key) -> PaneFlag {
         if let f = flags[key] { return f }
-        let f = PaneHoverFlag()
+        let f = PaneFlag()
         flags[key] = f
         return f
     }
@@ -568,8 +578,33 @@ final class PaneHoverRegion<Key: Hashable> {
 
 @MainActor
 @Observable
-final class PaneHoverFlag {
+final class PaneFlag {
     var isOn = false
+}
+
+/// One "on" item among many (the sidebar's current row), where each item reads its own flag: changing it redraws
+/// the two items involved, not all of them.
+@MainActor
+final class PaneFlags<Key: Hashable> {
+    private var flags: [Key: PaneFlag] = [:]
+    private var current: Key?
+
+    func isOn(_ key: Key) -> Bool { flag(key).isOn }
+
+    func select(_ key: Key?) {
+        guard key != current else { return }
+        if let current { flags[current]?.isOn = false }
+        current = key
+        if let key { flag(key).isOn = true }
+    }
+
+    private func flag(_ key: Key) -> PaneFlag {
+        if let f = flags[key] { return f }
+        let f = PaneFlag()
+        f.isOn = key == current
+        flags[key] = f
+        return f
+    }
 }
 
 #if DEBUG

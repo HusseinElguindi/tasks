@@ -77,6 +77,11 @@ Shared by sidebar rows, task rows and group labels (`PaneSize`):
 - **Ink** (dark): title at rest `ink-secondary` #A8ADB1, hovered or current `ink` #E6EDF3, labels and counts
   `ink-tertiary` #7F8386. Current capsule `fill-strong` with Rex's edge (an outer #5E5E5E pixel over #535353).
 
+## Window controls
+
+The traffic lights sit where Rex has them: circles 18–32pt from the window's top-left corner (centers 25, 48, 71),
+on the line of the pane titles, with the sidebar toggle centered 107pt in on the same line.
+
 ## Sidebar collapse
 
 The traffic lights and the sidebar toggle stay where they are. The panes slide left over the sidebar (which doesn't
@@ -86,8 +91,10 @@ title moves right of the toggle. Expanding reverses it.
 ## Drag
 
 - **No grip.** The whole row is the handle, as in Rex's sidebar and Mac lists.
-- **Task rows** use the system table's drag: the row image follows the pointer and the native insertion line (an
-  accent line with a ring at its leading end, the A1 shape) marks the drop. Today groups refuse drops from other groups.
+- **Task rows** lift as A1 draws it: a copy of the row on a raised surface (`fill-capsule` in dark, `surface-base` in
+  light) with `shadow-lift`, plus a count when several tasks move, while the source rows stay in place at 35% until
+  the drag ends. The `PaneInsertionLine`, inset to the row text, marks the drop. Today groups refuse drops from other
+  groups (not-allowed cursor).
 - **Sidebar lists** lift as a `fill-strong` capsule with `shadow-lift`; the `PaneInsertionLine` sits in the 2 pt gap.
 - **Drop target** (tasks over a sidebar list): `accent-tint` fill, 2 pt `focus-ring` edge, label `accent-text`, a
   "Move to …" chip; `hoverIn` in, instant out.

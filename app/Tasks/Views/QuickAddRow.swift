@@ -16,8 +16,7 @@ struct QuickAddRow: View {
     @State private var deadlinePicker = false
 
     enum Field { case title, notes }
-    /// Its row id in the task List, to scroll it into view.
-    static let rowID = "quick-add"
+
 
     var body: some View {
         if let draft = window.quickAdd {
