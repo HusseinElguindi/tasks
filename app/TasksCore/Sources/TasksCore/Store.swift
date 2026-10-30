@@ -106,7 +106,7 @@ public final class Store {
 
     /// Client-generated op and entity ids: lowercase UUID strings, compared as strings, never round-tripped
     /// through `UUID` (the server treats ids as case-sensitive).
-    func newID() -> String { UUID().uuidString.lowercased() }
+    public func newID() -> String { UUID().uuidString.lowercased() }
 
     // MARK: - Local ops
 

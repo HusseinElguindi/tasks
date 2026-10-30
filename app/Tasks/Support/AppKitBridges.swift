@@ -7,6 +7,7 @@ import SwiftUI
 /// after each.
 struct WindowConfigurator: NSViewRepresentable {
     var ground: NSColor
+    var window: WindowState? = nil
 
     /// Rex's window controls: the close button's circle spans 18–32pt from the window's top-left corner.
     static let buttonsInset = CGSize(width: 18, height: 18)
@@ -16,7 +17,10 @@ struct WindowConfigurator: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSView {
         let v = NSView()
-        DispatchQueue.main.async { configure(v.window, context.coordinator) }
+        DispatchQueue.main.async {
+            configure(v.window, context.coordinator)
+            window?.nsWindow = v.window
+        }
         return v
     }
 

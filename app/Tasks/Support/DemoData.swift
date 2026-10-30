@@ -9,118 +9,89 @@ import TasksCore
 /// Never compiled into release builds.
 @MainActor
 enum DemoData {
+    /// The prototype's seed (design/prototype-v2/Main.dc.html dc:426–479), dates relative to today, so the app and
+    /// the prototype can be compared side by side.
     static func seedIfRequested(_ store: Store) {
         let d = UserDefaults.standard
         guard d.bool(forKey: "demoData"), store.projection.allTaskIDs.isEmpty else { return }
         let today = store.projection.day.date
+        let dayMs = 86_400_000
+        let startOfToday = Int(today.startDate().timeIntervalSince1970 * 1000)
+        let now = Int(Date().timeIntervalSince1970 * 1000)
         func day(_ n: Int) -> CalendarDate { today.adding(days: n) }
+        // doneAt(k): k days ago at 15:00, or 20 minutes ago today.
+        func doneAt(_ k: Int) -> Int { k == 0 ? max(startOfToday + 60_000, now - 20 * 60_000) : startOfToday - k * dayMs + 15 * 3_600_000 }
         let inbox = store.defaultListID
         let school = store.createList(name: "School")
         let tasksApp = store.createList(name: "Tasks app")
         let home = store.createList(name: "Home")
         let errands = store.createList(name: "Errands")
-
-        store.createTask(title: "Look into a standing desk", in: inbox)
-        store.createTask(title: "Reply to Sam about the cabin weekend", in: inbox, when: day(3))
-
-        store.createTask(title: "ECE 358 lab report", in: school, deadline: day(-2))
-        store.createTask(title: "Email TA about midterm regrade", in: school, when: day(-1))
-        let review = store.createTask(title: "Review CS 489 lectures 10–14",
-                                      notes: "Slides 10–14 plus the two retrieval readings.\n\n- Make cards for the **attention** derivation\n- Redo tutorial 6, question 3\n\n[Lecture 12 recording](https://example.com/lecture-12) · bring `q3.py` to tutorial",
-                                      in: school, when: today, deadline: day(3))
-        store.createTask(title: "Submit MSE 333 A2", in: school, when: day(2), deadline: day(3))
-        store.createTask(title: "CS 489 final study plan", in: school, when: day(10))
-        store.createTask(title: "Print ECE 358 formula sheet", in: school)
-        store.createTask(title: "Ask about co-op interview slots", in: school)
-        for i in 0..<5 {
-            if let id = store.createTask(title: "Problem set \(i + 1)", in: school) { store.toggleComplete([id]) }
+        let winter = store.createList(name: "Winter 2026")
+        let move = store.createList(name: "Apartment move")
+        func t(_ list: EntityID?, _ title: String, when: Int? = nil, deadline: Int? = nil, notes: String = "", done: Int? = nil) {
+            guard let id = store.createTask(title: title, notes: notes, in: list, when: when.map(day), deadline: deadline.map(day)) else { return }
+            if let done {
+                store.perform([Op(id: store.newID(), at: now, type: .taskUpdate, target: id, set: Patch(completedAt: .some(doneAt(done))))])
+            }
         }
-
-        store.createTask(title: "Write sync log spec", in: tasksApp, when: day(-3))
-        store.createTask(title: "Fractional index port", in: tasksApp, when: day(4))
-        store.createTask(title: "Design review with Pane boards", in: tasksApp)
-        store.createTask(title: "Try the drag vocabulary", in: tasksApp)
-
-        store.createTask(title: "Book flu shot", in: home, deadline: today)
-        store.createTask(title: "Pick up prescription", in: home, when: today)
-        store.createTask(title: "Fix the bathroom fan", in: home)
-        store.createTask(title: "Call the dentist about the crown", in: home, when: day(1))
-        store.createTask(title: "Water the plants", in: home)
-
-        store.createTask(title: "Return library books", in: errands, deadline: today)
-        if let renew = store.createTask(title: "Renew transit pass", in: errands, when: today) { store.toggleComplete([renew]) }
-        store.createTask(title: "Buy printer paper", in: errands)
-
-        let winter = store.createList(name: "Winter 2026 term")
-        store.createTask(title: "Return lab kit to the E5 parts store", in: winter, when: day(-10))
-        store.createTask(title: "Sell the MATH 213 textbook", in: winter)
-        store.createTask(title: "Download lecture recordings before access ends", in: winter, deadline: day(1))
-        store.archive(list: winter)
-        let coop = store.createList(name: "Co-op job hunt")
-        store.createTask(title: "Update résumé", in: coop)
-        store.archive(list: coop)
-        _ = review
+        t(school, "ECE 358 lab report", when: -3, deadline: -2)
+        t(school, "Email TA about midterm regrade", when: 0)
+        t(school, "Review CS 489 lectures 10–14", when: 0, deadline: 3, notes: "Slides 10–14 plus the two retrieval readings.\n\n- Make cards for the **attention** derivation\n- Redo tutorial 6, question 3\n\n[Lecture 12 recording](https://example.com/cs489) · bring `q3.py` to tutorial")
+        t(school, "Submit MSE 333 A2", when: 2, deadline: 3)
+        t(school, "CS 489 final study plan", when: 10)
+        t(school, "Print ECE 358 formula sheet")
+        t(school, "Ask about co-op interview slots")
+        t(school, "Submit ECE 358 lab 3", done: 2)
+        t(school, "Read MSE 333 chapter 6", done: 4)
+        t(school, "Register for winter courses", done: 9)
+        t(tasksApp, "Write sync log spec", when: 0)
+        t(tasksApp, "Redesign the interactions", when: 0, deadline: 1, notes: "Adding, renaming, dates, drag. Prototype first, then *INTERACTIONS-v2.md*.")
+        t(tasksApp, "Profile list switching")
+        t(tasksApp, "Try the build on the old MacBook", when: 4)
+        t(tasksApp, "Ship the overnight build", done: 1)
+        t(home, "Book flu shot", deadline: 0)
+        t(home, "Pick up prescription", when: -1)
+        t(home, "Fix the bathroom fan", when: 7)
+        t(home, "Call landlord about the heating")
+        t(errands, "Return library books", deadline: 0)
+        t(errands, "Buy printer paper", when: 1)
+        t(errands, "Renew transit pass", when: 0, done: 0)
+        t(inbox, "Look into a standing desk")
+        t(inbox, "Reply to Sam about Saturday", when: 1)
+        t(inbox, "Read DDIA chapter 5", notes: "Replication. Skim the leaderless part.")
+        t(winter, "Study for ECE 222 final", done: 200)
+        t(winter, "Return the oscilloscope kit")
+        t(move, "Forward mail", done: 50)
+        t(move, "Cancel the old internet plan")
+        t(move, "Return the moving boxes")
+        store.perform([Op(id: store.newID(), at: now, type: .listUpdate, target: winter, set: Patch(archivedAt: .some(now - 180 * dayMs)))])
+        store.perform([Op(id: store.newID(), at: now, type: .listUpdate, target: move, set: Patch(archivedAt: .some(now - 48 * dayMs)))])
+        if let n = Int(d.string(forKey: "demoBulk") ?? ""), n > 0 {
+            let big = store.createList(name: "Big")
+            for i in 0..<n { store.createTask(title: "Bulk task \(i) with a title of a realistic length", in: big) }
+        }
     }
 
+    /// `-debugRoute today|list:<name>`, `-debugSelect <title>`, `-debugDetail YES`, `-debugAdd YES`,
+    /// `-debugThenRoute …` (0.8 s later).
     static func applyDebugRoute(_ store: Store, _ window: WindowState) {
         let d = UserDefaults.standard
+        let p = store.projection
+        let actions = WindowActions(store: store, window: window)
+        func list(_ name: String) -> EntityID? { p.allListIDs.first { p.list($0)?.name == name } }
         if let route = d.string(forKey: "debugRoute") {
-            if route == "archive" {
-                window.route = .archive
-                window.archiveSelection = store.projection.archivedLists.ids.first
-            } else if route.hasPrefix("list:") {
-                let name = String(route.dropFirst(5))
-                if let id = store.projection.activeLists.ids.first(where: { store.projection.list($0)?.name == name }) {
-                    window.route = .list(id)
-                }
-            } else {
-                window.route = .today
-            }
+            if route.hasPrefix("list:"), let id = list(String(route.dropFirst(5))) { window.route = .list(id) } else { window.route = .today }
         }
-        if let title = d.string(forKey: "debugOpen"),
-           let id = store.projection.allTaskIDs.first(where: { store.projection.task($0)?.title == title }) {
-            window.open(id)
+        if let title = d.string(forKey: "debugSelect"), let id = p.allTaskIDs.first(where: { p.task($0)?.title == title }) {
+            actions.select([id])
         }
-        if d.bool(forKey: "debugQuickAdd") {
-            WindowActions(store: store, window: window).newTask()
-            window.quickAdd?.title = "Call the dentist about the crown"
+        if d.bool(forKey: "debugDetail") { window.detailOpen = true }
+        if d.bool(forKey: "debugAdd") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { actions.newTask() }
         }
-        // `-debugThenRoute today|list:<name>`: a second route, 0.8 s later, to render the state after a switch.
         if let then = d.string(forKey: "debugThenRoute") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                if then == "today" {
-                    window.route = .today
-                } else if then.hasPrefix("list:"),
-                          let id = store.projection.activeLists.ids.first(where: { store.projection.list($0)?.name == String(then.dropFirst(5)) }) {
-                    window.route = .list(id)
-                }
-            }
-        }
-        // After the window has settled: launch layout (and -debugWindowSize) moves views under the pointer, whose
-        // own hover events would otherwise replace these.
-        let hovers = (d.string(forKey: "debugHover") ?? "").split(separator: ",").map(String.init)
-        guard !hovers.isEmpty else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { hover(hovers, store, window) }
-    }
-
-    private static func hover(_ specs: [String], _ store: Store, _ window: WindowState) {
-        for spec in specs {
-            let p = store.projection
-            func list(_ name: String) -> EntityID? { p.activeLists.ids.first { p.list($0)?.name == name } }
-            switch spec {
-            case "today": window.sidebarHover.update(.today, inside: true)
-            case "lists": window.sidebarHover.update(.listsLabel, inside: true)
-            case "archive": window.sidebarHover.update(.archive, inside: true)
-            case "newList": window.sidebarHover.update(.newList, inside: true)
-            default:
-                if spec.hasPrefix("list:"), let id = list(String(spec.dropFirst(5))) {
-                    window.sidebarHover.update(.list(id), inside: true)
-                } else if spec.hasPrefix("group:"), let id = list(String(spec.dropFirst(6))) {
-                    window.rowHover.update(id, inside: true)
-                } else if spec.hasPrefix("task:"),
-                          let id = p.allTaskIDs.first(where: { p.task($0)?.title == String(spec.dropFirst(5)) }) {
-                    window.rowHover.update(id, inside: true)
-                }
+                if then.hasPrefix("list:"), let id = list(String(then.dropFirst(5))) { actions.go(.list(id)) } else { actions.go(.today) }
             }
         }
     }
