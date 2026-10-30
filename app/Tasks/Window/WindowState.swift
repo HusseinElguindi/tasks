@@ -111,6 +111,8 @@ final class WindowState {
     /// The detail pane's When and Deadline chips, in window coordinates, for ⌘S / ⇧⌘D from there (§11).
     @ObservationIgnored var detailChipFrames: [Overlays.Picker.Field: CGRect] = [:]
     @ObservationIgnored var settleTimer: Timer?
+    /// The last task layout and what it was built from (TaskLayout.make reuses it while they're unchanged).
+    @ObservationIgnored var layoutCache: (inputs: TaskLayout.Inputs, layout: TaskLayout)?
     @ObservationIgnored var typeBuffer = ""
     @ObservationIgnored var typeAt: TimeInterval = 0
     /// The detail pane asks for the caret in its title (a new task, ⇧Tab from the notes): `.end` or `.all`.

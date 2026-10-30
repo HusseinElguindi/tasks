@@ -5,7 +5,9 @@ import TasksCore
 /// dc:609–653, and `applyDragToLayout`, dc:655–676). Reads index buckets only, plus the few tasks that are pinned
 /// while checked rows wait (§8) and the new-task draft (§6).
 ///
-/// O(rows in the view): a 2,000-task list is ~2,000 additions, microseconds.
+/// Rows are parallel arrays with one id → index map, and the whole layout is reused while its inputs (the buckets'
+/// arrays, the pins, the draft, the drag…) are unchanged, so a title edit or a selection change costs nothing here
+/// (§9: a local edit redraws one row).
 @MainActor
 struct TaskLayout {
     /// A group of rows that a drag can reorder: a list's open tasks, or one Today group. `listID` is the list.
@@ -20,11 +22,11 @@ struct TaskLayout {
     /// "today" or the list id: motion is tracked only between layouts with the same key.
     var key: String
     var top: CGFloat
-    var ys: [EntityID: CGFloat] = [:]
-    /// Rows top to bottom.
+    /// Rows top to bottom, with their y and their group (an index into `groups`, or -1 for done rows).
     var order: [EntityID] = []
-    /// The group of each row: a list id, or `TaskLayout.doneGroup`.
-    var groupOf: [EntityID: EntityID] = [:]
+    var yList: [CGFloat] = []
+    private var groupIndex: [Int] = []
+    var index: [EntityID: Int] = [:]
     var groups: [Group] = []
     /// Today's group labels by list id (and `doneGroup` for "Completed").
     var labels: [EntityID: CGFloat] = [:]
@@ -41,33 +43,85 @@ struct TaskLayout {
     static let doneGroup = "\u{1}done"
     static let pitch = TK.M.pitch
 
-    func y(of id: EntityID) -> CGFloat? { ys[id] }
-    func isDone(_ id: EntityID) -> Bool { groupOf[id] == Self.doneGroup }
+    func y(_ id: EntityID) -> CGFloat? { index[id].map { yList[$0] } }
+    func contains(_ id: EntityID) -> Bool { index[id] != nil }
+
+    /// A row's group: its list id, or `doneGroup`.
+    func group(_ id: EntityID) -> EntityID? {
+        guard let i = index[id] else { return nil }
+        let g = groupIndex[i]
+        return g < 0 ? Self.doneGroup : groups[g].listID
+    }
+
+    func isDone(_ id: EntityID) -> Bool { index[id].map { groupIndex[$0] < 0 } ?? false }
+
+    /// The first row at or below `y`.
+    func firstIndex(atOrBelow y: CGFloat) -> Int {
+        var lo = 0, hi = yList.count
+        while lo < hi {
+            let mid = (lo + hi) / 2
+            if yList[mid] < y { lo = mid + 1 } else { hi = mid }
+        }
+        return lo
+    }
 
     /// The row whose 32pt band (its 30pt shape plus 1pt above and below, §5) contains `y`.
     func row(at y: CGFloat) -> EntityID? {
-        // Rows are sorted by y; a binary search keeps this O(log n) for the hover tracker.
-        var lo = 0, hi = order.count
-        while lo < hi {
-            let mid = (lo + hi) / 2
-            if (ys[order[mid]] ?? 0) - 1 <= y { lo = mid + 1 } else { hi = mid }
-        }
-        guard lo > 0 else { return nil }
-        let id = order[lo - 1]
-        guard let top = ys[id], y >= top - 1, y < top + TK.M.row + 1 else { return nil }
-        return id
+        let i = firstIndex(atOrBelow: y + 1) - 1
+        guard i >= 0, y >= yList[i] - 1, y < yList[i] + TK.M.row + 1 else { return nil }
+        return order[i]
     }
 
+    // MARK: - Building
+
+    /// What a layout depends on. Arrays compare by identity first, so an unchanged bucket costs nothing.
+    struct Inputs: Equatable {
+        var route: WindowState.Route
+        var lists: [[EntityID]]
+        var archived: Bool
+        var completedOpen: Bool
+        var pins: [EntityID: WindowState.Pin]
+        var draft: WindowState.Draft?
+        var drag: WindowState.Drag?
+        var day: CalendarDate
+    }
+
+    /// The layout for the window's view, reused from the last call while its inputs are unchanged.
     static func make(store: Store, window: WindowState) -> TaskLayout {
         let p = store.projection
-        let pins = window.pins
-        let draft = window.draft
+        var lists: [[EntityID]] = []
+        var archived = false
+        var completedOpen = false
         switch window.route {
+        case .list(let id):
+            lists = [p.openTasks(in: id).ids, p.completedTasks(in: id).ids]
+            archived = p.list(id)?.archivedAt != nil
+            completedOpen = window.completedOpen.contains(id)
+        case .today:
+            let active = p.activeLists.ids
+            lists = [active, p.todayDone.ids]
+            for l in active { lists.append(p.todayTasks(in: l).ids) }
+        }
+        // The draft's title doesn't move rows.
+        var draft = window.draft
+        if let title = draft?.title { draft?.title = title.isEmpty ? "" : "x" }
+        let inputs = Inputs(route: window.route, lists: lists, archived: archived, completedOpen: completedOpen,
+                            pins: window.pins, draft: draft, drag: window.drag, day: p.day.date)
+        if let cached = window.layoutCache, cached.inputs == inputs { return cached.layout }
+        let layout = build(store: store, window: window, inputs: inputs)
+        window.layoutCache = (inputs, layout)
+        return layout
+    }
+
+    private static func build(store: Store, window: WindowState, inputs: Inputs) -> TaskLayout {
+        let p = store.projection
+        let pins = inputs.pins
+        let draft = inputs.draft
+        switch inputs.route {
         case .list(let listID):
-            let archived = p.list(listID)?.archivedAt != nil
-            var L = TaskLayout(key: listID, top: archived ? TK.M.rowTopArchived : TK.M.rowTop)
-            var open = p.openTasks(in: listID).ids
-            var done = p.completedTasks(in: listID).ids
+            var L = TaskLayout(key: listID, top: inputs.archived ? TK.M.rowTopArchived : TK.M.rowTop)
+            var open = inputs.lists[0]
+            var done = inputs.lists[1]
             if !pins.isEmpty {
                 (open, done) = applyPins(pins, open: open, done: done, store: store) { $0.list == listID }
             }
@@ -75,29 +129,31 @@ struct TaskLayout {
                 open.append(draft.id)
                 L.draftID = draft.id
             }
+            L.reserve(open.count + (inputs.completedOpen ? done.count : 0))
             var y = L.top
             L.groups.append(Group(listID: listID, top: y, ids: open))
-            for id in open { L.place(id, y, group: listID); y += pitch }
+            for id in open { L.place(id, y, group: 0); y += pitch }
             L.ghostY = y
             y += pitch
             L.doneCount = done.count
             if !done.isEmpty {
                 L.completedY = y + 8
                 y = L.completedY! + pitch
-                if window.completedOpen.contains(listID) {
-                    for id in done { L.place(id, y, group: doneGroup); y += pitch }
+                if inputs.completedOpen {
+                    for id in done { L.place(id, y, group: -1); y += pitch }
                 }
             }
             if open.isEmpty && done.isEmpty { L.empty = .list }
             L.height = y + 24
-            L.applyDrag(window.drag)
+            L.applyDrag(inputs.drag)
             return L
 
         case .today:
             var L = TaskLayout(key: "today", top: TK.M.rowTop)
             var y = L.top
             let today = p.day.date
-            var done = p.todayDone.ids
+            let active = inputs.lists[0]
+            var done = inputs.lists[1]
             var pinnedOpenByList: [EntityID: [EntityID]] = [:]
             var pinnedDone: [(EntityID, Int)] = []
             for (id, pin) in pins {
@@ -108,8 +164,8 @@ struct TaskLayout {
                 default: break
                 }
             }
-            for listID in p.activeLists.ids {
-                var open = p.todayTasks(in: listID).ids
+            for (i, listID) in active.enumerated() {
+                var open = inputs.lists[2 + i]
                 if !pins.isEmpty {
                     open.removeAll { if case .done = pins[$0] { true } else { false } }
                     for id in pinnedOpenByList[listID] ?? [] { insertByOrder(id, into: &open, store: store) }
@@ -123,7 +179,7 @@ struct TaskLayout {
                 L.labelOrder.append(listID)
                 y += pitch
                 L.groups.append(Group(listID: listID, top: y, ids: open))
-                for id in open { L.place(id, y, group: listID); y += pitch }
+                for id in open { L.place(id, y, group: L.groups.count - 1); y += pitch }
             }
             if !pins.isEmpty {
                 done.removeAll { pins[$0] == .open }
@@ -143,19 +199,27 @@ struct TaskLayout {
                 L.labels[doneGroup] = y + (anyOpen ? 8 : 0)
                 L.labelOrder.append(doneGroup)
                 y += pitch + (anyOpen ? 8 : 0)
-                for id in done { L.place(id, y, group: doneGroup); y += pitch }
+                for id in done { L.place(id, y, group: -1); y += pitch }
             }
             L.doneCount = done.count
             L.height = y + 24
-            L.applyDrag(window.drag)
+            L.applyDrag(inputs.drag)
             return L
         }
     }
 
-    private mutating func place(_ id: EntityID, _ y: CGFloat, group: EntityID) {
-        ys[id] = y
+    private mutating func reserve(_ n: Int) {
+        order.reserveCapacity(n)
+        yList.reserveCapacity(n)
+        groupIndex.reserveCapacity(n)
+        index.reserveCapacity(n)
+    }
+
+    private mutating func place(_ id: EntityID, _ y: CGFloat, group: Int) {
+        index[id] = order.count
         order.append(id)
-        groupOf[id] = group
+        yList.append(y)
+        groupIndex.append(group)
     }
 
     /// Checked rows stay put and unchecked ones stay in the done area until the rows settle (§8).
@@ -199,26 +263,34 @@ struct TaskLayout {
     /// everything below it moves up, because the rows are leaving (dc:655–676).
     private mutating func applyDrag(_ drag: WindowState.Drag?) {
         guard let drag, drag.phase != .done, case .tasks(let dragged, let groupID) = drag.kind,
-              let g = groups.first(where: { $0.listID == groupID }) else { return }
-        let others = g.ids.filter { !dragged.contains($0) }
+              let gi = groups.firstIndex(where: { $0.listID == groupID }) else { return }
+        let g = groups[gi]
+        let draggedSet = Set(dragged)
+        let others = g.ids.filter { !draggedSet.contains($0) }
         let k = CGFloat(dragged.count)
         let gap = drag.over == nil
         let target = drag.over != nil ? others.count : min(max(drag.target, 0), others.count)
         for (i, id) in others.enumerated() {
-            ys[id] = g.top + (CGFloat(i) + (gap && i >= target ? k : 0)) * Self.pitch
+            if let r = index[id] { yList[r] = g.top + (CGFloat(i) + (gap && i >= target ? k : 0)) * Self.pitch }
         }
         if drag.over != nil {
             let shift = k * Self.pitch
             let end = g.top + CGFloat(g.ids.count) * Self.pitch
-            for (id, y) in ys where y >= end && groupOf[id] != groupID { ys[id] = y - shift }
+            for r in yList.indices where yList[r] >= end && groupIndex[r] != gi { yList[r] -= shift }
             for (lid, y) in labels where y >= end { labels[lid] = y - shift }
             if let gy = ghostY { ghostY = gy - shift }
             if let cy = completedY { completedY = cy - shift }
         }
-        for (i, id) in dragged.enumerated() where ys[id] != nil && gap {
-            ys[id] = g.top + (CGFloat(target) + CGFloat(i)) * Self.pitch
+        if gap {
+            for (i, id) in dragged.enumerated() {
+                if let r = index[id] { yList[r] = g.top + (CGFloat(target) + CGFloat(i)) * Self.pitch }
+            }
         }
-        // Keep `order` sorted by y for hit-testing.
-        order.sort { (ys[$0] ?? 0) < (ys[$1] ?? 0) }
+        // Keep the rows sorted by y for hit-testing.
+        let perm = yList.indices.sorted { yList[$0] < yList[$1] }
+        order = perm.map { order[$0] }
+        yList = perm.map { yList[$0] }
+        groupIndex = perm.map { groupIndex[$0] }
+        for (i, id) in order.enumerated() { index[id] = i }
     }
 }

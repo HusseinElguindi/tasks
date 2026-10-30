@@ -21,7 +21,7 @@ final class TaskListView: NSView {
     let doc = TaskListDocument()
     private(set) var currentLayout: TaskLayout?
     private var prevKey: String?
-    private var prevYs: [EntityID: CGFloat] = [:]
+    private var prevLayout: TaskLayout?
     private var prevLabels: [EntityID: CGFloat] = [:]
     private var prevCompletedY: CGFloat?
     private var rows: [EntityID: TaskRowView] = [:]
@@ -148,10 +148,38 @@ final class TaskListView: NSView {
         }
     }
 
+    #if DEBUG
+    /// `-debugRenderTimes <file>`: each render's duration (ms) and row count, for the §9 budgets.
+    private static let renderLog: FileHandle? = {
+        guard let path = UserDefaults.standard.string(forKey: "debugRenderTimes") else { return nil }
+        FileManager.default.createFile(atPath: path, contents: nil)
+        return FileHandle(forWritingAtPath: path)
+    }()
+    #endif
+
+    #if DEBUG
+    static var phases: [Double] = []
+    static var phaseT = 0.0
+    static func phase() { let t = CACurrentMediaTime(); if phaseT > 0 { phases.append(t - phaseT) }; phaseT = t }
+    #else
+    static func phase() {}
+    #endif
+
     private func renderNow(animated allowAnimation: Bool, scrolling: Bool) {
+        Self.phaseT = 0; Self.phase()
+        #if DEBUG
+        let t0 = CACurrentMediaTime()
+        defer {
+            if let log = Self.renderLog {
+                log.write(String(format: "%.3f\t%d\t%@\t%@\n", (CACurrentMediaTime() - t0) * 1000, currentLayout?.order.count ?? 0, scrolling ? "scroll" : "change", Self.phases.map { String(format: "%.2f", $0 * 1000) }.joined(separator: " ")).data(using: .utf8)!)
+                Self.phases = []
+            }
+        }
+        #endif
         guard window != nil else { return }
         let p = store.projection
         let L = TaskLayout.make(store: store, window: state)
+        Self.phase()
         let now = CACurrentMediaTime()
         let sameView = prevKey == L.key
         let animate = allowAnimation && sameView && !firstRender && !paletteChanged && !TK.CA.reduce
@@ -183,7 +211,15 @@ final class TaskListView: NSView {
         // Rows that left the view since the last render: they keep their place (or slide into the Completed row
         // when they were just completed in a list) and fade out while the rest close up (dc:1795–1808).
         if animate {
-            for (id, oldY) in prevYs where L.ys[id] == nil && leaving[id] == nil {
+            // Only rows near the visible rect can be seen leaving.
+            let prev = prevLayout!
+            let near = vis.insetBy(dx: 0, dy: -TK.M.pitch)
+            var i = prev.firstIndex(atOrBelow: near.minY)
+            while i < prev.order.count, prev.yList[i] <= near.maxY {
+                let id = prev.order[i]
+                let oldY = prev.yList[i]
+                i += 1
+                guard !L.contains(id), leaving[id] == nil else { continue }
                 guard let v = rows.removeValue(forKey: id) else { continue }
                 var to = oldY
                 if let cy = L.completedY, let t = p.task(id), !t.deleted, t.completedAt != nil, t.list == state.route.listID {
@@ -195,35 +231,34 @@ final class TaskListView: NSView {
                 v.layer?.animate("opacity", to: 0, TK.CA.fadeOutT)
             }
         }
-        for (id, l) in leaving where now >= l.until || L.ys[id] != nil {
+        for (id, l) in leaving where now >= l.until || L.contains(id) {
             leaving[id] = nil
             recycle(l.view)
         }
 
+        Self.phase()
         // Which rows need a view: the ones in (or near) the visible rect, and the ones still moving.
         var needed: [EntityID] = []
-        if let start = firstIndex(in: L, atOrBelow: vis.minY - TK.M.pitch) {
-            var i = start
-            while i < L.order.count, let y = L.ys[L.order[i]], y <= vis.maxY {
-                needed.append(L.order[i])
-                i += 1
-            }
+        var i = L.firstIndex(atOrBelow: vis.minY - TK.M.pitch)
+        while i < L.order.count, L.yList[i] <= vis.maxY {
+            needed.append(L.order[i])
+            i += 1
         }
         var neededSet = Set(needed)
         for (id, until) in keepUntil {
-            if now < until, L.ys[id] != nil, rows[id] != nil { if neededSet.insert(id).inserted { needed.append(id) } } else { keepUntil[id] = nil }
+            if now < until, L.contains(id), rows[id] != nil { if neededSet.insert(id).inserted { needed.append(id) } } else { keepUntil[id] = nil }
         }
-        if let sel = rename?.id, L.ys[sel] != nil, neededSet.insert(sel).inserted { needed.append(sel) }
+        if let sel = rename?.id, L.contains(sel), neededSet.insert(sel).inserted { needed.append(sel) }
         for (id, v) in rows where !neededSet.contains(id) {
             rows[id] = nil
             recycle(v)
         }
 
         // Selected rows join into one block when adjacent (css:182–186).
-        let selectedYs: Set<CGFloat> = Set(selection.compactMap { id in dragIDs.contains(id) ? nil : L.ys[id] })
+        let selectedYs: Set<CGFloat> = Set(selection.compactMap { id in dragIDs.contains(id) ? nil : L.y(id) })
 
         for id in needed {
-            guard let y = L.ys[id] else { continue }
+            guard let y = L.y(id) else { continue }
             var isNew = false
             let v: TaskRowView
             if let existing = rows[id] {
@@ -271,12 +306,12 @@ final class TaskListView: NSView {
             }
             // Position: new views start where the task was (and spring to its new place) or fade in; others spring.
             if isNew {
-                if animate, let oldY = prevYs[id], oldY != y {
+                if animate, let oldY = prevLayout?.y(id), oldY != y {
                     place(v, y: oldY, width: rowW)
                     move(v, toY: y, animate: true)
                 } else {
                     place(v, y: y, width: rowW)
-                    if animate && prevYs[id] == nil {
+                    if animate && prevLayout?.contains(id) != true {
                         v.layer?.removeAnimation(forKey: "opacity")
                         v.layer?.add(TK.CA.basic("opacity", TK.CA.fadeInT, from: 0, to: 1), forKey: "enter")
                     }
@@ -289,38 +324,34 @@ final class TaskListView: NSView {
             }
         }
 
+        Self.phase()
         renderLabels(L, rowW: rowW, animate: animate, now: now)
         renderExtras(L, width: width, rowW: rowW, contentH: contentH, animate: animate)
 
         CATransaction.commit()
+        Self.phase()
 
         #if DEBUG
         if !sameView, !L.order.isEmpty { DebugTiming.rowAppeared() }
         #endif
         currentLayout = L
         prevKey = L.key
-        prevYs = L.ys
+        prevLayout = L
         prevLabels = L.labels
         prevCompletedY = L.completedY
         paletteChanged = false
         firstRender = false
         updateRenameField(rename, layout: L)
         if !leaving.isEmpty || !labelsLeaving.isEmpty || !keepUntil.isEmpty { scheduleCleanup() }
-        if let id = pendingScroll, L.ys[id] != nil {
+        if let id = pendingScroll, L.contains(id) {
             pendingScroll = nil
             ensureVisible(id, in: L)
         }
+        Self.phase()
         if !scrolling { updateHoverFromMouse() }
+        Self.phase()
         updateAccessibility(L)
-    }
-
-    private func firstIndex(in L: TaskLayout, atOrBelow y: CGFloat) -> Int? {
-        var lo = 0, hi = L.order.count
-        while lo < hi {
-            let mid = (lo + hi) / 2
-            if (L.ys[L.order[mid]] ?? 0) < y { lo = mid + 1 } else { hi = mid }
-        }
-        return lo < L.order.count ? lo : nil
+        Self.phase()
     }
 
     private func dequeue() -> TaskRowView {
@@ -468,7 +499,7 @@ final class TaskListView: NSView {
     // MARK: - Rename in place (§7)
 
     private func updateRenameField(_ rename: WindowState.Rename?, layout L: TaskLayout) {
-        guard let rename, let row = rows[rename.id], L.ys[rename.id] != nil else {
+        guard let rename, let row = rows[rename.id], L.contains(rename.id) else {
             if let f = renameField {
                 renameField = nil
                 renamingID = nil
@@ -535,7 +566,7 @@ final class TaskListView: NSView {
     /// The selected row scrolls into view, ending 8pt below the top or 12pt above the bottom; no animation
     /// (dc:721–727).
     private func ensureVisible(_ id: EntityID, in L: TaskLayout) {
-        guard let y = L.ys[id] else { return }
+        guard let y = L.y(id) else { return }
         let clip = scroll.contentView.bounds
         var top = clip.minY
         if y < top + 4 { top = max(0, y - 8) } else if y + TK.M.row > clip.maxY - 4 { top = y + TK.M.row - clip.height + 12 } else { return }
@@ -575,7 +606,7 @@ final class TaskListView: NSView {
     }
 
     private func rowViewForAnchor(_ id: EntityID) -> TaskRowView? {
-        guard let L = currentLayout, L.ys[id] != nil else { return nil }
+        guard let L = currentLayout, L.contains(id) else { return nil }
         pendingScroll = id
         render(animated: false)
         return rows[id]
@@ -894,12 +925,12 @@ final class TaskListView: NSView {
     }
 
     private func beginDrag(_ id: EntityID, event: NSEvent, now: NSEvent) {
-        guard let L = currentLayout, let gid = L.groupOf[id], gid != TaskLayout.doneGroup, id != state.draft?.id,
+        guard let L = currentLayout, let gid = L.group(id), gid != TaskLayout.doneGroup, id != state.draft?.id,
               let g = L.groups.first(where: { $0.listID == gid }), let v = rows[id], let model = v.model else {
             press = nil
             return
         }
-        var ids = state.selection.contains(id) ? L.order.filter { state.selection.contains($0) && L.groupOf[$0] == gid && $0 != state.draft?.id } : [id]
+        var ids = state.selection.contains(id) ? L.order.filter { state.selection.contains($0) && L.group($0) == gid && $0 != state.draft?.id } : [id]
         if !ids.contains(id) { ids = [id] }
         let firstIdx = g.ids.firstIndex(of: ids[0]) ?? 0
         let target = g.ids[..<firstIdx].filter { !ids.contains($0) }.count
@@ -1037,10 +1068,21 @@ final class TaskListView: NSView {
     // MARK: - Accessibility
 
     private func updateAccessibility(_ L: TaskLayout) {
-        setAccessibilityLabel(state.route == .today ? "Today" : state.route.listID.map(actions.listName) ?? "Tasks")
-        let children = L.order.compactMap { rows[$0] }
-        setAccessibilityChildren(children)
-        setAccessibilitySelectedChildren(children.filter { $0.model?.selected == true })
+        // Children are computed when asked (accessibilityChildren), so a render costs nothing here.
+    }
+
+    override func accessibilityLabel() -> String? {
+        state.route == .today ? "Today" : state.route.listID.map(actions.listName) ?? "Tasks"
+    }
+
+    override func accessibilityChildren() -> [Any]? {
+        guard let L = currentLayout else { return [] }
+        return L.order.compactMap { rows[$0] }
+    }
+
+    override func accessibilitySelectedChildren() -> [Any]? {
+        guard let L = currentLayout else { return [] }
+        return L.order.compactMap { rows[$0] }.filter { $0.model?.selected == true }
     }
 }
 

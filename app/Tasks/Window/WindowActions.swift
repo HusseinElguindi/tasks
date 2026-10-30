@@ -480,8 +480,8 @@ struct WindowActions {
     /// ⌥⌘↑ ⌥⌘↓ (dc:962–975).
     func moveSelectionBy(_ delta: Int) {
         let L = layout
-        let ids = targetIDs.filter { L.groupOf[$0] != nil && !L.isDone($0) }
-        guard let first = ids.first, let gid = L.groupOf[first], let g = L.groups.first(where: { $0.listID == gid }) else { return }
+        let ids = targetIDs.filter { L.group($0) != nil && !L.isDone($0) }
+        guard let first = ids.first, let gid = L.group(first), let g = L.groups.first(where: { $0.listID == gid }) else { return }
         let mine = g.ids.filter(ids.contains)
         let othersCount = g.ids.count - mine.count
         guard let firstIdx = g.ids.firstIndex(of: mine[0]) else { return }
