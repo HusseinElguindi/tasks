@@ -16,14 +16,15 @@ export function call(path: string, init: RequestInit = {}): Promise<Response> {
   return exports.default.fetch(`https://tasks.test${path}`, init);
 }
 
-/** POST /v1/sync. A string body is sent as is; anything else is JSON-encoded. */
+/** POST /v1/sync. A string or byte body is sent as is; anything else is JSON-encoded. */
 export function post(
   body: unknown,
   { token = TOKEN, headers = {} }: { token?: string | null; headers?: Record<string, string> } = {},
 ): Promise<Response> {
   const h: Record<string, string> = { "Content-Type": "application/json", ...headers };
   if (token !== null) h.Authorization = `Bearer ${token}`;
-  return call("/v1/sync", { method: "POST", headers: h, body: typeof body === "string" ? body : JSON.stringify(body) });
+  const raw = typeof body === "string" || body instanceof Uint8Array;
+  return call("/v1/sync", { method: "POST", headers: h, body: raw ? body : JSON.stringify(body) });
 }
 
 export async function sync(body: unknown): Promise<{ status: number; body: any }> {
