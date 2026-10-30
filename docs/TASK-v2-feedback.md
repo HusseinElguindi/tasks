@@ -99,3 +99,22 @@ The user's words: "drag a task and hold it over one list, then another list, the
 - The transition from one target to the next should be continuous: either a crossfade or an instant swap, whichever the prototype does. Fix the prototype too if it has the same problem.
 
 When it's fixed: commit, rebuild Release and report back.
+
+## 8. A setting for how editing a task works (after item 7)
+
+The user's words: "I want a setting that makes it so i can control how task editing works. one is to always open a task in detail view. I think one option should be the one. and then the other is to rename tasks titles inline as they are now."
+
+Add a setting in Settings (⌘,) with two options:
+- **"Open in detail pane"**, the default.
+  - Double-clicking a task, or pressing Return on a selected one, opens it in the detail pane with the caret in the title. Nothing edits inline in the list.
+  - If the detail pane is already open on that task, it focuses the title.
+- **"Rename in the list"** is today's behaviour: double-click or Return renames the title in place in the row.
+
+**Notes:**
+- The detail pane is still reachable with the › button and its shortcut in both modes, and adding a task (⌘N, double-click on empty space) is unchanged.
+- Lists in the sidebar keep renaming in place either way. The setting is only about tasks.
+- Store the setting with the other settings (UserDefaults), not in the sync log.
+- Put the control where Rex would; use the simplest native look (a radio group or a pop-up) under a short label such as "Edit tasks".
+- Update the spec with the setting and both behaviours, and the prototype too if that's cheap. Then commit, rebuild Release and report back.
+
+The default was the coordinator's reading of "I think one option should be the one"; the user can flip it.
