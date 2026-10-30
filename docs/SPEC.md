@@ -23,7 +23,7 @@ Not in v1: iOS, recurring tasks, reminders/notifications, times of day, tags, su
 
 | Field         | Type            | Notes |
 |---------------|-----------------|-------|
-| `id`          | UUID string     | Generated on the client. |
+| `id`          | UUID string     | Generated on the client, lowercase (§5 "Ids"). |
 | `list`        | List id         | Required. Changing it is a "move". |
 | `order`       | String          | Fractional index key within its list (§3). |
 | `title`       | String          | Max 1,000 chars. May be empty. |
@@ -39,7 +39,7 @@ Not in v1: iOS, recurring tasks, reminders/notifications, times of day, tags, su
 
 | Field   | Type        | Notes |
 |---------|-------------|-------|
-| `id`    | UUID string | Generated on the client. |
+| `id`    | UUID string | Generated on the client, lowercase (§5 "Ids"). |
 | `name`  | String      | Max 200 chars. Duplicates allowed. |
 | `order` | String      | Fractional index key in the sidebar (§3). |
 | `archivedAt` | Epoch ms (Int)? | Null = active. Set when the user archives the list. Lists are never deleted. |
@@ -221,11 +221,11 @@ The sidebar, top to bottom:
 
 ### Op schema
 
-Every op has the same shape: an envelope, a type, a target id and an optional `set` patch.
+Every op has the same shape: an envelope, a type, a target id and a `set` patch. `set` is always present; an update that changes nothing sends `{}`.
 
 ```jsonc
 {
-  "id":   "6f1c…",          // op id, client-generated UUID — the idempotency key
+  "id":   "6f1c…",          // op id, client-generated lowercase UUID — the idempotency key
   "at":   1761800000000,    // client wall clock, ms — informational only (createdAt/updatedAt)
   "type": "task.update",    // one of the four types below
   "target": "a83e…",        // task or list id
@@ -241,6 +241,8 @@ Every op has the same shape: an envelope, a type, a target id and an optional `s
 | `list.update` | `name`, `order`, `archivedAt` |
 
 `set` semantics: a key that's present overwrites the field (`null` clears it), and a missing key leaves it unchanged.
+
+**Ids** (op `id`, `target`, `list`) are opaque, case-sensitive strings to the server: `"ABC"` and `"abc"` are different ops for dedup and different entities for the reducer. Clients generate lowercase UUIDs, the form every fixture uses, and store and compare ids as `String`. In Swift that means `UUID().uuidString.lowercased()`, and never round-tripping an id through `UUID`, whose `uuidString` is uppercase. The Inbox seed ids (§2) are all digits, so they're the same either way.
 
 Stored by the server, the log entry adds `seq` (its index) and `received` (server ms).
 
@@ -278,32 +280,44 @@ There's exactly one endpoint: `POST /v1/sync`. Pushing and pulling are the same 
 | Method | `POST` only. Any other method on `/v1/sync` → `405 method_not_allowed`, with an `Allow: POST` header. |
 | Paths | Any other path → `404 not_found`. |
 | Auth | `Authorization: Bearer <token>`, compared to the `API_TOKEN` secret in constant time. Missing or wrong → `401 bad_token`. |
-| Request body | `Content-Type: application/json`, UTF-8, ≤ 1 MB. The server just parses the body; a body that isn't valid JSON → `400 bad_request`. Request bodies are **never compressed**: pushes are small, and the big transfers are pulls. |
+| Request body | `Content-Type: application/json`, UTF-8, ≤ 1 MiB (1,048,576 bytes). The server doesn't check `Content-Type`; it just parses the body. Over 1 MiB → `413` (checked against `Content-Length` and again after reading, for bodies sent without one). Not valid UTF-8 or not valid JSON → `400 bad_request`. Request bodies are **never compressed**: pushes are small, and the big transfers are pulls. |
 | Response body | Always JSON: `Content-Type: application/json; charset=utf-8`, on success and on error. |
-| Compression | Responses are compressed when the request's `Accept-Encoding` allows it. `URLSession` sends `Accept-Encoding: gzip, deflate, br` and decompresses transparently, so the client does nothing. On the server, the Worker sets `Content-Encoding: br` (or `gzip`) on the response, picked from `request.cf.clientAcceptEncoding`, and the Workers runtime compresses the body itself (`encodeBody: "automatic"`, the default). That doesn't depend on Cloudflare's edge compression settings, which I couldn't confirm for `*.workers.dev`. Milestone S4 checks it with `curl --compressed -sI` (§10). |
+| Compression | Responses are compressed when the request's `Accept-Encoding` allows it. `URLSession` sends `Accept-Encoding: gzip, deflate, br` and decompresses transparently, so the client does nothing. On the server, the Worker sets `Content-Encoding: br` (or `gzip`) on the response, picked from `request.cf.clientAcceptEncoding` (the header as the client sent it, before Cloudflare may rewrite it), falling back to `Accept-Encoding`: `br` if accepted, else `gzip`, else none, honouring `q=0`. Error responses follow the same rule. The Workers runtime compresses the body itself (`encodeBody: "automatic"`, the default), independent of Cloudflare's edge compression settings. Verified on the deployed Worker (S4); a 1,000-entry page of 288 KB goes out as ~48 KB with `br`. |
 
 **Check order.** The Worker does every check that doesn't need the log, so a bad request never reaches the DO:
 
-1. **Worker:** route (`404` / `405`) → auth (`401`) → size (`413`) → parse (`400 bad_request`) → validate (`400 invalid_op`, `413 too_large` for > 500 ops).
+1. **Worker:** route (`404` / `405`) → auth (`401`) → body size (`413`) → parse the body and check `from`, `base`, `ops` (`400 bad_request`) → op count (`413 too_large` for > 500 ops) → each op (`400 invalid_op`).
 2. **DO:** log check (`409`) → append → read.
+
+So a client with a stale cursor and a bad request gets the `400` or `413` it needs to fix, never a `409` that would start a needless recovery.
 
 #### Request
 
 ```jsonc
 {
-  "from": 0,        // integer ≥ 0: the client's cursor (next seq it doesn't have)
+  "from": 0,        // integer 0 ≤ from ≤ 2^53 − 1: the client's cursor (next seq it doesn't have)
   "base": null,     // hash of entry from−1 as 64 lowercase hex chars; null if and only if from = 0
   "ops":  []        // 0–500 ops, in the order they were made
 }
 ```
 
-**Op validation:** the whole request is rejected on the first failure, and nothing is appended.
+`400 bad_request` for the request itself: a body that isn't a JSON object; `from` that isn't such an integer; `base` that isn't `null` or 64 lowercase hex chars; a `null` `base` with `from > 0` or a non-null one with `from = 0`; `ops` that isn't an array. Unknown top-level keys in the request are ignored.
 
-- `id`, `target`: strings of 1–64 characters.
-- `at`: an integer ≥ 0.
-- `type`: one of `task.create`, `task.update`, `list.create`, `list.update`.
-- `set`: an object. Only the keys allowed for its `type` (§5 op schema); **unknown keys are rejected**. Adding a field therefore means deploying the server first, which is fine with one developer, and it catches client bugs early.
-- Required keys on a create: `list` and `order` for a task, `name` and `order` for a list.
+**Op validation:** the whole request is rejected on the first failure, and nothing is appended. Each op is checked in this order, and the error's `field` names what failed:
+
+| Check | `field` on failure |
+|-------|--------------------|
+| The op is a JSON object. | `op` |
+| `id`: a string of 1–64 characters. | `id` |
+| `at`: an integer, 0 ≤ `at` ≤ 2⁵³ − 1. | `at` |
+| `type`: one of `task.create`, `task.update`, `list.create`, `list.update`. | `type` |
+| `target`: a string of 1–64 characters. | `target` |
+| `set`: present, and an object. | `set` |
+| No envelope keys besides `id`, `at`, `type`, `target`, `set`. | the extra key, e.g. `seq` |
+| Each `set` key, in the order received: allowed for its `type` (§5 op schema), and its value valid (below). | `set.<key>` |
+| Required keys on a create: `list` and `order` for a task, `name` and `order` for a list. | `set.<key>` |
+
+**Unknown keys are rejected**, in the envelope and in `set`. Adding a field therefore means deploying the server first, which is fine with one developer, and it catches client bugs early.
 
 `set` values:
 
@@ -314,12 +328,15 @@ There's exactly one endpoint: `POST /v1/sync`. Pushing and pulling are the same 
 | `title` | string, ≤ 1,000 |
 | `notes` | string, ≤ 20,000 |
 | `name` | string, ≤ 200 |
-| `when`, `deadline` | `null`, or `"YYYY-MM-DD"` that's a real calendar date |
-| `completedAt`, `archivedAt` | `null`, or an integer ≥ 0 (epoch ms) |
+| `when`, `deadline` | `null`, or `"YYYY-MM-DD"` (ASCII digits) that's a real date in the Gregorian calendar, any four-digit year |
+| `completedAt`, `archivedAt` | `null`, or an integer 0 ≤ n ≤ 2⁵³ − 1 (epoch ms) |
 | `deleted` | boolean |
 
 - **Lengths** count **UTF-16 code units**: `String.length` in JS, `.utf16.count` in Swift. Both sides then agree exactly.
-- **Duplicate op ids** inside one request: only the first is appended.
+- **Every string must be well-formed Unicode.** A JSON `\ud800`-style escape can carry an unpaired surrogate; that's rejected (`invalid_op`), because a stored entry a client can't decode would stop every Mac's sync at that `seq` for good. Swift strings can't hold one, so a Swift client never sends it.
+- **Duplicate op ids** inside one request: only the first is appended. An op id already in the log is skipped too, whatever its content (dedup is by id only).
+
+**Validation may only loosen, never tighten.** A `409` recovery re-pushes ops that are already in the log, verbatim, and validation runs before dedup. So a rule that rejects an op the log already holds would turn a harmless re-push into `invalid_op`, and the client would move that op to `rejected.jsonl`: the discard the recovery rule forbids. Rolling the Worker back to a version with stricter rules has the same effect. Allowing a new `set` key is a loosening and fine. A rule that must tighten needs a migration plan for the ops already stored before it ships.
 
 The server stores each op as `JSON.stringify({id, at, type, target, set})`: top-level keys in that order, `set` keys in the order received. That exact text is what gets hashed (§6). The client never re-hashes, so this is only a server-internal rule, but the worked examples below are test vectors for it.
 
@@ -327,13 +344,19 @@ The server stores each op as `JSON.stringify({id, at, type, target, set})`: top-
 
 ```jsonc
 {
-  "entries": [ { "seq": 0, "received": 1761811261234, "hash": "…", "op": { … } } ],  // [from, from+1000) ∩ [from, head)
+  "entries": [ { "seq": 0, "received": 1761811261234, "hash": "…", "op": { … } } ],  // a page starting at `from` (below)
   "head": 2,
-  "more": false     // true when the 1,000-entry page limit cut the response short
+  "more": false     // true when the page stopped before head
 }
 ```
 
-The response includes the client's own just-pushed ops. A request's ops are appended contiguously, in the order sent, and before the page is read.
+**Page size.** A page holds the entries from `from` onward, up to 1,000 of them, and stops early once its op text passes 4,000,000 UTF-16 code units. It always holds at least one entry when `from < head`.
+
+- The second bound keeps a page inside the Durable Object's 32 MiB RPC limit. 1,000 entries with near-limit notes (and any non-Latin-1 character, which makes the runtime serialize the string at 2 bytes per unit) would exceed it, and that `from` would fail on every retry.
+- Entries average ~250 characters, so in practice pages are full 1,000-entry pages.
+- **The client continues from the last returned `seq` + 1**, which is its new cursor, never from `from + 1000`, and loops while `more` is true.
+
+A request's ops are appended contiguously, in the order sent, and before the page is read. So the response includes the client's own just-pushed ops **only when they fall inside the page**. A client more than a page behind gets them on a later page: a new Mac pushing its Inbox seed into a large log, or any `409` recovery. **The client drops a pending op only when its id appears in a returned entry**, never because the request returned `200`.
 
 #### Errors
 
@@ -346,14 +369,14 @@ Every non-200 response has the same body:
 
 | Status | `error` | Meaning | Client does |
 |--------|---------|---------|-------------|
-| 400 | `bad_request` | Body isn't JSON, or `from`/`base`/`ops` are missing or the wrong type, or `base` is null with `from > 0`. | Client bug. Stop syncing, show "Sync error", log the message. **No retry.** |
+| 400 | `bad_request` | Body isn't UTF-8 JSON or isn't an object, or `from`/`base`/`ops` are missing or invalid (see Request), including a `null` `base` with `from > 0` and a non-null one with `from = 0`. | Client bug. Stop syncing, show "Sync error", log the message. **No retry.** |
 | 400 | `invalid_op` | `ops[index]` failed validation at `field`. | Client bug in that one op. Move it from pending to `rejected.jsonl` (kept for debugging), rebuild its entity from confirmed + remaining pending (§9), show a non-blocking "A change couldn't be saved" notice, then **retry immediately** without it. |
 | 401 | `bad_token` | Token missing or wrong. | **Stop syncing. No retry loop.** Show a "Check sync token" state in the sidebar footer and in Settings. Pending ops stay queued. Syncing resumes when the token is changed or on ⌘R. |
 | 404 | `not_found` | Wrong path. | Misconfigured server URL. Same as `bad_request`: stop, show the error, no retry. |
 | 405 | `method_not_allowed` | Not `POST`. | Same as `404`. |
 | 409 | `log_mismatch` | `from > head`, or `base` doesn't match the hash at `from − 1`. | **Never discard an op.** Make every known op (confirmed log + pending) pending, delete `snapshot.json`, move `log.jsonl` aside, and **retry immediately** with `from: 0, base: null`. That request can't 409 again. Details: "Recovering from a 409" below. |
-| 413 | `too_large` | Body over 1 MB or more than 500 ops. | Client bug, since the client chunks requests (below). Halve the batch and **retry**. |
-| 5xx, timeouts, network errors, non-JSON bodies | — | Server or network trouble. A Cloudflare edge error may be an HTML page. | **Retry** with exponential backoff: 1 s doubling, capped at 1 min. |
+| 413 | `too_large` | Body over 1 MiB or more than 500 ops. | Client bug, since the client chunks requests (below). Halve the batch and **retry**. |
+| 5xx, timeouts, network errors, non-JSON bodies | `internal` from the Worker; none from the edge | Server or network trouble. An unexpected exception in the Worker is `500 {"error":"internal",…}`; a Cloudflare edge error may be an HTML page. | **Retry** with exponential backoff: 1 s doubling, capped at 1 min. |
 
 **Chunking:** the client sends pending ops in chunks of at most 500 ops and ~900 KB, oldest first, one request at a time. After a long offline stretch, a sync is several requests.
 
@@ -415,7 +438,7 @@ Content-Type: application/json; charset=utf-8
 ],"head":2345,"more":true}
 ```
 
-The client applies the page and calls again with `{"from":1000,"base":"<hash of seq 999>","ops":[]}`. It keeps going until `more` is `false`; here that's a third request starting at `from: 2000`.
+The client applies the page and continues from its last `seq` + 1: `{"from":1000,"base":"<hash of seq 999>","ops":[]}`. It keeps going until `more` is `false`; here that's a third request starting at `from: 2000`.
 
 **3. Invalid op (400).** The order key contains a space.
 
@@ -700,22 +723,24 @@ CREATE TABLE log (
 );
 ```
 
-`head` and the last hash are read once on startup and cached in memory. `head` is `SELECT COUNT(*)`, which equals `MAX(seq)+1`.
+`head` and the last hash are read once on startup and cached in memory. `head` is `MAX(seq) + 1`, read through the primary key (`ORDER BY seq DESC LIMIT 1`). That equals `COUNT(*)`, because `seq` is dense, without scanning the table.
+
+The append never awaits: SHA-256 comes from `node:crypto` (the `nodejs_compat` flag), which is synchronous, and the inserts run in one `transactionSync`. So requests can't interleave inside `sync()`. Web Crypto's `digest()` is async and would open a window between reading `head` and appending. The cached `head` and hash are updated only after the transaction commits.
 
 The Worker has one route, `POST /v1/sync`. The split of work:
 
 - **Worker:** routing, auth, size limits, parsing and op validation (`404`, `405`, `401`, `413`, `400`), then the response encoding.
-- **DO, via RPC:** `sync(from, base, ops)`. It does the log check (`409`), the append and the page read, and returns `{entries, head, more}` or a mismatch.
+- **DO, via RPC:** `sync(from, base, ops)`, where each op arrives as its id and its stored text, serialized by the Worker. It does the log check (`409`), the append and the page read, and returns the response body (built by concatenating the stored op text, never re-parsing it) or a mismatch.
 
 The server is written in TypeScript.
 
 The Worker is served from its `*.workers.dev` URL in v1, with no custom domain.
 
-Resources needed later (**not created yet**; ask before running wrangler):
+Resources, **deployed 2026-10-30** to `https://tasks.elguindi.workers.dev` with the user's approval (`server/DEPLOY.md`); ask before changing any of them:
 
-- one Worker;
-- one DO namespace with a `new_sqlite_classes` migration;
-- one secret.
+- one Worker, `tasks`;
+- one DO namespace with a `new_sqlite_classes` migration (`v1`);
+- one secret, `API_TOKEN`.
 
 ### Auth: one fixed token
 
@@ -968,7 +993,7 @@ Two tracks, server (S) and macOS (C), run in parallel. Each step ends with somet
 | S1 | Worker skeleton: routing, `404`/`405`, auth (`401`), JSON error bodies. | `vitest` with `@cloudflare/vitest-pool-workers`, running locally. |
 | S2 | Parsing and validation: `400 bad_request`, `400 invalid_op` (with `index`/`field`), `413`. | A table-driven test per rule in the validation table, plus the 400/401 fixtures. |
 | S3 | The DO: log table, append with dedup, hash chain, page read with `more`, `409`. | The hash vectors (`opA`/`opB` must produce exactly the fixture hashes), the 200 push/pull and 409 fixtures (`05b` is the recovery re-push: one op deduplicated, one appended), idempotent retry, a 2,345-entry pagination test. |
-| S4 | Response compression, then **deploy to `*.workers.dev`, only after the user approves**: Worker, DO migration, `API_TOKEN` secret. | `curl` smoke test: a pull from 0, and `curl --compressed -sI` showing `Content-Encoding`. |
+| S4 | Response compression, then **deploy to `*.workers.dev`, only after the user approves**: Worker, DO migration, `API_TOKEN` secret. | `curl` smoke test: a pull from 0, and a `POST` with `curl --compressed -D -` showing `Content-Encoding` (`-I` sends `HEAD`, which gets a `405`). |
 
 Until S4, everything runs locally (`vitest`, `wrangler dev`) and no Cloudflare resources are created.
 
