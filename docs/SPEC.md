@@ -63,13 +63,13 @@ So that a new user can add tasks straight away, the app creates an "Inbox" list.
 
 ### Default list: the top of the sidebar
 
-New tasks created outside a list (Today's `+`, the global ⌘N) go to the **first active list in sidebar order**. A fresh install seeds the Inbox at the top (`order: "a0"`), so the Inbox is the default until the user drags another list above it.
+New tasks created outside a list (Today's `+`, ⌘N in Today) go to the selected task's list when a task is selected, and otherwise to the **first active list in sidebar order**: the default list. A fresh install seeds the Inbox at the top (`order: "a0"`), so the Inbox is the default until the user drags another list above it.
 
 - There's no setting or field, because the default comes from order the user already controls.
 - A synced "default list" setting would need a new kind of entity, and an `isDefault` field on lists would need an "exactly one" rule that concurrent edits can break.
 - If the default list is archived, the next active list takes over automatically.
 - If every list is archived, adding a task asks the user to create a list or unarchive one.
-- The sidebar marks the current default subtly so the rule is discoverable.
+- Today's `+` names its target in its tooltip ("New Task in Inbox ⌘N"), so the rule is discoverable. The sidebar doesn't mark the default.
 
 ### Archiving lists
 
@@ -190,7 +190,7 @@ Why not a separate Today order:
 
 Grouping costs nothing and uses an order the user already controls. Sorting Today by date was the earlier draft's approach. It's dropped because it overrides the user's manual order.
 
-Adding from Today (`+`) creates a task with `when = today`, at the bottom of the default list (§2). The add sheet has a list picker for picking another list.
+Adding from Today (`+`, ⌘N) creates a task with `when = today`, at the bottom of the selected task's list, or of the default list (§2) when no task is selected. The new task opens in the detail pane, whose List row moves it to another list. Nothing is written until its title has text: then one `task.create`. Leaving it untitled writes nothing (`design/INTERACTIONS-v2.md` §6).
 
 ### List screens
 
