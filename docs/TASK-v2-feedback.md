@@ -49,3 +49,22 @@ The user's words: "i want these panes to be draggable in size"
   - widths remembered across launches, and the detail pane reopening at its last width.
 - **The detail pane's open and close transition must keep working at any width.**
 - Update the spec and the prototype source.
+
+## 5. A brief flicker when renaming and when a reorder settles
+
+The user's words: "there's a flicker that happens very quickly near when double clicking and renaming and also right after reordering (when it's settling)"
+
+- **Double-click to rename.** The flicker appears around the moment the in-place field takes over. Check:
+  - a sidebar list;
+  - a task title, if double-click renames there;
+  - committing the rename (Return, or a click away), as well as entering it.
+  - Likely causes:
+    - the label and the field both drawing for a frame, or neither;
+    - a layer re-render or implicit `CALayer` animation;
+    - the row being rebuilt when the store publishes the rename.
+- **A reorder settling.** The flicker comes just after you drop, as the row settles into place. That covers task rows and sidebar lists, within a list and dropped onto another list.
+  - Likely causes:
+    - the drag snapshot being removed a frame before (or after) the real row reappears;
+    - the list reloading from the store's op after the settle animation, and replacing or re-laying out rows;
+    - the 35% source-row opacity snapping back.
+- **Find it frame by frame.** Record at 60 fps (or capture each frame from a CADisplayLink callback inside the scratch app) and step through the frames. Don't guess. Fix the cause so every frame in the hand-off is continuous, check the frames again after the fix, then commit, rebuild Release and report back.
