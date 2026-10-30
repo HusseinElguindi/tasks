@@ -68,3 +68,15 @@ The user's words: "there's a flicker that happens very quickly near when double 
     - the list reloading from the store's op after the settle animation, and replacing or re-laying out rows;
     - the 35% source-row opacity snapping back.
 - **Find it frame by frame.** Record at 60 fps (or capture each frame from a CADisplayLink callback inside the scratch app) and step through the frames. Don't guess. Fix the cause so every frame in the hand-off is continuous, check the frames again after the fix, then commit, rebuild Release and report back.
+
+## 6. The detail pane's fields start at the left edge and fill the width
+
+The user's words: "I would like for the list, when, deadline, notes, etc to also be left aligned and take up the whole width, just like the checkbox and title row". Screenshot: `docs/feedback/v2-detail-indent.png`.
+
+At the moment, the List, When and Deadline rows, the divider and Notes are all indented to where the title's text starts, past the checkbox.
+
+- Start everything below the title at the same left edge as the checkbox, so the icons sit in the checkbox's column.
+- Give them the same right inset as the title row, so the divider and Notes span the full content width.
+- Keep the vertical rhythm. Re-check the label column width and the "today" relative label so nothing crowds.
+- Cover the multi-select and "no task" states, and the new-task draft.
+- Update the spec and the prototype source, then commit, rebuild Release and report back.
