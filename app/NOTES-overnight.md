@@ -29,6 +29,28 @@ point if the session is compacted.
   - Unfocused panes fade their header icons; focus changes take 60 ms. The detail pane's open/close is unchanged.
   - Opening a task no longer moves keyboard focus into an empty notes editor.
 
+- **Sidebar hover, redone after your feedback** (docs/TASK-sidebar-hover.md). Measured against Rex's
+  rest/hover sheet with the same pixel tool (sRGB), dark theme:
+
+  | | Rex | Before | Now |
+  |---|---|---|---|
+  | Hover out | ~85 ms fade, at once | held 300 ms, then faded; rows swept by the pointer stayed lit | 85 ms fade, at once |
+  | Title at rest / hovered | #A8ADB1 / #E6EDF3 | #919598 / #E6EDF3 | #A8ADB1 / #E6EDF3 |
+  | Sidebar width, capsule x | 230, 10–219 | 220, 8–212 | 230, 10–219 |
+  | Row pitch (capsule 30pt) | 32 | 34 | 32 |
+  | Capsule edge (outer / inner px) | #5E5E5E / #535353 | #525354 / #525354 | #5F6060 / #545555 |
+  | Tile | 20 × 16 at x 20 | 20 × 20 at x 16 | 20 × 16 at x 20 |
+  | Title ink starts / baseline | x 47.5 / middle + 4 | x 44.5 / middle + 5 | x 47.5 / middle + 4 |
+  | Trailing action | ••• x 195.5–210.5 | ••• (SF, bold) ~x 189–205 | ••• x 195.5–210.5 |
+  | Group label x / color | 22.5 / #7F8386 | 16.5 / #85898B | 22.5 / #7F8386 |
+
+  Applied through shared pieces so the rest of the app moved with it: one hover model (`PaneHoverRegion`: one hovered
+  item per region, cleared when the pointer leaves the region, the item disappears or a drag starts), the dark ink
+  ladder (`ink-secondary`, `ink-tertiary` at Rex's values, so every dimmed text in the app changed with the sidebar),
+  `PaneRowMenu` (Rex's dots and slot, task rows too), 5:4 list tiles everywhere, task rows on the same 30/32 rhythm,
+  and Today's group labels now reveal ⊕ (New Task in that list) like the sidebar's "Lists". Each Pane difference is in
+  design/PANE-UPSTREAM.md.
+
 ## Known bugs (next up)
 
 1. **Keyboard in task lists**: clicking a row selects it, but the table never becomes first responder (the window
@@ -38,7 +60,13 @@ point if the session is compacted.
    tweaks. Bisect those, then re-test with the key logger (`-debugKeyLog <file>`).
 2. Drag (reorder within a list, drop on a sidebar list, list reorder) not yet re-verified on screen.
 3. The detail pane's tap gesture (`DetailPane.swift`) may have the same first-responder problem for its fields.
-4. The UI reviewer subagent (reviewing the 2b367c9 code, stopped as stale) was last chasing an exception in one of its
+4. **Not yet verified with a real pointer**: the Mac's screen has been locked since about 05:12 (window captures come
+   back black), so the sidebar work above was checked with offscreen renders (`-snapshotTo` plus the new
+   `-debugHover`) and a hover event log (`-debugKeyLog`), not with HID moves. Still to do on screen: a hover-out
+   recording (`screencapture -v` + `.uitools/frames.swift`) to confirm the 85 ms fade, moving onto a row's ••• (the
+   row must stay hovered), and scrolling a hovered list. Offscreen renders also draw a faint vertical line at the
+   current capsule's right end that real screen captures don't show.
+5. The UI reviewer subagent (reviewing the 2b367c9 code, stopped as stale) was last chasing an exception in one of its
    probes ("this run hung instead of crashing; I'll catch the throw under lldb"). Unknown whether it was the app or its
    probe; reproduce with the current build before assuming either.
 

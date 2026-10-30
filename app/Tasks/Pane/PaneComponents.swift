@@ -84,8 +84,8 @@ struct PaneChip: View {
 
 // MARK: - List mark
 
-/// Pane's program tile for a list: fill-strong with the capsule hairline, a monogram in the list's ANSI color.
-/// 20pt in the sidebar, 16pt in pane headers, 12–14pt in chips and menus.
+/// A list's program tile: fill-strong with the capsule hairline, a monogram in the list's ANSI color. Rex's tiles
+/// are 5:4, 20 × 16 in the sidebar; `size` is the width: 20 in the sidebar, 16 in pane headers and menus, 12 in chips.
 struct PaneListMark: View {
     var monogram: String
     var color: Color
@@ -94,7 +94,8 @@ struct PaneListMark: View {
     @Environment(\.pane) private var pane
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: size * 0.25, style: .continuous)
+        let height = (size * 0.8).rounded()
+        let shape = RoundedRectangle(cornerRadius: height * 0.25, style: .continuous)
         ZStack {
             if let systemImage {
                 Image(systemName: systemImage).font(.system(size: size * 0.55, weight: .semibold))
@@ -103,7 +104,7 @@ struct PaneListMark: View {
             }
         }
         .foregroundStyle(color)
-        .frame(width: size, height: size)
+        .frame(width: size, height: height)
         .background(pane.strong, in: shape)
         .paneShadow(.capsule, in: shape)
         .accessibilityHidden(true)
@@ -208,6 +209,29 @@ struct PaneGroupLabel: View {
     }
 }
 
+/// A group label that reveals ⊕ on hover, as Rex's group headers do: the ⊕ sits in the rows' trailing-action slot,
+/// in ink-tertiary like the label. The caller owns the hover (a PaneHoverRegion) and the leading inset.
+struct PaneGroupLabelRow: View {
+    var text: String
+    var help: String
+    var isHovered: Bool
+    var action: () -> Void
+    var labelOffset: CGFloat = 0
+
+    var body: some View {
+        HStack(spacing: 4) {
+            PaneGroupLabel(text: text).offset(y: labelOffset)
+            Spacer(minLength: 0)
+            PaneIconButton("plus.circle", help: help, action: action)
+                .environment(\.paneGhostLevel, .label)
+                .opacity(isHovered ? 1 : 0)
+                .allowsHitTesting(isHovered)
+        }
+        .padding(.trailing, PaneSize.rowActionInset)
+        .contentShape(Rectangle())
+    }
+}
+
 // MARK: - Markdown notes
 
 /// Notes render inline-only Markdown (spec §2): bold, italic, code, links, line breaks kept. Links in accent-text
@@ -302,9 +326,8 @@ extension EnvironmentValues {
 extension PaneMotion {
     /// A row's hover appearing: near-instant.
     static var hoverIn: Animation { .easeOut(duration: 0.06) }
-    /// A row's hover fading, after it has lingered 300 ms.
+    /// A row's hover fading, from the moment the pointer leaves (Rex holds nothing).
     static var hoverOut: Animation { .easeOut(duration: 0.085) }
-    static let hoverLinger: Duration = .milliseconds(300)
     /// Icon-button hover and press release, both ways.
     static var icon: Animation { .easeOut(duration: 0.1) }
     /// The focused pane coming forward.
@@ -336,9 +359,11 @@ struct PanePressStyle: ButtonStyle {
     }
 }
 
-/// Which icon button: pane-header actions (quiet glyph, rounded-square hover) or toolbar actions beside the traffic
-/// lights (secondary glyph, circular hover), as Rex draws them.
-enum PaneGhostLevel: Sendable { case quiet, secondary }
+/// Which icon button, as Rex draws them: pane-header actions (quiet glyph, rounded-square hover), toolbar actions
+/// beside the traffic lights (secondary glyph, circular hover), a row's revealed action (secondary glyph, like the
+/// row's resting title) and a group label's (tertiary, like the label). Revealed actions hover with a translucent
+/// rounded square, so they read on the ground, a selected row and the current capsule alike.
+enum PaneGhostLevel: Sendable { case quiet, secondary, row, label }
 
 private struct PaneGhostLevelKey: EnvironmentKey { static let defaultValue = PaneGhostLevel.quiet }
 
@@ -350,7 +375,7 @@ extension EnvironmentValues {
 }
 
 /// Icon-only buttons, as in Rex: on hover a small fill appears behind the glyph (a rounded square in pane headers, a
-/// circle in the toolbar) and the glyph goes one step stronger; pressed fills one step more. 150 ms in, instant out.
+/// circle in the toolbar) and the glyph goes one step stronger; pressed fills one step more. `icon` (100 ms) both ways.
 struct PaneGhostButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         GhostBody(configuration: configuration)
@@ -365,19 +390,27 @@ struct PaneGhostButtonStyle: ButtonStyle {
         @State private var hovering = false
 
         var body: some View {
-            let rest = level == .quiet ? pane.inkQuiet : pane.inkSecondary
-            let hover = level == .quiet ? pane.inkSecondary : pane.ink
+            let (rest, hover): (Color, Color) = switch level {
+            case .quiet: (pane.inkQuiet, pane.inkSecondary)
+            case .secondary, .row: (pane.inkSecondary, pane.ink)
+            case .label: (pane.inkTertiary, pane.inkSecondary)
+            }
             let pressed = forced?.pressed ?? configuration.isPressed
             let hovered = (forced?.hovered ?? hovering) && isEnabled
-            let fill = pressed ? pane.control : (level == .quiet ? pane.selected : pane.track)
             configuration.label
                 .foregroundStyle(pressed ? pane.ink : (hovered ? hover : rest))
                 .background {
-                    if level == .quiet {
+                    switch level {
+                    case .quiet:
                         RoundedRectangle(cornerRadius: PaneRadius.field, style: .continuous)
-                            .fill(fill).opacity(hovered || pressed ? 1 : 0)
-                    } else {
-                        Circle().fill(fill).frame(width: 26, height: 26).opacity(hovered || pressed ? 1 : 0)
+                            .fill(pressed ? pane.control : pane.selected).opacity(hovered || pressed ? 1 : 0)
+                    case .secondary:
+                        Circle().fill(pressed ? pane.control : pane.track).frame(width: 26, height: 26)
+                            .opacity(hovered || pressed ? 1 : 0)
+                    case .row, .label:
+                        RoundedRectangle(cornerRadius: PaneRadius.field, style: .continuous)
+                            .fill(pane.isDark ? Color.white.opacity(pressed ? 0.12 : 0.07) : Color.black.opacity(pressed ? 0.09 : 0.05))
+                            .opacity(hovered || pressed ? 1 : 0)
                     }
                 }
                 .opacity(isEnabled ? 1 : 0.45)
@@ -443,8 +476,9 @@ private struct ReduceMotionOff: ViewModifier {
     }
 }
 
-/// A row's trailing •••: a menu in a 22pt slot the layout always reserves, revealed (150 ms fade) while the row is
-/// hovered or selected, as Rex reveals a session row's actions. Never shifts the row.
+/// A row's trailing •••: a menu in the `rowAction` slot the layout always reserves, revealed while the row is hovered
+/// or selected, as Rex reveals a session row's action (in with `hoverIn`, out with `hoverOut`). Never shifts the row.
+/// Rows place it `rowActionInset` from their trailing edge.
 struct PaneRowMenu<Items: View>: View {
     var visible: Bool
     var help: String
@@ -452,13 +486,13 @@ struct PaneRowMenu<Items: View>: View {
 
     var body: some View {
         Menu { items } label: {
-            Image(systemName: "ellipsis")
-                .font(.system(size: 12, weight: .bold))
-                .frame(width: 22, height: 22)
+            PaneDots()
+                .frame(width: PaneSize.rowAction, height: PaneSize.rowAction)
                 .contentShape(Rectangle())
         }
         .menuStyle(.button)
         .buttonStyle(PaneGhostButtonStyle())
+        .environment(\.paneGhostLevel, .row)
         .menuIndicator(.hidden)
         .fixedSize()
         .help(help)
@@ -469,31 +503,82 @@ struct PaneRowMenu<Items: View>: View {
     }
 }
 
-/// Hover for rows outside a table (the sidebar): in at once, out after Rex's 300 ms linger. Writes the binding the
-/// row reads.
-struct PaneHoverLinger: ViewModifier {
-    @Binding var isHovered: Bool
-    @State private var leaving: Task<Void, Never>?
-
-    func body(content: Content) -> some View {
-        content.onHover { inside in
-            leaving?.cancel()
-            if inside {
-                withAnimation(PaneMotion.hoverIn) { isHovered = true }
-            } else {
-                leaving = Task { @MainActor in
-                    try? await Task.sleep(for: PaneMotion.hoverLinger)
-                    guard !Task.isCancelled else { return }
-                    withAnimation(PaneMotion.hoverOut) { isHovered = false }
-                }
-            }
+/// Rex's •••: three 3.75pt dots on a 5.5pt pitch, in the foreground style.
+struct PaneDots: View {
+    var body: some View {
+        HStack(spacing: 1.75) {
+            Circle().frame(width: 3.75, height: 3.75)
+            Circle().frame(width: 3.75, height: 3.75)
+            Circle().frame(width: 3.75, height: 3.75)
         }
     }
 }
 
-extension View {
-    func paneHoverLinger(_ isHovered: Binding<Bool>) -> some View { modifier(PaneHoverLinger(isHovered: isHovered)) }
+/// Hover for a region of rows (a pane's rows, the sidebar), with Rex's timing: entering an item hovers it at once
+/// (`hoverIn`) and leaving fades it at once (`hoverOut`); nothing lingers. The region holds one hovered key, so a
+/// missed exit can never leave two items hovered; leaving the region, the item disappearing and a drag starting all
+/// clear it. Each item reads its own flag, so moving the pointer redraws the two rows involved, not every row.
+@MainActor
+final class PaneHoverRegion<Key: Hashable> {
+    private var flags: [Key: PaneHoverFlag] = [:]
+    private var current: Key?
+
+    /// Read in a body: that view, and only it, follows the item's hover.
+    func isHovered(_ key: Key) -> Bool { flag(key).isOn }
+
+    /// For `onHover`.
+    func update(_ key: Key, inside: Bool) {
+        #if DEBUG
+        PaneHoverDebug.log?("hover \(inside ? "enter" : "exit") \(key) current=\(String(describing: current))")
+        #endif
+        if inside {
+            guard current != key else { return }
+            clear()
+            current = key
+            withAnimation(PaneMotion.hoverIn) { flag(key).isOn = true }
+        } else if current == key {
+            clear()
+        }
+    }
+
+    func clear(_ reason: String = "") {
+        guard let old = current else { return }
+        #if DEBUG
+        PaneHoverDebug.log?("hover clear \(old) \(reason)")
+        #endif
+        current = nil
+        withAnimation(PaneMotion.hoverOut) { flags[old]?.isOn = false }
+    }
+
+    /// The item left the screen (scrolled away, deleted, another list opened): it can't stay hovered.
+    func vanished(_ key: Key) {
+        #if DEBUG
+        if current == key { PaneHoverDebug.log?("hover vanished \(key)") }
+        #endif
+        if current == key { clear() }
+    }
+
+    private func flag(_ key: Key) -> PaneHoverFlag {
+        if let f = flags[key] { return f }
+        let f = PaneHoverFlag()
+        flags[key] = f
+        return f
+    }
 }
+
+@MainActor
+@Observable
+final class PaneHoverFlag {
+    var isOn = false
+}
+
+#if DEBUG
+/// Set by `-debugKeyLog`: hover events go to the same log.
+@MainActor
+enum PaneHoverDebug {
+    static var log: ((String) -> Void)?
+}
+#endif
 
 /// One line of text that fades out under a gradient at the trailing edge instead of ending in "…", as Rex does
 /// before a row's trailing action.

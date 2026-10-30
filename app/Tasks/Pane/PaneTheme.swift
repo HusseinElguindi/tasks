@@ -119,7 +119,9 @@ struct PaneRules: Sendable {
                                 card: 0.015, selected: 0.055, control: 0.085, track: 0.10, thumb: 0.23,
                                 strong: 0.20, capsule: 0.125, band: 0.13,
                                 separator: 0.13, edge: 0.11, edgeDim: 0.06,
-                                ink2: 0.42, ink3: 0.48, quiet: 0.60, fieldEdge: 0.62,
+                                // Tasks: ink2 and ink3 are Rex's measured sidebar title at rest (#A8ADB1) and group
+                                // label (#7F8386); Pane had 0.42 and 0.48 (design/PANE-UPSTREAM.md).
+                                ink2: 0.305, ink3: 0.508, quiet: 0.60, fieldEdge: 0.62,
                                 tint: 0.13, dangerTint: 0.14, attentionTint: 0.14)
 
     static let light = PaneRules(groundFromBlack: false, ground: 0.045, dim: 0.022,
@@ -297,7 +299,8 @@ public enum PaneRadius {
 }
 
 public enum PaneSize {
-    // Tasks: size-check, size-chip, size-chip-large. Task rows use sidebarRow (32).
+    // Tasks: size-check, size-chip, size-chip-large. Rows (sidebar and tasks) are Rex's 30pt shape on a 32pt pitch
+    // (sidebarRow); a row's trailing action is a 22pt slot 5pt in from its edge, so the glyph sits 16pt in.
     public static let check: CGFloat = 16
     public static let chip: CGFloat = 18
     public static let chipLarge: CGFloat = 22
@@ -307,14 +310,18 @@ public enum PaneSize {
     public static let control: CGFloat = 28
     public static let field: CGFloat = 22
     public static let sidebarRow: CGFloat = 32
+    public static let row: CGFloat = 30
+    public static let rowAction: CGFloat = 22
+    public static let rowActionInset: CGFloat = 5
     public static let paneHeader: CGFloat = 32
-    public static let sidebar: CGFloat = 220
+    // Tasks: Rex's sidebar is 230 (Pane: 220).
+    public static let sidebar: CGFloat = 230
 }
 
 // MARK: - Shadows (Tasks: shadow-popover and shadow-lift are shadow-sheet with shorter blurs)
 
 public enum PaneShadow: Sendable {
-    /// A 1pt inset hairline: white 7% in dark, ink 6% in light.
+    /// A 1pt inset hairline: in dark, Rex's two-step edge (white 8%, its outer half 14%); ink 6% in light.
     case capsule
     /// shadow-sheet with a 12/32 blur.
     case popover
@@ -340,7 +347,15 @@ private struct PaneShadowModifier<S: InsettableShape>: ViewModifier {
         let drop = pane.isDark ? Color.black.opacity(0.50) : Self.ink.opacity(0.18)
         switch kind {
         case .capsule:
-            content.overlay { shape.strokeBorder(pane.isDark ? Color.white.opacity(0.07) : Self.ink.opacity(0.06), lineWidth: 1) }
+            // Tasks: Rex's selected capsule measures #535353 inside a brighter #5E5E5E outer pixel on #444444.
+            content.overlay {
+                if pane.isDark {
+                    shape.strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+                        .overlay { shape.strokeBorder(Color.white.opacity(0.065), lineWidth: 0.5) }
+                } else {
+                    shape.strokeBorder(Self.ink.opacity(0.06), lineWidth: 1)
+                }
+            }
         case .popover:
             content
                 .overlay { shape.strokeBorder(ring, lineWidth: 1) }

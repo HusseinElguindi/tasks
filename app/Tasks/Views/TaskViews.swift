@@ -48,7 +48,8 @@ struct TaskListView: View {
             return .handled
         }
         .onDeleteCommand { actions.delete() }
-        .onHover { inside in if !inside { window.leaveTaskList() } }
+        // Leaving the list clears its hover, whatever exit a row may have missed.
+        .onHover { inside in if !inside { window.rowHover.clear("left list") } }
         .onExitCommand {
             if window.quickAdd != nil { window.quickAdd = nil } else if window.detailTaskID != nil { window.detailTaskID = nil }
         }
@@ -82,12 +83,9 @@ struct TodayGroup: View {
             // The label is a plain row, not a section header: List pins headers on a band, and Rex's group
             // labels are just text.
             Section {
-                PaneGroupLabel(text: list.name.isEmpty ? "Untitled" : list.name)
-                    .padding(.leading, 10)
-                    .padding(.top, 8)
-                    .frame(maxWidth: .infinity, minHeight: 24, alignment: .bottomLeading)
-                    .paneRow()
-                    .selectionDisabled()
+                TodayGroupLabel(window: window, listID: listID, name: list.name.isEmpty ? "Untitled" : list.name) {
+                    WindowActions(store: store, window: window).newTask(in: listID)
+                }
                 ForEach(ids, id: \.self) { id in
                     TaskRowCell(store: store, window: window, taskID: id, context: .today)
                 }
@@ -98,6 +96,26 @@ struct TodayGroup: View {
             }
             .listSectionSeparator(.hidden)
         }
+    }
+}
+
+/// A Today group's label, which reveals ⊕ (a new task in that list, for today) on hover as Rex's group headers do.
+/// Its hover shares the task rows' region, keyed by the list id.
+struct TodayGroupLabel: View {
+    let window: WindowState
+    let listID: EntityID
+    let name: String
+    let action: () -> Void
+
+    var body: some View {
+        PaneGroupLabelRow(text: name, help: "New Task in \(name)", isHovered: window.rowHover.isHovered(listID), action: action)
+            .padding(.leading, 10)
+            .padding(.top, 8)
+            .frame(maxWidth: .infinity, minHeight: 24, alignment: .bottomLeading)
+            .onHover { window.rowHover.update(listID, inside: $0) }
+            .onDisappear { window.rowHover.vanished(listID) }
+            .paneRow()
+            .selectionDisabled()
     }
 }
 
@@ -181,20 +199,22 @@ struct TaskRowCell: View {
         ZStack {
             if let model = store.projection.taskModel(taskID) {
                 TaskRow(model: model, store: store, window: window, dayModel: store.projection.dayModel, context: context,
-                        isSelected: window.selection.contains(taskID), isHovered: window.isHovered(task: taskID)) {
+                        isSelected: window.selection.contains(taskID), isHovered: window.rowHover.isHovered(taskID)) {
                     store.toggleComplete([taskID], undoManager: window.undoManager)
                 }
             }
         }
         .paneRow()
         .itemProvider { dragProvider() }
-        .onHover { inside in window.hover(task: taskID, inside: inside) }
+        .onHover { inside in window.rowHover.update(taskID, inside: inside) }
+        .onDisappear { window.rowHover.vanished(taskID) }
         #if DEBUG
         .onAppear { DebugTiming.rowAppeared() }
         #endif
     }
 
     private func dragProvider() -> NSItemProvider {
+        window.rowHover.clear()
         let ids = window.selection.contains(taskID)
             ? window.selection.sorted { (store.projection.task($0)?.order ?? "") < (store.projection.task($1)?.order ?? "") }
             : [taskID]
@@ -213,7 +233,8 @@ struct TaskRowCell: View {
     }
 }
 
-/// A 32pt task row: checkbox, title, and a date chip only when it tells you something (design: "Task row").
+/// A task row, Rex's 30pt row shape on the 32pt pitch: checkbox, title, and a date chip only when it tells you
+/// something (design: "Task row"), then the ••• slot 16pt in from the edge, like the sidebar's.
 struct TaskRow: View {
     enum Context: Equatable { case today, list, todayDone }
 
@@ -244,11 +265,11 @@ struct TaskRow: View {
             PaneRowMenu(visible: isHovered || isSelected, help: "Actions") {
                 TaskContextMenu(store: store, window: window, ids: [model.id])
             }
-            .padding(.trailing, -6)
         }
         .font(PaneFont.body)
-        .padding(.horizontal, 10)
-        .frame(minHeight: PaneSize.sidebarRow)
+        .padding(.leading, 10)
+        .padding(.trailing, PaneSize.rowActionInset)
+        .frame(minHeight: PaneSize.row)
         .background {
             if isSelected {
                 RoundedRectangle(cornerRadius: PaneRadius.row, style: .continuous).fill(pane.selected)
@@ -309,7 +330,7 @@ struct CompletedToggle: View {
             }
             .foregroundStyle(pane.inkSecondary)
             .padding(.horizontal, 10)
-            .frame(minHeight: PaneSize.sidebarRow)
+            .frame(minHeight: PaneSize.row)
             .contentShape(Rectangle())
         }
         .buttonStyle(PanePressStyle())
@@ -338,7 +359,7 @@ struct EmptyListRow: View {
                     PaneKeyHint(text: "⌘N")
                 }
                 .padding(.horizontal, 10)
-                .frame(minHeight: PaneSize.sidebarRow)
+                .frame(minHeight: PaneSize.row)
                 .contentShape(Rectangle())
             }
             .buttonStyle(PanePressStyle())

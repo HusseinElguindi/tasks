@@ -11,42 +11,32 @@ extension UTType {
 
 /// Rex's session tabs: Today pinned, then the lists as capsule rows under a "Lists" label, then Archive (only when
 /// something is archived) and New list at the bottom, with the sync state as the footer. Rows are navigation: their
-/// titles rest in ink-secondary and brighten on hover (design/INTERACTIONS.md).
+/// titles rest in ink-secondary and brighten on hover (design/INTERACTIONS.md). Rex's metrics: 230pt wide, 30pt
+/// capsules 10pt in from the left and 11pt from the right, on a 32pt pitch.
 struct Sidebar: View {
     let store: Store
     @Bindable var window: WindowState
     @Environment(\.pane) private var pane
     @State private var drop: SidebarDrop?
-    @State private var listsLabelHovered = false
 
     var body: some View {
         let p = store.projection
         let actions = WindowActions(store: store, window: window)
-        VStack(alignment: .leading, spacing: 4) {
-            // The traffic lights and the sidebar toggle (drawn over everything by MainLayout) live in this row.
-            Color.clear.frame(height: 28).padding(.bottom, 8)
+        VStack(alignment: .leading, spacing: 2) {
+            // The traffic lights and the sidebar toggle (drawn over everything by MainLayout) live in this band;
+            // Today's capsule then spans 46–76, where Rex's first row sits.
+            Color.clear.frame(height: 34)
 
-            NavRow(title: "Today", count: todayCount, isCurrent: window.route == .today) {
+            NavRow(window: window, item: .today, title: "Today", count: todayCount, isCurrent: window.route == .today) {
                 PaneListMark(monogram: "", color: pane.attention, systemImage: "sun.max")
             } action: {
                 window.route = .today
             }
 
-            // "Lists" reveals ⊕ on hover, as Rex's group headers do.
-            HStack(spacing: 4) {
-                PaneGroupLabel(text: "Lists")
-                Spacer(minLength: 0)
-                PaneIconButton("plus.circle", help: "New List ⇧⌘N") { actions.newList() }
-                    .opacity(listsLabelHovered ? 1 : 0)
-                    .allowsHitTesting(listsLabelHovered)
-            }
-            .padding(EdgeInsets(top: 8, leading: 8, bottom: 0, trailing: 4))
-            .frame(height: 30, alignment: .bottom)
-            .contentShape(Rectangle())
-            .paneHoverLinger($listsLabelHovered)
+            SidebarGroupLabel(window: window, item: .listsLabel, text: "Lists", help: "New List ⇧⌘N") { actions.newList() }
 
             ScrollView(.vertical, showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 2) {
                     ForEach(p.activeLists.ids, id: \.self) { id in
                         ListSidebarRow(store: store, window: window, listID: id, drop: $drop)
                     }
@@ -57,8 +47,9 @@ struct Sidebar: View {
             Spacer(minLength: 0)
 
             if !p.archivedLists.ids.isEmpty {
-                NavRow(title: "Archive", count: p.archivedLists.count, isCurrent: window.route == .archive) {
-                    Image(systemName: "archivebox").font(.system(size: 13)).frame(width: 20)
+                NavRow(window: window, item: .archive, title: "Archive", count: p.archivedLists.count,
+                       isCurrent: window.route == .archive) {
+                    Image(systemName: "archivebox").font(.system(size: 13))
                 } action: {
                     window.route = .archive
                     if window.archiveSelection.map({ p.list($0)?.archivedAt == nil }) ?? true {
@@ -66,19 +57,27 @@ struct Sidebar: View {
                     }
                 }
             }
-            NavRow(title: "New list", count: nil, isCurrent: false) {
-                Image(systemName: "plus").font(.system(size: 13)).frame(width: 20)
+            NavRow(window: window, item: .newList, title: "New list", count: nil, isCurrent: false) {
+                Image(systemName: "plus").font(.system(size: 13))
             } action: {
                 actions.newList()
             }
             SyncFooter(store: store)
         }
-        .padding(EdgeInsets(top: 10, leading: 8, bottom: 8, trailing: 8))
+        .padding(EdgeInsets(top: 10, leading: 10, bottom: 8, trailing: 11))
+        // Leaving the sidebar clears its hover, whatever exit a row may have missed.
+        .onHover { inside in if !inside { window.sidebarHover.clear("left sidebar") } }
     }
 
     private var todayCount: Int {
         store.projection.activeLists.ids.reduce(0) { $0 + store.projection.todayTasks(in: $1).count }
     }
+}
+
+/// What the sidebar's hover region tracks.
+enum SidebarItem: Hashable {
+    case today, listsLabel, archive, newList
+    case list(EntityID)
 }
 
 enum SidebarDrop: Equatable {
@@ -88,23 +87,47 @@ enum SidebarDrop: Equatable {
     case list(EntityID, above: Bool)
 }
 
-/// A sidebar row that tracks its own hover (with Rex's linger) and passes it to SidebarRow.
+/// A group label that reveals its ⊕ on hover, as Rex's group headers do: the label in ink-tertiary at the rows' text
+/// inset, the ⊕ in the rows' trailing-action slot. Used by the sidebar and by Today's groups.
+struct SidebarGroupLabel: View {
+    let window: WindowState
+    var item: SidebarItem
+    var text: String
+    var help: String
+    var action: () -> Void
+
+    var body: some View {
+        // Rex's group labels sit a little low in their slot: the baseline 27pt above the next row's middle.
+        PaneGroupLabelRow(text: text, help: help, isHovered: window.sidebarHover.isHovered(item), action: action, labelOffset: 1)
+            .padding(.leading, 12)
+            .frame(height: PaneSize.row)
+            .onHover { window.sidebarHover.update(item, inside: $0) }
+            .onDisappear { window.sidebarHover.vanished(item) }
+    }
+}
+
+/// A sidebar row whose hover lives in the window's sidebar region.
 struct NavRow<Leading: View>: View {
+    let window: WindowState
+    var item: SidebarItem
     var title: String
     var count: Int?
     var isCurrent: Bool
     @ViewBuilder var leading: Leading
     var action: () -> Void
-    @State private var hovered = false
 
     var body: some View {
-        SidebarRow(title: title, count: count, isCurrent: isCurrent, isHovered: hovered, leading: { leading }, action: action)
-            .paneHoverLinger($hovered)
+        SidebarRow(title: title, count: count, isCurrent: isCurrent, isHovered: window.sidebarHover.isHovered(item),
+                   leading: { leading }, action: action)
+            .onHover { window.sidebarHover.update(item, inside: $0) }
+            .onDisappear { window.sidebarHover.vanished(item) }
     }
 }
 
-/// A 30pt capsule row: the title rests in ink-secondary and goes to ink on hover or when current; long titles fade out
-/// rather than ending in "…". The fill belongs to the current row alone (PaneSidebarRowStyle).
+/// A Rex session row: a 30pt capsule holding the 20pt tile column, the title (7pt after it) and the trailing slot.
+/// The title rests in ink-secondary and goes to ink on hover or when current; long titles fade out rather than ending
+/// in "…". The count sits in the trailing slot, right-aligned with the ••• that replaces it on hover (overlaid by the
+/// caller). The fill belongs to the current row alone (PaneSidebarRowStyle).
 struct SidebarRow<Leading: View>: View {
     var title: String
     var count: Int?
@@ -118,20 +141,28 @@ struct SidebarRow<Leading: View>: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
-                leading
+            HStack(spacing: 7) {
+                leading.frame(width: PaneSize.tile)
+                // Rex sets row text 1pt above center (baseline 4pt below the row's middle).
                 PaneFadingText(text: title)
                     .foregroundStyle(isDropTarget ? pane.accentText : (isCurrent || isHovered ? pane.ink : pane.inkSecondary))
+                    .offset(y: -1)
                 if let accessory { accessory }
-                if let count, count > 0 {
-                    Text(verbatim: "\(count)")
-                        .monospacedDigit()
-                        .foregroundStyle(isDropTarget ? pane.accentText : pane.inkSecondary)
+                ZStack(alignment: .trailing) {
+                    if let count, count > 0 {
+                        Text(verbatim: "\(count)")
+                            .monospacedDigit()
+                            .foregroundStyle(isDropTarget ? pane.accentText : pane.inkTertiary)
+                            .padding(.trailing, 3.5)
+                            .offset(y: -1)
+                    }
                 }
+                .frame(width: PaneSize.rowAction, alignment: .trailing)
             }
             .font(PaneFont.body)
-            .padding(.horizontal, 8)
-            .frame(minHeight: 30)
+            .padding(.leading, 10)
+            .padding(.trailing, PaneSize.rowActionInset)
+            .frame(height: PaneSize.row)
         }
         .buttonStyle(PaneSidebarRowStyle(isCurrent: isCurrent, isDropTarget: isDropTarget))
     }
@@ -145,12 +176,12 @@ struct ListSidebarRow: View {
     @Binding var drop: SidebarDrop?
     @Environment(\.pane) private var pane
 
-    @State private var hovered = false
-
     /// Hover gets no fill (design/INTERACTIONS.md): the title brightens and the trailing ••• takes the count's place,
     /// as Rex reveals a session row's action. The current list keeps its ••• shown.
     var body: some View {
         if let list = store.projection.listModel(listID) {
+            let item = SidebarItem.list(listID)
+            let hovered = window.sidebarHover.isHovered(item)
             let targeted = drop == .tasks(listID)
             let isCurrent = window.route == .list(listID)
             let showMenu = (isCurrent || hovered) && drop == nil
@@ -167,15 +198,18 @@ struct ListSidebarRow: View {
                     Button("Rename…") { window.route = .list(listID); window.renamingList = listID }
                     Button("Archive List") { WindowActions(store: store, window: window).archive(list: listID) }
                 }
-                .padding(.trailing, 4)
+                .padding(.trailing, PaneSize.rowActionInset)
             }
-            .paneHoverLinger($hovered)
+            .onHover { window.sidebarHover.update(item, inside: $0) }
+            .onDisappear { window.sidebarHover.vanished(item) }
             .overlay(alignment: drop == .list(listID, above: true) ? .top : .bottom) {
+                // Centered in the 2pt gap between rows.
                 if case .list(listID, let above) = drop {
-                    PaneInsertionLine().padding(.leading, 8).offset(y: above ? -6 : 6)
+                    PaneInsertionLine().padding(.leading, 8).offset(y: above ? -5 : 5)
                 }
             }
             .onDrag {
+                window.sidebarHover.clear()
                 let p = NSItemProvider()
                 let data = Data(listID.utf8)
                 p.registerDataRepresentation(forTypeIdentifier: UTType.listID.identifier, visibility: .all) { done in
@@ -185,12 +219,12 @@ struct ListSidebarRow: View {
                 return p
             } preview: {
                 // The lifted list: a fill-strong capsule with shadow-lift.
-                HStack(spacing: 8) {
+                HStack(spacing: 7) {
                     PaneListMark(monogram: list.monogram, color: pane.listColor(slot: list.colorSlot))
                     Text(list.name.isEmpty ? "Untitled" : list.name).font(PaneFont.body).foregroundStyle(pane.ink)
                 }
-                .padding(.horizontal, 8)
-                .frame(width: 190, height: 30, alignment: .leading)
+                .padding(.horizontal, 10)
+                .frame(width: PaneSize.sidebar - 21, height: PaneSize.row, alignment: .leading)
                 .background(pane.strong, in: Capsule())
                 .paneShadow(.lift, in: Capsule())
                 .environment(\.pane, pane)

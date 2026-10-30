@@ -1,0 +1,99 @@
+# Pane upstream log
+
+Where the Pane design system (design/PaneTheme.swift, the Claude Design canvases, design/DIRECTIONS.md) differs from
+the real Rex app. Rex is the source of truth (docs/TASK-source-of-truth.md); the Tasks app already follows Rex in each
+case below. Each entry: what Pane says now, what Rex does (measured as in design/REX-REFERENCE.md: window
+screenshots sampled in sRGB with `.uitools/px.swift`, Rex Beta, dark theme), and the proposed change to Pane.
+
+## Tokens
+
+### `ink-secondary` (dark)
+- **Pane:** `ink2` 0.42 (foreground mixed toward the background) = #919598.
+- **Rex:** sidebar titles at rest measure #A8ADB1 on every row type, and the toolbar icons at rest are the same
+  #A8ADB1. That is a 0.305 mix.
+- **Proposal:** `ink2` 0.305 in dark.
+
+### `ink-tertiary` (dark)
+- **Pane:** `ink3` 0.48 = #85898B.
+- **Rex:** group headers ("ECE 358") and the ⊕ and chevron they reveal measure #7F8386, a 0.508 mix.
+- **Proposal:** `ink3` 0.508 in dark.
+
+### `ink-quiet` (dark): agrees
+- **Pane:** `quiet` 0.60 = #6D7072. **Rex:** secondary text inside a title ("Yazi ~/school") is #6E7274 (0.59).
+  No change.
+
+### `shadow-capsule` (dark)
+- **Pane:** a 1pt inset hairline of white 7%, so both edge pixels of the selected capsule are #525354.
+- **Rex:** the selected capsule's edge is two-step: an outer pixel of #5E5E5E over an inner #535353, on a #444444 fill,
+  the same on all four sides; no drop shadow (the ground below it stays #181818/#191919).
+- **Proposal:** white 8% at 1pt, plus white 6.5% on the outer 0.5pt.
+
+### `fill-strong` (dark)
+- **Pane:** derived toward the foreground (0.20), so it carries the foreground's blue: #454647.
+- **Rex:** the selected capsule is neutral #444444, the ground (#181818) plus 19% white.
+- **Proposal:** derive dark fills toward white rather than the foreground. (Not applied in Tasks: it's 1–3 levels.)
+
+## Sizes and layout
+
+### `size-sidebar`
+- **Pane:** 220. **Rex:** the first pane starts at x 230.
+- **Proposal:** 230.
+
+### Rows: shape and pitch
+- **Pane:** sidebar lists are "30pt capsule rows" with 4pt gaps; task rows are "32pt" (`size-sidebar-row`) with 2pt
+  gaps, so 34pt apart.
+- **Rex:** every row is a 30pt shape on a 32pt pitch (capsule y 295–325, next row's middle 32pt lower).
+- **Proposal:** `size-row` 30 and a 32pt pitch for all rows, task rows included.
+
+### Sidebar row geometry
+- **Pane:** 8pt sidebar padding, 8pt inside the capsule, 8pt between tile and title.
+- **Rex:** capsules 10pt from the sidebar's left edge and 11pt from its right (x 10–219 in a 230pt sidebar); tile
+  column 10pt inside the capsule (x 20–40); title text 7pt after the tile (ink starts at x 47.5); the trailing
+  action centered 16pt inside the capsule's right edge (× at x 199–207, ••• at x 195.5–210.5). Long titles fade out
+  by x 185.
+- **Proposal:** these insets; trailing actions in a 22pt slot 5pt in from the row's edge.
+
+### Text baseline in a row
+- **Pane:** text centered by SwiftUI (13pt body: baseline 5pt below the row's middle).
+- **Rex:** baseline 4pt below the row's middle ("Mac" 368.5–378 in a row centered at 374), so text sits 1pt higher.
+- **Proposal:** offset row text up 1pt.
+
+### Program tile
+- **Pane:** a 20pt square (radius 5); 16pt in headers.
+- **Rex:** 20 × 16 (5:4), radius about 4, with a dark outline (its tiles are colored).
+- **Proposal:** 5:4 tiles at every size (Tasks: 20 × 16, 16 × 13, 12 × 10), keeping Pane's fill-strong tile with
+  the ANSI glyph.
+
+### Group label
+- **Pane:** 11 semibold `ink-tertiary` (agrees: Rex's ink widths match 11pt semibold), no hover behavior.
+- **Rex:** at x 22 (12pt inside the capsule edge), baseline 27pt above the next row's middle; on hover it reveals ⊕
+  and a collapse chevron at the right, in the label's own color.
+- **Proposal:** a group-header component with the ⊕ reveal in the rows' trailing slot.
+
+## Hover and motion
+
+### Hover timing
+- **Pane:** no hover tokens (motion is `snappy` 200 ms, `natural` 300 ms, `reveal` 600 ms).
+- **Rex:** row hover-in ~80% on the first frame, settled in 50–70 ms; hover-out an ~85 ms fade that starts the
+  moment the pointer leaves (no hold); icon buttons ~100 ms both ways; pane focus ~60 ms.
+- **Proposal:** `duration-hover-in` 60 ms, `duration-hover-out` 85 ms, `duration-icon` 100 ms, `duration-focus` 60 ms.
+
+### Row hover appearance
+- **Pane:** no row hover state, except DIRECTIONS' six-dot drag grip that appears on hover.
+- **Rex:** no fill on hover. A row's title goes from `ink-secondary` to `ink`, its trailing action fades in, icons
+  don't change, nothing shifts; the whole row is the drag handle.
+- **Proposal:** specify this hover for rows (sidebar and list rows alike) and drop the grip.
+
+### Row action glyph
+- **Pane:** SF Symbol `ellipsis` at 12pt bold.
+- **Rex:** three 3.75pt dots on a 5.5pt pitch (15 × 3.75); revealed actions are `ink-secondary` (× measures
+  #A9AEB2).
+- **Proposal:** a dots glyph with these sizes.
+
+### Icon buttons and panes
+- **Pane:** `PaneIconButton` is a plain button in `ink-quiet` with no hover or pressed state; unfocused panes only
+  dim their surface.
+- **Rex:** on hover a small fill appears behind the glyph (a rounded square in pane headers, a circle in the
+  toolbar), ~100 ms; tooltips read "Name ⌘X"; unfocused panes also fade their header icons; actions that don't apply
+  are drawn disabled.
+- **Proposal:** add the hover fills, tooltips with shortcuts and faded header icons to Pane's button and pane specs.

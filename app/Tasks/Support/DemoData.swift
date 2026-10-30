@@ -4,7 +4,9 @@ import TasksCore
 
 /// Debug aid: `-demoData YES` fills an empty data folder with the lists and tasks from the design boards (dates
 /// relative to today), for screenshots and manual testing. `-debugRoute today|archive|list:<name>`,
-/// `-debugOpen <task title>` and `-debugQuickAdd YES` set up the window. Never compiled into release builds.
+/// `-debugOpen <task title>` and `-debugQuickAdd YES` set up the window; `-debugHover` hovers items without a pointer
+/// (comma-separated: `today`, `lists`, `archive`, `newList`, `list:<name>`, `group:<list name>`, `task:<title>`).
+/// Never compiled into release builds.
 @MainActor
 enum DemoData {
     static func seedIfRequested(_ store: Store) {
@@ -82,6 +84,33 @@ enum DemoData {
         if d.bool(forKey: "debugQuickAdd") {
             WindowActions(store: store, window: window).newTask()
             window.quickAdd?.title = "Call the dentist about the crown"
+        }
+        // After the window has settled: launch layout (and -debugWindowSize) moves views under the pointer, whose
+        // own hover events would otherwise replace these.
+        let hovers = (d.string(forKey: "debugHover") ?? "").split(separator: ",").map(String.init)
+        guard !hovers.isEmpty else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { hover(hovers, store, window) }
+    }
+
+    private static func hover(_ specs: [String], _ store: Store, _ window: WindowState) {
+        for spec in specs {
+            let p = store.projection
+            func list(_ name: String) -> EntityID? { p.activeLists.ids.first { p.list($0)?.name == name } }
+            switch spec {
+            case "today": window.sidebarHover.update(.today, inside: true)
+            case "lists": window.sidebarHover.update(.listsLabel, inside: true)
+            case "archive": window.sidebarHover.update(.archive, inside: true)
+            case "newList": window.sidebarHover.update(.newList, inside: true)
+            default:
+                if spec.hasPrefix("list:"), let id = list(String(spec.dropFirst(5))) {
+                    window.sidebarHover.update(.list(id), inside: true)
+                } else if spec.hasPrefix("group:"), let id = list(String(spec.dropFirst(6))) {
+                    window.rowHover.update(id, inside: true)
+                } else if spec.hasPrefix("task:"),
+                          let id = p.allTaskIDs.first(where: { p.task($0)?.title == String(spec.dropFirst(5)) }) {
+                    window.rowHover.update(id, inside: true)
+                }
+            }
         }
     }
 }

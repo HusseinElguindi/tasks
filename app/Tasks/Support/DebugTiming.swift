@@ -83,12 +83,15 @@ enum DebugKeyLog {
         let args = ProcessInfo.processInfo.arguments
         guard monitor == nil, let i = args.firstIndex(of: "-debugKeyLog"), i + 1 < args.count else { return }
         let path = args[i + 1]
+        func append(_ line: String) {
+            if let h = FileHandle(forWritingAtPath: path) { h.seekToEndOfFile(); h.write(Data(line.utf8)); h.closeFile() }
+            else { try? line.write(toFile: path, atomically: true, encoding: .utf8) }
+        }
+        PaneHoverDebug.log = { append(String(format: "%.3f ", CACurrentMediaTime()) + $0 + "\n") }
         monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .leftMouseDown]) { event in
             let key = NSApp.keyWindow.map { "\(type(of: $0))#\($0.windowNumber)" } ?? "none"
             let responder = NSApp.keyWindow?.firstResponder.map { "\(type(of: $0))" } ?? "none"
-            let line = "\(event.type == .keyDown ? "key \(event.keyCode)" : "mouse") keyWindow=\(key) firstResponder=\(responder)\n"
-            if let h = FileHandle(forWritingAtPath: path) { h.seekToEndOfFile(); h.write(Data(line.utf8)); h.closeFile() }
-            else { try? line.write(toFile: path, atomically: true, encoding: .utf8) }
+            append("\(event.type == .keyDown ? "key \(event.keyCode)" : "mouse") keyWindow=\(key) firstResponder=\(responder)\n")
             return event
         }
     }
