@@ -19,6 +19,7 @@ struct RootView: View {
                         DemoData.applyDebugRoute(store, window)
                         DebugSnapshot.runIfRequested()
                         DebugAutomation.runIfRequested(store)
+                        DebugTiming.runIfRequested(store, window)
                         #endif
                     }
             }
@@ -98,8 +99,8 @@ struct Panes: View {
         case .today:
             TodayPane(store: store, window: window)
         case .list(let id):
+            // No .id(listID): switching lists keeps one List and diffs its rows instead of rebuilding the table.
             ListPane(store: store, window: window, listID: id)
-                .id(id)
         case .archive:
             ArchivePane(store: store, window: window)
                 .frame(width: window.archiveSelection == nil ? nil : 380)

@@ -160,15 +160,25 @@ struct TaskRowCell: View {
     let taskID: EntityID
     let context: TaskRow.Context
 
+    /// Exactly one view per id, never an `if` at the top: a List row count it can't know without building every
+    /// row makes the List evaluate all of them on appear (thousands of bodies for a long list).
     var body: some View {
-        if let model = store.projection.taskModel(taskID) {
-            TaskRow(model: model, store: store, dayModel: store.projection.dayModel, context: context,
-                    isSelected: window.selection.contains(taskID)) {
-                store.toggleComplete([taskID], undoManager: window.undoManager)
+        #if DEBUG
+        let _ = DebugTiming.rowBodies += 1
+        #endif
+        ZStack {
+            if let model = store.projection.taskModel(taskID) {
+                TaskRow(model: model, store: store, dayModel: store.projection.dayModel, context: context,
+                        isSelected: window.selection.contains(taskID)) {
+                    store.toggleComplete([taskID], undoManager: window.undoManager)
+                }
             }
-            .paneRow()
-            .itemProvider { dragProvider() }
         }
+        .paneRow()
+        .itemProvider { dragProvider() }
+        #if DEBUG
+        .onAppear { DebugTiming.rowAppeared() }
+        #endif
     }
 
     private func dragProvider() -> NSItemProvider {
