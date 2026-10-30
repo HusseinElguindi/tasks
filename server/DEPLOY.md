@@ -79,4 +79,4 @@ Then enter the base URL (`https://tasks.<subdomain>.workers.dev`) and the token 
 | Rotate the token | `npx wrangler secret put API_TOKEN` | Each Mac then shows "Check sync token" until it gets the new one. |
 | Roll back the code | `npx wrangler rollback` | Storage is untouched. |
 | Tail logs | `npx wrangler tail` | |
-| Delete everything | `npx wrangler delete` | **Destroys the log, and with it every Mac's data:** on the resulting 409, SPEC §5 has each Mac delete its local log and keep only pending ops. |
+| Delete everything | `npx wrangler delete` | Destroys the server log. It doesn't destroy data: on the resulting 409, each Mac re-pushes every op it has (SPEC §5) and rebuilds the log. To really start over, also delete each Mac's Application Support data before it syncs. |

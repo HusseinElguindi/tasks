@@ -62,11 +62,15 @@ const filler = Array.from({ length: 2343 }, (_, i) => {
 });
 
 const logAB = log([opA, opB]);
-const logAX = log([opA, opX]);
+const logAXB = log([opA, opX, opB]);
 const log2345 = log([opA, opB, ...filler]);
 const after3 = log([opA, opB, op3a]);
 
 if (logAB[0].hash !== SPEC_HASH_0 || logAB[1].hash !== SPEC_HASH_1) throw new Error("hash vectors disagree with SPEC §5");
+// Example 5's recovery response, entries 1 and 2.
+if (logAXB[1].hash !== "d26a435858c180d340e58ccc240e66e280a27dbb8a68c6581cea8c5e7341448b" || logAXB[2].hash !== "2a34469203cb49eae9ac47f94f152dd5096801d50cd45dccb5682ea889992350") {
+  throw new Error("example 5 recovery hashes disagree with SPEC §5");
+}
 
 const hash1 = logAB[1].hash;
 const fixtures = {
@@ -135,10 +139,10 @@ const fixtures = {
   },
   "05b-resync-from-zero": {
     spec: "§5 worked example 5",
-    description: "After the 409 the client resyncs from 0 (its pending queue is empty here).",
+    description: "After the 409 the client re-pushes every op it knows (confirmed opA, opB; pending empty). opA is deduplicated and opB is appended at seq 2.",
     setup: { log: [opA, opX] },
-    request: request({ from: 0, base: null, ops: [] }),
-    response: response(200, page(logAX, 0)),
+    request: request({ from: 0, base: null, ops: [opA, opB] }),
+    response: response(200, page(logAXB, 0)),
   },
   "06-from-past-head": {
     spec: "§5 errors table, 409",

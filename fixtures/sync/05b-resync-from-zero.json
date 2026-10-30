@@ -1,7 +1,7 @@
 {
   "name": "05b-resync-from-zero",
   "spec": "§5 worked example 5",
-  "description": "After the 409 the client resyncs from 0 (its pending queue is empty here).",
+  "description": "After the 409 the client re-pushes every op it knows (confirmed opA, opB; pending empty). opA is deduplicated and opB is appended at seq 2.",
   "setup": {
     "log": [
       {"id":"00000000-0000-0000-0000-000000000002","at":1761811200000,"type":"list.create","target":"00000000-0000-0000-0000-000000000001","set":{"name":"Inbox","order":"a0"}},
@@ -18,7 +18,10 @@
     "body": {
       "from": 0,
       "base": null,
-      "ops": []
+      "ops": [
+        {"id":"00000000-0000-0000-0000-000000000002","at":1761811200000,"type":"list.create","target":"00000000-0000-0000-0000-000000000001","set":{"name":"Inbox","order":"a0"}},
+        {"id":"5b0c6c1e-3f0a-4c8e-9d61-0f4f6f1a2b3c","at":1761811260000,"type":"task.create","target":"9f8e7d6c-5b4a-4321-8fed-cba987654321","set":{"list":"00000000-0000-0000-0000-000000000001","order":"a0","title":"Buy milk","when":"2026-10-30"}}
+      ]
     }
   },
   "response": {
@@ -29,9 +32,10 @@
     "body": {
       "entries": [
         {"seq":0,"received":1761811261234,"hash":"bc2a6e3a4de77a2ce16c4a38c6f4d76237a98434f7d213049e3fd77dde66dacd","op":{"id":"00000000-0000-0000-0000-000000000002","at":1761811200000,"type":"list.create","target":"00000000-0000-0000-0000-000000000001","set":{"name":"Inbox","order":"a0"}}},
-        {"seq":1,"received":1761811261234,"hash":"d26a435858c180d340e58ccc240e66e280a27dbb8a68c6581cea8c5e7341448b","op":{"id":"6c1d7d2f-4a1b-4d9f-8e72-1a5a7a2b3c4d","at":1761811270000,"type":"task.create","target":"9f8e7d6c-5b4a-4321-8fed-cba987654321","set":{"list":"00000000-0000-0000-0000-000000000001","order":"a0","title":"Buy bread"}}}
+        {"seq":1,"received":1761811261234,"hash":"d26a435858c180d340e58ccc240e66e280a27dbb8a68c6581cea8c5e7341448b","op":{"id":"6c1d7d2f-4a1b-4d9f-8e72-1a5a7a2b3c4d","at":1761811270000,"type":"task.create","target":"9f8e7d6c-5b4a-4321-8fed-cba987654321","set":{"list":"00000000-0000-0000-0000-000000000001","order":"a0","title":"Buy bread"}}},
+        {"seq":2,"received":1761811261234,"hash":"2a34469203cb49eae9ac47f94f152dd5096801d50cd45dccb5682ea889992350","op":{"id":"5b0c6c1e-3f0a-4c8e-9d61-0f4f6f1a2b3c","at":1761811260000,"type":"task.create","target":"9f8e7d6c-5b4a-4321-8fed-cba987654321","set":{"list":"00000000-0000-0000-0000-000000000001","order":"a0","title":"Buy milk","when":"2026-10-30"}}}
       ],
-      "head": 2,
+      "head": 3,
       "more": false
     }
   }

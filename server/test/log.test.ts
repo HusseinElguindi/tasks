@@ -1,5 +1,5 @@
 // S3: the UserLog DO: append with dedup, hash chain, page read with `more`, 409 (SPEC §5–§7).
-import { evictDurableObject, runInDurableObject } from "cloudflare:test";
+import { evictDurableObject, reset, runInDurableObject } from "cloudflare:test";
 import { describe, expect, it, vi } from "vitest";
 import {
   INBOX, logStub, NOW, ok, opText, pullAll, seed, sha256, sync, taskUpdate, TASK, type Entry, type Op,
@@ -249,5 +249,85 @@ describe("pagination", () => {
 
   it("an empty log", async () => {
     expect(await ok(0, null)).toEqual({ entries: [], head: 0, more: false });
+  });
+});
+
+describe("409 recovery: a full re-push (SPEC §5)", () => {
+  // The Mac's log: 1,200 ops, so the recovery takes several pushes and pages. Plus 2 pending ops.
+  const mine = [opA, opB, ...Array.from({ length: 1198 }, (_, i) => taskUpdate({ title: `mine ${i}` }))];
+  const pending = [taskUpdate({ title: "pending 1" }), taskUpdate({ title: "pending 2" })];
+  const theirs = Array.from({ length: 900 }, (_, i) => taskUpdate({ title: `theirs ${i}` }));
+
+  /** The Mac, with its log at cursor `mine.length`, syncs and gets a 409. */
+  async function expect409(base: string, ops: Op[] = pending) {
+    const res = await sync({ from: mine.length, base, ops });
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe("log_mismatch");
+  }
+
+  /** Like the client: from 0, the queue in ≤ 500-op chunks, until more is false and nothing is unsent. */
+  async function recover(queue: Op[]): Promise<Entry[]> {
+    const received: Entry[] = [];
+    let from = 0;
+    let base: string | null = null;
+    let sent = 0;
+    for (;;) {
+      const chunk = queue.slice(sent, sent + 500);
+      sent += chunk.length;
+      const page = await ok(from, base, chunk);
+      received.push(...page.entries);
+      if (page.entries.length > 0) [from, base] = [page.entries.at(-1)!.seq + 1, page.entries.at(-1)!.hash];
+      if (!page.more && sent === queue.length) return received;
+    }
+  }
+
+  /** After recovery: every op the server or the Mac had is in the log exactly once, and the Mac holds the whole log. */
+  async function expectRecovered(received: Entry[], expectedIds: string[]) {
+    const log = await pullAll();
+    expect(received).toEqual(log);
+    expectChain(log);
+    const ids = log.map((e) => e.op.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect([...ids].sort()).toEqual([...expectedIds].sort());
+    return log;
+  }
+
+  it("(a) into a wiped log: the log is rebuilt from the Mac, in its order", async () => {
+    const { last } = await seed(mine);
+    await reset(); // the server is wiped
+    await expect409(last!);
+    const received = await recover([...mine, ...pending]);
+    const log = await expectRecovered(received, [...mine, ...pending].map((o) => o.id));
+    expect(log.map((e) => e.op)).toEqual([...mine, ...pending]);
+  });
+
+  it("(b) into a log restored to an older point and grown since: only the missing ops are appended", async () => {
+    const { last } = await seed(mine);
+    await reset();
+    await seed(mine.slice(0, 400)); // restored backup
+    await seed(theirs); // another Mac kept syncing: head 1,300 ≥ 1,200, so base mismatches
+    await expect409(last!);
+    const received = await recover([...mine, ...pending]);
+    const log = await expectRecovered(received, [...mine, ...theirs, ...pending].map((o) => o.id));
+    expect(log.map((e) => e.op)).toEqual([...mine.slice(0, 400), ...theirs, ...mine.slice(400), ...pending]);
+  });
+
+  it("(b') into a log restored to an older point, shorter than the Mac's cursor", async () => {
+    const { last } = await seed(mine);
+    await reset();
+    await seed(mine.slice(0, 400));
+    await expect409(last!); // from 1,200 > head 400
+    const received = await recover([...mine, ...pending]);
+    const log = await expectRecovered(received, [...mine, ...pending].map((o) => o.id));
+    expect(log.map((e) => e.op)).toEqual([...mine, ...pending]);
+  });
+
+  it("(c) into a healthy log (the Mac's own log was damaged): nothing is appended", async () => {
+    await seed(mine);
+    const before = await pullAll();
+    await expect409("0".repeat(64), []); // a damaged base, nothing pending
+    const received = await recover(mine);
+    const log = await expectRecovered(received, mine.map((o) => o.id));
+    expect(log).toEqual(before); // same entries, same hashes, same received
   });
 });
