@@ -1,7 +1,10 @@
 # Deploying the sync server (SPEC §10, S4)
 
-**Not run yet.** Every command below creates or changes Cloudflare resources, or signs in to Cloudflare.
-Nothing here has been run; it waits for the user's go-ahead.
+**Deployed 2026-10-30** (with the user's approval) to **https://tasks.elguindi.workers.dev**, version
+`4ad94e15-46bb-48a1-83d6-95bfa57f6a1a`. The token is in `~/.tasks-sync.env` (mode 600) on the Mac it was made on.
+Every smoke test in step 4 passed. No ops were pushed, so the log starts empty.
+
+Every command below creates or changes Cloudflare resources, or signs in to Cloudflare. Ask before running them.
 
 What gets created, all on the Workers Free plan (SQLite-backed Durable Objects are included):
 
@@ -40,7 +43,8 @@ npx wrangler deploy --secrets-file ~/.tasks-sync.env
 ```
 
 This uploads the Worker, applies the `v1` migration and sets the secret in one step. Note the
-`https://tasks.<subdomain>.workers.dev` URL it prints.
+`https://tasks.<subdomain>.workers.dev` URL it prints. Its binding table labels `API_TOKEN` "Environment Variable";
+`npx wrangler secret list` confirms it's stored as `secret_text`.
 
 ## 4. Smoke test
 
