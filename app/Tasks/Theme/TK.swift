@@ -237,18 +237,18 @@ extension TK {
             let curve: CAMediaTimingFunction
         }
 
-        nonisolated(unsafe) static let hoverInT = Timing(duration: 0.06, curve: hoverIn)
-        nonisolated(unsafe) static let hoverOutT = Timing(duration: 0.085, curve: decel)
-        nonisolated(unsafe) static let iconT = Timing(duration: 0.1, curve: decel)
-        nonisolated(unsafe) static let focusT = Timing(duration: 0.06, curve: decel)
-        nonisolated(unsafe) static let fadeInT = Timing(duration: 0.18, curve: easeOut)
-        nonisolated(unsafe) static let fadeOutT = Timing(duration: 0.15, curve: easeOut)
-        nonisolated(unsafe) static let colorT = Timing(duration: 0.2, curve: easeOut)     // a done title's color (css:169)
-        nonisolated(unsafe) static let checkFillT = Timing(duration: 0.16, curve: easeOut)
-        nonisolated(unsafe) static let pressT = Timing(duration: 0.08, curve: easeOut)    // the checkbox press (css:195)
-        nonisolated(unsafe) static let chevronT = Timing(duration: 0.2, curve: easeOut)
-        nonisolated(unsafe) static let flightT = Timing(duration: 0.16, curve: flight)
-        nonisolated(unsafe) static let widthT = Timing(duration: 0.16, curve: easeOut)
+        static let hoverInT = Timing(duration: 0.06, curve: hoverIn)
+        static let hoverOutT = Timing(duration: 0.085, curve: decel)
+        static let iconT = Timing(duration: 0.1, curve: decel)
+        static let focusT = Timing(duration: 0.06, curve: decel)
+        static let fadeInT = Timing(duration: 0.18, curve: easeOut)
+        static let fadeOutT = Timing(duration: 0.15, curve: easeOut)
+        static let colorT = Timing(duration: 0.2, curve: easeOut)     // a done title's color (css:169)
+        static let checkFillT = Timing(duration: 0.16, curve: easeOut)
+        static let pressT = Timing(duration: 0.08, curve: easeOut)    // the checkbox press (css:195)
+        static let chevronT = Timing(duration: 0.2, curve: easeOut)
+        static let flightT = Timing(duration: 0.16, curve: flight)
+        static let widthT = Timing(duration: 0.16, curve: easeOut)
 
         /// SwiftUI's springs as CA springs. `.smooth(duration: d)` is critically damped with response d;
         /// `.snappy(duration: d)` has bounce 0.15 (damping ratio 0.85).

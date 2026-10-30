@@ -192,7 +192,8 @@ final class TextLayer: CATextLayer {
     static func glyphTop(lineTop: CGFloat, lineHeight: CGFloat, font: NSFont) -> CGFloat {
         let asc = font.ascender, desc = -font.descender
         let baseline = lineTop + (lineHeight - (asc + desc)) / 2 + asc
-        return baseline - asc
+        // Measured against the prototype in Chrome: CoreText draws half a point lower than this for the same box.
+        return baseline - asc - 0.5
     }
 
     nonisolated(unsafe) private static var widths: [String: CGFloat] = [:]
@@ -200,7 +201,7 @@ final class TextLayer: CATextLayer {
     static func width(_ s: String, font: NSFont) -> CGFloat {
         let key = "\(font.fontName)|\(font.pointSize)|\(s)"
         if let w = widths[key] { return w }
-        let w = ceil((s as NSString).size(withAttributes: [.font: font]).width * 2) / 2
+        let w = ((s as NSString).size(withAttributes: [.font: font]).width * 64).rounded(.up) / 64
         if widths.count > 4000 { widths.removeAll() }
         widths[key] = w
         return w

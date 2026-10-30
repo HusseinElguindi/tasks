@@ -6,6 +6,8 @@ import TasksCore
 final class SidebarView: FlippedLayerView {
     func takeKeys() { window?.makeFirstResponder(self) }
     override var acceptsFirstResponder: Bool { true }
+    func dropTarget(at windowPoint: CGPoint, groupList: EntityID?) -> WindowState.Drag.Over? { nil }
+    func rowFrame(for over: WindowState.Drag.Over) -> CGRect? { nil }
 }
 
 struct SidebarRepresentable: NSViewRepresentable {
