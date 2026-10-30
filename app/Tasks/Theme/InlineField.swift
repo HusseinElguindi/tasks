@@ -12,6 +12,8 @@ final class InlineField: NSTextField, NSTextFieldDelegate {
     /// Editing ended for any reason (a press elsewhere, focus moving away), after `onKey` if a key ended it.
     var onEnd: ((String) -> Void)?
     var onBegin: (() -> Void)?
+    /// The field took the keys (a press in it, or `focus(_:)`), before anything is typed; `currentEditor()` is set.
+    var onFocus: (() -> Void)?
     /// Pasted line breaks become spaces (§7).
     var singleLine = true
     private let fieldUndo = UndoManager()
@@ -59,6 +61,12 @@ final class InlineField: NSTextField, NSTextFieldDelegate {
     }
 
     var isEditing: Bool { currentEditor() != nil }
+
+    override func becomeFirstResponder() -> Bool {
+        let ok = super.becomeFirstResponder()
+        if ok { onFocus?() }
+        return ok
+    }
 
     // MARK: NSTextFieldDelegate
 
