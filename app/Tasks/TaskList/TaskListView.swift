@@ -166,7 +166,10 @@ final class TaskListView: NSView {
     #endif
 
     private func renderNow(animated allowAnimation: Bool, scrolling: Bool) {
-        Self.phaseT = 0; Self.phase()
+        #if DEBUG
+        Self.phaseT = 0
+        #endif
+        Self.phase()
         #if DEBUG
         let t0 = CACurrentMediaTime()
         defer {
