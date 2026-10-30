@@ -17,7 +17,8 @@ coordinator so the spec gets fixed.
 
 Rex is the source of truth (`docs/TASK-source-of-truth.md`). Values marked **Rex** were measured
 (`design/REX-REFERENCE.md`). The rest are Pane tokens or new decisions, and every difference from Pane is logged in
-`design/PANE-UPSTREAM.md`. Values only a Rex measurement can settle are in §20.
+`design/PANE-UPSTREAM.md`. Values only a Rex measurement can settle are in §20. §21 collects the small details an audit of the spec against the
+prototype turned up.
 
 **Not part of the app** (prototype scaffolding): the strip under the window; the Keys panel (`?`); the ⌥N, ⌥T and
 ⌃1–9 alternates (the browser keeps ⌘N, ⌘T and ⌘1–9); the window's 12pt radius and shadow (`--win-edge`); the drawn
@@ -75,7 +76,7 @@ what to search for in the prototype.
 | Token | CSS | Dark | Light | Use |
 |---|---|---|---|---|
 | `surface-ground` | `--ground` | #181818 **Rex** | #F5F5F5 | Window, sidebar |
-| `surface-base` | `--base` | #1C1C1C **Rex** | #FFFFFF | Focused pane; a row being renamed |
+| `surface-base` | `--base` | #1C1C1C **Rex** | #FFFFFF | Focused pane |
 | `surface-dim` | `--dim` | #181818 | #FAFAFA | Unfocused pane |
 | `surface-popover` (new) | `--popover` | #262626 | #FFFFFF | Menus, date popover, notices, tooltips |
 | `fill-lift` (new) | `--lift` | #2C2C2C | #FFFFFF | The dragged row |
@@ -107,7 +108,8 @@ List colors: a list's tile glyph uses one of the seven ANSI slots (`--ansi-*`). 
 (`dc:414`, `dc:877`); the app hashes the list id (DIRECTIONS decision 3).
 
 Shadows: `shadow-popover` = a 0.5pt ring of white 14% (dark) / #1F2328 16% (light) plus `0 12 32` black 50% /
-#1F2328 16%. `shadow-lift` = the same ring (light: 14%) plus `0 8 24` black 50% / #1F2328 18%.
+#1F2328 16%. `shadow-lift` = the same ring (light: 14%) plus `0 8 24` black 50% / #1F2328 18%
+(`css:58`, `css:75`).
 `css:57`, `css:74`.
 
 ### Type
@@ -124,20 +126,20 @@ tooltips 11/14. Tiles and inline code use SF Mono. Counts and day numbers use ta
 | Toolbar band | 50 tall. Traffic lights 14pt circles 9 apart, first at (18, 18), so centers x 25, 48, 71, y 25 **Rex** | `css:87–89` |
 | Sidebar toggle | 28pt circle at (93, 11), center (107, 25) **Rex**; glyph 16pt | `css:92–95` |
 | Sidebar | 230 wide **Rex**; rows start at y 50 | `dc:395`, `dc:396` |
-| Sidebar row | Capsule x 10–219 (209 wide), 30 tall, radius 15 **Rex**; tile 10 in; title 7 after the tile, nudged up 0.5 **Rex**; count right-aligned 8 from the capsule's right edge | `css:102–105`, `css:107–121` |
-| List tile | 20×16, radius 4, 700 10pt mono glyph; dark `fill-strong` with a white 10% 0.5pt ring, light #E3E3E4 with a #1F2328 10% ring. Small (headers, menus): 16×13, radius 3.5, 8.5pt | `css:124–126` |
-| Group label | A 32pt slot: 11/14 semibold `ink-tertiary`, 12 in from the row edge, text top 10 **Rex**. Reveal button 22×22, radius 6, 5 from the right, top 6 | `css:132–140` |
-| Panes | 8 from the window edges and each other (the list pane starts at x 230 **Rex**); radius 10; 1pt inset edge | `css:143–145`, `dc:397` |
-| Pane header | 34 tall from the pane's top, so its contents center on y 25; padding 12 left, 8 right; 8 between items; title 13 medium | `css:146–151` |
-| Pane-header icon button | 26×26, radius 6, glyph 14, 2 apart | `css:152–155` |
-| Task row | 10 in from the pane's sides, 30 tall, radius 8; the first row 4 below the header (64 in an archived list, under the banner). Padding 10 left, 5 right. Checkbox at 10; title 10 after it, nudged up 0.5, its last 24pt fading out; chips 8 after the title, 6 apart; › 22×22 (radius 6) 4 after the chips, 5 from the right edge, its slot always kept | `css:160–180`, `dc:611` |
-| Checkbox | 16 circle, 1.5 ring; check glyph 10, stroke 2.2, round; hit area 30×30 | `css:191–203` |
-| Chip | 18 tall, radius 9, padding 7, gap 4, 11/14 medium, icon 11. Large (detail pane): 22 tall, radius 11, padding 9, gap 5, 12pt | `css:206–216` |
+| Sidebar row | Capsule x 10–219 (209 wide), 30 tall, radius 15 **Rex**; tile 10 in; title 7 after the tile, nudged up 0.5 **Rex**; count right-aligned 8 from the capsule's right edge | `css:102–105`, `css:107–120` |
+| List tile | 20×16, radius 4, 700 10pt mono glyph; dark `fill-strong` with a white 10% 0.5pt ring, light #E3E3E4 with a #1F2328 10% ring. Small (headers, menus): 16×13, radius 3.5, 8.5pt | `css:123–125` |
+| Group label | A 32pt slot: 11/14 semibold `ink-tertiary`, 12 in from the row edge, text top 10 **Rex**. Reveal button 22×22, radius 6, 5 from the right, top 6 | `css:131–139` |
+| Panes | 8 from the window edges and each other (the list pane starts at x 230 **Rex**); radius 10; 1pt inset edge | `css:142–144`, `dc:397` |
+| Pane header | 34 tall from the pane's top, so its contents center on y 25; padding 12 left, 8 right; 8 between items; title 13 medium | `css:145–150` |
+| Pane-header icon button | 26×26, radius 6, glyph 14, 2 apart | `css:151–154` |
+| Task row | 10 in from the pane's sides, 30 tall, radius 8; the first row 4 below the header (64 in an archived list, under the banner). Padding 10 left, 5 right. Checkbox at 10; title 10 after it, nudged up 0.5, its last 24pt fading out; chips 8 after the title, 6 apart; › 22×22 (radius 6) 4 after the chips, 5 from the right edge, its slot always kept | `css:159–179`, `dc:611` |
+| Checkbox | 16 circle, 1.5 ring; check glyph 10, stroke 2.2, round; hit area 30×30 | `css:190–202` |
+| Chip | 18 tall, radius 9, padding 7, gap 4, 11/14 medium, icon 11. Large (detail pane): 22 tall, radius 11, padding 9, gap 5, 12pt | `css:205–215` |
 | Detail pane | 420 wide; body padding 8 / 18 / 18; title row: checkbox 2 down, 10 to the title (15/20 semibold); property rows 32 tall from 12 below the title, indented 26, label column 76 | `css:253–282` |
 | Menu (stand-in) | 216 wide (submenu 204), padding 5, radius 10; items 24 tall, radius 5, padding 9 / 10; separator 1pt inset 9 | `css:306–315` |
-| Date popover | 288 wide, padding 8, radius 12; field 28 tall, radius 8; quick picks 22 tall; day cells 28 tall, radius 14 | `css:317–341` |
-| Notice | 34 tall, radius 10, 12 from the list pane's bottom-right corner | `css:343–346` |
-| Tooltip | padding 4 / 7, radius 6, 11/14 | `css:348–349` |
+| Date popover | 288 wide, padding 8, radius 12; field 28 tall, radius 8; quick picks 22 tall; day cells 28 tall, radius 14 | `css:317–342` |
+| Notice | 34 tall, radius 10, 12 from the list pane's bottom-right corner | `css:344–347` |
+| Tooltip | padding 4 / 7, radius 6, 11/14 | `css:349–350` |
 | Capsule button | 24 tall, padding 12, radius 12, gap 6 | `css:292–296` |
 
 ### Motion
@@ -155,15 +157,15 @@ The prototype can't run SwiftUI springs, so it samples them into CSS `linear()` 
 | `natural` | **unchanged from v1** | `.smooth(duration: 0.3)` (sampled over 450 ms) | Detail pane open and close | `css:8–9` |
 | `layout` (new) | critically damped spring | `.smooth(duration: 0.25)` (sampled over 380 ms) | Every row that moves: reorder, insert, remove, settle, drag gaps, sidebar rows | `css:10–11` |
 | `snappy` | slight overshoot (to 1.006) | `.snappy(duration: 0.2)` (sampled over 300 ms) | The checkbox pop | `css:12–13` |
-| Fade in | opacity 0 → 1, 180 ms ease-out | `.easeOut(duration: 0.18)` | A row, a Today group label, a list's Completed row or a sidebar row appearing | `css:369`, `css:164` |
-| Fade out | opacity → 0, 150 ms ease-out, while `layout` carries it | `.easeOut(duration: 0.15)` | Rows and labels leaving | `css:160–161`, `css:163` |
-| Popover in | 120 ms, cubic-bezier(0, 0, 0.2, 1): opacity 0 → 1, y −3 → 0, scale 0.985 → 1 about its center | | Date popover (menus are native) | `css:370`, `css:317` |
-| Notice in / out | In: 220 ms, cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0 → 1, y +8 → 0. Out: 160 ms ease-in to opacity 0, y +4 | | Notices | `css:343–345`, `css:372–373` |
-| Tooltip in | opacity 0 → 1, 100 ms ease-out; out at once | | Tooltips | `css:348` |
+| Fade in | opacity 0 → 1, 180 ms ease-out | `.easeOut(duration: 0.18)` | A row, a Today group label, a list's Completed row or a sidebar row appearing | `css:370`, `css:163` |
+| Fade out | opacity → 0, 150 ms ease-out, while `layout` carries it | `.easeOut(duration: 0.15)` | Rows and labels leaving | `css:159–160`, `css:162` |
+| Popover in | 120 ms, cubic-bezier(0, 0, 0.2, 1): opacity 0 → 1, y −3 → 0, scale 0.985 → 1 about its center | | Date popover (menus are native) | `css:371`, `css:317` |
+| Notice in / out | In: 220 ms, cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0 → 1, y +8 → 0. Out: 160 ms ease-in to opacity 0, y +4 | | Notices | `css:344–346`, `css:373–374` |
+| Tooltip in | opacity 0 → 1, 100 ms ease-out; out at once | | Tooltips | `css:349` |
 | Drag flight | transform 160 ms, cubic-bezier(0.2, 0.8, 0.2, 1); width and opacity 160 ms ease-out | | The dropped or cancelled copy | `css:243` |
-| Instant | no animation | `Transaction(animation: nil)` | Selection, list switches, theme, every press-in, the first frame | `css:83`, `dc:559–563` |
+| Instant | no animation | `Transaction(animation: nil)` | Selection, list switches, theme, every press-in except the checkbox's (§8), the first frame | `css:83`, `dc:559–563` |
 
-Reduce Motion: every duration is 0 `css:375–376`. In SwiftUI, read
+Reduce Motion: every duration is 0 `css:376–377`. In SwiftUI, read
 `accessibilityReduceMotion` and pass `nil` animations.
 
 ### Timers
@@ -200,9 +202,9 @@ Everything in the top 50pt is centered on one line, **y = 25**:
 |---|---|---|
 | Traffic lights | 14pt circles at x 18–32, 41–55, 64–78 (centers 25, 48, 71) **Rex** | `css:87–89` |
 | Sidebar toggle | 28pt circle, center (107, 25), glyph 16pt in `ink-secondary` **Rex** | `css:92` |
-| Each pane's header | 34 tall starting 8 from the window's top, so the title and the icon buttons center on 25 | `css:143`, `css:146` |
-| List pane's top right | + (New Task ⌘N) and the split button (Show/Hide Details ⌘D), 26×26, 2 apart, 8 from the pane's edge | `dc:52` |
-| Detail pane's top right | trash (Delete ⌘⌫) and × (Hide Details ⌘D) | `dc:121` |
+| Each pane's header | 34 tall starting 8 from the window's top, so the title and the icon buttons center on 25 | `css:142`, `css:145` |
+| List pane's top right | + (New Task ⌘N) and the split button (Show/Hide Details ⌘D), 26×26, 2 apart, 8 from the pane's edge | `dc:52`, `dc:53` |
+| Detail pane's top right | trash (Delete ⌘⌫) and × (Hide Details ⌘D) | `dc:119`, `dc:121` |
 
 So the window controls, the sidebar toggle, the pane titles and the buttons at each pane's top right read as one row.
 In AppKit: hidden title bar, and move `standardWindowButton(.closeButton …)` to those centers (v1 already places them
@@ -211,11 +213,11 @@ as Rex does, commit 21fbc2f).
 ### Hiding and showing the sidebar (⌃⌘S, the toggle)
 
 - The panes' left edge moves from 230 to 8 on `sidebar` (300 ms, cubic-bezier(0.16, 1, 0.3, 1)); the sidebar doesn't
-  move and is simply covered `css:143–144`.
+  move and is simply covered `css:142–143`.
 - The traffic lights and the toggle stay exactly where they are and now sit over the list pane's header (they're above
   the panes) `css:87`, `css:92`.
 - The list pane's header padding grows from 12 to 124 on the same curve, so its tile and title start at window x 132,
-  11pt right of the toggle's circle `css:146`, `dc:1914`.
+  11pt right of the toggle's circle `css:145`, `dc:1914`.
 - The toggle's tooltip becomes "Show Sidebar ⌃⌘S". If the sidebar had keyboard focus, the list takes it
   `dc:1709`.
 - Showing reverses all of it on the same curve.
@@ -255,7 +257,7 @@ right `dc:113–123`.
 The pane you last pressed in (on mouse-down) or moved to with the keys is focused. Focused: `surface-base` and a 1pt
 inset `line-pane` edge. Unfocused: `surface-dim`, `line-pane-dim`, header icons at 55% opacity, title in
 `ink-secondary`. Fill, edge and icon opacity change on `focus` (60 ms); the title's color switches at once
-(`css:143–151`). Pressing the sidebar focuses the sidebar, and both panes
+(`css:142–150`). Pressing the sidebar focuses the sidebar, and both panes
 show unfocused; the sidebar has no focus look of its own. Selected rows in an unfocused pane use
 `fill-row-selected-dim`.
 
@@ -278,11 +280,11 @@ show unfocused; the sidebar has no focus look of its own. Selected rows in an un
 
 **Look.** A selected row fills with `fill-row-selected` at radius 8 (`fill-row-selected-dim` when its pane isn't
 focused). Adjacent selected rows join into one block: the inner corners go square and the 2pt gap between them is
-filled (`css:183–187`, `dc:1868–1872`). Selection
+filled (`css:182–186`, `dc:1868–1872`). Selection
 never animates. Task titles stay `ink` at rest and selected.
 
 **The rows' hit area** reaches 1pt above and below each row, so the 2pt gaps belong to a row and the pointer never
-falls between two (no hover flicker) `css:188`.
+falls between two (no hover flicker) `css:187`.
 
 **Keys** (list focused, not editing) `dc:1341–1431`:
 
@@ -335,16 +337,17 @@ list is one hover region. Hovering it shows, in the landing slot, a 30pt row wit
 1. A **draft** is made: it isn't written yet (no op, no undo step).
 2. Its row appears at the landing slot, fading in over 180 ms while the rows below it (and the Completed row) move down
    on `layout`, and scrolls into view. The row is selected; its title reads "New Task" in `ink-tertiary` until there is
-   one; its checkbox is a placeholder ring (`ink-quiet` at 70%, not clickable) until the task is written
-   (`css:170`, `css:202–203`).
+   one; its checkbox is a placeholder ring (`ink-quiet` at 70%, ignoring the pointer) until the task is written
+   (`css:169`, `css:201–202`).
 3. The detail pane opens on `natural` (v1's transition) if it was closed; if it was open it switches to the draft at
    once.
 4. The detail pane takes focus (so the list pane shows unfocused and the draft's row uses `fill-row-selected-dim`), and
    the caret is in its empty title, placeholder "New Task" (`dc:543–555`).
 5. **While the title is empty**, everything under it is dimmed to 45% and ignores the pointer: List, When, Deadline,
-   the separator, Notes and the Created line, and also the pane's checkbox and trash button. Pressing there leaves the
-   caret in the title. The first character brings the sections back to 100% on `icon` (100 ms); the checkbox and trash
-   switch at once (`css:285–286`, `dc:1954`).
+   the separator, Notes and the Created line, and also the pane's checkbox and trash button. Pressing anywhere in the
+   pane but its × leaves the caret in the title. The first character brings the sections back to 100% on `icon`
+   (100 ms) and the trash at once; the checkbox stays a placeholder ring, still ignoring the pointer, until the task is
+   written (`css:285–286`, `dc:1954`).
 6. The row shows the title as it's typed (`dc:1609–1617`).
 
 ### Keys in the title
@@ -361,12 +364,14 @@ list is one hover region. Hovering it shows, in the landing slot, a 30pt row wit
 | ⌘T, ⌘K, ⇧⌘M | Writes it, then When: Today / Complete / Move to… | Nothing |
 | ⌘D | Writes it and hides the pane | Drops it and hides the pane |
 | ⌘1–⌘9 | Writes it and goes to that view | Drops it and goes |
+| ⇧⌘N | Writes it and starts a new list | Drops it and starts a new list |
+| ⌃⌘S | Hides or shows the sidebar; the caret stays | The same |
 
 ### The pointer while adding
 
 | Press | With a title | Still empty |
 |---|---|---|
-| Inside the detail pane (the title, the dimmed rows) | Normal editing | The caret stays in the title |
+| Anywhere in the detail pane but its × (the title, the dimmed rows, the header) | Normal editing | The caret stays in the title |
 | Another row | Writes it; that row is selected (and shown in the pane) | Drops it; that row is selected; the pane closes if the add opened it |
 | The empty space under the list | Writes it (the first press only ends the edit) | The caret goes back to the title |
 | The header + | Writes it and starts another | The caret goes back to the title (no second draft) |
@@ -401,10 +406,11 @@ typed afterwards are their own step ("Edit Notes"). Drafts never enter the undo 
 | Return on the selected task (list focused) or list (sidebar focused) | Whole title selected |
 | Rename in the context menu | Whole title selected |
 
-The field replaces the title in place, in the same font, origin and color. The row shows the editing look: its fill
-becomes `surface-base` with a 1.5pt inset `accent` ring at radius 8, and the › is hidden
-(`css:166`); a list row in the sidebar gets `fill-control` with the same ring
-(`css:120`). Return, Tab or a press elsewhere commits (one `task.update` / `list.update`, only if it
+The field replaces the title in place, in the same font, origin and color. The row is always selected while it's renamed,
+so it keeps `fill-row-selected` and adds a 1.5pt inset `accent` ring at radius 8; the › is hidden
+(`css:165`, `css:182`: the `.row.editing` fill never shows, because the selection
+rule comes later); a list row in the sidebar gets `fill-control` with the same ring
+(`css:119`). Return, Tab or a press elsewhere commits (one `task.update` / `list.update`, only if it
 changed). Esc restores the old text. A list name can't be empty: committing an empty name keeps the old one. Pressing
 inside the field moves the caret and never ends the edit (Rex fixed the same bug, preview.12). Double-click doesn't
 rename a completed task; Return and the detail pane still do. While a new or renamed list's name is typed, its tile's
@@ -449,15 +455,15 @@ One `task.update` per editing session (`dc:1646–1655`, `dc:1635–1641`).
 
 ## 8. Completing
 
-**Checkbox** (16pt circle, 1.5pt inset ring in `line-field`, hit area 30×30) `css:191–200`:
+**Checkbox** (16pt circle, 1.5pt inset ring in `line-field`, hit area 30×30) `css:190–199`:
 
 | State | Look | Timing |
 |---|---|---|
 | Hover (on the box) | Ring → `ink-secondary` | `hoverIn` / `hoverOut` |
-| Pressed | Scales to 0.86 | 80 ms ease-out |
+| Pressed | Scales to 0.86 | 80 ms ease-out in; back on `snappy` (300 ms) when released |
 | Checked | Fill and ring `accent`; the check (10pt, stroke 2.2, round) draws in `on-accent`; the box pops from 0.8 | Fill 160 ms ease-out; the stroke draws 0 → 100% in 160 ms ease-out after 40 ms; the pop on `snappy` |
-| Unchecked | The same, backwards (no pop) | Same |
-| Checked row | Title → `ink-tertiary` with a strike in `ink-quiet` | Color 200 ms ease-out; the strike is instant (`css:172`) |
+| Unchecked | The same, backwards, and the box pops from 0.8 again | Same |
+| Checked row | Title → `ink-tertiary` with a strike in `ink-quiet` | Color 200 ms ease-out; the strike is instant (`css:171`) |
 
 Triggers: click the box, Space or ⌘K on the selection (a mixed selection completes all; an all-done selection
 uncompletes), the context menu, the box in the detail pane (`dc:883–899`).
@@ -476,9 +482,9 @@ changed, SPEC §3). Implementation: a `pins` map holds checked and unchecked tas
 - A list ends with a disclosure row, "› Completed 23": one empty slot plus 8pt below the last open task, its chevron 12 in from the row's left edge, `ink-
   secondary`, "Completed" in medium, the count in `ink-tertiary`. It brightens to `ink` on hover (`hoverIn`/`hoverOut`),
   fades in when the first task is completed, and its chevron turns 90° in 200 ms ease-out. Collapsed by default;
-  expanded, it lists the done tasks newest first (`css:226–231`, `dc:622`).
+  expanded, it lists the done tasks newest first (`css:226–231`, `dc:622–625`).
 - Today ends with a "Completed" group (a group label like the others, 8pt further down) holding tasks completed today,
-  oldest first, each with its list's name at the right in 12pt `ink-tertiary` (`css:173`).
+  oldest first, each with its list's name at the right in 12pt `ink-tertiary` (`css:172`).
 
 ---
 
@@ -502,16 +508,17 @@ out of Today).
 | Life | 5 s with Undo, 1.8 s without. Hovering holds it; it leaves 2 s after the pointer does |
 | A new notice | Replaces the text in place (no second entrance) |
 
-Source: `css:343–346`, `dc:1010–1014`,
+Source: `css:344–347`, `dc:1010–1014`,
 `dc:1015–1020`, `dc:105–108`.
 
 **Undo.** ⌘Z / ⇧⌘Z undo and redo every change as new ops (SPEC §6), with these action names so the Edit menu reads
 "Undo Delete", "Redo Move": New Task, Rename Task, Edit Notes, Complete / Complete 3 Tasks / Mark Not Done, Delete /
 Delete 3 Tasks, Move / Move 3 Tasks, Set When / Remove When / Set Deadline / Remove Deadline, New List, Rename List,
-Move List, Archive List, Unarchive List. After an undo or redo the affected tasks are selected again and scrolled into
-view; if they live in another view, that view opens at once. A notice without a button confirms it ("Undo Delete",
+Move List, Archive List, Unarchive List. After an undo or redo the app goes back to the view where the change was made (at once, if it's
+another view), selects what was selected just before the change (for a redo, what was selected at the undo), and
+scrolls it into view. A notice without a button confirms it ("Undo Delete",
 1.8 s). The notice's Undo is the same as ⌘Z. Inside a text field ⌘Z is the field's own undo
-(`dc:586–598`, `dc:598–606`).
+(`dc:586–598`, `dc:598–606`, `dc:1358`).
 
 ---
 
@@ -549,7 +556,7 @@ offered (`dc:919–929`).
 When comes before Deadline. In Today a When on or before today is left out (it's why the task is there). Done rows show
 no chips. Neutral chips are `fill-control` with `ink-secondary` text. A chip is a button: hover brightens it
 (brightness 1.18 dark, 0.96 light, on `icon`), press darkens it to 0.86 at once, and while its popover is open it's
-`accent-tint` with `accent-text` (`css:206–213`).
+`accent-tint` with `accent-text` (`css:205–212`).
 
 **Detail pane rows** (List, When, Deadline): 32 tall, an icon and label in `ink-secondary` in a 76pt column, then the
 value (`css:261–274`, `dc:1936–1941`).
@@ -570,14 +577,15 @@ the detail pane's chip when the focused detail pane shows those tasks, else the 
 (`dc:1115–1127`, `dc:1128–1138`). It opens on
 "Popover in" (120 ms). The field has the keys and is empty; the highlighted day starts at the current date, or today.
 Pressing outside closes it and does nothing else (the press doesn't reach what's under it; Rex, preview.18). Setting a
-date closes it and gives the keys back to the list.
+date closes it and gives the keys back to the window; the focused pane stays as it was (from the detail pane's chip,
+the detail pane).
 
 Quick sets without the popover: ⌘T (When: Today); the context menu's When ▸ Today / Tomorrow / This Weekend / Next
 Week / Remove, and Deadline ▸ Remove.
 
 ### The popover (288pt)
 
-`dc:201–209`, `css:317–341`, the view model
+`dc:201–209`, `css:317–342`, the view model
 `dc:2036–2052`.
 
 Top to bottom:
@@ -620,7 +628,7 @@ Calendar dates only (SPEC §2). Today is the Mac's local date. `dc:338–379`
 | `mon` … `sun`, full names, unique prefixes (`th`, `we`) | The next one after today (on a Friday, "fri" is next Friday) |
 | `next fri` | Friday of next week (weeks start Monday) |
 | `weekend`, `this weekend` | Saturday (today if it's the weekend) |
-| `next weekend` | The Saturday after |
+| `next weekend` | Saturday of the weekend after this one; on a Saturday or Sunday, the coming Saturday |
 | `next week` | Next Monday |
 | `next month` | The 1st of next month |
 | `3d`, `3 days`, `in 3 days`, `2w`, `in 2 weeks`, `1m`, `a month`, `1y`, `+5` | Relative |
@@ -638,7 +646,7 @@ Clear in the popover, ⌫ in its empty field, the × beside a detail-pane chip, 
 
 ## 12. Lists and the sidebar
 
-**Sidebar rows** (Today, lists, archived lists) `css:107–121`, `dc:1978–1994`:
+**Sidebar rows** (Today, lists, archived lists) `css:107–120`, `dc:1978–1994`:
 
 | State | Look |
 |---|---|
@@ -651,7 +659,7 @@ Clear in the popover, ⌫ in its empty field, the × beside a detail-pane chip, 
 | Holding ⌘ (450 ms) | Counts give way to ⌘1 (Today), ⌘2–⌘9 (the first eight active lists) in 12pt `ink-secondary` (Rex, preview.16); any key or letting go hides them |
 
 Pressing a row opens it on mouse-down (instantly) and focuses the sidebar. Counts are open tasks (Today: open tasks in
-Today). Long names fade out over 16pt before the count instead of an ellipsis (Rex) `css:113`.
+Today). Long names fade out over 16pt before the count instead of an ellipsis (Rex) `css:112`.
 
 **Layout**: Today at the top, the "Lists" label, the active lists, then 8pt and the "Archive" label when anything is
 archived (`dc:678–701`).
@@ -659,7 +667,7 @@ archived (`dc:678–701`).
 **Group labels.** "Lists" reveals a + (New List ⇧⌘N) on hover. "Archive" reveals a chevron, and pressing the label
 toggles the group (collapsed by default; the chevron turns 90° in 200 ms ease-out and stays shown while open). The
 reveal is in on `hoverIn`, out on `hoverOut`; the button's own hover is the `hover` fill with `ink-secondary`, its press
-the `press` fill at once (`css:134–140`). Labels never take selection.
+the `press` fill at once (`css:133–139`). Labels never take selection.
 
 **Sidebar keys** (sidebar focused) `dc:1433–1448`: ↑ ↓ open the previous / next row; letters
 type-select by name; Return renames; ⌥⌘↑ ⌥⌘↓ move the list; ⌘⌫ archives it; → Tab ⇧Tab Esc go back to the list. Anywhere: ⌘1
@@ -766,37 +774,40 @@ actions that happen at once (Archive, Delete); "Choose Date…" keeps one becaus
 
 ## 16. Hover, press and focus for every control
 
-Presses never animate in (`transition: none` on `:active`); they ease back out on the control's own timing.
+Presses never animate in (`transition: none` on `:active`); they ease back out on the control's own timing. The
+checkbox is the exception: it shrinks over 80 ms ease-out and comes back on `snappy` (§8).
 
 | Control | Rest | Hover | Pressed | On / current | Source |
 |---|---|---|---|---|---|
-| Task row | — | Only the › fades in (`hoverIn` / `hoverOut`) | Selects on mouse-down | §5 | `css:177` |
-| › (show details) | `ink-tertiary`, hidden; never shown while renaming, on done rows, or while the detail pane is open | `hover` fill, `ink-secondary` (`icon`) | `press` fill | — | `css:175–180` |
-| Checkbox | 1.5pt `line-field` ring | Ring `ink-secondary` | Scale 0.86, 80 ms ease-out | §8 | `css:194` |
-| Chip | §11 | Brightness 1.18 dark / 0.96 light (`icon`) | Brightness 0.86 | Popover open: `accent-tint` | `css:208–210` |
-| Ghost chip ("Add date") | `line-separator` ring, `ink-tertiary` | `hover` fill, `ink-secondary` | — | — | `css:216` |
+| Task row | — | Only the › fades in (`hoverIn` / `hoverOut`) | Selects on mouse-down | §5 | `css:176` |
+| › (show details) | `ink-tertiary`, hidden; never shown while renaming, on done rows, or while the detail pane is open | `hover` fill, `ink-secondary` (`icon`) | `press` fill | — | `css:174–179` |
+| Checkbox | 1.5pt `line-field` ring | Ring `ink-secondary` | Scale 0.86, 80 ms ease-out | §8 | `css:193` |
+| Chip | §11 | Brightness 1.18 dark / 0.96 light (`icon`) | Brightness 0.86 | Popover open: `accent-tint` | `css:207–209` |
+| Ghost chip ("Add date") | `line-separator` ring, `ink-tertiary` | `hover` fill, `ink-secondary` | — | — | `css:214`, `css:215` |
 | Detail-row × | Hidden | Revealed with the row's hover; own hover `hover` fill, `ink-secondary` | — | — | `css:266–269` |
 | List pop-up (detail) | `ink` | `hover` fill, radius 6 (`icon`) | `press` fill | — | `css:271–273` |
 | Sidebar row | §12 | Title `ink` | Opens on mouse-down | §12 | `css:108` |
-| Group label's + / chevron | Hidden | Revealed with the label's hover; own hover `hover` fill, `ink-secondary` | `press` fill | Chevron turned and kept shown while open | `css:136–138` |
+| Group label's + / chevron | Hidden | Revealed with the label's hover; own hover `hover` fill, `ink-secondary` | `press` fill | Chevron turned and kept shown while open | `css:135–137` |
 | Completed row | `ink-secondary` | `ink` (`hoverIn` / `hoverOut`) | — | Chevron turned | `css:229` |
 | Ghost add row | Hidden | Shown in the landing slot (`hoverIn` / `hoverOut`) | Adds (§6) | — | `css:221` |
-| Pane-header icon button | `ink-quiet`; at 55% in an unfocused pane | `hover` fill (radius 6), `ink-secondary` (`icon`) | `press` fill, `ink` | Split button `ink-secondary` while the detail pane is open | `css:152–155` |
+| Pane-header icon button | `ink-quiet`; at 55% in an unfocused pane | `hover` fill (radius 6), `ink-secondary` (`icon`) | `press` fill, `ink` | Split button `ink-secondary` while the detail pane is open | `css:151–154` |
 | Toolbar icon (sidebar toggle) | `ink-secondary` | `fill-track` circle, `ink` (`icon`) **Rex** | `press` fill | — | `css:93–94` |
 | Capsule button (Undo, Unarchive) | Tinted | Brightness 1.12 / 0.97 (`icon`) | Brightness 0.86 | — | `css:293–295` |
-| Quick pick (popover) | `fill-control` | `fill-track`, brightness 1.12 (`icon`) | — | Matches the typing: `accent-tint` | `css:322–323` |
-| Month arrows | `ink-secondary` | `hover` fill, `ink` (`icon`) | — | — | `css:328` |
-| Day | — | `hover` fill (`icon`) | Sets it | Highlighted `accent`; current ring; today `accent-text` | `css:332` |
+| Quick pick (popover) | `fill-control` | `fill-track`, brightness 1.12 (`icon`) | — | Matches the typing: `accent-tint` | `css:322–324` |
+| Month arrows | `ink-secondary` | `hover` fill, `ink` (`icon`) | — | — | `css:329` |
+| Day | — | `hover` fill (`icon`) | Sets it | Highlighted `accent`; current ring; today `accent-text` | `css:333` |
 | Menu item | — | `accent` + white, instant (native) | — | ✓ column when the menu has checks | `css:310` |
 | Notice | — | Holds it open | — | — | `dc:1768` |
-| Text fields | — | — | — | Row and list renames: a 1.5pt `accent` ring on the row; the detail title and notes: the caret only; selected text `text-selection` | `css:166` |
+| Text fields | — | — | — | Row and list renames: a 1.5pt `accent` ring on the row; the detail title and notes: the caret only; selected text `text-selection` | `css:165` |
 | Disabled | 45% (the detail pane under an untitled new task) | — | — | — | `css:286` |
 
-**Tooltips** (Rex draws its own, with keys, preview.23) on every icon button: the name, then the shortcut in
-`ink-secondary`, 6 apart ("New Task ⌘N", "Hide Sidebar ⌃⌘S"). They appear 600 ms after the pointer arrives, at once if
+**Tooltips** (Rex draws its own, with keys, preview.23) on the toolbar and pane-header buttons, the row's ›, and the
+"Lists" +: the name, then the shortcut in `ink-secondary`, 6 apart ("New Task ⌘N", "Hide Sidebar ⌃⌘S"). A Today group's
++ ("New Task in School") and the detail rows' × show the name only; the Archive chevron and the popover's month arrows
+have none. They appear 600 ms after the pointer arrives, at once if
 another closed within the last 600 ms, 6pt below the button with its left edge 60pt left of the button's center (kept between 6 and the window's width − 160), and fade in
 over 100 ms; they go at once on a press or when the pointer leaves, and never during a drag or with a menu open
-(`dc:1773–1779`, `css:348–349`).
+(`dc:1773–1779`, `css:349–350`).
 
 ---
 
@@ -827,7 +838,8 @@ over 100 ms; they go at once on a press or when the pointer leaves, and never du
 **In text fields** the field's own keys win: Space, Return, ⌘⌫, ⌘Z and the arrows edit text. The menu commands still
 work from a task's fields, as menu key equivalents do on the Mac: ⌘N (§6), ⇧⌘N, ⌃⌘S, and ⌘D, ⌘K, ⌘S, ⇧⌘D, ⌘T, ⇧⌘M,
 ⌘1–⌘9, which first end the edit the way a press elsewhere would, then run. A new task that's still untitled isn't a task
-yet, so only ⌘D (it's dropped and the pane hides) and ⌘1–⌘9 (dropped, then go) do anything there
+yet, so only ⌘D (it's dropped and the pane hides), ⌘1–⌘9 (dropped, then go), ⇧⌘N (dropped, a new list starts) and
+⌃⌘S (the sidebar toggles, the caret stays) do anything there
 (`dc:1360–1380`).
 
 Menu bar: File ▸ New Task ⌘N, New List ⇧⌘N · Edit ▸ Undo, Redo, Select All · Task ▸ Show Details ⌘D, Complete ⌘K,
@@ -847,8 +859,9 @@ Where SwiftUI's defaults fight the design, and what to use instead.
    with a FLIP (remember each task's last y, start the new slot's content at the old y with `.offset`, animate to 0).
    Entering rows use `.transition(.opacity)` on a 180 ms ease-out, leaving ones 150 ms; the prototype's
    `MOTION_WINDOW_MS` bookkeeping (`dc:1795–1820`) is what SwiftUI's transitions do for you.
-2. **Hover: one tracker per list, not per row.** `.onContinuousHover` on the list container; the row index is
-   `floor((y + scrollOffset − 4) / 32)` (the 2pt gaps belong to the rows, §5); store `hoveredTaskID` in an observable
+2. **Hover: one tracker per list, not per row.** `.onContinuousHover` on the list container; the hovered row is
+   the one whose `[top − 1, top + 31)` holds the pointer, from the layout's own row positions (Today's labels, the
+   archived banner and the Completed row's extra 8pt break the plain 32pt grid; each 2pt gap is split 1/1, §5); store `hoveredTaskID` in an observable
    that only the two affected rows read. Recompute on scroll (the pointer is still but the rows move). `.ended` clears
    it. This replaces v1's `PaneHoverRegion` and its missed exits. The checkbox, chips and › use their own `.onHover`:
    they're small and never stacked.
@@ -891,10 +904,10 @@ Where SwiftUI's defaults fight the design, and what to use instead.
 13. **Held ⌘.** `NSEvent.addLocalMonitorForEvents(matching: .flagsChanged)`, 450 ms timer; any key or release hides.
 14. **Undo** registers on the window's `UndoManager` with `setActionName` (the names in §9) and the selection to
     restore.
-15. **Accessibility basics.** The prototype's labels are the ones to use: the checkbox is "Complete: Buy milk" /
-    "Mark not done: Buy milk", the › is "Show details", icon buttons carry their tooltip's name, the date popover is a
+15. **Accessibility basics.** The prototype's labels are the ones to use: a row's checkbox is "Complete: Buy milk" /
+    "Mark not done: Buy milk" (`dc:1886`; the detail pane's is just "Complete"), the › is "Show details", icon buttons carry their tooltip's name, the date popover is a
     dialog "Choose a date" with its field "Type a date", notices are status messages, the Completed row is "Completed
-    tasks" (`dc:79`, `dc:88`, `dc:201`). Rows
+    tasks" (`dc:88`, `dc:201`, `dc:105`). Rows
     are selectable list items whose label is the title, then the chips' text.
 
 ---
@@ -930,3 +943,65 @@ I didn't drive Rex (per the brief). These are the values chosen without it:
 6. **Unfocused pane fill**: is it exactly `surface-ground` (#181818)?
 7. **Context menus**: native `NSMenu`? (Assumed: hot items white on accent.)
 8. **Held-⌘ hints**: glyph style and position in the sidebar.
+
+---
+
+## 21. Details the sections above don't state
+
+Found by an audit of the spec against the prototype; each is what the prototype does.
+
+- **Switching views** (a sidebar row, ⌘1–⌘9, Show in…): instant; clears the selection, ends any edit, closes the
+  popover and menus, settles checked rows, and scrolls the new list to its top. An open detail pane stays open and shows
+  "No task selected" (`dc:730–738`).
+- **Today's look**: the sidebar's Today tile holds a 12pt sun in ANSI yellow; the Today header shows a 14pt yellow sun
+  (no tile), "Today", then the date ("Fri, Oct 30") in `ink-secondary` (`dc:47`,
+  `dc:1995`).
+- **List colors** (`--ansi-*`): dark red #FF7B72, green #3FB950, yellow #D29922, blue #58A6FF, magenta #BC8CFF, cyan
+  #39C5CF, ink #E6EDF3; light #CF222E, #116329, #9A6700, #0969DA, #8250DF, #1B7C83, #1F2328
+  (`css:56`, `css:73`). New lists take them in the order blue, magenta, green,
+  cyan, yellow, red, ink (`dc:414`); the seeded Inbox is ink. A new list's tile shows "·" until its
+  name has a letter or digit (`dc:418`).
+- **Relative dates** in the detail pane: "today", "tomorrow", "yesterday"; "in N days" under 14 days, "in N weeks"
+  (rounded) under 60, else "in N months"; past: "N days ago" under 14, else "N weeks ago" (`dc:276–283`).
+- **The detail pane's Deadline chip** takes the row chip's tone: `danger` when overdue, `attention` when due today
+  (`dc:1939`).
+- **Detail-pane spacing**: the label's icon sits 7 before its word; the value starts 8 after the 76pt label column; the
+  relative date sits 26 past a set chip (room for its ×); the separator is 1pt, 10 below the rows and 12 above the
+  notes, indented 26; the notes area is at least 120 tall; "3 tasks selected" is indented 26
+  (`css:261–277`, `css:260`).
+- **Several tasks, or none, in the detail pane**: tasks from different lists show "Several lists" with a "…" tile and
+  the List row reads "Mixed"; the trash's tooltip is "Delete 3 Tasks". With nothing selected the header shows only the ×
+  (`dc:1947`).
+- **The Completed row** is only as wide as its content, so a press to its right lands in the add zone and adds a task.
+  Collapsing slides the done rows up into it while they fade; expanding fades them in where they sit. It disappears at
+  once when its last task goes (`css:226`, `dc:1795–1820`).
+- **After a checked row settles** the selection doesn't move: in a collapsed list the done task stays selected though
+  hidden, and the detail pane keeps showing it (`dc:899`).
+- **Counts**: zero shows nothing. The sidebar count drops the moment a box is checked; a list's Completed count waits
+  for the 1.5 s settle (`dc:1910`, `dc:1999`).
+- **Today's Completed group** holds only tasks completed today that are dated today or earlier
+  (`dc:641`).
+- **The date popover**: closes with no exit animation. No day is highlighted while nothing matches. The footer is 12pt.
+  The weekday row reads S M T W T F S. Day cells are a seventh of the 272pt grid, about 38.9 × 28. ‹ › change only the
+  month shown, not the highlighted day (`dc:1764`). Clear, ⌫-to-clear and the current-date ring
+  appear only when every selected task has the same date (`dc:1119`). From the keyboard without a
+  chip, its left edge is 300 left of the row's right end (`dc:1136`).
+- **The drag copy**: 10 padding on both sides and no › slot, so its chips sit 21pt further right than in the row; in
+  light theme its chips sit on `fill-track`; the compact tag over the sidebar drops the chips. Only selected rows from
+  the grabbed row's group come along (`dc:1166`). After a drop the rows fade back in
+  (150 ms). A sidebar row being dragged fades out over 150 ms rather than vanishing (`css:118`).
+- **Keys**: ↑ / ↓ with several rows selected go below the last or above the first of them
+  (`dc:706–720`). Scrolling a row into view starts within 4pt of an edge and jumps (no
+  animation). With the detail pane focused but not editing, arrows, letters and Return act on the list and move focus
+  there. With the sidebar focused, Space, ⌘K and ⌘T still act on the selected tasks. Sidebar type-select tries lists
+  before Today, so "t" goes to "Tasks app" (`dc:1450–1462`).
+- **Renaming a task** keeps the text as typed (not trimmed) and may leave it empty; an empty title shows "New Task" in
+  `ink-tertiary` (`css:169`).
+- **The archive banner**: "Archived Oct 28" in 13pt `ink`, the rest in 12pt `ink-secondary`, the icon in
+  `ink-secondary`; 10 in from the pane's sides, 10 between icon, text and button (`dc:59–63`).
+- **Glyphs**: icons are drawn with 1.5pt round strokes, 14pt by default. The ›, group + and chevron, Completed chevron,
+  date ×, month arrows and ⌃⌄ are 12pt; chip icons 11pt. The group buttons and the date × rest in `ink-tertiary`. "Add
+  date" has no icon (`css:40–43`).
+- **Menus on the sidebar**: right-clicking a list doesn't open it; Today has no menu (`dc:1692–1698`).
+- **Truncation**: pane titles end in an ellipsis; sidebar names fade (§12).
+- **Scroll padding**: the list's content ends 24pt below its last row, the sidebar's 16pt.

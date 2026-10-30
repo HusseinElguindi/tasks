@@ -107,7 +107,6 @@
 .tk .srow { display: flex; align-items: center; padding-left: 10px; border-radius: 15px; color: var(--ink-2); transition: transform var(--dur-layout) var(--ease-layout), opacity 150ms ease-out, color var(--hover-out); }
 .tk .srow:hover { color: var(--ink); transition: transform var(--dur-layout) var(--ease-layout), opacity 150ms ease-out, color var(--hover-in); }
 .tk .srow.cur { color: var(--ink); background: var(--fill-strong); box-shadow: inset 0 0 0 0.5px var(--edge-outer), inset 0 0 0 1px var(--edge-inner); }
-.tk.light .srow.cur { box-shadow: inset 0 0 0 0.5px var(--edge-outer), inset 0 0 0 1px var(--edge-inner); }
 .tk .srow.arch { color: var(--ink-3); }
 .tk .srow.arch:hover, .tk .srow.arch.cur { color: var(--ink); }
 .tk .srow .tl { flex: 1; min-width: 0; margin-left: 7px; white-space: nowrap; overflow: hidden; padding-right: 34px; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 46px), transparent calc(100% - 30px)); mask-image: linear-gradient(to right, #000 calc(100% - 46px), transparent calc(100% - 30px)); transform: translateY(-0.5px); }
@@ -199,7 +198,7 @@
 .tk .check.on .ck path { stroke-dashoffset: 0; }
 .tk .check.pop { animation: tk-pop var(--dur-snappy) var(--ease-snappy); }
 /* A new task's box until its title commits: a quiet placeholder ring that can't be clicked. */
-.tk .check.new { box-shadow: inset 0 0 0 1.5px var(--ink-q); opacity: 0.7; }
+.tk .check.new { box-shadow: inset 0 0 0 1.5px var(--ink-q); opacity: 0.7; pointer-events: none; }
 .tk .check.new::after { display: none; }
 
 /* Date chips: 18pt capsules. Only a chip that opens something reacts to the pointer. */
@@ -214,6 +213,7 @@
 .tk .chip.lg { height: 22px; padding: 0 9px; border-radius: 11px; font-size: 12px; gap: 5px; }
 .tk .chip.ghost { background: transparent; color: var(--ink-3); box-shadow: inset 0 0 0 1px var(--line-sep); }
 .tk button.chip.ghost:hover { filter: none; background: var(--hover); color: var(--ink-2); }
+.tk button.chip.ghost.open-picker, .tk button.chip.ghost.open-picker:hover { background: var(--accent-tint); color: var(--accent-text); }
 
 /* The empty slot under the last open task: hovering it shows where a new task lands. */
 .tk .addzone { position: absolute; left: 0; right: 0; bottom: 0; z-index: 0; }
@@ -318,8 +318,9 @@
 .tk .pf { height: 28px; display: flex; align-items: center; gap: 7px; padding: 0 9px; border-radius: 8px; background: var(--fill-control); color: var(--ink-3); }
 .tk .pf input { flex: 1; min-width: 0; height: 28px; color: var(--ink); }
 .tk .qp { display: flex; gap: 6px; margin: 8px 0 2px; flex-wrap: wrap; }
-.tk .qb { height: 22px; padding: 0 9px; border-radius: 11px; background: var(--fill-control); color: var(--ink); font-size: 12px; display: inline-flex; align-items: center; transition: background-color var(--icon), color var(--icon); }
+.tk .qb { height: 22px; padding: 0 9px; border-radius: 11px; background: var(--fill-control); color: var(--ink); font-size: 12px; display: inline-flex; align-items: center; transition: background-color var(--icon), color var(--icon), filter var(--icon); }
 .tk .qb:hover { background: var(--fill-track); filter: brightness(1.12); }
+.tk.light .qb:hover { filter: brightness(0.97); }
 .tk .qb.hot { background: var(--accent-tint); color: var(--accent-text); }
 .tk .qb.clear { color: var(--ink-2); }
 .tk .mon { display: flex; align-items: center; padding: 8px 2px 4px 4px; }
