@@ -13,7 +13,7 @@ Read docs/BRIEF.md and docs/SPEC.md (the contract; §5 sync, §6 hash chain, §7
   When the server is ready to deploy, stop and write the exact commands needed in `server/DEPLOY.md`, then ask in this terminal.
 - Performance matters to the user: keep the DO hot path lean (cached head/last hash, prepared statements, one transaction per request).
 
-You may use subagents if useful (e.g. a reviewer for your tests vs. the spec). Don't commit; leave changes in the working tree.
+You may use subagents if useful (e.g. a reviewer for your tests vs. the spec). Commit as you go (see the coordinator message): stage only your own paths, never `git add -A`; do not push.
 If you need a decision, ask it plainly in this terminal and stop; the coordinator will relay it to the user.
 When done, summarize what you built, how to run the tests, and anything in the spec you think is wrong.
 

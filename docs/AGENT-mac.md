@@ -16,7 +16,7 @@ Build in `app/`:
   then sync wired to a configurable server URL + token (Keychain). Until a server is deployed, test sync against `wrangler dev` in `server/` if it exists, or a stub.
 - Performance is a top priority for the user: follow §9 (per-entity observation, maintained indexes, work off the main actor), and measure.
 
-You may use subagents if useful (e.g. one on the core package while you do UI, or a reviewer). Don't commit; leave changes in the working tree.
+You may use subagents if useful (e.g. one on the core package while you do UI, or a reviewer). Commit as you go (see the coordinator message): stage only your own paths, never `git add -A`; do not push.
 Don't touch `server/` or Cloudflare. If you need a decision, ask it plainly in this terminal and stop; the coordinator will relay it to the user.
 When done, summarize what you built, how to build/run/test it, and anything in the spec or design you think is wrong.
 
