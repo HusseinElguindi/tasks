@@ -93,3 +93,11 @@ extension TaskList {
         return a == b
     }
 }
+
+/// A flag an Observation `onChange` closure can set.
+final class Flag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _value = false
+    var value: Bool { lock.withLock { _value } }
+    func set() { lock.withLock { _value = true } }
+}
