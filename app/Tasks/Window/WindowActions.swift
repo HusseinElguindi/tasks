@@ -133,6 +133,9 @@ struct WindowActions {
         }
         if window.rename != nil { commitRename() }
         if window.draft != nil { commitDraft() }
+        // A field that resigned may have handed the keys on (a dropped draft gives them to the list) before the
+        // window took them back; give them to the focused pane.
+        if let w = window.nsWindow, w.firstResponder === w { focus(window.focus) }
     }
 
     // MARK: - Selection (§5, dc:703–727)
