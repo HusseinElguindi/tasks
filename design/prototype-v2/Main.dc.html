@@ -1,0 +1,2116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tasks interactions v2</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="tasks-v2.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="{{rootCls}}" style="{{rootStyle}}" tabIndex="0" ref="{{rootRef}}" onKeyDown="{{onKey}}" onKeyUp="{{onKeyUp}}" onMouseDown="{{onRootMouseDown}}" onPointerDownCapture="{{onRootPointerDownCapture}}" onClickCapture="{{onRootClickCapture}}" onContextMenu="{{onRootContextMenu}}" onFocusCapture="{{onRootFocusCapture}}">
+<div class="win" style="{{winStyle}}" ref="{{winRef}}">
+
+<nav class="sb" aria-label="Lists" onPointerDown="{{onSidebarDown}}">
+<div class="sbs" ref="{{sbScrollRef}}">
+<div class="sbc" style="{{sb.contentStyle}}">
+<sc-for list="{{sb.items}}" as="it" hint-placeholder-count="8">
+<sc-if value="{{it.isRow}}" hint-placeholder-val="{{true}}">
+<div class="{{it.cls}}" style="{{it.style}}" data-key="{{it.key}}" onPointerDown="{{onSbRowDown}}" onPointerMove="{{onSbRowMove}}" onPointerUp="{{onSbRowUp}}" onPointerCancel="{{onSbRowUp}}" onDoubleClick="{{onSbRowDbl}}" onContextMenu="{{onSbRowCtx}}">
+<span class="{{it.tileCls}}">{{it.mono}}<sc-if value="{{it.isToday}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6"></circle><path d="M8 1.9v1.3M8 12.8v1.3M1.9 8h1.3M12.8 8h1.3M3.7 3.7l.9.9M11.4 11.4l.9.9M3.7 12.3l.9-.9M11.4 4.6l.9-.9"></path></svg></sc-if></span>
+<sc-if value="{{it.editing}}"><input class="ri" data-key="{{it.key}}" value="{{it.editText}}" placeholder="New List" spellCheck="false" autoFocus="{{true}}" aria-label="List name" onChange="{{onEditChange}}" onKeyDown="{{onEditKey}}" onBlur="{{onEditBlur}}" onFocus="{{onEditFocus}}"></sc-if>
+<sc-if value="{{it.notEditing}}"><span class="tl">{{it.name}}</span></sc-if>
+<span class="{{it.ctCls}}">{{it.count}}</span>
+</div>
+</sc-if>
+<sc-if value="{{it.isLabel}}">
+<div class="{{it.cls}}" style="{{it.style}}">
+<sc-if value="{{it.chev}}"><button class="gl" type="button" style="text-align: left; font: inherit; color: inherit; height: 14px;" onClick="{{onArchiveLabel}}">{{it.name}}</button><button class="{{it.revealCls}}" type="button" aria-label="Show or hide archived lists" onClick="{{onArchiveLabel}}"><svg class="i i--sm {{it.chevCls}}" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4l4 4-4 4"></path></svg></button></sc-if>
+<sc-if value="{{it.plus}}"><span class="gl">{{it.name}}</span><button class="{{it.revealCls}}" type="button" aria-label="New List" data-tip="New List" data-keys="⇧⌘N" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onNewListBtn}}"><svg class="i i--sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"></path></svg></button></sc-if>
+</div>
+</sc-if>
+</sc-for>
+</div>
+</div>
+</nav>
+
+<div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
+<button class="tbtn" type="button" aria-label="{{sbTip}}" data-tip="{{sbTip}}" data-keys="⌃⌘S" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onToggleSidebar}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="2"></rect><line x1="6" y1="3" x2="6" y2="13"></line></svg></button>
+
+<section class="{{lp.cls}}" style="{{lp.style}}" aria-label="{{lp.title}}" onPointerDown="{{onListPaneDown}}">
+<header class="ph" style="{{lp.headStyle}}">
+<sc-if value="{{lp.isToday}}"><span class="c-yellow"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6"></circle><path d="M8 1.9v1.3M8 12.8v1.3M1.9 8h1.3M12.8 8h1.3M3.7 3.7l.9.9M11.4 11.4l.9.9M3.7 12.3l.9-.9M11.4 4.6l.9-.9"></path></svg></span></sc-if>
+<sc-if value="{{lp.isList}}"><span class="{{lp.tileCls}}">{{lp.mono}}</span></sc-if>
+<span class="pt">{{lp.title}}</span>
+<span class="ps">{{lp.sub}}</span>
+<span class="acts">
+<button class="hb" type="button" aria-label="{{lp.newTip}}" data-tip="{{lp.newTip}}" data-keys="⌘N" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onNewTaskBtn}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"></path></svg></button>
+<button class="{{lp.detailBtnCls}}" type="button" aria-label="{{lp.detailTip}}" data-tip="{{lp.detailTip}}" data-keys="⌘D" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onToggleDetail}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="2"></rect><line x1="10" y1="3" x2="10" y2="13"></line></svg></button>
+</span>
+</header>
+<div class="pcs" ref="{{listScrollRef}}" onPointerDown="{{onScrollAreaDown}}">
+<div class="pcc" style="{{lp.contentStyle}}">
+<sc-if value="{{lp.banner}}">
+<div class="banner" style="position: absolute; left: 0; right: 0; top: 0;">
+<span class="c-ink" style="color: var(--ink-2);"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="3.5" rx="1"></rect><path d="M3 6.5v6a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-6M6.5 9.5h3"></path></svg></span>
+<span class="bt"><span>{{lp.bannerDate}}</span><span class="bs"> · Not in Today or Move to. Everything still edits.</span></span>
+<button class="btn tinted" type="button" onClick="{{onUnarchive}}">Unarchive</button>
+</div>
+</sc-if>
+<sc-if value="{{lp.hasZone}}">
+<div class="addzone" style="{{lp.zoneStyle}}" onPointerDown="{{onAddZoneDown}}">
+<sc-if value="{{lp.ghostShow}}"><div class="ghostrow" aria-hidden="true"><span class="check"></span><span class="gt">New Task</span></div></sc-if>
+</div>
+</sc-if>
+<sc-if value="{{lp.line}}"><div class="iline" style="{{lp.lineStyle}}"></div></sc-if>
+<sc-for list="{{labels}}" as="g" hint-placeholder-count="0">
+<div class="{{g.cls}}" style="{{g.style}}">
+<div class="glabel"><span class="gl">{{g.name}}</span>
+<sc-if value="{{g.plus}}"><button class="gbtn reveal" type="button" data-list="{{g.id}}" aria-label="{{g.tipText}}" data-tip="{{g.tipText}}" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onPointerDown="{{stopPD}}" onClick="{{onGroupPlus}}"><svg class="i i--sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"></path></svg></button></sc-if>
+</div>
+</div>
+</sc-for>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="0">
+<div class="{{r.cls}}" style="{{r.style}}" data-id="{{r.id}}" onPointerDown="{{onRowDown}}" onPointerMove="{{onRowMove}}" onPointerUp="{{onRowUp}}" onPointerCancel="{{onRowUp}}" onDoubleClick="{{onRowDbl}}" onContextMenu="{{onRowCtx}}">
+<button class="{{r.checkCls}}" type="button" data-id="{{r.id}}" aria-label="{{r.checkLabel}}" onPointerDown="{{stopPD}}" onClick="{{onCheck}}"><svg class="ck" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.8 8.4l2.7 2.7 5.7-6.2"></path></svg></button>
+<sc-if value="{{r.editing}}"><input class="ri" data-id="{{r.id}}" value="{{r.editText}}" placeholder="New Task" spellCheck="false" autoFocus="{{r.autoFocus}}" aria-label="Task title" onChange="{{onEditChange}}" onKeyDown="{{onEditKey}}" onBlur="{{onEditBlur}}" onFocus="{{onEditFocus}}" onPointerDown="{{stopPD}}"></sc-if>
+<sc-if value="{{r.notEditing}}"><span class="{{r.titleCls}}">{{r.title}}</span></sc-if>
+<sc-if value="{{r.hasWhere}}"><span class="where">{{r.where}}</span></sc-if>
+<span class="chips">
+<sc-for list="{{r.chips}}" as="c" hint-placeholder-count="0">
+<button class="{{c.cls}}" type="button" data-id="{{r.id}}" data-field="{{c.field}}" onPointerDown="{{stopPD}}" onClick="{{onChip}}"><sc-if value="{{c.cal}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg></sc-if><sc-if value="{{c.flag}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 14V2.5M4 3h7.5L10 5.75 11.5 8.5H4"></path></svg></sc-if>{{c.text}}</button>
+</sc-for>
+</span>
+<button class="open" type="button" data-id="{{r.id}}" aria-label="Show details" data-tip="Show Details" data-keys="⌘D" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onPointerDown="{{stopPD}}" onClick="{{onOpen}}"><svg class="i i--sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4l4 4-4 4"></path></svg></button>
+</div>
+</sc-for>
+<sc-if value="{{lp.crow}}">
+<button class="crow" type="button" style="{{lp.crowStyle}}" aria-label="Completed tasks" onPointerDown="{{stopPD}}" onClick="{{onToggleCompleted}}"><svg class="i i--sm {{lp.chevCls}}" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4l4 4-4 4"></path></svg><span class="cl">Completed</span><span class="cn">{{lp.crowCount}}</span></button>
+</sc-if>
+<sc-if value="{{lp.empty}}">
+<div class="empty" style="{{lp.emptyStyle}}">
+<sc-if value="{{lp.glyph}}"><span class="eg"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6"></circle><path d="M8 1.9v1.3M8 12.8v1.3M1.9 8h1.3M12.8 8h1.3M3.7 3.7l.9.9M11.4 11.4l.9.9M3.7 12.3l.9-.9M11.4 4.6l.9-.9"></path></svg></span></sc-if>
+<sc-if value="{{lp.emptyCheck}}"><span class="eg" style="color: var(--accent);"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2"></circle><path d="M5.3 8.2l1.9 1.9 3.6-4"></path></svg></span></sc-if>
+<span class="e1">{{lp.e1}}</span>
+<sc-if value="{{lp.hasE2}}"><span class="e2">{{lp.e2}}</span></sc-if>
+</div>
+</sc-if>
+</div>
+</div>
+<sc-if value="{{notice.show}}">
+<div class="{{notice.cls}}" role="status" onMouseEnter="{{onNoticeEnter}}" onMouseLeave="{{onNoticeLeave}}">
+<span>{{notice.text}}</span>
+<sc-if value="{{notice.undo}}"><button class="btn tinted" type="button" onClick="{{onNoticeUndo}}">Undo<span class="nk">⌘Z</span></button></sc-if>
+</div>
+</sc-if>
+</section>
+
+<sc-if value="{{dp.show}}">
+<section class="{{dp.cls}}" aria-label="Task details" onPointerDown="{{onDetailDown}}">
+<header class="ph">
+<sc-if value="{{dp.single}}"><span class="{{dp.headTile}}">{{dp.headMono}}</span><span class="pt" style="color: var(--ink-2); font-weight: 400;">{{dp.headName}}</span></sc-if>
+<sc-if value="{{dp.multi}}"><span class="{{dp.headTile}}">{{dp.headMono}}</span><span class="pt" style="color: var(--ink-2); font-weight: 400;">{{dp.headName}}</span></sc-if>
+<span class="acts">
+<sc-if value="{{dp.none}}"><span></span></sc-if>
+<sc-if value="{{dp.single}}"><button class="hb" type="button" aria-label="Delete" data-tip="{{dp.deleteTip}}" data-keys="⌘⌫" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onDDelete}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9"></path></svg></button></sc-if>
+<sc-if value="{{dp.multi}}"><button class="hb" type="button" aria-label="Delete" data-tip="{{dp.deleteTip}}" data-keys="⌘⌫" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onDDelete}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9"></path></svg></button></sc-if>
+<button class="hb" type="button" aria-label="Hide Details" data-tip="Hide Details" data-keys="⌘D" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onDClose}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"></path></svg></button>
+</span>
+</header>
+<div class="dbody">
+<sc-if value="{{dp.none}}"><div class="empty" style="top: 40%;"><span class="e1">No task selected</span><span class="e2">Select a task to see its notes and dates.</span></div></sc-if>
+<sc-if value="{{dp.single}}">
+<div class="dtitle">
+<button class="{{dp.checkCls}}" type="button" aria-label="Complete" onClick="{{onDCheck}}"><svg class="ck" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.8 8.4l2.7 2.7 5.7-6.2"></path></svg></button>
+<textarea rows="1" value="{{dp.titleValue}}" placeholder="New Task" spellCheck="false" aria-label="Title" autoFocus="{{dp.autoTitle}}" onFocus="{{onDTitleFocus}}" onChange="{{onDTitleChange}}" onKeyDown="{{onDTitleKey}}" onBlur="{{onDTitleBlur}}"></textarea>
+</div>
+</sc-if>
+<sc-if value="{{dp.multi}}"><div class="dmulti">{{dp.multiTitle}}</div></sc-if>
+<sc-if value="{{dp.headName}}">
+<div class="props">
+<div class="prow"><span class="pl"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M3 8h10M3 11.5h10"></path></svg>List</span>
+<button class="popup" type="button" aria-label="List" onClick="{{onDList}}"><span class="{{dp.listTile}}">{{dp.listMono}}</span>{{dp.listName}}<svg class="i i--sm ud" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 6.5L8 3.5l3 3M5 9.5l3 3 3-3"></path></svg></button>
+</div>
+<div class="prow"><span class="pl"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg>When</span>
+<span class="chipwrap">
+<sc-if value="{{dp.when.has}}"><button class="{{dp.when.cls}}" type="button" data-field="when" onClick="{{onDChip}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg>{{dp.when.text}}</button><button class="clr" type="button" data-field="when" aria-label="Remove When" data-tip="Remove When" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onDClear}}"><svg class="i i--sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"></path></svg></button></sc-if>
+<sc-if value="{{dp.when.ghost}}"><button class="{{dp.when.cls}}" type="button" data-field="when" onClick="{{onDChip}}">{{dp.when.ghost}}</button></sc-if>
+</span>
+<span class="{{dp.when.relCls}}">{{dp.when.rel}}</span>
+</div>
+<div class="prow"><span class="pl"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 14V2.5M4 3h7.5L10 5.75 11.5 8.5H4"></path></svg>Deadline</span>
+<span class="chipwrap">
+<sc-if value="{{dp.deadline.has}}"><button class="{{dp.deadline.cls}}" type="button" data-field="deadline" onClick="{{onDChip}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 14V2.5M4 3h7.5L10 5.75 11.5 8.5H4"></path></svg>{{dp.deadline.text}}</button><button class="clr" type="button" data-field="deadline" aria-label="Remove Deadline" data-tip="Remove Deadline" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onDClear}}"><svg class="i i--sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"></path></svg></button></sc-if>
+<sc-if value="{{dp.deadline.ghost}}"><button class="{{dp.deadline.cls}}" type="button" data-field="deadline" onClick="{{onDChip}}">{{dp.deadline.ghost}}</button></sc-if>
+</span>
+<span class="{{dp.deadline.relCls}}">{{dp.deadline.rel}}</span>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{dp.single}}">
+<div class="dsep"></div>
+<div class="notes">
+<sc-if value="{{dp.notesEditing}}"><textarea value="{{dp.notesText}}" placeholder="Notes" aria-label="Notes" autoFocus="{{true}}" onChange="{{onNotesChange}}" onKeyDown="{{onNotesKey}}" onBlur="{{onNotesBlur}}" onFocus="{{onNotesFocus}}"></textarea></sc-if>
+<sc-if value="{{dp.notesView}}">
+<div class="{{dp.mdCls}}" onPointerDown="{{onNotesDown}}"><sc-if value="{{dp.noNotes}}">Notes</sc-if><sc-for list="{{dp.md}}" as="m" hint-placeholder-count="0"><sc-if value="{{m.plain}}">{{m.s}}</sc-if><sc-if value="{{m.b}}"><b>{{m.s}}</b></sc-if><sc-if value="{{m.i}}"><i>{{m.s}}</i></sc-if><sc-if value="{{m.code}}"><code>{{m.s}}</code></sc-if><sc-if value="{{m.a}}"><a href="{{m.href}}" onClick="{{onLinkClick}}">{{m.s}}</a></sc-if></sc-for></div>
+</sc-if>
+</div>
+<div class="dmeta">{{dp.meta}}</div>
+</sc-if>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{drag.show}}">
+<div class="{{drag.cls}}" style="{{drag.style}}" ref="{{liftRef}}">
+<span class="{{drag.checkCls}}"></span><span class="tt">{{drag.title}}</span>
+<span class="chips"><sc-for list="{{drag.chips}}" as="c" hint-placeholder-count="0"><span class="{{c.cls}}">{{c.text}}</span></sc-for></span>
+<sc-if value="{{drag.multi}}"><span class="badge">{{drag.count}}</span></sc-if>
+</div>
+</sc-if>
+<sc-if value="{{sbLift.show}}">
+<div class="{{sbLift.cls}}" style="{{sbLift.style}}" ref="{{liftRef}}">
+<span class="{{sbLift.tileCls}}">{{sbLift.mono}}</span><span class="tt" style="margin-left: 7px;">{{sbLift.name}}</span>
+</div>
+</sc-if>
+
+<sc-if value="{{menu.show}}">
+<div class="menu" style="{{menu.style}}" role="menu">
+<sc-for list="{{menu.items}}" as="m" hint-placeholder-count="0">
+<sc-if value="{{m.sep}}"><div class="msep"></div></sc-if>
+<sc-if value="{{m.head}}"><div class="mhead">{{m.label}}</div></sc-if>
+<sc-if value="{{m.item}}"><div class="{{m.cls}}" role="menuitem" data-idx="{{m.idx}}" data-level="{{m.level}}" onMouseEnter="{{onMenuEnter}}" onMouseLeave="{{onMenuLeave}}" onClick="{{onMenuClick}}"><sc-if value="{{m.chkCol}}"><span class="chk">{{m.chk}}</span></sc-if><sc-if value="{{m.tile}}"><span class="{{m.tileCls}}">{{m.mono}}</span></sc-if><span>{{m.label}}</span><span class="mk">{{m.keys}}</span><sc-if value="{{m.hasSub}}"><svg class="i i--sm sub" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4l4 4-4 4"></path></svg></sc-if></div></sc-if>
+</sc-for>
+</div>
+<sc-if value="{{menu.sub}}">
+<div class="menu" style="{{menu.subStyle}}" role="menu">
+<sc-for list="{{menu.subItems}}" as="m" hint-placeholder-count="0">
+<sc-if value="{{m.sep}}"><div class="msep"></div></sc-if>
+<sc-if value="{{m.head}}"><div class="mhead">{{m.label}}</div></sc-if>
+<sc-if value="{{m.item}}"><div class="{{m.cls}}" role="menuitem" data-idx="{{m.idx}}" data-level="{{m.level}}" onMouseEnter="{{onMenuEnter}}" onMouseLeave="{{onMenuLeave}}" onClick="{{onMenuClick}}"><sc-if value="{{m.chkCol}}"><span class="chk">{{m.chk}}</span></sc-if><sc-if value="{{m.tile}}"><span class="{{m.tileCls}}">{{m.mono}}</span></sc-if><span>{{m.label}}</span><span class="mk">{{m.keys}}</span></div></sc-if>
+</sc-for>
+</div>
+</sc-if>
+</sc-if>
+
+<sc-if value="{{pk.show}}">
+<div class="picker" style="{{pk.style}}" role="dialog" aria-label="Choose a date" onMouseDown="{{onPickerDown}}">
+<label class="pf"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg><input value="{{pk.text}}" placeholder="{{pk.placeholder}}" aria-label="Type a date" spellCheck="false" autoFocus="{{pk.autoFocus}}" onChange="{{onPickerText}}" onKeyDown="{{onPickerKey}}"></label>
+<sc-if value="{{pk.isA}}">
+<div class="qp"><sc-for list="{{pk.quick}}" as="q" hint-placeholder-count="0"><button class="{{q.cls}}" type="button" data-date="{{q.date}}" onClick="{{onPickQuick}}">{{q.label}}</button></sc-for></div>
+</sc-if>
+<sc-if value="{{pk.isB}}">
+<div class="sug">
+<sc-for list="{{pk.sug}}" as="g" hint-placeholder-count="0"><div class="{{g.cls}}" data-idx="{{g.idx}}" onMouseEnter="{{onSugEnter}}" onClick="{{onPickSug}}"><span>{{g.label}}</span><span class="sd">{{g.detail}}</span></div></sc-for>
+<sc-if value="{{pk.noSug}}"><div class="sg dim">No date matches</div></sc-if>
+</div>
+</sc-if>
+<sc-if value="{{pk.showCal}}">
+<div class="mon"><span class="mt">{{pk.monthTitle}}</span><button class="nb" type="button" aria-label="Previous month" data-dir="-1" onClick="{{onPickMonth}}"><svg class="i i--sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 4l-4 4 4 4"></path></svg></button><button class="nb" type="button" aria-label="Next month" data-dir="1" onClick="{{onPickMonth}}"><svg class="i i--sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4l4 4-4 4"></path></svg></button></div>
+<div class="cal">
+<sc-for list="{{pk.dows}}" as="w" hint-placeholder-count="0"><span class="dw">{{w}}</span></sc-for>
+<sc-for list="{{pk.days}}" as="c" hint-placeholder-count="0"><span class="{{c.cls}}" data-date="{{c.date}}" onClick="{{onPickDay}}">{{c.label}}</span></sc-for>
+</div>
+</sc-if>
+<sc-if value="{{pk.isA}}"><div class="pv"><span class="{{pk.previewCls}}">{{pk.preview}}</span><span class="kbd">↩</span></div></sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{tip.show}}"><div class="tip" style="{{tip.style}}" role="tooltip">{{tip.text}}<sc-if value="{{tip.hasKeys}}"><span class="tk2">{{tip.keys}}</span></sc-if></div></sc-if>
+</div>
+
+<sc-if value="{{stage.show}}">
+<div class="stage" aria-label="Prototype controls">
+<span class="sl">Prototype</span>
+<span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
+<span class="sl">Add</span>
+<span class="seg"><sc-for list="{{stage.qa}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
+<span class="sl">Dates</span>
+<span class="seg"><sc-for list="{{stage.dp}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
+<span class="sl">Drag</span>
+<span class="seg"><sc-for list="{{stage.dragMode}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
+<span class="sl">Checked rows</span>
+<span class="seg"><sc-for list="{{stage.settle}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
+<span style="flex: 1;"></span>
+<button class="lnk" type="button" data-k="reset" data-v="1" onClick="{{onStage}}">Reset</button>
+<button class="lnk" type="button" data-k="keys" data-v="1" data-keys-toggle="1" onClick="{{onStage}}">Keys ?</button>
+</div>
+</sc-if>
+
+<sc-if value="{{keysOpen}}">
+<div class="keys" role="dialog" aria-label="Keyboard shortcuts">
+<div class="kh">Tasks</div>
+<div class="kr"><span class="kk">⌘N (⌥N here)</span><span>New task where it will land. Return adds and starts the next.</span></div>
+<div class="kr"><span class="kk">↩ · double-click</span><span>Rename. Esc cancels.</span></div>
+<div class="kr"><span class="kk">Space · ⌘K</span><span>Complete or uncomplete</span></div>
+<div class="kr"><span class="kk">⌘D · ›</span><span>Show or hide details</span></div>
+<div class="kr"><span class="kk">⌘S · ⇧⌘D</span><span>When… · Deadline… (type tom, fri, 3d)</span></div>
+<div class="kr"><span class="kk">⌘T (⌥T here)</span><span>When: Today</span></div>
+<div class="kr"><span class="kk">⇧⌘M</span><span>Move to… (⌘1–9 picks)</span></div>
+<div class="kr"><span class="kk">⌥⌘↑ ⌥⌘↓</span><span>Move up or down</span></div>
+<div class="kr"><span class="kk">⌘⌫</span><span>Delete (Undo in the notice, or ⌘Z)</span></div>
+<div class="kh">Moving around</div>
+<div class="kr"><span class="kk">↑ ↓ · ⇧ · ⌘-click</span><span>Select, extend, add to the selection</span></div>
+<div class="kr"><span class="kk">← → · Tab</span><span>Sidebar, list, details</span></div>
+<div class="kr"><span class="kk">⌘1–9 (⌃1–9 here)</span><span>Today, then lists. Hold ⌘ to see them.</span></div>
+<div class="kr"><span class="kk">Type letters</span><span>Jump to a task or list by name</span></div>
+<div class="kr"><span class="kk">⇧⌘N (⌥⇧N here)</span><span>New list</span></div>
+<div class="kr"><span class="kk">⌘Z · ⇧⌘Z</span><span>Undo, redo</span></div>
+<div class="note">The browser keeps ⌘N, ⌘T and ⌘1–9 for itself, so this page also takes ⌥ or ⌃ for them. The Mac app uses the ⌘ keys.</div>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"qa":{"editor":"enum","options":["A","B","C"],"default":"A"},"dp":{"editor":"enum","options":["A","B"],"default":"A"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
+// ---------- Calendar dates: "YYYY-MM-DD" strings, never instants (SPEC §2). ----------
+const DAY_MS = 86400000;
+const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const WDL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MOL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const NUMW = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };
+
+function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+function ymdOf(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+function dOf(s) { const p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+function addDays(s, n) { const d = dOf(s); d.setDate(d.getDate() + n); return ymdOf(d); }
+function addMonths(s, n) {
+  const d = dOf(s), day = d.getDate();
+  const first = new Date(d.getFullYear(), d.getMonth() + n, 1);
+  const last = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  return ymdOf(new Date(first.getFullYear(), first.getMonth(), Math.min(day, last)));
+}
+function diffDays(from, to) { return Math.round((dOf(to) - dOf(from)) / DAY_MS); }
+function weekdayIdx(s) { return dOf(s).getDay(); }
+function nextWeekday(today, w) { let n = (w - weekdayIdx(today) + 7) % 7; if (n === 0) n = 7; return addDays(today, n); }
+function md(s) { const d = dOf(s); return MO[d.getMonth()] + ' ' + d.getDate(); }
+function mdy(s, today) { const d = dOf(s); return md(s) + (d.getFullYear() !== dOf(today).getFullYear() ? ', ' + d.getFullYear() : ''); }
+function longDate(s, today) { return WD[weekdayIdx(s)] + ', ' + mdy(s, today); }
+function relText(s, today) {
+  const n = diffDays(today, s);
+  if (n === 0) return 'today';
+  if (n === 1) return 'tomorrow';
+  if (n === -1) return 'yesterday';
+  if (n > 0) return n < 14 ? 'in ' + n + ' days' : n < 60 ? 'in ' + Math.round(n / 7) + ' weeks' : 'in ' + Math.round(n / 30) + ' months';
+  return -n < 14 ? -n + ' days ago' : Math.round(-n / 7) + ' weeks ago';
+}
+function localDayOfMs(ms) { return ymdOf(new Date(ms)); }
+
+// How the row chips read.
+function whenChipText(s, today) {
+  const n = diffDays(today, s);
+  if (n <= 0) return 'Today';
+  if (n === 1) return 'Tomorrow';
+  if (n < 7) return WD[weekdayIdx(s)];
+  return mdy(s, today);
+}
+function deadlineChip(s, today) {
+  const n = diffDays(today, s);
+  if (n < 0) return { text: 'Overdue · ' + -n + 'd', tone: 'late' };
+  if (n === 0) return { text: 'Due today', tone: 'due' };
+  if (n === 1) return { text: 'Tomorrow', tone: '' };
+  if (n < 7) return { text: WD[weekdayIdx(s)], tone: '' };
+  return { text: mdy(s, today), tone: '' };
+}
+
+// ---------- Typed dates ----------
+function normDate(text) { return text.trim().toLowerCase().replace(/[,.]/g, ' ').replace(/\s+/g, ' ').trim(); }
+function weekdayOf(word, strict) {
+  if (!word) return null;
+  for (let i = 0; i < 7; i++) if (WDL[i].toLowerCase() === word) return i;
+  const abbr = { mon: 1, tue: 2, tues: 2, wed: 3, weds: 3, thu: 4, thur: 4, thurs: 4, fri: 5, sat: 6, sun: 0 };
+  if (strict) { if (word === 'sat' || word === 'sun') return null; return abbr[word] ?? null; }
+  if (abbr[word] !== undefined) return abbr[word];
+  if (word.length >= 2) {
+    const hits = [];
+    for (let i = 0; i < 7; i++) if (WDL[i].toLowerCase().startsWith(word)) hits.push(i);
+    if (hits.length === 1) return hits[0];
+  }
+  return null;
+}
+function monthOf(word) {
+  if (!word || word.length < 3) return null;
+  for (let i = 0; i < 12; i++) if (MOL[i].toLowerCase().startsWith(word)) return i;
+  if (word === 'sept') return 8;
+  return null;
+}
+function validYMD(y, m, d) {
+  const dt = new Date(y, m, d);
+  return dt.getFullYear() === y && dt.getMonth() === m && dt.getDate() === d ? ymdOf(dt) : null;
+}
+function resolveMonthDay(m, d, yearText, today) {
+  const t = dOf(today);
+  if (yearText) { let y = +yearText; if (y < 100) y += 2000; return validYMD(y, m, d); }
+  let r = validYMD(t.getFullYear(), m, d);
+  if (r && r < today) r = validYMD(t.getFullYear() + 1, m, d);
+  return r;
+}
+function nextWeekStart(today) { return nextWeekday(today, 1); }
+function weekendOf(today) { const w = weekdayIdx(today); return w === 6 || w === 0 ? today : nextWeekday(today, 6); }
+
+// Exact parse of a whole phrase. strict = the quick-add title tokens, which must not eat ordinary words.
+function parseDate(text, today, strict) {
+  const s = normDate(text);
+  if (!s) return null;
+  let m;
+  if (/^(today|tod|tdy)$/.test(s) || (!strict && /^(toda|now)$/.test(s))) return today;
+  if (/^(tomorrow|tom|tmr|tmrw)$/.test(s) || (!strict && /^(tomo|tomor|tomorr|tomorro)$/.test(s))) return addDays(today, 1);
+  if (!strict && /^(yesterday|yest)$/.test(s)) return addDays(today, -1);
+  if ((m = s.match(/^(?:in\s+)?(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten)\s*(d|day|days|w|wk|wks|week|weeks|mo|mos|month|months|m|y|yr|yrs|year|years)$/))) {
+    const n = /^\d+$/.test(m[1]) ? parseInt(m[1], 10) : NUMW[m[1]];
+    if (strict && !/^\d/.test(m[1]) && !s.startsWith('in ')) return null;
+    const u = m[2];
+    if (u[0] === 'd') return addDays(today, n);
+    if (u[0] === 'w') return addDays(today, 7 * n);
+    if (u[0] === 'y') return addMonths(today, 12 * n);
+    return addMonths(today, n);
+  }
+  if (!strict && (m = s.match(/^\+(\d+)$/))) return addDays(today, parseInt(m[1], 10));
+  if (/^(this\s+)?(weekend|wknd)$/.test(s)) return weekendOf(today);
+  if (/^next\s+weekend$/.test(s)) return addDays(nextWeekday(today, 6), weekdayIdx(today) === 6 ? 0 : 7);
+  if (/^next\s+(week|wk)$/.test(s)) return nextWeekStart(today);
+  if (/^next\s+(month|mo)$/.test(s)) { const d = dOf(today); return ymdOf(new Date(d.getFullYear(), d.getMonth() + 1, 1)); }
+  if ((m = s.match(/^(?:(next|this|on)\s+)?([a-z]+)$/))) {
+    const w = weekdayOf(m[2], strict);
+    if (w !== null) {
+      if (m[1] === 'next') { const start = nextWeekStart(today); return addDays(start, (w + 6) % 7); }
+      return nextWeekday(today, w);
+    }
+  }
+  if ((m = s.match(/^([a-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s+(\d{2,4}))?$/))) { const mo = monthOf(m[1]); if (mo !== null) return resolveMonthDay(mo, +m[2], m[3], today); }
+  if ((m = s.match(/^(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]+)(?:\s+(\d{2,4}))?$/))) { const mo = monthOf(m[2]); if (mo !== null) return resolveMonthDay(mo, +m[1], m[3], today); }
+  if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/))) return validYMD(+m[1], +m[2] - 1, +m[3]);
+  if ((m = s.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/))) return resolveMonthDay(+m[1] - 1, +m[2], m[3], today);
+  if (!strict && (m = s.match(/^(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?$/))) {
+    const day = +m[1], t = dOf(today);
+    if (day < 1 || day > 31) return null;
+    for (let k = 0; k < 3; k++) {
+      const r = validYMD(t.getFullYear(), t.getMonth() + k, day) || null;
+      if (r && r >= today) return r;
+    }
+    return null;
+  }
+  return null;
+}
+
+function labelForParse(s, date, today) {
+  const n = normDate(s);
+  if (date === today) return 'Today';
+  if (/^(yesterday|yest)$/.test(n)) return 'Yesterday';
+  if (date === addDays(today, 1) && /^t/.test(n)) return 'Tomorrow';
+  if (/weekend/.test(n)) return 'This Weekend';
+  if (/^next\s+(week|wk)$/.test(n)) return 'Next Week';
+  if (/^next\s+(month|mo)$/.test(n)) return 'Next Month';
+  let m;
+  if ((m = n.match(/^(?:in\s+)?(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten)\s*(d|day|days|w|wk|wks|week|weeks|mo|mos|month|months|m|y|yr|yrs|year|years)$/))) {
+    const k = /^\d+$/.test(m[1]) ? +m[1] : NUMW[m[1]], u = m[2][0];
+    const unit = u === 'd' ? 'day' : u === 'w' ? 'week' : u === 'y' ? 'year' : 'month';
+    return 'In ' + k + ' ' + unit + (k === 1 ? '' : 's');
+  }
+  if (/^[a-z]+$/.test(n) || /^(next|this|on)\s+[a-z]+$/.test(n)) return (n.startsWith('next ') ? 'Next ' : '') + WDL[weekdayIdx(date)];
+  return longDate(date, today);
+}
+
+// Suggestions while typing: the exact parse first, then phrases the text begins.
+const PHRASES = ['Today', 'Tomorrow', 'This Weekend', 'Next Week', 'Next Month', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+function dateSuggestions(text, today, max) {
+  const s = normDate(text), out = [], seen = new Set();
+  const push = (label, date) => { if (!date || seen.has(date)) return; seen.add(date); out.push({ label, date }); };
+  if (!s) {
+    push('Today', today);
+    push('Tomorrow', addDays(today, 1));
+    push('This Weekend', weekendOf(today));
+    push('Next Week', nextWeekStart(today));
+    return out.slice(0, max);
+  }
+  const exact = parseDate(s, today, false);
+  if (exact) push(labelForParse(s, exact, today), exact);
+  for (const p of PHRASES) if (p.toLowerCase().startsWith(s)) push(p, parseDate(p, today, false));
+  if (/^\d{1,2}$/.test(s)) { const n = +s; push('In ' + n + ' days', addDays(today, n)); push('In ' + n + ' weeks', addDays(today, 7 * n)); }
+  return out.slice(0, max);
+}
+
+// Quick add variant B: trailing date words in a title ("Call dentist fri", "Essay due nov 9").
+function extractDateWords(text, today) {
+  let title = text, when = null, deadline = null, whenWords = '', deadlineWords = '';
+  const tail = (str) => {
+    const words = str.trim().split(/\s+/);
+    for (let k = Math.min(3, words.length - 1); k >= 1; k--) {
+      const t = words.slice(-k).join(' '), d = parseDate(t, today, true);
+      if (d) return { rest: words.slice(0, -k).join(' '), date: d, words: t };
+    }
+    return null;
+  };
+  const m = title.match(/^(.*\S)\s+(?:due|by)\s+(.+)$/i);
+  if (m) {
+    const d = parseDate(m[2], today, true);
+    if (d) { deadline = d; deadlineWords = m[2]; title = m[1]; }
+  }
+  const r = tail(title);
+  if (r && r.rest) { when = r.date; whenWords = r.words; title = r.rest; }
+  return { title: title.trim(), when, deadline, whenWords, deadlineWords };
+}
+
+// ---------- Constants: Rex's row grid ----------
+const PITCH = 32;          // rows are 30pt shapes on a 32pt pitch
+const SB_W = 230;          // sidebar width
+const SB_TOP = 50;         // first sidebar row, under the 50pt toolbar band
+const PANE_TOP = 8, HEAD_H = 34, GUTTER = 8, DETAIL_W = 420;
+const SETTLE_MS = 1500;    // checked tasks stay put this long before they move
+const NOTICE_MS = 5000;
+const TIP_DELAY = 600;
+const DRAG_SLOP = 4;
+const COLOR_CLASS = { ink: 'c-ink', blue: 'c-blue', magenta: 'c-magenta', green: 'c-green', cyan: 'c-cyan', yellow: 'c-yellow', red: 'c-red' };
+const COLORS = ['blue', 'magenta', 'green', 'cyan', 'yellow', 'red', 'ink'];
+
+let UID = 0;
+function uid(p) { UID += 1; return p + UID.toString(36) + Math.random().toString(36).slice(2, 6); }
+function monogram(name) { const m = (name || '').trim().match(/[A-Za-z0-9]/); return m ? m[0].toUpperCase() : '·'; }
+function byOrder(a, b) { return a.order - b.order || (a.id < b.id ? -1 : 1); }
+function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function isTextTarget(el) { return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA'); }
+function quote(s) { const t = (s || '').trim() || 'Untitled'; return '“' + (t.length > 28 ? t.slice(0, 27) + '…' : t) + '”'; }
+
+// ---------- Demo data, relative to the real today ----------
+function makeSeed(T) {
+  const now = Date.now();
+  const startOfToday = dOf(T).getTime();
+  const lists = [
+    { id: 'inbox', name: 'Inbox', order: 1, color: 'ink', archivedAt: null },
+    { id: 'school', name: 'School', order: 2, color: 'blue', archivedAt: null },
+    { id: 'tasks', name: 'Tasks app', order: 3, color: 'magenta', archivedAt: null },
+    { id: 'home', name: 'Home', order: 4, color: 'green', archivedAt: null },
+    { id: 'errands', name: 'Errands', order: 5, color: 'cyan', archivedAt: null },
+    { id: 'w26', name: 'Winter 2026', order: 6, color: 'yellow', archivedAt: now - 180 * DAY_MS },
+    { id: 'move', name: 'Apartment move', order: 7, color: 'red', archivedAt: now - 48 * DAY_MS },
+  ];
+  const d = (k) => addDays(T, k);
+  const doneAt = (k) => (k === 0 ? Math.max(startOfToday + 60000, now - 20 * 60000) : startOfToday - k * DAY_MS + 15 * 3600e3);
+  let n = 0;
+  const tasks = [];
+  const t = (list, title, o) => {
+    n += 1;
+    o = o || {};
+    tasks.push({ id: 't' + n, list, order: n, title, notes: o.notes || '', when: o.when ?? null, deadline: o.deadline ?? null,
+      completedAt: o.done != null ? doneAt(o.done) : null, doneAt: o.done != null ? doneAt(o.done) : null, deleted: false, createdAt: now - (60 - n) * DAY_MS });
+  };
+  t('school', 'ECE 358 lab report', { when: d(-3), deadline: d(-2) });
+  t('school', 'Email TA about midterm regrade', { when: d(0) });
+  t('school', 'Review CS 489 lectures 10–14', { when: d(0), deadline: d(3), notes: 'Slides 10–14 plus the two retrieval readings.\n\n- Make cards for the **attention** derivation\n- Redo tutorial 6, question 3\n\n[Lecture 12 recording](https://example.com/cs489) · bring `q3.py` to tutorial' });
+  t('school', 'Submit MSE 333 A2', { when: d(2), deadline: d(3) });
+  t('school', 'CS 489 final study plan', { when: d(10) });
+  t('school', 'Print ECE 358 formula sheet');
+  t('school', 'Ask about co-op interview slots');
+  t('school', 'Submit ECE 358 lab 3', { done: 2 });
+  t('school', 'Read MSE 333 chapter 6', { done: 4 });
+  t('school', 'Register for winter courses', { done: 9 });
+  t('tasks', 'Write sync log spec', { when: d(0) });
+  t('tasks', 'Redesign the interactions', { when: d(0), deadline: d(1), notes: 'Adding, renaming, dates, drag. Prototype first, then *INTERACTIONS-v2.md*.' });
+  t('tasks', 'Profile list switching');
+  t('tasks', 'Try the build on the old MacBook', { when: d(4) });
+  t('tasks', 'Ship the overnight build', { done: 1 });
+  t('home', 'Book flu shot', { deadline: d(0) });
+  t('home', 'Pick up prescription', { when: d(-1) });
+  t('home', 'Fix the bathroom fan', { when: d(7) });
+  t('home', 'Call landlord about the heating');
+  t('errands', 'Return library books', { deadline: d(0) });
+  t('errands', 'Buy printer paper', { when: d(1) });
+  t('errands', 'Renew transit pass', { when: d(0), done: 0 });
+  t('inbox', 'Look into a standing desk');
+  t('inbox', 'Reply to Sam about Saturday', { when: d(1) });
+  t('inbox', 'Read DDIA chapter 5', { notes: 'Replication. Skim the leaderless part.' });
+  t('w26', 'Study for ECE 222 final', { done: 200 });
+  t('w26', 'Return the oscilloscope kit');
+  t('move', 'Forward mail', { done: 50 });
+  t('move', 'Cancel the old internet plan');
+  t('move', 'Return the moving boxes');
+  return { lists, tasks };
+}
+
+// ---------- Inline Markdown (bold, italic, code, links), kept line by line ----------
+function mdSegments(src) {
+  const out = [];
+  const re = /(\*\*[^*\n]+\*\*|`[^`\n]+`|\[[^\]\n]+\]\([^)\s]+\)|\*[^*\n]+\*|_[^_\n]+_)/g;
+  let last = 0, m;
+  while ((m = re.exec(src))) {
+    if (m.index > last) out.push({ plain: true, s: src.slice(last, m.index) });
+    const tok = m[0];
+    if (tok.startsWith('**')) out.push({ b: true, s: tok.slice(2, -2) });
+    else if (tok.startsWith('`')) out.push({ code: true, s: tok.slice(1, -1) });
+    else if (tok.startsWith('[')) { const mm = tok.match(/^\[([^\]]+)\]\(([^)]+)\)$/); out.push({ a: true, s: mm[1], href: mm[2] }); }
+    else out.push({ i: true, s: tok.slice(1, -1) });
+    last = m.index + tok.length;
+  }
+  if (last < src.length) out.push({ plain: true, s: src.slice(last) });
+  return out;
+}
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.today = ymdOf(new Date());
+    const seed = makeSeed(this.today);
+    this.state = {
+      theme: props.theme === 'light' ? 'light' : 'dark',
+      qa: ['A', 'B', 'C'].includes(props.qa) ? props.qa : 'A',
+      dp: ['A', 'B'].includes(props.dp) ? props.dp : 'A',
+      dragMode: 'gap',
+      settle: 'pause',
+      lists: seed.lists,
+      tasks: seed.tasks,
+      route: this.routeFromProp(props.start, seed.lists),
+      sel: [], anchor: null,
+      focus: 'list',
+      detail: 'closed',        // closed | opening | open | closing
+      sbVisible: true,
+      edit: null,              // {kind: task|list|dtitle|notes, id, text, orig, isNew, selectAll, caret, opened}
+      picker: null, menu: null, drag: null, sbDrag: null, notice: null, tip: null,
+      completedOpen: {}, archiveOpen: false,
+      pins: {}, pops: {},
+      cmdHints: false, keysOpen: false,
+      noAnim: true,
+    };
+    this.undoStack = []; this.redoStack = [];
+    this.rootRef = { current: null }; this.winRef = { current: null };
+    this.listScrollRef = { current: null }; this.sbScrollRef = { current: null }; this.liftRef = { current: null };
+    this.prev = null; this.leaving = new Map(); this.entering = new Map();
+    this.typeBuf = ''; this.typeAt = 0;
+  }
+
+  routeFromProp(start, lists) {
+    if (typeof start === 'string' && start.startsWith('list:')) {
+      const name = start.slice(5).toLowerCase();
+      const l = lists.find((x) => x.name.toLowerCase() === name || x.id === name);
+      if (l) return { kind: 'list', id: l.id };
+    }
+    return { kind: 'today' };
+  }
+
+  componentDidMount() {
+    this.focusRoot();
+    setTimeout(() => this.setState({ noAnim: false }), 60);
+    if (this.props.demo === 'picker') setTimeout(() => this.demoPicker(), 250);
+    if (this.props.demo === 'add') setTimeout(() => this.demoAdd(), 250);
+  }
+  componentWillUnmount() { for (const k of ['settleTimer', 'noticeTimer', 'tipTimer', 'cmdTimer', 'cleanTimer', 'detailTimer', 'animTimer', 'scrollTimer']) clearTimeout(this[k]); }
+  componentDidUpdate() {
+    if (this.scrollToId) { const id = this.scrollToId; this.scrollToId = null; this.ensureVisible(id); }
+  }
+
+  // ---------- Small utilities ----------
+  focusRoot() { requestAnimationFrame(() => { const el = this.rootRef.current; if (el && !isTextTarget(document.activeElement)) el.focus({ preventScroll: true }); }); }
+  instant(patch) {
+    this.setState({ ...patch, noAnim: true });
+    clearTimeout(this.animTimer);
+    this.animTimer = setTimeout(() => this.setState({ noAnim: false }), 40);
+  }
+  winXY(e) { const r = this.winRef.current.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  rectIn(el) { const r = el.getBoundingClientRect(), w = this.winRef.current.getBoundingClientRect(); return { left: r.left - w.left, top: r.top - w.top, right: r.right - w.left, bottom: r.bottom - w.top, width: r.width, height: r.height }; }
+  winSize() { return { w: Number(this.props.w) || 1180, h: Number(this.props.h) || 720 }; }
+  list(id) { return this.state.lists.find((l) => l.id === id); }
+  task(id) { return this.state.tasks.find((t) => t.id === id); }
+  activeLists() { return this.state.lists.filter((l) => !l.archivedAt).sort(byOrder); }
+  archivedLists() { return this.state.lists.filter((l) => l.archivedAt && !l.draft).sort((a, b) => b.archivedAt - a.archivedAt); }
+  isActive(listId) { const l = this.list(listId); return !!l && !l.archivedAt; }
+  inTodayDates(t) { const T = this.today; return (t.when && t.when <= T) || (t.deadline && t.deadline <= T); }
+  placedOpen(t) { const pin = this.state.pins[t.id]; return t.completedAt == null ? pin !== 'done' : pin === 'open'; }
+  doneToday(t) { return (t.completedAt != null && localDayOfMs(t.completedAt) === this.today) || (t.completedAt == null && this.state.pins[t.id] === 'done' && t.doneAt && localDayOfMs(t.doneAt) === this.today); }
+  routeKey(r) { return r.kind === 'list' ? 'list:' + r.id : 'today'; }
+  defaultListId() { const a = this.activeLists().filter((l) => !l.draft); return a.length ? a[0].id : null; }
+
+  snapshot() { return { lists: this.state.lists, tasks: this.state.tasks }; }
+  commit(label, patch, reveal) {
+    this.undoStack.push({ label, before: this.snapshot(), reveal: reveal || null, route: this.state.route, sel: this.state.sel });
+    if (this.undoStack.length > 200) this.undoStack.shift();
+    this.redoStack = [];
+    this.setState(patch);
+  }
+  undo() {
+    const e = this.undoStack.pop();
+    if (!e) return;
+    this.redoStack.push({ label: e.label, before: this.snapshot(), reveal: e.reveal, route: this.state.route, sel: this.state.sel });
+    this.restore(e, 'Undo');
+  }
+  redo() {
+    const e = this.redoStack.pop();
+    if (!e) return;
+    this.undoStack.push({ label: e.label, before: this.snapshot(), reveal: e.reveal, route: this.state.route, sel: this.state.sel });
+    this.restore(e, 'Redo');
+  }
+  restore(e, verb) {
+    const patch = { lists: e.before.lists, tasks: e.before.tasks, pins: {}, edit: null, picker: null, menu: null, notice: null };
+    const route = e.route && (e.route.kind === 'today' || e.before.lists.some((l) => l.id === e.route.id)) ? e.route : { kind: 'today' };
+    const sameRoute = this.routeKey(route) === this.routeKey(this.state.route);
+    patch.sel = (e.sel || []).filter((id) => e.before.tasks.some((t) => t.id === id && !t.deleted));
+    if (sameRoute) this.setState(patch); else this.instant({ ...patch, route });
+    if (patch.sel.length) this.scrollToId = patch.sel[0];
+    this.showNotice(verb + ' ' + e.label, false);
+  }
+
+  // ---------- Layout: where every row of the open view sits ----------
+  layout() {
+    const s = this.state, T = this.today;
+    const L = { key: this.routeKey(s.route), ys: new Map(), order: [], groupOf: new Map(), groups: [], labels: new Map(), crowY: null, ghostY: null, done: 0, height: 0, empty: null, top: 4 };
+    const live = s.tasks.filter((t) => !t.deleted);
+    if (s.route.kind === 'list') {
+      const l = this.list(s.route.id);
+      if (l && l.archivedAt) L.top = 64;
+      const mine = live.filter((t) => t.list === s.route.id);
+      const open = mine.filter((t) => this.placedOpen(t)).sort(byOrder);
+      const done = mine.filter((t) => !this.placedOpen(t)).sort((a, b) => (b.completedAt || b.doneAt || 0) - (a.completedAt || a.doneAt || 0));
+      let y = L.top;
+      L.groups.push({ listId: s.route.id, top: y, ids: open.map((t) => t.id) });
+      for (const t of open) { L.ys.set(t.id, y); L.order.push(t.id); L.groupOf.set(t.id, s.route.id); y += PITCH; }
+      L.ghostY = y; y += PITCH;
+      L.done = done.length;
+      if (done.length) {
+        L.crowY = y + 8; y = L.crowY + PITCH;
+        if (s.completedOpen[s.route.id]) for (const t of done) { L.ys.set(t.id, y); L.order.push(t.id); L.groupOf.set(t.id, 'done'); y += PITCH; }
+      }
+      if (!open.length && !done.length) L.empty = 'list';
+      L.height = y + 24;
+    } else {
+      const lists = this.activeLists();
+      let y = L.top;
+      for (const l of lists) {
+        const open = live.filter((t) => t.list === l.id && this.placedOpen(t) && (t.draft || this.inTodayDates(t))).sort(byOrder);
+        if (!open.length) continue;
+        L.labels.set(l.id, y); y += PITCH;
+        L.groups.push({ listId: l.id, top: y, ids: open.map((t) => t.id) });
+        for (const t of open) { L.ys.set(t.id, y); L.order.push(t.id); L.groupOf.set(t.id, l.id); y += PITCH; }
+      }
+      const anyOpen = L.order.length > 0;
+      const done = live.filter((t) => this.isActive(t.list) && !this.placedOpen(t) && this.doneToday(t) && this.inTodayDates(t))
+        .sort((a, b) => (a.completedAt || a.doneAt) - (b.completedAt || b.doneAt));
+      if (!anyOpen) { L.empty = done.length ? 'allDone' : 'today'; y = done.length ? 132 : y; }
+      if (done.length) {
+        L.labels.set('done', y + (anyOpen ? 8 : 0)); y += PITCH + (anyOpen ? 8 : 0);
+        for (const t of done) { L.ys.set(t.id, y); L.order.push(t.id); L.groupOf.set(t.id, 'done'); y += PITCH; }
+      }
+      L.done = done.length;
+      L.height = y + 24;
+    }
+    this.applyDragToLayout(L);
+    return L;
+  }
+
+  applyDragToLayout(L) {
+    const d = this.state.drag;
+    if (!d || d.phase === 'done') return;
+    const g = L.groups.find((x) => x.listId === d.group);
+    if (!g) return;
+    const others = g.ids.filter((id) => !d.ids.includes(id));
+    const k = d.ids.length;
+    const gap = this.state.dragMode === 'gap' && !d.over;
+    const target = d.over ? others.length : clamp(d.target, 0, others.length);
+    others.forEach((id, i) => L.ys.set(id, g.top + (i + (gap && i >= target ? k : 0)) * PITCH));
+    if (this.state.dragMode === 'line' && !d.over) {
+      // Rows stay put; the insertion line sits between the rows around the target.
+      g.ids.forEach((id, i) => L.ys.set(id, g.top + i * PITCH));
+      const before = target < others.length ? others[target] : null;
+      const idx = before ? g.ids.indexOf(before) : g.ids.length;
+      L.lineY = g.top + idx * PITCH - 1;
+    }
+    if (d.over && !gap) {
+      // The group closes up: the dragged rows are leaving it.
+      const shift = k * PITCH;
+      const end = g.top + g.ids.length * PITCH;
+      for (const [id, y] of L.ys) if (y >= end && L.groupOf.get(id) !== d.group) L.ys.set(id, y - shift);
+      for (const [lid, y] of L.labels) if (y >= end) L.labels.set(lid, y - shift);
+      if (L.ghostY != null) L.ghostY -= shift;
+      if (L.crowY != null) L.crowY -= shift;
+    }
+    d.ids.forEach((id, i) => { if (!L.ys.has(id)) return; if (gap) L.ys.set(id, g.top + (target + i) * PITCH); });
+  }
+
+  sidebarLayout() {
+    const s = this.state;
+    const S = { ys: new Map(), height: 0, rows: [] };
+    let y = 0;
+    S.ys.set('today', y); S.rows.push({ key: 'today', y }); y += PITCH;
+    S.ys.set('lbl-lists', y); y += PITCH;
+    const act = this.activeLists();
+    S.listTop = y;
+    const d = s.sbDrag && s.sbDrag.phase === 'drag' ? s.sbDrag : null;
+    const others = d ? act.filter((l) => l.id !== d.id) : act;
+    const target = d ? clamp(d.target, 0, others.length) : -1;
+    others.forEach((l, i) => { const yy = y + (i + (d && i >= target ? 1 : 0)) * PITCH; S.ys.set(l.id, yy); S.rows.push({ key: l.id, y: yy }); });
+    if (d) S.ys.set(d.id, y + target * PITCH);
+    y += act.length * PITCH;
+    S.listEnd = y;
+    const arch = this.archivedLists();
+    if (arch.length) {
+      y += 8;
+      S.ys.set('lbl-arch', y); y += PITCH;
+      if (s.archiveOpen) for (const l of arch) { S.ys.set(l.id, y); S.rows.push({ key: l.id, y }); y += PITCH; }
+    }
+    S.height = y + 16;
+    return S;
+  }
+
+  // ---------- Selection ----------
+  select(ids, anchor) { this.setState({ sel: ids, anchor: anchor === undefined ? ids[ids.length - 1] || null : anchor }); }
+  visualOrder() { return this.lastLayout ? this.lastLayout.order : []; }
+  moveSel(delta, extend) {
+    const order = this.visualOrder();
+    if (!order.length) return;
+    const s = this.state;
+    const cur = s.sel.length ? (extend ? s.cursor || s.sel[s.sel.length - 1] : (delta > 0 ? s.sel.reduce((a, id) => (order.indexOf(id) > order.indexOf(a) ? id : a), s.sel[0]) : s.sel.reduce((a, id) => (order.indexOf(id) < order.indexOf(a) ? id : a), s.sel[0]))) : null;
+    let i = cur ? order.indexOf(cur) : (delta > 0 ? -1 : order.length);
+    i = delta === Infinity ? order.length - 1 : delta === -Infinity ? 0 : clamp(i + delta, 0, order.length - 1);
+    const id = order[i];
+    if (extend && s.anchor && order.includes(s.anchor)) {
+      const a = order.indexOf(s.anchor);
+      const range = order.slice(Math.min(a, i), Math.max(a, i) + 1);
+      this.setState({ sel: range, cursor: id });
+    } else this.setState({ sel: [id], anchor: id, cursor: id });
+    this.scrollToId = id;
+  }
+  ensureVisible(id) {
+    const sc = this.listScrollRef.current, L = this.lastLayout;
+    if (!sc || !L || !L.ys.has(id)) return;
+    const y = L.ys.get(id), top = sc.scrollTop, h = sc.clientHeight;
+    if (y < top + 4) sc.scrollTop = Math.max(0, y - 8);
+    else if (y + 30 > top + h - 4) sc.scrollTop = y + 30 - h + 12;
+  }
+
+  // ---------- Navigation ----------
+  go(route, opts) {
+    this.endEdit();
+    const pins = this.state.settle === 'leave' || true ? {} : this.state.pins;
+    clearTimeout(this.settleTimer);
+    const patch = { route, sel: (opts && opts.sel) || [], anchor: (opts && opts.sel && opts.sel[0]) || null, pins, picker: null, menu: null, focus: (opts && opts.focus) || this.state.focus };
+    if (this.routeKey(route) === this.routeKey(this.state.route)) { this.setState(patch); return; }
+    this.instant(patch);
+    if (this.listScrollRef.current) this.listScrollRef.current.scrollTop = 0;
+    if (opts && opts.sel && opts.sel[0]) this.scrollToId = opts.sel[0];
+  }
+  sidebarKeys() { return ['today'].concat(this.activeLists().filter((l) => !l.draft).map((l) => l.id)).concat(this.state.archiveOpen ? this.archivedLists().map((l) => l.id) : []); }
+  goKey(key) { if (key === 'today') this.go({ kind: 'today' }); else this.go({ kind: 'list', id: key }); }
+  currentSidebarKey() { return this.state.route.kind === 'today' ? 'today' : this.state.route.id; }
+
+  // ---------- Detail pane ----------
+  openDetail(focusTitle) {
+    if (this.state.detail === 'open' || this.state.detail === 'opening') { if (focusTitle) this.setState({ focus: 'detail' }); return; }
+    clearTimeout(this.detailTimer);
+    this.setState({ detail: 'opening' });
+    requestAnimationFrame(() => requestAnimationFrame(() => this.setState({ detail: 'open' })));
+  }
+  closeDetail() {
+    if (this.state.detail === 'closed' || this.state.detail === 'closing') return;
+    this.endEdit();
+    this.setState({ detail: 'closing', focus: this.state.focus === 'detail' ? 'list' : this.state.focus });
+    clearTimeout(this.detailTimer);
+    this.detailTimer = setTimeout(() => this.setState({ detail: 'closed' }), 460);
+    this.focusRoot();
+  }
+  toggleDetail() { if (this.state.detail === 'open' || this.state.detail === 'opening') this.closeDetail(); else this.openDetail(); }
+
+  // ---------- Editing ----------
+  startRename(id, opts) {
+    const t = this.task(id);
+    if (!t || t.deleted) return;
+    this.endEdit();
+    this.setState({ edit: { kind: 'task', id, text: t.title, orig: t.title, isNew: false, selectAll: !!(opts && opts.selectAll), caret: opts && opts.caret }, sel: [id], anchor: id, focus: 'list' });
+  }
+  startListRename(id) {
+    const l = this.list(id);
+    if (!l) return;
+    this.endEdit();
+    this.setState({ edit: { kind: 'list', id, text: l.name, orig: l.name, isNew: false, selectAll: true }, focus: 'sidebar' });
+  }
+  endEdit() { if (this.state.edit) this.commitEdit(); }
+  commitEdit() {
+    const e = this.state.edit;
+    if (!e) return;
+    const text = e.text.trim();
+    if (e.kind === 'task') {
+      const t = this.task(e.id);
+      if (!t) { this.setState({ edit: null }); return; }
+      if (e.isNew) {
+        if (!text) { this.dropDraft(e.id); return; }
+        let title = text, when = t.when, deadline = t.deadline;
+        if (this.state.qa === 'B') { const x = extractDateWords(text, this.today); if (x.title) { title = x.title; when = x.when || when; deadline = x.deadline || deadline; } }
+        const tasks = this.state.tasks.map((x) => (x.id === e.id ? { ...x, title, when, deadline, draft: false } : x));
+        this.commit('New Task', { tasks, edit: null, sel: [e.id], anchor: e.id }, { ids: [e.id] });
+        this.afterAdd(e.id);
+      } else {
+        if (e.text !== t.title) this.commit('Rename Task', { tasks: this.state.tasks.map((x) => (x.id === e.id ? { ...x, title: e.text } : x)), edit: null });
+        else this.setState({ edit: null });
+      }
+    } else if (e.kind === 'dtitle') {
+      const t = this.task(e.id);
+      if (t && t.draft) {
+        if (!text) { this.dropDraft(e.id); this.closeDetail(); return; }
+        this.commit('New Task', { tasks: this.state.tasks.map((x) => (x.id === e.id ? { ...x, title: text, draft: false } : x)), edit: null }, { ids: [e.id] });
+        this.afterAdd(e.id);
+      } else if (t && e.text !== t.title) this.commit('Rename Task', { tasks: this.state.tasks.map((x) => (x.id === e.id ? { ...x, title: e.text } : x)), edit: null });
+      else this.setState({ edit: null });
+    } else if (e.kind === 'notes') {
+      const t = this.task(e.id);
+      if (t && t.draft) { this.setState({ tasks: this.state.tasks.map((x) => (x.id === e.id ? { ...x, notes: e.text } : x)), edit: null }); return; }
+      if (t && e.text !== t.notes) this.commit('Edit Notes', { tasks: this.state.tasks.map((x) => (x.id === e.id ? { ...x, notes: e.text } : x)), edit: null });
+      else this.setState({ edit: null });
+    } else if (e.kind === 'list') {
+      const l = this.list(e.id);
+      if (!l) { this.setState({ edit: null }); return; }
+      if (e.isNew) {
+        if (!text) { this.setState({ lists: this.state.lists.filter((x) => x.id !== e.id), edit: null }); return; }
+        const lists = this.state.lists.map((x) => (x.id === e.id ? { ...x, name: text, draft: false } : x));
+        this.undoStack.push({ label: 'New List', before: { lists: this.state.lists.filter((x) => x.id !== e.id), tasks: this.state.tasks }, route: this.state.route, sel: this.state.sel });
+        this.redoStack = [];
+        this.instant({ lists, edit: null, route: { kind: 'list', id: e.id }, sel: [], focus: 'list' });
+      } else if (text && text !== l.name) this.commit('Rename List', { lists: this.state.lists.map((x) => (x.id === e.id ? { ...x, name: text } : x)), edit: null });
+      else this.setState({ edit: null });
+    }
+  }
+  cancelEdit() {
+    const e = this.state.edit;
+    if (!e) return;
+    if ((e.kind === 'task' || e.kind === 'dtitle') && e.isNew) { this.dropDraft(e.id); if (e.kind === 'dtitle') this.closeDetail(); }
+    else if (e.kind === 'list' && e.isNew) this.setState({ lists: this.state.lists.filter((x) => x.id !== e.id), edit: null });
+    else this.setState({ edit: null });
+    this.focusRoot();
+  }
+  dropDraft(id) {
+    const prevSel = (this.draftPrevSel || []).filter((x) => x !== id);
+    this.setState({ tasks: this.state.tasks.filter((t) => t.id !== id), edit: null, sel: prevSel, anchor: prevSel[0] || null });
+    this.focusRoot();
+  }
+  afterAdd(id) { this.focusRoot(); }
+
+  // ---------- Adding ----------
+  newTask(opts) {
+    opts = opts || {};
+    if (this.state.edit && this.state.edit.isNew && !this.state.edit.text.trim() && !opts.chain) { this.focusEditor(); return; }
+    this.endEdit();
+    const s = this.state;
+    let listId = opts.listId;
+    if (!listId) {
+      if (s.route.kind === 'list') listId = s.route.id;
+      else {
+        const selTask = s.sel.length ? this.task(s.sel[0]) : null;
+        listId = selTask && this.isActive(selTask.list) && !selTask.deleted ? selTask.list : this.defaultListId();
+      }
+    }
+    if (!listId) { this.showNotice('Create a list first: ⇧⌘N', false); return; }
+    const max = s.tasks.filter((t) => t.list === listId).reduce((m, t) => Math.max(m, t.order), 0);
+    const id = uid('n');
+    const inToday = s.route.kind === 'today';
+    const task = { id, list: listId, order: max + 1, title: '', notes: '', when: inToday ? this.today : null, deadline: null, completedAt: null, doneAt: null, deleted: false, createdAt: Date.now(), draft: true };
+    this.draftPrevSel = s.sel;
+    if (s.qa === 'C') {
+      this.setState({ tasks: s.tasks.concat(task), sel: [id], anchor: id, focus: 'detail', edit: { kind: 'dtitle', id, text: '', orig: '', isNew: true }, picker: null, menu: null });
+      this.openDetail(true);
+    } else {
+      this.setState({ tasks: s.tasks.concat(task), sel: [id], anchor: id, focus: 'list', edit: { kind: 'task', id, text: '', orig: '', isNew: true }, picker: null, menu: null });
+    }
+    this.scrollToId = id;
+  }
+  focusEditor() { const el = this.rootRef.current && this.rootRef.current.querySelector('.ri, .dtitle textarea'); if (el) el.focus(); }
+  newList() {
+    this.endEdit();
+    const id = uid('l');
+    const max = this.state.lists.reduce((m, l) => Math.max(m, l.order), 0);
+    const color = COLORS[this.state.lists.length % COLORS.length];
+    this.setState({ lists: this.state.lists.concat({ id, name: '', order: max + 1, color, archivedAt: null, draft: true }), edit: { kind: 'list', id, text: '', orig: '', isNew: true }, focus: 'sidebar', menu: null, picker: null });
+  }
+
+  // ---------- Task actions ----------
+  targetIds() { return this.state.sel.filter((id) => { const t = this.task(id); return t && !t.deleted && !t.draft; }); }
+  toggleComplete(ids) {
+    ids = ids.filter((id) => this.task(id));
+    if (!ids.length) return;
+    const anyOpen = ids.some((id) => this.task(id).completedAt == null);
+    const now = Date.now();
+    const pins = { ...this.state.pins }, pops = { ...this.state.pops };
+    const tasks = this.state.tasks.map((t) => {
+      if (!ids.includes(t.id)) return t;
+      if (anyOpen) { if (t.completedAt != null) return t; pins[t.id] = 'open'; pops[t.id] = now; return { ...t, completedAt: now, doneAt: now }; }
+      pins[t.id] = 'done'; pops[t.id] = now; return { ...t, completedAt: null };
+    });
+    this.commit(anyOpen ? (ids.length > 1 ? 'Complete ' + ids.length + ' Tasks' : 'Complete') : 'Mark Not Done', { tasks, pins, pops });
+    clearTimeout(this.popTimer);
+    this.popTimer = setTimeout(() => this.setState({ pops: {} }), 320);
+    if (this.state.settle === 'pause') this.armSettle();
+  }
+  armSettle() { clearTimeout(this.settleTimer); this.settleTimer = setTimeout(() => this.setState({ pins: {} }), SETTLE_MS); }
+  nextSelAfterRemoving(ids) {
+    const order = this.visualOrder().filter((id) => { const t = this.task(id); return t && this.placedOpen(t); });
+    const idx = order.findIndex((id) => ids.includes(id));
+    const rest = order.filter((id) => !ids.includes(id));
+    if (!rest.length) return [];
+    let lastIdx = -1; order.forEach((id, i) => { if (ids.includes(id)) lastIdx = i; });
+    const after = order.slice(lastIdx + 1).find((id) => !ids.includes(id));
+    const before = order.slice(0, Math.max(idx, 0)).reverse().find((id) => !ids.includes(id));
+    return [after || before].filter(Boolean);
+  }
+  deleteTasks(ids) {
+    ids = ids.filter((id) => this.task(id));
+    if (!ids.length) return;
+    const next = this.nextSelAfterRemoving(ids);
+    const tasks = this.state.tasks.map((t) => (ids.includes(t.id) ? { ...t, deleted: true } : t));
+    this.commit(ids.length > 1 ? 'Delete ' + ids.length + ' Tasks' : 'Delete', { tasks, sel: next, anchor: next[0] || null, menu: null, picker: null });
+    this.showNotice(ids.length > 1 ? 'Deleted ' + ids.length + ' tasks' : 'Deleted ' + quote(this.task(ids[0]).title), true);
+    if (this.state.detail !== 'closed' && !next.length) this.closeDetail();
+  }
+  moveTasks(ids, listId) {
+    ids = ids.filter((id) => { const t = this.task(id); return t && t.list !== listId; });
+    if (!ids.length) return;
+    const l = this.list(listId);
+    let max = this.state.tasks.filter((t) => t.list === listId).reduce((m, t) => Math.max(m, t.order), 0);
+    const leaves = this.state.route.kind === 'list';
+    const next = leaves ? this.nextSelAfterRemoving(ids) : this.state.sel;
+    const tasks = this.state.tasks.map((t) => (ids.includes(t.id) ? { ...t, list: listId, order: ++max } : t));
+    this.commit(ids.length > 1 ? 'Move ' + ids.length + ' Tasks' : 'Move', { tasks, sel: next, anchor: next[0] || null, menu: null, picker: null });
+    if (leaves) this.showNotice((ids.length > 1 ? 'Moved ' + ids.length + ' tasks to ' : 'Moved to ') + l.name, true);
+  }
+  setDate(ids, field, ymd) {
+    ids = ids.filter((id) => this.task(id));
+    if (!ids.length) return;
+    const tasks = this.state.tasks.map((t) => (ids.includes(t.id) ? { ...t, [field]: ymd } : t));
+    const leavesToday = this.state.route.kind === 'today' && ids.some((id) => { const t = tasks.find((x) => x.id === id); return !(t.when && t.when <= this.today) && !(t.deadline && t.deadline <= this.today); });
+    const label = field === 'when' ? (ymd ? 'Set When' : 'Remove When') : (ymd ? 'Set Deadline' : 'Remove Deadline');
+    const patch = { tasks, picker: null, menu: null };
+    if (leavesToday) { const next = this.nextSelAfterRemoving(ids); patch.sel = next; patch.anchor = next[0] || null; }
+    this.commit(label, patch);
+    if (leavesToday) this.showNotice(ymd ? (field === 'when' ? 'Scheduled for ' : 'Due ') + longDate(ymd, this.today) : 'Removed from Today', true);
+    this.focusRoot();
+  }
+  reorder(groupId, ids, target) {
+    const s = this.state;
+    const inToday = s.route.kind === 'today';
+    const listId = groupId;
+    const full = s.tasks.filter((t) => t.list === listId && !t.deleted && t.completedAt == null && !ids.includes(t.id)).sort(byOrder);
+    let prev = null, next = null;
+    if (inToday) {
+      const g = this.lastLayout.groups.find((x) => x.listId === groupId);
+      const others = g.ids.filter((id) => !ids.includes(id));
+      if (target > 0) { prev = this.task(others[target - 1]); const i = full.findIndex((t) => t.id === prev.id); next = full[i + 1] || null; }
+      else if (others.length) { next = this.task(others[0]); const i = full.findIndex((t) => t.id === next.id); prev = full[i - 1] || null; }
+    } else {
+      prev = full[target - 1] || null; next = full[target] || null;
+    }
+    const lo = prev ? prev.order : (next ? next.order - ids.length - 1 : 0);
+    const hi = next ? next.order : lo + ids.length + 1;
+    const step = (hi - lo) / (ids.length + 1);
+    const tasks = s.tasks.map((t) => { const i = ids.indexOf(t.id); return i < 0 ? t : { ...t, order: lo + step * (i + 1) }; });
+    this.commit(ids.length > 1 ? 'Move ' + ids.length + ' Tasks' : 'Move', { tasks });
+  }
+  moveSelBy(delta) {
+    const L = this.lastLayout, ids = this.targetIds().filter((id) => L.groupOf.get(id) && L.groupOf.get(id) !== 'done');
+    if (!ids.length) return;
+    const gid = L.groupOf.get(ids[0]);
+    const g = L.groups.find((x) => x.listId === gid);
+    const mine = g.ids.filter((id) => ids.includes(id));
+    const others = g.ids.filter((id) => !mine.includes(id));
+    const first = g.ids.indexOf(mine[0]);
+    const before = g.ids.slice(0, first).filter((id) => !mine.includes(id)).length;
+    const target = clamp(before + delta, 0, others.length);
+    if (target === before) return;
+    this.reorder(gid, mine, target);
+    this.scrollToId = mine[0];
+  }
+
+  // ---------- Lists ----------
+  archiveList(id) {
+    const l = this.list(id);
+    if (!l || l.archivedAt) return;
+    const lists = this.state.lists.map((x) => (x.id === id ? { ...x, archivedAt: Date.now() } : x));
+    const patch = { lists, menu: null };
+    this.commit('Archive List', patch);
+    if (this.state.route.kind === 'list' && this.state.route.id === id) {
+      const act = this.activeLists();
+      this.go(act.length ? { kind: 'list', id: act[0].id } : { kind: 'today' });
+    }
+    this.showNotice('Archived ' + l.name, true);
+  }
+  unarchiveList(id) {
+    const l = this.list(id);
+    if (!l || !l.archivedAt) return;
+    this.commit('Unarchive List', { lists: this.state.lists.map((x) => (x.id === id ? { ...x, archivedAt: null } : x)), menu: null });
+  }
+  moveList(id, target) {
+    const act = this.activeLists().filter((l) => l.id !== id);
+    const prev = act[target - 1] || null, next = act[target] || null;
+    const order = prev && next ? (prev.order + next.order) / 2 : prev ? prev.order + 1 : next ? next.order - 1 : 1;
+    this.commit('Move List', { lists: this.state.lists.map((l) => (l.id === id ? { ...l, order } : l)) });
+  }
+  moveListBy(id, delta) {
+    const act = this.activeLists();
+    const i = act.findIndex((l) => l.id === id);
+    if (i < 0) return;
+    const t = clamp(i + delta, 0, act.length - 1);
+    if (t !== i) this.moveList(id, t);
+  }
+
+  // ---------- Notices ----------
+  showNotice(text, undoable) {
+    clearTimeout(this.noticeTimer);
+    this.setState({ notice: { id: uid('x'), text, undo: undoable, out: false } });
+    if (!this.noticeHover) this.noticeTimer = setTimeout(() => this.hideNotice(), undoable ? NOTICE_MS : 1800);
+  }
+  hideNotice() {
+    if (!this.state.notice) return;
+    this.setState({ notice: { ...this.state.notice, out: true } });
+    clearTimeout(this.noticeTimer);
+    this.noticeTimer = setTimeout(() => this.setState({ notice: null }), 170);
+  }
+
+  // ---------- Menus ----------
+  openMenu(x, y, items, kind) {
+    const { w, h } = this.winSize();
+    const height = items.reduce((a, it) => a + (it.sep ? 9 : it.head ? 23 : 24), 10);
+    const left = clamp(x, 6, w - 226), top = y + height > h - 6 ? Math.max(6, y - height) : y;
+    this.setState({ menu: { x: left, y: top, items, hot: -1, sub: null, kind: kind || 'ctx' }, tip: null });
+  }
+  taskMenu(ids, x, y) {
+    const tasks = ids.map((id) => this.task(id)).filter(Boolean);
+    const n = tasks.length, one = n === 1, t = tasks[0];
+    const anyOpen = tasks.some((x) => x.completedAt == null);
+    const lists = this.activeLists().filter((l) => !l.draft);
+    const moveItems = lists.map((l, i) => ({ label: l.name, keys: i < 9 ? '⌘' + (i + 1) : '', tile: true, color: l.color, mono: monogram(l.name), check: one && t.list === l.id, disabled: tasks.every((x) => x.list === l.id), action: () => this.moveTasks(ids, l.id) }));
+    const items = [];
+    if (one) items.push({ label: 'Show Details', keys: '⌘D', action: () => { this.select([t.id]); this.openDetail(); } });
+    if (one) items.push({ label: 'Rename', keys: '↩', action: () => this.startRename(t.id, { selectAll: true }) });
+    if (one && this.state.route.kind === 'today') items.push({ label: 'Show in ' + this.list(t.list).name, action: () => this.go({ kind: 'list', id: t.list }, { sel: [t.id] }) });
+    items.push({ sep: true });
+    items.push({ label: anyOpen ? (one ? 'Complete' : 'Complete ' + n + ' Tasks') : 'Mark as Not Done', keys: '⌘K', action: () => this.toggleComplete(ids) });
+    items.push({ label: 'When', sub: [
+      { label: 'Today', keys: '⌘T', action: () => this.setDate(ids, 'when', this.today) },
+      { label: 'Tomorrow', action: () => this.setDate(ids, 'when', addDays(this.today, 1)) },
+      { label: 'This Weekend', action: () => this.setDate(ids, 'when', weekendOf(this.today)) },
+      { label: 'Next Week', action: () => this.setDate(ids, 'when', nextWeekStart(this.today)) },
+      { sep: true },
+      { label: 'Choose Date…', keys: '⌘S', action: () => this.openPickerForRows('when', ids) },
+      { sep: true },
+      { label: 'Remove', disabled: tasks.every((x) => !x.when), action: () => this.setDate(ids, 'when', null) },
+    ] });
+    items.push({ label: 'Deadline', sub: [
+      { label: 'Choose Date…', keys: '⇧⌘D', action: () => this.openPickerForRows('deadline', ids) },
+      { sep: true },
+      { label: 'Remove', disabled: tasks.every((x) => !x.deadline), action: () => this.setDate(ids, 'deadline', null) },
+    ] });
+    items.push({ label: 'Move to', sub: [{ head: 'Move to' }].concat(moveItems) });
+    items.push({ sep: true });
+    items.push({ label: one ? 'Delete' : 'Delete ' + n + ' Tasks', keys: '⌘⌫', action: () => this.deleteTasks(ids) });
+    this.openMenu(x, y, items);
+  }
+  listMenu(id, x, y) {
+    const l = this.list(id);
+    if (!l) return;
+    const act = this.activeLists();
+    const i = act.findIndex((a) => a.id === id);
+    const items = l.archivedAt
+      ? [{ label: 'Unarchive', action: () => this.unarchiveList(id) }, { label: 'Rename', keys: '↩', action: () => this.startListRename(id) }]
+      : [
+        { label: 'New Task in ' + l.name, action: () => { this.go({ kind: 'list', id }); setTimeout(() => this.newTask({ listId: id }), 0); } },
+        { label: 'Rename', keys: '↩', action: () => this.startListRename(id) },
+        { sep: true },
+        { label: 'Move Up', keys: '⌥⌘↑', disabled: i <= 0, action: () => this.moveListBy(id, -1) },
+        { label: 'Move Down', keys: '⌥⌘↓', disabled: i >= act.length - 1, action: () => this.moveListBy(id, 1) },
+        { sep: true },
+        { label: 'Archive', keys: '⌘⌫', action: () => this.archiveList(id) },
+      ];
+    this.openMenu(x, y, items);
+  }
+  moveMenuAt(ids) {
+    const el = this.rowEl(ids[0]);
+    const r = el ? this.rectIn(el) : { left: 300, bottom: 120 };
+    const lists = this.activeLists().filter((l) => !l.draft);
+    const t = this.task(ids[0]);
+    const items = [{ head: 'Move ' + (ids.length > 1 ? ids.length + ' tasks' : quote(t.title)) + ' to' }].concat(lists.map((l, i) => ({ label: l.name, keys: i < 9 ? '⌘' + (i + 1) : '', tile: true, color: l.color, mono: monogram(l.name), check: ids.length === 1 && t.list === l.id, disabled: ids.every((id) => this.task(id).list === l.id), action: () => this.moveTasks(ids, l.id) })));
+    this.openMenu(r.left + 34, r.bottom + 2, items, 'move');
+    this.setState({ menu: { ...this.state.menu, hot: items.findIndex((it, k) => k > 0 && !it.disabled) } });
+  }
+  listPopupMenu(ids, anchor) {
+    const lists = this.activeLists().filter((l) => !l.draft);
+    const cur = ids.length === 1 ? this.task(ids[0]).list : null;
+    const items = lists.map((l, i) => ({ label: l.name, keys: i < 9 ? '⌘' + (i + 1) : '', tile: true, color: l.color, mono: monogram(l.name), check: l.id === cur, action: () => this.moveTasks(ids, l.id) }));
+    this.openMenu(anchor.left - 6, anchor.bottom + 4, items, 'move');
+  }
+  menuItems() { const m = this.state.menu; return m ? (m.sub ? m.sub.items : m.items) : []; }
+  menuActivate(item) {
+    if (!item || item.disabled || item.sep || item.head) return;
+    if (item.sub) return;
+    this.setState({ menu: null });
+    this.focusRoot();
+    item.action();
+  }
+  openSub(idx) {
+    const m = this.state.menu;
+    const item = m.items[idx];
+    if (!item || !item.sub) { if (m.sub) this.setState({ menu: { ...m, sub: null, hot: idx } }); return; }
+    if (m.sub && m.sub.parent === idx) return;
+    let y = m.y + 5;
+    for (let i = 0; i < idx; i++) y += m.items[i].sep ? 9 : m.items[i].head ? 23 : 24;
+    const { w } = this.winSize();
+    const x = m.x + 216 + 204 > w ? m.x - 204 : m.x + 216;
+    this.setState({ menu: { ...m, hot: idx, sub: { parent: idx, items: item.sub, hot: -1, x, y: y - 5 } } });
+  }
+
+  // ---------- Date picker ----------
+  openPicker(field, ids, anchor) {
+    if (!ids.length) return;
+    this.endEdit();
+    const t = this.task(ids[0]);
+    const cur = ids.every((id) => this.task(id)[field] === t[field]) ? t[field] : null;
+    const other = field === 'when' ? t.deadline : t.when;
+    const hot = cur || this.today;
+    const { w, h } = this.winSize();
+    const pw = 288, ph = this.state.dp === 'A' ? 344 : 236;
+    let x = clamp(anchor.left, 8, w - pw - 8), y = anchor.bottom + 6;
+    if (y + ph > h - 8) y = Math.max(8, anchor.top - ph - 6);
+    this.setState({ picker: { field, ids, text: '', hot, cur, other, month: hot.slice(0, 7), sugHot: 0, showCal: false, x, y }, menu: null, tip: null });
+  }
+  openPickerForRows(field, ids) {
+    const el = this.rowEl(ids[0]);
+    const chip = el && el.querySelector('[data-field="' + field + '"]');
+    const r = chip ? this.rectIn(chip) : el ? (() => { const rr = this.rectIn(el); return { left: rr.right - 300, right: rr.right, top: rr.top, bottom: rr.bottom }; })() : { left: 400, top: 100, bottom: 120 };
+    this.openPicker(field, ids, r);
+  }
+  pickerApply(ymd) {
+    const p = this.state.picker;
+    if (!p) return;
+    this.setDate(p.ids, p.field, ymd);
+  }
+  pickerSuggestions() {
+    const p = this.state.picker;
+    const sug = dateSuggestions(p.text, this.today, 5);
+    const items = sug.map((x) => ({ label: x.label, date: x.date }));
+    if (this.state.dp === 'B') {
+      items.push({ cal: true, label: p.showCal ? 'Hide Calendar' : 'Choose on Calendar…' });
+      if (p.cur) items.push({ clear: true, label: 'Clear' });
+    }
+    return items;
+  }
+  rowEl(id) { return this.rootRef.current && this.rootRef.current.querySelector('.row[data-id="' + id + '"]'); }
+  demoPicker() {
+    const id = this.lastLayout && this.lastLayout.order[1];
+    if (!id) return;
+    this.select([id]);
+    setTimeout(() => { this.openPickerForRows('when', [id]); const p = this.state.picker; if (p) this.setState({ picker: { ...p, demo: true, text: 'fri', hot: parseDate('fri', this.today), month: parseDate('fri', this.today).slice(0, 7), sugHot: 0 } }); }, 30);
+  }
+  demoAdd() {
+    this.newTask();
+    const e = this.state.edit;
+    if (!e) return;
+    const text = this.state.qa === 'B' ? 'Book a study room fri' : 'Book a study room';
+    const patch = { edit: { ...e, text, demo: true, focused: true } };
+    if (e.kind === 'dtitle') patch.tasks = this.state.tasks.map((t) => (t.id === e.id ? { ...t, title: text } : t));
+    this.setState(patch);
+  }
+
+  // ---------- Drag (tasks) ----------
+  beginDrag(c, e) {
+    const L = this.lastLayout, s = this.state;
+    const gid = L.groupOf.get(c.id);
+    if (!gid || gid === 'done') { this.dragCand = null; return; }
+    let ids = s.sel.includes(c.id) ? L.order.filter((id) => s.sel.includes(id) && L.groupOf.get(id) === gid) : [c.id];
+    if (!ids.includes(c.id)) ids = [c.id];
+    const g = L.groups.find((x) => x.listId === gid);
+    const others = g.ids.filter((id) => !ids.includes(id));
+    const firstIdx = g.ids.indexOf(ids[0]);
+    const target = g.ids.slice(0, firstIdx).filter((id) => !ids.includes(id)).length;
+    const r = this.rectIn(c.el);
+    const p = this.winXY(e);
+    this.endEdit();
+    this.pendingCollapse = null;
+    this.setState({ drag: { ids, grabbed: c.id, group: gid, offX: c.wx - r.left, offY: c.wy - r.top, w: r.width, left: r.left, x: p.x - (c.wx - r.left), y: p.y - (c.wy - r.top), target, over: null, phase: 'drag', count: ids.length, startTop: r.top }, menu: null, picker: null, tip: null });
+  }
+  updateDrag(e) {
+    const d = this.state.drag;
+    if (!d || d.phase !== 'drag') return;
+    const p = this.winXY(e);
+    const x = p.x - d.offX, y = p.y - d.offY;
+    let over = null;
+    if (this.state.sbVisible && p.x < SB_W - 4) {
+      const sc = this.sbScrollRef.current ? this.sbScrollRef.current.scrollTop : 0;
+      const sy = p.y - SB_TOP + sc;
+      const S = this.lastSidebar;
+      const hit = S.rows.find((r) => sy >= r.y && sy < r.y + 30);
+      if (hit) {
+        if (hit.key === 'today') over = this.state.route.kind === 'today' ? null : { kind: 'today', key: 'today' };
+        else { const l = this.list(hit.key); if (l && !l.archivedAt && !l.draft && l.id !== d.group) over = { kind: 'list', key: l.id }; }
+      }
+    }
+    let target = d.target, cy = y;
+    if (!over) {
+      // The row can't leave its group (a list's open tasks, or one Today group): it stops at the edges.
+      const sc = this.listScrollRef.current ? this.listScrollRef.current.scrollTop : 0;
+      const L = this.lastLayout;
+      const g = L.groups.find((gg) => gg.listId === d.group);
+      const others = g.ids.filter((id) => !d.ids.includes(id)).length;
+      const top = PANE_TOP + HEAD_H + g.top - sc;
+      cy = clamp(y, top - 6, top + others * PITCH + 6);
+      target = clamp(Math.round((cy - top) / PITCH), 0, others);
+    }
+    // Over a sidebar list the copy turns into a small tag at the pointer, so the target row stays readable.
+    const px = over ? p.x + 12 : x, py = over ? p.y + 8 : cy;
+    const el = this.liftRef.current;
+    if (el) el.style.transform = 'translate(' + px + 'px,' + py + 'px)';
+    d.x = px; d.y = py; d.rawX = x; d.rawY = y;
+    const overKey = over ? over.key : null, prevKey = d.over ? d.over.key : null;
+    if (overKey !== prevKey || target !== d.target) this.setState({ drag: { ...d, over, target } });
+    this.autoScroll(p);
+  }
+  autoScroll(p) {
+    const sc = this.listScrollRef.current;
+    clearTimeout(this.scrollTimer);
+    if (!sc || !this.state.drag || this.state.drag.phase !== 'drag') return;
+    const { h } = this.winSize();
+    const top = PANE_TOP + HEAD_H, bottom = h - PANE_TOP;
+    const dy = p.y < top + 24 ? -8 : p.y > bottom - 24 ? 8 : 0;
+    if (!dy) return;
+    sc.scrollTop += dy;
+    this.scrollTimer = setTimeout(() => this.autoScroll(p), 16);
+  }
+  endDrag(cancel) {
+    const d = this.state.drag;
+    clearTimeout(this.scrollTimer);
+    if (!d || d.phase !== 'drag') return;
+    const L = this.lastLayout;
+    if (cancel) {
+      this.setState({ drag: { ...d, phase: 'fly', target: d.target, over: null, flyTo: { x: d.left, y: d.startTop }, cancel: true } });
+      setTimeout(() => this.setState({ drag: null }), 200);
+      return;
+    }
+    if (d.over) {
+      const key = d.over.key;
+      const sc = this.sbScrollRef.current ? this.sbScrollRef.current.scrollTop : 0;
+      const ty = SB_TOP + (this.lastSidebar.ys.get(key) || 0) - sc;
+      this.setState({ drag: { ...d, phase: 'fly', flyTo: { x: 10, y: ty }, shrink: true } });
+      setTimeout(() => {
+        this.setState({ drag: null });
+        if (d.over.kind === 'today') this.setDate(d.ids, 'when', this.today);
+        else this.moveTasks(d.ids, key);
+      }, 170);
+      return;
+    }
+    const g = L.groups.find((x) => x.listId === d.group);
+    const sc = this.listScrollRef.current ? this.listScrollRef.current.scrollTop : 0;
+    const slotY = PANE_TOP + HEAD_H + g.top + d.target * PITCH - sc;
+    const others = g.ids.filter((id) => !d.ids.includes(id));
+    const origTarget = g.ids.slice(0, g.ids.indexOf(d.ids[0])).filter((id) => !d.ids.includes(id)).length;
+    const contiguous = d.ids.every((id, i) => g.ids.indexOf(id) === g.ids.indexOf(d.ids[0]) + i);
+    this.setState({ drag: { ...d, phase: 'fly', flyTo: { x: d.left, y: slotY } } });
+    setTimeout(() => {
+      if (!(contiguous && d.target === origTarget) || this.state.dragMode === 'line') {
+        if (!(contiguous && d.target === origTarget)) this.reorder(d.group, d.ids, clamp(d.target, 0, others.length));
+      }
+      this.setState({ drag: { ...d, phase: 'done' } });
+      setTimeout(() => this.setState({ drag: null }), 40);
+    }, 170);
+  }
+
+  // ---------- Drag (sidebar lists) ----------
+  beginSbDrag(c, e) {
+    const act = this.activeLists();
+    const i = act.findIndex((l) => l.id === c.key);
+    if (i < 0) { this.sbCand = null; return; }
+    const r = this.rectIn(c.el);
+    const p = this.winXY(e);
+    this.endEdit();
+    this.setState({ sbDrag: { id: c.key, offY: c.wy - r.top, y: p.y - (c.wy - r.top), target: i, phase: 'drag', startTop: r.top }, menu: null, tip: null });
+  }
+  updateSbDrag(e) {
+    const d = this.state.sbDrag;
+    if (!d || d.phase !== 'drag') return;
+    const p = this.winXY(e);
+    const S = this.lastSidebar;
+    const sc = this.sbScrollRef.current ? this.sbScrollRef.current.scrollTop : 0;
+    const act = this.activeLists();
+    const minY = SB_TOP + S.listTop - sc - 6, maxY = SB_TOP + S.listTop + (act.length - 1) * PITCH - sc + 6;
+    const y = clamp(p.y - d.offY, minY, maxY);
+    const target = clamp(Math.round((y + sc - SB_TOP - S.listTop) / PITCH), 0, act.length - 1);
+    const el = this.liftRef.current;
+    if (el) el.style.transform = 'translate(10px,' + y + 'px)';
+    d.y = y;
+    if (target !== d.target) this.setState({ sbDrag: { ...d, target } });
+  }
+  endSbDrag(cancel) {
+    const d = this.state.sbDrag;
+    if (!d || d.phase !== 'drag') return;
+    const S = this.lastSidebar, sc = this.sbScrollRef.current ? this.sbScrollRef.current.scrollTop : 0;
+    const act = this.activeLists();
+    const from = act.findIndex((l) => l.id === d.id);
+    const to = cancel ? from : d.target;
+    const ty = SB_TOP + S.listTop + to * PITCH - sc;
+    this.setState({ sbDrag: { ...d, target: to, phase: 'fly', flyTo: ty } });
+    setTimeout(() => {
+      if (!cancel && to !== from) this.moveList(d.id, to);
+      this.setState({ sbDrag: { ...d, phase: 'done' } });
+      setTimeout(() => this.setState({ sbDrag: null }), 40);
+    }, 170);
+  }
+
+  // ======================================================================
+  // Event handlers
+  // ======================================================================
+  // Clicks keep keyboard focus on the window, except in text fields. A field that this same press opened
+  // (rename, quick add, notes) keeps its focus.
+  onRootMouseDown = (e) => {
+    const t = e.target;
+    if (isTextTarget(t)) return;
+    if (t.closest && t.closest('a[href]')) return;
+    e.preventDefault();
+    const ae = document.activeElement;
+    if (isTextTarget(ae) && this.rootRef.current.contains(ae)) {
+      if ((this.textFocusAt || 0) >= (this.pressAt || 0)) return;
+      ae.blur();
+    }
+    this.rootRef.current.focus({ preventScroll: true });
+  };
+  onRootFocusCapture = (e) => { if (isTextTarget(e.target)) this.textFocusAt = performance.now(); };
+  onRootPointerDownCapture = (e) => {
+    this.pressAt = performance.now();
+    const t = e.target;
+    const s = this.state;
+    if (s.keysOpen && !(t.closest && (t.closest('.keys') || t.closest('[data-keys-toggle]')))) this.setState({ keysOpen: false });
+    if (s.menu && !(t.closest && t.closest('.menu'))) { this.setState({ menu: null }); this.swallow = true; e.stopPropagation(); return; }
+    if (s.picker && !(t.closest && t.closest('.picker'))) { this.setState({ picker: null }); this.swallow = true; e.stopPropagation(); this.focusRoot(); return; }
+    if (s.tip) this.setState({ tip: null });
+    clearTimeout(this.tipTimer);
+    // An edit whose field doesn't have focus (a demo row, or focus lost elsewhere) ends on the next press outside it.
+    if (s.edit && !isTextTarget(document.activeElement) && !(t.closest && t.closest('.row.editing, .srow.editing, .dtitle, .notes'))) this.endEdit();
+  };
+  onRootClickCapture = (e) => { if (this.swallow) { this.swallow = false; e.stopPropagation(); e.preventDefault(); } };
+  onRootContextMenu = (e) => { e.preventDefault(); };
+
+  onKeyUp = (e) => {
+    if (e.key === 'Meta' || e.key === 'Control') { clearTimeout(this.cmdTimer); if (this.state.cmdHints) this.setState({ cmdHints: false }); }
+  };
+
+  onKey = (e) => {
+    const s = this.state, k = e.key, meta = e.metaKey, ctrl = e.ctrlKey, alt = e.altKey, shift = e.shiftKey;
+    const code = e.code || '';
+    const inText = isTextTarget(e.target);
+    if (k === 'Meta') { clearTimeout(this.cmdTimer); if (!e.repeat) this.cmdTimer = setTimeout(() => this.setState({ cmdHints: true }), 450); return; }
+    if (s.cmdHints || this.cmdTimer) { clearTimeout(this.cmdTimer); this.cmdTimer = null; if (s.cmdHints) this.setState({ cmdHints: false }); }
+
+    if (s.drag && s.drag.phase === 'drag') { if (k === 'Escape') { e.preventDefault(); this.endDrag(true); } return; }
+    if (s.sbDrag && s.sbDrag.phase === 'drag') { if (k === 'Escape') { e.preventDefault(); this.endSbDrag(true); } return; }
+    if (s.menu) { this.menuKey(e); return; }
+    if (s.keysOpen && k === 'Escape') { e.preventDefault(); this.setState({ keysOpen: false }); return; }
+
+    const cmd = meta || ctrl;
+    const letter = code.startsWith('Key') ? code.slice(3).toLowerCase() : k.toLowerCase();
+    // Global: new task, new list (the browser keeps ⌘N, so ⌥N also works here)
+    if ((cmd && !shift && letter === 'n') || (alt && !shift && !cmd && letter === 'n')) { e.preventDefault(); this.newTask(); return; }
+    if ((cmd && shift && letter === 'n') || (alt && shift && !cmd && letter === 'n')) { e.preventDefault(); this.newList(); return; }
+    if (cmd && letter === 'z' && !inText) { e.preventDefault(); if (shift) this.redo(); else this.undo(); return; }
+    if (meta && ctrl && letter === 's') { e.preventDefault(); this.toggleSidebar(); return; }
+    if (inText) return;
+    if (cmd && /^Digit[1-9]$/.test(code)) {
+      e.preventDefault();
+      const keys = ['today'].concat(this.activeLists().filter((l) => !l.draft).map((l) => l.id)), n = +code.slice(5);
+      if (n - 1 < keys.length) this.goKey(keys[n - 1]);
+      return;
+    }
+    if (k === '?' ) { e.preventDefault(); this.setState({ keysOpen: !s.keysOpen }); return; }
+
+    if (s.focus === 'sidebar') { if (this.sidebarKey(e)) return; }
+    const ids = this.targetIds();
+    if (cmd && !shift && letter === 'd') { e.preventDefault(); this.toggleDetail(); return; }
+    if (cmd && !shift && letter === 'k') { e.preventDefault(); this.toggleComplete(ids); return; }
+    if ((cmd && !shift && letter === 't') || (alt && !cmd && letter === 't')) { e.preventDefault(); this.setDate(ids, 'when', this.today); return; }
+    if (cmd && !shift && letter === 's') { e.preventDefault(); if (ids.length) this.openPickerForRows('when', ids); return; }
+    if (cmd && shift && letter === 'd') { e.preventDefault(); if (ids.length) this.openPickerForRows('deadline', ids); return; }
+    if (cmd && shift && letter === 'm') { e.preventDefault(); if (ids.length) this.moveMenuAt(ids); return; }
+    if (cmd && k === 'Backspace') { e.preventDefault(); this.deleteTasks(ids); return; }
+    if (cmd && letter === 'a') { e.preventDefault(); this.setState({ sel: this.visualOrder().filter((id) => this.lastLayout.groupOf.get(id) !== 'done'), focus: 'list' }); return; }
+    if (alt && cmd && (k === 'ArrowUp' || k === 'ArrowDown')) { e.preventDefault(); this.moveSelBy(k === 'ArrowUp' ? -1 : 1); return; }
+
+    if (s.focus === 'detail') {
+      if (k === 'Escape') { e.preventDefault(); this.closeDetail(); this.setState({ focus: 'list' }); return; }
+      if (k === 'Tab') { e.preventDefault(); this.setState({ focus: shift ? 'list' : 'sidebar' }); return; }
+    }
+    switch (k) {
+      case 'ArrowDown': e.preventDefault(); this.setState({ focus: 'list' }); this.moveSel(cmd ? Infinity : 1, shift); return;
+      case 'ArrowUp': e.preventDefault(); this.setState({ focus: 'list' }); this.moveSel(cmd ? -Infinity : -1, shift); return;
+      case 'Home': e.preventDefault(); this.moveSel(-Infinity, shift); return;
+      case 'End': e.preventDefault(); this.moveSel(Infinity, shift); return;
+      case 'ArrowLeft': if (s.focus === 'list') { e.preventDefault(); this.setState({ focus: 'sidebar' }); } return;
+      case 'Enter': e.preventDefault(); if (ids.length === 1) this.startRename(ids[0], { selectAll: true }); else if (!ids.length) this.moveSel(1, false); return;
+      case ' ': e.preventDefault(); this.toggleComplete(ids); return;
+      case 'Escape':
+        e.preventDefault();
+        if (s.picker) { this.setState({ picker: null }); return; }
+        if (s.detail === 'open' || s.detail === 'opening') { this.closeDetail(); return; }
+        if (s.sel.length) this.setState({ sel: [] });
+        return;
+      case 'Tab': e.preventDefault(); this.setState({ focus: shift ? 'sidebar' : (s.detail === 'open' ? 'detail' : 'sidebar') }); return;
+      default:
+    }
+    if (!cmd && !alt && k.length === 1 && /[\p{L}\p{N}]/u.test(k)) { e.preventDefault(); this.typeSelect(k, 'list'); }
+  };
+
+  sidebarKey(e) {
+    const k = e.key, s = this.state, cmd = e.metaKey || e.ctrlKey;
+    const keys = this.sidebarKeys(), cur = this.currentSidebarKey();
+    const i = keys.indexOf(cur);
+    if (e.altKey && cmd && (k === 'ArrowUp' || k === 'ArrowDown')) { e.preventDefault(); if (cur !== 'today') this.moveListBy(cur, k === 'ArrowUp' ? -1 : 1); return true; }
+    if (cmd && k === 'Backspace') { e.preventDefault(); if (cur !== 'today') this.archiveList(cur); return true; }
+    switch (k) {
+      case 'ArrowDown': e.preventDefault(); if (i < keys.length - 1) this.goKey(keys[i + 1]); this.setState({ focus: 'sidebar' }); return true;
+      case 'ArrowUp': e.preventDefault(); if (i > 0) this.goKey(keys[i - 1]); this.setState({ focus: 'sidebar' }); return true;
+      case 'Enter': e.preventDefault(); if (cur !== 'today') this.startListRename(cur); return true;
+      case 'ArrowRight': case 'Escape': case 'Tab': e.preventDefault(); this.setState({ focus: 'list' }); return true;
+      default:
+    }
+    if (!cmd && !e.altKey && k.length === 1 && /[\p{L}\p{N}]/u.test(k)) { e.preventDefault(); this.typeSelect(k, 'sidebar'); return true; }
+    return false;
+  }
+
+  typeSelect(ch, where) {
+    const now = Date.now();
+    this.typeBuf = now - this.typeAt > 1000 ? ch.toLowerCase() : this.typeBuf + ch.toLowerCase();
+    this.typeAt = now;
+    if (where === 'sidebar') {
+      const l = this.activeLists().find((x) => x.name.toLowerCase().startsWith(this.typeBuf)) || (('today'.startsWith(this.typeBuf)) ? { id: 'today' } : null);
+      if (l) this.goKey(l.id);
+      return;
+    }
+    const order = this.visualOrder();
+    const id = order.find((x) => { const t = this.task(x); return t && t.title.toLowerCase().startsWith(this.typeBuf); });
+    if (id) { this.setState({ sel: [id], anchor: id, focus: 'list' }); this.scrollToId = id; }
+  }
+
+  menuKey(e) {
+    const m = this.state.menu, k = e.key;
+    const inSub = !!(m.sub && m.sub.hot >= 0);
+    const items = inSub ? m.sub.items : m.items;
+    const hot = inSub ? m.sub.hot : m.hot;
+    const step = (dir) => {
+      let i = hot;
+      for (let n = 0; n < items.length; n++) { i = (i + dir + items.length) % items.length; const it = items[i]; if (!it.sep && !it.head && !it.disabled) break; }
+      if (inSub) this.setState({ menu: { ...m, sub: { ...m.sub, hot: i } } }); else this.setState({ menu: { ...m, hot: i, sub: null } });
+    };
+    e.preventDefault();
+    if (e.metaKey && /^Digit[1-9]$/.test(e.code) && m.kind === 'move') { const n = +e.code.slice(5); const real = items.filter((it) => !it.head); if (real[n - 1]) this.menuActivate(real[n - 1]); return; }
+    switch (k) {
+      case 'ArrowDown': step(1); return;
+      case 'ArrowUp': step(-1); return;
+      case 'ArrowRight': if (!inSub && items[hot] && items[hot].sub) { this.openSub(hot); const mm = this.state.menu; const first = mm.sub.items.findIndex((it) => !it.sep && !it.head && !it.disabled); this.setState({ menu: { ...mm, sub: { ...mm.sub, hot: first } } }); } return;
+      case 'ArrowLeft': if (inSub) this.setState({ menu: { ...m, sub: { ...m.sub, hot: -1 } } }); return;
+      case 'Escape': if (inSub) this.setState({ menu: { ...m, sub: null } }); else { this.setState({ menu: null }); this.focusRoot(); } return;
+      case 'Enter': case ' ': { const it = items[hot]; if (it && it.sub) { this.openSub(hot); const mm = this.state.menu; const first = mm.sub.items.findIndex((x) => !x.sep && !x.head && !x.disabled); this.setState({ menu: { ...mm, sub: { ...mm.sub, hot: first } } }); } else this.menuActivate(it); return; }
+      default:
+    }
+    if (k.length === 1 && /[\p{L}\p{N}]/u.test(k)) {
+      const i = items.findIndex((it) => it.label && !it.disabled && it.label.toLowerCase().startsWith(k.toLowerCase()));
+      if (i >= 0) { if (inSub) this.setState({ menu: { ...m, sub: { ...m.sub, hot: i } } }); else this.setState({ menu: { ...m, hot: i } }); }
+    }
+  }
+
+  // Rows
+  onRowDown = (e) => {
+    if (e.button !== 0) return;
+    const id = e.currentTarget.dataset.id;
+    const s = this.state;
+    if (s.edit && s.edit.id === id && (s.edit.kind === 'task')) return;
+    const t = this.task(id);
+    if (!t) return;
+    const L = this.lastLayout;
+    let sel = s.sel, anchor = s.anchor;
+    this.pendingCollapse = null;
+    if (e.metaKey || e.ctrlKey) { sel = sel.includes(id) ? sel.filter((x) => x !== id) : sel.concat(id); anchor = id; }
+    else if (e.shiftKey && anchor && L.order.includes(anchor)) { const a = L.order.indexOf(anchor), b = L.order.indexOf(id); sel = L.order.slice(Math.min(a, b), Math.max(a, b) + 1); }
+    else if (sel.includes(id) && sel.length > 1) this.pendingCollapse = id;
+    else { sel = [id]; anchor = id; }
+    this.setState({ sel, anchor, cursor: id, focus: 'list' });
+    const p = this.winXY(e);
+    this.dragCand = { id, x: e.clientX, y: e.clientY, wx: p.x, wy: p.y, el: e.currentTarget, pointerId: e.pointerId };
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+  };
+  onRowMove = (e) => {
+    const c = this.dragCand;
+    if (this.state.drag) { this.updateDrag(e); return; }
+    if (!c || c.pointerId !== e.pointerId || !(e.buttons & 1)) return;
+    if (Math.hypot(e.clientX - c.x, e.clientY - c.y) < DRAG_SLOP) return;
+    this.beginDrag(c, e);
+  };
+  onRowUp = (e) => {
+    const c = this.dragCand;
+    this.dragCand = null;
+    if (this.state.drag) { this.endDrag(e.type === 'pointercancel'); return; }
+    if (c && this.pendingCollapse === c.id) this.setState({ sel: [c.id], anchor: c.id });
+    this.pendingCollapse = null;
+  };
+  onRowDbl = (e) => {
+    const id = e.currentTarget.dataset.id;
+    if (e.target.closest && e.target.closest('button')) return;
+    const t = this.task(id);
+    if (!t || t.completedAt != null) return;
+    let caret = null;
+    const span = e.currentTarget.querySelector('.tt');
+    if (span && document.caretRangeFromPoint) {
+      const r = document.caretRangeFromPoint(e.clientX, e.clientY);
+      if (r && span.contains(r.startContainer)) caret = r.startOffset;
+    }
+    this.startRename(id, caret == null ? { selectAll: false, caret: t.title.length } : { caret });
+  };
+  onRowCtx = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const id = e.currentTarget.dataset.id;
+    let sel = this.state.sel;
+    if (!sel.includes(id)) { sel = [id]; this.setState({ sel, anchor: id }); }
+    this.setState({ focus: 'list' });
+    const p = this.winXY(e);
+    this.taskMenu(sel, p.x, p.y);
+  };
+  onCheck = (e) => { e.stopPropagation(); this.toggleComplete([e.currentTarget.dataset.id]); };
+  stopPD = (e) => { e.stopPropagation(); };
+  onChip = (e) => {
+    e.stopPropagation();
+    const id = e.currentTarget.dataset.id, field = e.currentTarget.dataset.field;
+    const ids = this.state.sel.includes(id) ? this.targetIds() : [id];
+    if (!this.state.sel.includes(id)) this.setState({ sel: [id], anchor: id });
+    this.openPicker(field, ids, this.rectIn(e.currentTarget));
+  };
+  onOpen = (e) => { e.stopPropagation(); const id = e.currentTarget.dataset.id; this.setState({ sel: [id], anchor: id, focus: 'list' }); this.openDetail(); };
+  onListPaneDown = () => { if (this.state.focus !== 'list') this.setState({ focus: 'list' }); };
+  onScrollAreaDown = (e) => {
+    if (e.target !== e.currentTarget && !(e.target.classList && e.target.classList.contains('pcc'))) return;
+    if (this.state.edit) { this.endEdit(); return; }
+    if (this.state.sel.length) this.setState({ sel: [] });
+  };
+  onAddZoneDown = (e) => {
+    e.stopPropagation();
+    if (e.button !== 0) return;
+    if (this.state.edit) { this.endEdit(); return; }
+    this.newTask();
+  };
+  onToggleCompleted = () => { const id = this.state.route.id; this.setState({ completedOpen: { ...this.state.completedOpen, [id]: !this.state.completedOpen[id] } }); };
+  onGroupPlus = (e) => { e.stopPropagation(); this.newTask({ listId: e.currentTarget.dataset.list }); };
+
+  // Inline editing
+  onEditChange = (e) => { const ed = this.state.edit; if (ed) this.setState({ edit: { ...ed, text: e.target.value } }); };
+  onEditFocus = (e) => {
+    const ed = this.state.edit, el = e.target;
+    if (!ed || ed.focused) return;
+    if (ed.selectAll) el.select();
+    else { const c = ed.caret == null ? el.value.length : ed.caret; try { el.setSelectionRange(c, c); } catch (err) { /* ignore */ } }
+    this.setState({ edit: { ...ed, focused: true } });
+  };
+  onEditBlur = (e) => {
+    const ed = this.state.edit;
+    const id = e.currentTarget.dataset.id || e.currentTarget.dataset.key;
+    if (ed && ed.id === id && (ed.kind === 'task' || ed.kind === 'list')) this.commitEdit();
+  };
+  onEditKey = (e) => {
+    const ed = this.state.edit;
+    if (!ed) return;
+    const k = e.key;
+    if (k === 'Enter') {
+      e.preventDefault(); e.stopPropagation();
+      const chain = ed.kind === 'task' && ed.isNew && ed.text.trim();
+      const listId = ed.kind === 'task' ? this.task(ed.id).list : null;
+      this.commitEdit();
+      if (chain) this.newTask({ listId, chain: true });
+      else this.focusRoot();
+      return;
+    }
+    if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); this.cancelEdit(); return; }
+    if (k === 'Tab') { e.preventDefault(); e.stopPropagation(); this.commitEdit(); this.focusRoot(); return; }
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z')) e.stopPropagation();
+  };
+
+  // Detail pane
+  onDetailDown = () => { if (this.state.focus !== 'detail') this.setState({ focus: 'detail' }); };
+  onDTitleFocus = () => {
+    const id = this.detailTaskId();
+    const ed = this.state.edit;
+    if (ed && ed.kind === 'dtitle' && ed.id === id) return;
+    const t = this.task(id);
+    if (t) this.setState({ edit: { kind: 'dtitle', id, text: t.title, orig: t.title, isNew: !!t.draft }, focus: 'detail' });
+  };
+  onDTitleChange = (e) => {
+    const ed = this.state.edit;
+    const v = e.target.value.replace(/\n/g, ' ');
+    if (ed && ed.kind === 'dtitle') {
+      const patch = { edit: { ...ed, text: v } };
+      if (ed.isNew) patch.tasks = this.state.tasks.map((t) => (t.id === ed.id ? { ...t, title: v } : t));
+      this.setState(patch);
+    }
+  };
+  onDTitleKey = (e) => {
+    const ed = this.state.edit;
+    if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); const n = this.rootRef.current.querySelector('.notes textarea'); if (n) n.focus(); else this.startNotes(); return; }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (ed && ed.isNew && !ed.text.trim()) { this.cancelEdit(); return; } if (ed && !ed.isNew) { this.setState({ edit: null }); } else this.commitEdit(); e.target.blur(); this.setState({ focus: 'list' }); this.focusRoot(); return; }
+  };
+  onDTitleBlur = () => { const ed = this.state.edit; if (ed && ed.kind === 'dtitle') this.commitEdit(); };
+  startNotes = () => {
+    const id = this.detailTaskId();
+    const t = this.task(id);
+    if (!t) return;
+    if (this.state.edit && this.state.edit.kind !== 'notes') this.commitEdit();
+    this.setState({ edit: { kind: 'notes', id, text: t.notes, orig: t.notes, caret: t.notes.length }, focus: 'detail' });
+  };
+  onNotesDown = (e) => { if (e.target.closest && e.target.closest('a')) return; e.stopPropagation(); this.startNotes(); };
+  onNotesChange = (e) => { const ed = this.state.edit; if (ed && ed.kind === 'notes') this.setState({ edit: { ...ed, text: e.target.value } }); };
+  onNotesKey = (e) => {
+    if (e.key === 'Escape' || (e.key === 'Enter' && (e.metaKey || e.ctrlKey))) { e.preventDefault(); e.stopPropagation(); this.commitEdit(); this.focusRoot(); }
+    else if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z')) e.stopPropagation();
+  };
+  onNotesBlur = () => { const ed = this.state.edit; if (ed && ed.kind === 'notes') { const t = this.task(ed.id); if (t && t.draft) return; this.commitEdit(); } };
+  onNotesFocus = (e) => { const el = e.target, n = el.value.length; try { el.setSelectionRange(n, n); } catch (err) { /* ignore */ } };
+  onDCheck = () => { const id = this.detailTaskId(); if (id) this.toggleComplete([id]); };
+  onDChip = (e) => { const field = e.currentTarget.dataset.field; this.openPicker(field, this.detailIds(), this.rectIn(e.currentTarget)); };
+  onDClear = (e) => { e.stopPropagation(); this.setDate(this.detailIds(), e.currentTarget.dataset.field, null); };
+  onDList = (e) => { this.listPopupMenu(this.detailIds(), this.rectIn(e.currentTarget)); };
+  onDDelete = () => { this.deleteTasks(this.detailIds()); };
+  onDClose = () => { this.closeDetail(); };
+  onLinkClick = (e) => { e.preventDefault(); e.stopPropagation(); this.showNotice('Opens ' + e.currentTarget.getAttribute('href'), false); };
+  detailIds() { return this.state.sel.filter((id) => { const t = this.task(id); return t && !t.deleted; }); }
+  detailTaskId() { const ids = this.detailIds(); return ids.length === 1 ? ids[0] : null; }
+
+  // Sidebar
+  onSidebarDown = () => { if (this.state.focus !== 'sidebar') this.setState({ focus: 'sidebar' }); };
+  onSbRowDown = (e) => {
+    if (e.button !== 0) return;
+    const key = e.currentTarget.dataset.key;
+    const s = this.state;
+    if (s.edit && s.edit.kind === 'list' && s.edit.id === key) return;
+    if (key !== this.currentSidebarKey()) this.goKey(key);
+    this.setState({ focus: 'sidebar' });
+    const p = this.winXY(e);
+    this.sbCand = { key, x: e.clientX, y: e.clientY, wx: p.x, wy: p.y, el: e.currentTarget, pointerId: e.pointerId };
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+  };
+  onSbRowMove = (e) => {
+    const c = this.sbCand;
+    if (this.state.sbDrag) { this.updateSbDrag(e); return; }
+    if (!c || c.pointerId !== e.pointerId || !(e.buttons & 1) || c.key === 'today') return;
+    const l = this.list(c.key);
+    if (!l || l.archivedAt) return;
+    if (Math.abs(e.clientY - c.y) < DRAG_SLOP) return;
+    this.beginSbDrag(c, e);
+  };
+  onSbRowUp = (e) => { this.sbCand = null; if (this.state.sbDrag) this.endSbDrag(e.type === 'pointercancel'); };
+  onSbRowDbl = (e) => { const key = e.currentTarget.dataset.key; if (key !== 'today') this.startListRename(key); };
+  onSbRowCtx = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const key = e.currentTarget.dataset.key;
+    if (key === 'today') return;
+    const p = this.winXY(e);
+    this.listMenu(key, p.x, p.y);
+  };
+  onArchiveLabel = () => this.setState({ archiveOpen: !this.state.archiveOpen });
+  onNewListBtn = (e) => { e.stopPropagation(); this.newList(); };
+  onNewTaskBtn = () => this.newTask();
+  onToggleDetail = () => this.toggleDetail();
+  toggleSidebar() { this.setState({ sbVisible: !this.state.sbVisible, focus: this.state.focus === 'sidebar' ? 'list' : this.state.focus }); }
+  onToggleSidebar = () => this.toggleSidebar();
+  onUnarchive = () => { if (this.state.route.kind === 'list') this.unarchiveList(this.state.route.id); };
+
+  // Menus
+  onMenuEnter = (e) => {
+    const i = +e.currentTarget.dataset.idx, level = e.currentTarget.dataset.level;
+    const m = this.state.menu;
+    if (!m) return;
+    if (level === 'sub') { if (m.sub && m.sub.hot !== i) this.setState({ menu: { ...m, sub: { ...m.sub, hot: i } } }); return; }
+    const it = m.items[i];
+    if (it && it.sub) { this.openSub(i); return; }
+    if (m.hot !== i || m.sub) this.setState({ menu: { ...m, hot: i, sub: null } });
+  };
+  onMenuLeave = (e) => {
+    const level = e.currentTarget.dataset.level, m = this.state.menu;
+    if (!m) return;
+    if (level === 'sub') { if (m.sub) this.setState({ menu: { ...m, sub: { ...m.sub, hot: -1 } } }); }
+    else if (!m.sub) this.setState({ menu: { ...m, hot: -1 } });
+  };
+  onMenuClick = (e) => {
+    const i = +e.currentTarget.dataset.idx, level = e.currentTarget.dataset.level, m = this.state.menu;
+    if (!m) return;
+    const it = level === 'sub' ? m.sub.items[i] : m.items[i];
+    if (it && it.sub) { this.openSub(i); return; }
+    this.menuActivate(it);
+  };
+
+  // Picker
+  onPickerText = (e) => {
+    const p = this.state.picker;
+    const text = e.target.value;
+    const patch = { ...p, text, sugHot: 0 };
+    const sug = dateSuggestions(text, this.today, 5);
+    if (text.trim() && sug.length) { patch.hot = sug[0].date; patch.month = sug[0].date.slice(0, 7); patch.none = false; }
+    else if (text.trim()) patch.none = true;
+    else { patch.none = false; patch.hot = p.cur || this.today; patch.month = patch.hot.slice(0, 7); }
+    this.setState({ picker: patch });
+  };
+  onPickerKey = (e) => {
+    const p = this.state.picker, k = e.key;
+    if (!p) return;
+    e.stopPropagation();
+    const moveDay = (n) => { const hot = addDays(p.hot, n); this.setState({ picker: { ...p, hot, month: hot.slice(0, 7), none: false } }); };
+    if (k === 'Escape') { e.preventDefault(); this.setState({ picker: null }); this.focusRoot(); return; }
+    if (k === 'Backspace' && !p.text) { e.preventDefault(); if (p.cur) this.pickerApply(null); return; }
+    if (this.state.dp === 'A' || p.showCal) {
+      if (k === 'ArrowLeft') { e.preventDefault(); moveDay(-1); return; }
+      if (k === 'ArrowRight') { e.preventDefault(); moveDay(1); return; }
+      if (k === 'ArrowUp' && this.state.dp === 'A') { e.preventDefault(); moveDay(-7); return; }
+      if (k === 'ArrowDown' && this.state.dp === 'A') { e.preventDefault(); moveDay(7); return; }
+      if (k === 'Enter' && (this.state.dp === 'A' || p.calKeys)) { e.preventDefault(); if (!p.none) this.pickerApply(p.hot); return; }
+    }
+    if (this.state.dp === 'B') {
+      const items = this.pickerSuggestions();
+      if (k === 'ArrowDown' || k === 'ArrowUp') {
+        e.preventDefault();
+        if (p.showCal && p.calKeys) { moveDay(k === 'ArrowDown' ? 7 : -7); return; }
+        const n = items.length, sugHot = ((p.sugHot || 0) + (k === 'ArrowDown' ? 1 : -1) + n) % n;
+        const it = items[sugHot];
+        this.setState({ picker: { ...p, sugHot, hot: it.date || p.hot, month: (it.date || p.hot).slice(0, 7) } });
+        return;
+      }
+      if (k === 'Enter') {
+        e.preventDefault();
+        const it = items[p.sugHot || 0];
+        if (!it) return;
+        if (it.cal) this.setState({ picker: { ...p, showCal: !p.showCal, calKeys: !p.showCal } });
+        else if (it.clear) this.pickerApply(null);
+        else this.pickerApply(it.date);
+      }
+    }
+  };
+  onPickDay = (e) => { this.pickerApply(e.currentTarget.dataset.date); };
+  onPickQuick = (e) => { const d = e.currentTarget.dataset.date; this.pickerApply(d === 'none' ? null : d); };
+  onPickSug = (e) => {
+    const i = +e.currentTarget.dataset.idx, p = this.state.picker, it = this.pickerSuggestions()[i];
+    if (!it) return;
+    if (it.cal) this.setState({ picker: { ...p, showCal: !p.showCal, sugHot: i } });
+    else if (it.clear) this.pickerApply(null);
+    else this.pickerApply(it.date);
+  };
+  onSugEnter = (e) => { const p = this.state.picker, i = +e.currentTarget.dataset.idx; if (p && p.sugHot !== i) { const it = this.pickerSuggestions()[i]; this.setState({ picker: { ...p, sugHot: i, hot: (it && it.date) || p.hot } }); } };
+  onPickMonth = (e) => { const p = this.state.picker, n = +e.currentTarget.dataset.dir; const m = addMonths(p.month + '-01', n).slice(0, 7); this.setState({ picker: { ...p, month: m } }); const el = this.rootRef.current.querySelector('.picker input'); if (el) el.focus(); };
+  onPickerDown = (e) => { if (!isTextTarget(e.target)) { e.preventDefault(); } };
+
+  // Notice
+  onNoticeEnter = () => { this.noticeHover = true; clearTimeout(this.noticeTimer); };
+  onNoticeLeave = () => { this.noticeHover = false; clearTimeout(this.noticeTimer); this.noticeTimer = setTimeout(() => this.hideNotice(), 2000); };
+  onNoticeUndo = () => { this.hideNotice(); this.undo(); };
+
+  // Tooltips: name and shortcut after a delay; instant while moving between buttons.
+  tipIn = (e) => {
+    const el = e.currentTarget, text = el.dataset.tip, keys = el.dataset.keys || '';
+    if (!text || this.state.drag || this.state.menu) return;
+    clearTimeout(this.tipTimer);
+    const show = () => { if (!el.isConnected) return; const r = this.rectIn(el); const { w } = this.winSize(); this.lastTipAt = Date.now(); this.setState({ tip: { text, keys, x: clamp(r.left + r.width / 2 - 60, 6, w - 160), y: r.bottom + 6 } }); };
+    if (Date.now() - (this.lastTipAt || 0) < 600) show(); else this.tipTimer = setTimeout(show, TIP_DELAY);
+  };
+  tipOut = () => { clearTimeout(this.tipTimer); if (this.state.tip) { this.lastTipAt = Date.now(); this.setState({ tip: null }); } };
+
+  // Prototype strip
+  onStage = (e) => {
+    const k = e.currentTarget.dataset.k, v = e.currentTarget.dataset.v;
+    if (k === 'theme') this.instant({ theme: v });
+    else if (k === 'reset') { const seed = makeSeed(this.today); this.undoStack = []; this.redoStack = []; this.instant({ lists: seed.lists, tasks: seed.tasks, sel: [], edit: null, picker: null, menu: null, pins: {}, route: this.routeFromProp(this.props.start, seed.lists), detail: 'closed', notice: null, sbVisible: true }); }
+    else if (k === 'keys') this.setState({ keysOpen: !this.state.keysOpen });
+    else this.setState({ [k]: v, picker: null });
+    this.focusRoot();
+  };
+
+
+  // ======================================================================
+  // View model
+  // ======================================================================
+  trackMotion(L) {
+    const s = this.state, now = Date.now();
+    if (this.prev && this.prev.key === L.key && !s.noAnim) {
+      for (const [id, y] of this.prev.ys) {
+        if (L.ys.has(id) || this.leaving.has(id)) continue;
+        const t = this.task(id);
+        let to = y;
+        if (t && !t.deleted && L.crowY != null && t.list === s.route.id && !this.placedOpen(t)) to = L.crowY;
+        this.leaving.set(id, { y: to, at: now });
+      }
+      for (const id of L.ys.keys()) if (!this.prev.ys.has(id)) this.entering.set(id, now);
+    } else if (!this.prev || this.prev.key !== L.key) { this.leaving.clear(); this.entering.clear(); }
+    for (const [id, v] of this.leaving) if (now - v.at > 240 || L.ys.has(id)) this.leaving.delete(id);
+    for (const [id, at] of this.entering) if (now - at > 240) this.entering.delete(id);
+    if (this.leaving.size || this.entering.size) { clearTimeout(this.cleanTimer); this.cleanTimer = setTimeout(() => this.forceUpdate(), 250); }
+    this.prev = { key: L.key, ys: new Map(L.ys) };
+  }
+
+  trackSidebar(S) {
+    const now = Date.now();
+    if (!this.sbLeaving) { this.sbLeaving = new Map(); this.sbEntering = new Map(); }
+    if (this.prevS && !this.state.noAnim) {
+      for (const [k, y] of this.prevS) if (!S.ys.has(k) && !this.sbLeaving.has(k) && !k.startsWith('lbl')) this.sbLeaving.set(k, { y, at: now });
+      for (const k of S.ys.keys()) if (!this.prevS.has(k) && !k.startsWith('lbl')) this.sbEntering.set(k, now);
+    }
+    for (const [k, v] of this.sbLeaving) if (now - v.at > 240 || S.ys.has(k)) this.sbLeaving.delete(k);
+    for (const [k, at] of this.sbEntering) if (now - at > 240) this.sbEntering.delete(k);
+    if (this.sbLeaving.size || this.sbEntering.size) { clearTimeout(this.sbCleanTimer); this.sbCleanTimer = setTimeout(() => this.forceUpdate(), 250); }
+    this.prevS = new Map(S.ys);
+  }
+
+  renderVals() {
+    const s = this.state, T = this.today;
+    const { w, h } = this.winSize();
+    const stageOn = this.props.strip !== 'off';
+    const L = this.layout();
+    this.trackMotion(L);
+    this.lastLayout = L;
+    const S = this.sidebarLayout();
+    this.trackSidebar(S);
+    this.lastSidebar = S;
+    const d = s.drag;
+    const ed = s.edit;
+    const inToday = s.route.kind === 'today';
+    const routeList = s.route.kind === 'list' ? this.list(s.route.id) : null;
+    const detailOpen = s.detail === 'open';
+    const selSet = new Set(s.sel);
+    const pickerFor = s.picker ? new Set(s.picker.ids) : null;
+    const tip = (text, keys) => ({ text, keys });
+
+    // ----- Task rows: one node per task, in creation order, so motion follows the task.
+    const visSel = (id) => selSet.has(id) && L.ys.has(id) && !(d && d.ids.includes(id) && d.phase !== 'done');
+    const rows = s.tasks.map((t) => {
+      let y = L.ys.get(t.id);
+      const lv = this.leaving.get(t.id);
+      let cls = 'row';
+      if (y == null && lv) { y = lv.y; cls += ' leave'; }
+      if (y == null) return { id: t.id, cls: 'row hidden', style: '', title: '', editing: false, notEditing: true, chips: [], checkCls: 'check', titleCls: 'tt', where: '', hasWhere: false, checkLabel: '' };
+      const done = t.completedAt != null;
+      if (done) cls += ' done';
+      if (this.entering.has(t.id) && !lv) cls += ' enter';
+      if (d && d.ids.includes(t.id) && d.phase !== 'done') cls += ' dragsrc' + (s.dragMode === 'line' ? ' linemode' : '');
+      const isEd = !!(ed && ed.kind === 'task' && ed.id === t.id);
+      if (isEd) cls += ' editing';
+      if (visSel(t.id) && !lv) {
+        cls += ' sel';
+        const above = L.order.find((x) => L.ys.get(x) === y - PITCH), below = L.order.find((x) => L.ys.get(x) === y + PITCH);
+        if (above && visSel(above) && !this.leaving.has(above)) cls += ' sj-t';
+        if (below && visSel(below) && !this.leaving.has(below)) cls += ' sj-b';
+      }
+      const chips = [];
+      if (!done) {
+        const opened = (f) => (pickerFor && pickerFor.has(t.id) && s.picker.field === f ? ' open-picker' : '');
+        if (t.when && !(inToday && t.when <= T)) chips.push({ field: 'when', cal: true, flag: false, text: whenChipText(t.when, T), cls: 'chip' + opened('when') });
+        if (t.deadline) { const dc = deadlineChip(t.deadline, T); chips.push({ field: 'deadline', cal: false, flag: true, text: dc.text, cls: 'chip ' + dc.tone + opened('deadline') }); }
+        if (isEd && ed.isNew && s.qa === 'B') {
+          const x = extractDateWords(ed.text, T);
+          if (x.when && x.title) { if (chips[0] && chips[0].field === 'when') chips.shift(); chips.unshift({ field: 'when', cal: true, flag: false, text: whenChipText(x.when, T), cls: 'chip pending' }); }
+          if (x.deadline && x.title) chips.push({ field: 'deadline', cal: false, flag: true, text: deadlineChip(x.deadline, T).text, cls: 'chip pending' });
+        }
+      }
+      const where = inToday && L.groupOf.get(t.id) === 'done' ? this.list(t.list).name : '';
+      return {
+        id: t.id, cls, style: 'transform: translateY(' + y + 'px)',
+        title: t.title || 'New Task', titleCls: 'tt' + (t.title ? '' : ' empty'),
+        editing: isEd, notEditing: !isEd, editText: isEd ? ed.text : '', autoFocus: isEd && !ed.demo,
+        checkCls: 'check' + (done ? ' on' : '') + (s.pops[t.id] ? ' pop' : '') + (t.draft ? ' new' : ''),
+        checkLabel: (done ? 'Mark not done: ' : 'Complete: ') + (t.title || 'New Task'),
+        chips, where, hasWhere: !!where,
+      };
+    });
+
+    // ----- Today's group labels, the Completed disclosure, the add slot, the empty states.
+    const labels = s.lists.concat([{ id: 'done', name: 'Completed' }]).map((l) => {
+      const y = L.labels.get(l.id);
+      return { id: l.id, name: l.name, cls: 'tglabel' + (y == null || !inToday ? ' hidden' : ''), style: 'transform: translateY(' + (y || 0) + 'px)', plus: l.id !== 'done', tipText: 'New Task in ' + l.name };
+    });
+    const crowOpen = !!(routeList && s.completedOpen[routeList.id]);
+    const lineY = L.lineY;
+    const emptyMap = {
+      list: { e1: 'No tasks', e2: 'Click anywhere here or press ⌘N to add one.', top: '34%', glyph: false, check: false },
+      today: { e1: 'Nothing for today', e2: 'Tasks you plan for today, or that are due, show up here.', top: '34%', glyph: true, check: false },
+      allDone: { e1: 'All done for today', e2: '', top: '40px', glyph: false, check: true },
+    };
+    const em = L.empty && !(routeList && routeList.archivedAt && L.empty === 'list') ? emptyMap[L.empty] : null;
+
+    // ----- Header
+    const todayCount = s.tasks.filter((t) => !t.deleted && !t.draft && t.completedAt == null && this.isActive(t.list) && this.inTodayDates(t)).length;
+    const lp = {
+      cls: 'pane lp' + (s.focus === 'list' ? ' focused' : ''),
+      style: 'left: ' + (s.sbVisible ? SB_W : GUTTER) + 'px; right: ' + (detailOpen ? GUTTER + DETAIL_W + GUTTER : GUTTER) + 'px',
+      headStyle: s.sbVisible ? '' : 'padding-left: 124px',
+      isToday: inToday, isList: !inToday,
+      title: inToday ? 'Today' : routeList ? routeList.name || 'New List' : '',
+      sub: inToday ? WD[weekdayIdx(T)] + ', ' + md(T) : routeList && routeList.archivedAt ? 'Archived' : '',
+      tileCls: 'tile sm ' + (routeList ? COLOR_CLASS[routeList.color] : ''), mono: routeList ? monogram(routeList.name) : '',
+      newTip: inToday ? 'New Task in ' + ((s.sel.length && this.task(s.sel[0]) && this.list(this.task(s.sel[0]).list)) ? this.list(this.task(s.sel[0]).list).name : (this.list(this.defaultListId()) || { name: 'Inbox' }).name) : 'New Task',
+      detailTip: detailOpen ? 'Hide Details' : 'Show Details', detailBtnCls: 'hb' + (detailOpen ? ' on' : ''),
+      contentStyle: 'height: ' + L.height + 'px',
+      hasZone: !inToday && !(routeList && routeList.archivedAt && false),
+      zoneStyle: 'top: ' + (L.ghostY != null ? L.ghostY : 0) + 'px',
+      ghostShow: !inToday && !(d && d.phase === 'drag'),
+      crow: !inToday && L.done > 0, crowStyle: 'transform: translateY(' + (L.crowY || 0) + 'px)', crowCount: String(L.done), chevCls: 'gchev' + (crowOpen ? ' open' : ''),
+      line: lineY != null && !!d && d.phase === 'drag', lineStyle: 'top: ' + (lineY || 0) + 'px; left: 46px; right: 20px',
+      empty: !!em, emptyStyle: em ? 'top: ' + em.top : '', e1: em ? em.e1 : '', e2: em ? em.e2 : '', hasE2: !!(em && em.e2), glyph: !!(em && em.glyph), emptyCheck: !!(em && em.check),
+      banner: !!(routeList && routeList.archivedAt), bannerDate: routeList && routeList.archivedAt ? 'Archived ' + md(ymdOf(new Date(routeList.archivedAt))) : '',
+    };
+
+    // ----- Detail pane
+    const dIds = this.detailIds();
+    const one = dIds.length === 1 ? this.task(dIds[0]) : null;
+    const many = dIds.length > 1 ? dIds.map((id) => this.task(id)) : null;
+    const dpo = { show: s.detail !== 'closed', cls: 'pane dp' + (s.focus === 'detail' ? ' focused' : '') + (s.detail === 'opening' || s.detail === 'closing' ? ' out' : '') };
+    dpo.single = !!one; dpo.multi = !!many; dpo.none = !one && !many;
+    const dateRow = (field, value, mixed) => {
+      if (mixed) return { has: false, mixed: true, ghost: 'Mixed', text: '', cls: 'chip lg ghost', rel: '', relCls: 'rel' };
+      if (!value) return { has: false, mixed: false, ghost: 'Add date', text: '', cls: 'chip lg ghost' + (s.picker && s.picker.field === field ? ' open-picker' : ''), rel: '', relCls: 'rel' };
+      const tone = field === 'deadline' ? deadlineChip(value, T).tone : '';
+      return { has: true, mixed: false, text: longDate(value, T), cls: 'chip lg ' + tone + (s.picker && s.picker.field === field ? ' open-picker' : ''), rel: relText(value, T), relCls: 'rel after-clr' };
+    };
+    if (one || many) {
+      const items = one ? [one] : many;
+      const same = (f) => items.every((x) => x[f] === items[0][f]);
+      const lst = same('list') ? this.list(items[0].list) : null;
+      dpo.headTile = lst ? 'tile sm ' + COLOR_CLASS[lst.color] : 'tile sm c-ink'; dpo.headMono = lst ? monogram(lst.name) : '…';
+      dpo.headName = lst ? lst.name : 'Several lists';
+      dpo.listName = lst ? lst.name : 'Mixed'; dpo.listTile = dpo.headTile; dpo.listMono = dpo.headMono;
+      dpo.when = dateRow('when', items[0].when, !same('when'));
+      dpo.deadline = dateRow('deadline', items[0].deadline, !same('deadline'));
+      dpo.deleteTip = one ? 'Delete' : 'Delete ' + items.length + ' Tasks';
+    }
+    if (one) {
+      const dEd = ed && ed.kind === 'dtitle' && ed.id === one.id;
+      dpo.titleValue = dEd ? ed.text : one.title;
+      dpo.checkCls = 'check' + (one.completedAt != null ? ' on' : '') + (s.pops[one.id] ? ' pop' : '');
+      const nEd = ed && ed.kind === 'notes' && ed.id === one.id;
+      dpo.notesEditing = !!nEd; dpo.notesView = !nEd;
+      dpo.notesText = nEd ? ed.text : '';
+      dpo.md = one.notes ? mdSegments(one.notes) : [];
+      dpo.mdCls = 'md' + (one.notes ? '' : ' md-ph');
+      dpo.hasNotes = !!one.notes; dpo.noNotes = !one.notes;
+      dpo.meta = 'Created ' + md(ymdOf(new Date(one.createdAt))) + (one.completedAt ? ' · Completed ' + md(ymdOf(new Date(one.completedAt))) : '');
+      dpo.autoTitle = !!(ed && ed.kind === 'dtitle' && ed.isNew && !ed.demo);
+    }
+    if (many) dpo.multiTitle = many.length + ' tasks selected';
+
+    // ----- Sidebar
+    const cmdKeys = ['today'].concat(this.activeLists().filter((l) => !l.draft).map((l) => l.id));
+    const hint = (key) => { const i = cmdKeys.indexOf(key); return i >= 0 && i < 9 ? '⌘' + (i + 1) : ''; };
+    const sbd = s.sbDrag;
+    const overKey = d && d.over ? d.over.key : null;
+    const sbItems = [];
+    const curKey = this.currentSidebarKey();
+    const mkRow = (key, o) => {
+      const y = S.ys.get(key);
+      const lv = this.sbLeaving.get(key);
+      let cls = 'sbi srow';
+      if (y == null) cls += lv ? ' leave' : ' hidden';
+      if (key === curKey) cls += ' cur';
+      if (o.arch) cls += ' arch';
+      if (overKey === key) cls += ' drop';
+      if (sbd && sbd.id === key && sbd.phase !== 'done') cls += ' dragsrc';
+      if (this.sbEntering.has(key) && !lv) cls += ' enter';
+      const isEd = !!(ed && ed.kind === 'list' && ed.id === key);
+      if (isEd) cls += ' editing';
+      const yy = y != null ? y : lv ? lv.y : 0;
+      const count = s.cmdHints && hint(key) ? hint(key) : o.count;
+      sbItems.push({ isRow: true, isLabel: false, key, cls, style: 'transform: translateY(' + yy + 'px)', name: o.name, isToday: key === 'today', tileCls: o.tileCls, mono: o.mono,
+        count: count || '', ctCls: 'ct' + (s.cmdHints && hint(key) ? ' hint' : ''), editing: isEd, notEditing: !isEd, editText: isEd ? ed.text : '' });
+    };
+    mkRow('today', { name: 'Today', count: todayCount ? String(todayCount) : '', tileCls: 'tile c-yellow', mono: '' });
+    sbItems.push({ isRow: false, isLabel: true, key: 'lbl-lists', cls: 'sbi glabel', style: 'transform: translateY(' + S.ys.get('lbl-lists') + 'px)', name: 'Lists', plus: true, chev: false, revealCls: 'gbtn reveal' });
+    for (const l of s.lists) {
+      const arch = !!l.archivedAt;
+      const count = arch ? '' : String(s.tasks.filter((t) => t.list === l.id && !t.deleted && !t.draft && t.completedAt == null).length || '');
+      mkRow(l.id, { name: l.name || (l.draft ? '' : 'Untitled'), count, tileCls: 'tile ' + COLOR_CLASS[l.color], mono: monogram(l.name), arch });
+    }
+    const archY = S.ys.get('lbl-arch');
+    sbItems.push({ isRow: false, isLabel: true, key: 'lbl-arch', cls: 'sbi glabel' + (archY == null ? ' hidden' : ''), style: 'transform: translateY(' + (archY || 0) + 'px)', name: 'Archive', plus: false, chev: true, revealCls: 'gbtn reveal' + (s.archiveOpen ? ' on' : ''), chevCls: 'gchev' + (s.archiveOpen ? ' open' : '') });
+
+    // ----- Overlays
+    let drag = { show: false };
+    if (d && d.phase !== 'done') {
+      const t = this.task(d.grabbed);
+      const pos = d.phase === 'fly' ? d.flyTo : { x: d.x, y: d.y };
+      const width = d.over || (d.phase === 'fly' && d.shrink) ? 210 : d.w;
+      const chips = t && !d.over ? rows.find((r) => r.id === t.id).chips : [];
+      drag = { show: true, cls: 'lifted' + (d.phase === 'fly' ? ' flying' : '') + (d.shrink ? ' shrink' : ''), style: 'transform: translate(' + pos.x + 'px, ' + pos.y + 'px); width: ' + width + 'px',
+        title: t ? t.title || 'New Task' : '', chips, multi: d.count > 1, count: String(d.count), checkCls: 'check' };
+    }
+    let sbLift = { show: false };
+    if (sbd && sbd.phase !== 'done') {
+      const l = this.list(sbd.id);
+      const y = sbd.phase === 'fly' ? sbd.flyTo : sbd.y;
+      sbLift = { show: true, cls: 'lifted cap' + (sbd.phase === 'fly' ? ' flying' : ''), style: 'transform: translate(10px, ' + y + 'px); width: 209px', name: l ? l.name : '', tileCls: 'tile ' + (l ? COLOR_CLASS[l.color] : ''), mono: l ? monogram(l.name) : '' };
+    }
+
+    const mapMenu = (items, hot, level) => {
+      const hasCheck = items.some((it) => it.check !== undefined && it.tile);
+      return items.map((it, i) => ({ idx: String(i), level, sep: !!it.sep, head: !!it.head, item: !it.sep && !it.head, label: it.label || it.head || '', keys: it.keys || '',
+        cls: 'mi' + (i === hot ? ' hot' : '') + (it.disabled ? ' dis' : ''), hasSub: !!it.sub, tile: !!it.tile, tileCls: 'tile sm ' + (COLOR_CLASS[it.color] || ''), mono: it.mono || '',
+        chkCol: hasCheck, chk: it.check ? '✓' : '' }));
+    };
+    const menu = s.menu ? { show: true, style: 'left: ' + s.menu.x + 'px; top: ' + s.menu.y + 'px; width: 216px', items: mapMenu(s.menu.items, s.menu.hot, 'top'),
+      sub: !!s.menu.sub, subStyle: s.menu.sub ? 'left: ' + s.menu.sub.x + 'px; top: ' + s.menu.sub.y + 'px; width: 204px' : '', subItems: s.menu.sub ? mapMenu(s.menu.sub.items, s.menu.sub.hot, 'sub') : [] } : { show: false };
+
+    let pk = { show: false };
+    if (s.picker) {
+      const p = s.picker;
+      const hot = p.hot;
+      const first = dOf(p.month + '-01');
+      const start = addDays(p.month + '-01', -first.getDay());
+      const days = [];
+      for (let i = 0; i < 42; i++) {
+        const dd = addDays(start, i);
+        const out = dd.slice(0, 7) !== p.month;
+        days.push({ date: dd, label: String(+dd.slice(8)), cls: 'd' + (out ? ' out' : '') + (dd === T ? ' today' : '') + (dd === p.cur ? ' val' : '') + (dd === p.other ? ' other' : '') + (dd === hot && !p.none ? ' hot' : '') });
+      }
+      const mo = dOf(p.month + '-01');
+      const quick = [['Today', T], ['Tomorrow', addDays(T, 1)], ['Next Week', nextWeekStart(T)]].map(([label, date]) => ({ label, date, cls: 'qb' + (date === hot && p.text ? ' hot' : '') }));
+      if (p.cur) quick.push({ label: 'Clear', date: 'none', cls: 'qb clear' });
+      const sug = this.pickerSuggestions().map((it, i) => ({ idx: String(i), cls: 'sg' + (i === (p.sugHot || 0) ? ' hot' : '') + (it.cal || it.clear ? ' dim' : ''), label: it.label, detail: it.date ? longDate(it.date, T) : it.clear ? '⌫' : '' }));
+      pk = {
+        show: true, isA: s.dp === 'A', isB: s.dp === 'B', style: 'left: ' + p.x + 'px; top: ' + p.y + 'px; width: 288px', text: p.text,
+        placeholder: p.field === 'when' ? 'When: try tom, fri, 3d, nov 9' : 'Deadline: try fri, nov 9, 2w',
+        quick, monthTitle: MOL[mo.getMonth()] + ' ' + mo.getFullYear(), days, dows: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
+        preview: p.none ? 'No date matches “' + p.text.trim() + '”' : longDate(hot, T) + ' · ' + relText(hot, T), previewCls: 'pvt' + (p.none ? ' none' : ''),
+        autoFocus: !p.demo, sug, noSug: s.dp === 'B' && !!p.text.trim() && !sug.some((x) => x.detail && x.detail !== '⌫'), showCal: s.dp === 'A' || !!p.showCal,
+      };
+    }
+
+    const notice = s.notice ? { show: true, cls: 'notice' + (s.notice.out ? ' out' : ''), text: s.notice.text, undo: s.notice.undo } : { show: false };
+    const tipv = s.tip ? { show: true, style: 'left: ' + s.tip.x + 'px; top: ' + s.tip.y + 'px', text: s.tip.text, keys: s.tip.keys, hasKeys: !!s.tip.keys } : { show: false };
+
+    const seg = (k, opts) => opts.map(([v, label]) => ({ k, v, label, cls: s[k] === v ? 'on' : '' }));
+    const stage = { show: stageOn,
+      theme: seg('theme', [['dark', 'Dark'], ['light', 'Light']]),
+      qa: seg('qa', [['A', 'A Inline'], ['B', 'B Date words'], ['C', 'C Detail']]),
+      dp: seg('dp', [['A', 'A Calendar'], ['B', 'B List']]),
+      dragMode: seg('dragMode', [['gap', 'Gap'], ['line', 'Line']]),
+      settle: seg('settle', [['pause', 'Move after 1.5 s'], ['leave', 'Move on leave']]),
+    };
+
+    return {
+      rootCls: 'tk ' + s.theme + (s.noAnim ? ' no-anim' : '') + (s.detail === 'open' || s.detail === 'opening' ? ' detail-open' : ''),
+      rootStyle: 'width: ' + w + 'px; height: ' + (h + (stageOn ? 44 : 0)) + 'px',
+      winStyle: 'height: ' + h + 'px',
+      rootRef: this.rootRef, winRef: this.winRef, listScrollRef: this.listScrollRef, sbScrollRef: this.sbScrollRef, liftRef: this.liftRef,
+      sb: { contentStyle: 'height: ' + S.height + 'px', items: sbItems },
+      sbTip: s.sbVisible ? 'Hide Sidebar' : 'Show Sidebar',
+      lp, rows, labels, dp: dpo, drag, sbLift, menu, pk, notice, tip: tipv, stage, keysOpen: s.keysOpen,
+      onKey: this.onKey, onKeyUp: this.onKeyUp, onRootMouseDown: this.onRootMouseDown, onRootPointerDownCapture: this.onRootPointerDownCapture, onRootClickCapture: this.onRootClickCapture, onRootContextMenu: this.onRootContextMenu, onRootFocusCapture: this.onRootFocusCapture,
+      onRowDown: this.onRowDown, onRowMove: this.onRowMove, onRowUp: this.onRowUp, onRowDbl: this.onRowDbl, onRowCtx: this.onRowCtx,
+      onCheck: this.onCheck, stopPD: this.stopPD, onChip: this.onChip, onOpen: this.onOpen, onListPaneDown: this.onListPaneDown, onScrollAreaDown: this.onScrollAreaDown,
+      onAddZoneDown: this.onAddZoneDown, onToggleCompleted: this.onToggleCompleted, onGroupPlus: this.onGroupPlus,
+      onEditChange: this.onEditChange, onEditFocus: this.onEditFocus, onEditBlur: this.onEditBlur, onEditKey: this.onEditKey,
+      onDetailDown: this.onDetailDown, onDTitleFocus: this.onDTitleFocus, onDTitleChange: this.onDTitleChange, onDTitleKey: this.onDTitleKey, onDTitleBlur: this.onDTitleBlur,
+      onNotesDown: this.onNotesDown, onNotesChange: this.onNotesChange, onNotesKey: this.onNotesKey, onNotesBlur: this.onNotesBlur, onNotesFocus: this.onNotesFocus,
+      onDCheck: this.onDCheck, onDChip: this.onDChip, onDClear: this.onDClear, onDList: this.onDList, onDDelete: this.onDDelete, onDClose: this.onDClose, onLinkClick: this.onLinkClick,
+      onSidebarDown: this.onSidebarDown, onSbRowDown: this.onSbRowDown, onSbRowMove: this.onSbRowMove, onSbRowUp: this.onSbRowUp, onSbRowDbl: this.onSbRowDbl, onSbRowCtx: this.onSbRowCtx,
+      onArchiveLabel: this.onArchiveLabel, onNewListBtn: this.onNewListBtn, onNewTaskBtn: this.onNewTaskBtn, onToggleDetail: this.onToggleDetail, onToggleSidebar: this.onToggleSidebar, onUnarchive: this.onUnarchive,
+      onMenuEnter: this.onMenuEnter, onMenuLeave: this.onMenuLeave, onMenuClick: this.onMenuClick,
+      onPickerText: this.onPickerText, onPickerKey: this.onPickerKey, onPickDay: this.onPickDay, onPickQuick: this.onPickQuick, onPickSug: this.onPickSug, onSugEnter: this.onSugEnter, onPickMonth: this.onPickMonth, onPickerDown: this.onPickerDown,
+      onNoticeEnter: this.onNoticeEnter, onNoticeLeave: this.onNoticeLeave, onNoticeUndo: this.onNoticeUndo,
+      tipIn: this.tipIn, tipOut: this.tipOut, onStage: this.onStage,
+    };
+  }
+}
+
+</script>
+</body>
+</html>

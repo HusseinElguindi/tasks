@@ -1,0 +1,379 @@
+/* Tasks · interactions v2 prototype.
+   Colors and metrics follow Rex where it was measured (design/REX-REFERENCE.md), Pane elsewhere.
+   Every value here is restated in design/INTERACTIONS-v2.md, which is the build spec. */
+
+.tk {
+  /* Motion. Springs are SwiftUI's, sampled: natural = .smooth(duration: 0.3), layout = .smooth(duration: 0.25),
+     snappy = .snappy(duration: 0.2). */
+  --ease-natural: linear(0, 0.0596, 0.186, 0.3294, 0.4656, 0.584, 0.6819, 0.7601, 0.821, 0.8677, 0.9029, 0.9292, 0.9487, 0.963, 0.9734, 0.9809, 0.9864, 0.9903, 0.9931, 0.9951, 0.9966, 0.9976, 0.9983, 0.9988, 1);
+  --dur-natural: 450ms;
+  --ease-layout: linear(0, 0.061, 0.1897, 0.3351, 0.4724, 0.5912, 0.6889, 0.7664, 0.8266, 0.8725, 0.9069, 0.9325, 0.9513, 0.965, 0.975, 0.9822, 0.9873, 0.991, 0.9937, 0.9955, 0.9969, 0.9978, 0.9985, 0.9989, 1);
+  --dur-layout: 380ms;
+  --ease-snappy: linear(0, 0.0617, 0.1976, 0.3564, 0.5094, 0.6423, 0.7503, 0.8334, 0.8945, 0.9376, 0.9666, 0.9852, 0.9964, 1.0025, 1.0054, 1.0063, 1.006, 1.0052, 1.0042, 1.0033, 1.0024, 1.0017, 1.0011, 1.0007, 1);
+  --dur-snappy: 300ms;
+  --hover-in: 60ms cubic-bezier(0, 0.8, 0.2, 1);   /* ~86% on the first frame, as Rex */
+  --hover-out: 85ms cubic-bezier(0, 0, 0.2, 1);    /* starts the moment the pointer leaves */
+  --icon: 100ms cubic-bezier(0, 0, 0.2, 1);
+  --focus: 60ms cubic-bezier(0, 0, 0.2, 1);
+  --decel: 300ms cubic-bezier(0.16, 1, 0.3, 1);    /* sidebar show/hide */
+
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Helvetica Neue", sans-serif;
+  --mono: "SF Mono", ui-monospace, Menlo, monospace;
+  position: relative;
+  background: var(--stage);
+  font-family: var(--font);
+  font-size: 13px;
+  line-height: 16px;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  outline: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+.tk *, .tk *::before, .tk *::after { box-sizing: border-box; }
+.tk :where(button, input, textarea) { font: inherit; color: inherit; margin: 0; }
+.tk :where(button) { appearance: none; border: 0; background: transparent; padding: 0; cursor: default; text-align: left; }
+.tk :where(input, textarea) { appearance: none; border: 0; background: transparent; outline: none; padding: 0; user-select: text; -webkit-user-select: text; }
+.tk input::placeholder, .tk textarea::placeholder { color: var(--ink-3); }
+.tk svg { display: block; flex: none; }
+.tk .i { width: 14px; height: 14px; }
+.tk .i path, .tk .i rect, .tk .i circle, .tk .i line { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.tk .i--sm { width: 12px; height: 12px; }
+.tk .i--xs { width: 11px; height: 11px; }
+
+/* ---------- Themes ---------- */
+.tk.dark {
+  --ground: #181818; --base: #1C1C1C; --dim: #181818; --popover: #262626; --lift: #2C2C2C;
+  --line-pane: #323334; --line-pane-dim: #282929; --line-sep: #313233; --line-field: #6A6D70;
+  --ink: #E6EDF3; --ink-2: #A8ADB1; --ink-3: #7F8386; --ink-q: #6D7072;
+  --sel: #333333; --sel-dim: #292929;
+  --fill-control: #2D2E2E; --fill-track: #303132; --fill-thumb: #4A4C4D; --fill-strong: #444444;
+  --edge-outer: #5E5E5E; --edge-inner: #535353;
+  --hover: rgba(255, 255, 255, 0.07); --press: rgba(255, 255, 255, 0.12);
+  --accent: #2F81F7; --accent-text: #5799F6; --accent-tint: #1E2938; --on-accent: #FFFFFF; --text-sel: rgba(47, 129, 247, 0.45);
+  --danger: #FF7B72; --danger-tint: #3C2928; --attn: #D29922; --attn-tint: #352E1D;
+  --ansi-red: #FF7B72; --ansi-green: #3FB950; --ansi-yellow: #D29922; --ansi-blue: #58A6FF; --ansi-magenta: #BC8CFF; --ansi-cyan: #39C5CF; --ansi-ink: #E6EDF3;
+  --shadow-popover: 0 0 0 0.5px rgba(255, 255, 255, 0.14), 0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-lift: 0 0 0 0.5px rgba(255, 255, 255, 0.14), 0 8px 24px rgba(0, 0, 0, 0.5);
+  --win-edge: 0 0 0 0.5px rgba(0, 0, 0, 0.9), inset 0 0 0 0.5px rgba(255, 255, 255, 0.14), 0 22px 60px rgba(0, 0, 0, 0.35);
+  --stage: #0E0E0E; --stage-ink: #8E9296; --stage-ink-strong: #D6DCE1;
+  color-scheme: dark;
+}
+.tk.light {
+  --ground: #F5F5F5; --base: #FFFFFF; --dim: #FAFAFA; --popover: #FFFFFF; --lift: #FFFFFF;
+  --line-pane: #D4D5D6; --line-pane-dim: #E6E6E7; --line-sep: #E7E8E8; --line-field: #8A8C8F;
+  --ink: #1F2328; --ink-2: #5C6064; --ink-3: #6C6F72; --ink-q: #8A8D90;
+  --sel: #E6E6E8; --sel-dim: #EFEFF0;
+  --fill-control: #EDEDEE; --fill-track: #E6E6E7; --fill-thumb: #FFFFFF; --fill-strong: #E0E0E1;
+  --edge-outer: #CFCFD0; --edge-inner: #D6D6D7;
+  --hover: rgba(31, 35, 40, 0.06); --press: rgba(31, 35, 40, 0.11);
+  --accent: #0969DA; --accent-text: #0969DA; --accent-tint: #E6F0FB; --on-accent: #FFFFFF; --text-sel: rgba(9, 105, 218, 0.25);
+  --danger: #CF222E; --danger-tint: #FBEBEC; --attn: #9A6700; --attn-tint: #FAF7F2;
+  --ansi-red: #CF222E; --ansi-green: #116329; --ansi-yellow: #9A6700; --ansi-blue: #0969DA; --ansi-magenta: #8250DF; --ansi-cyan: #1B7C83; --ansi-ink: #1F2328;
+  --shadow-popover: 0 0 0 0.5px rgba(31, 35, 40, 0.16), 0 12px 32px rgba(31, 35, 40, 0.16);
+  --shadow-lift: 0 0 0 0.5px rgba(31, 35, 40, 0.14), 0 8px 24px rgba(31, 35, 40, 0.18);
+  --win-edge: 0 0 0 0.5px rgba(0, 0, 0, 0.22), 0 22px 60px rgba(0, 0, 0, 0.16);
+  --stage: #E9E9EA; --stage-ink: #6C6F72; --stage-ink-strong: #1F2328;
+  color-scheme: light;
+}
+.tk ::selection { background: var(--text-sel); }
+
+/* Switching lists, themes and the first frame never animate. */
+.tk.no-anim *, .tk.no-anim *::before, .tk.no-anim *::after { transition: none !important; animation: none !important; }
+
+/* ---------- Window ---------- */
+.tk .win { position: absolute; left: 0; top: 0; right: 0; border-radius: 12px; overflow: hidden; background: var(--ground); box-shadow: var(--win-edge); }
+.tk .lights { position: absolute; left: 18px; top: 18px; display: flex; gap: 9px; z-index: 30; }
+.tk .lights i { width: 14px; height: 14px; border-radius: 50%; display: block; box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.18); }
+.tk .lights i:nth-child(1) { background: #FF5F57; } .tk .lights i:nth-child(2) { background: #FEBC2E; } .tk .lights i:nth-child(3) { background: #28C840; }
+
+/* Toolbar icon (beside the traffic lights): circle fill on hover, as Rex. */
+.tk .tbtn { position: absolute; left: 93px; top: 11px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: var(--ink-2); z-index: 30; transition: background-color var(--icon), color var(--icon); }
+.tk .tbtn:hover { background: var(--fill-track); color: var(--ink); }
+.tk .tbtn:active { background: var(--press); transition: none; }
+.tk .tbtn .i { width: 16px; height: 16px; }
+
+/* ---------- Sidebar ---------- */
+.tk .sb { position: absolute; left: 0; top: 0; bottom: 0; width: 230px; }
+.tk .sbs { position: absolute; left: 0; right: 0; top: 50px; bottom: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+.tk .sbs::-webkit-scrollbar { display: none; }
+.tk .sbc { position: relative; }
+.tk .sbi { position: absolute; left: 10px; width: 209px; height: 30px; top: 0; transition: transform var(--dur-layout) var(--ease-layout), opacity 150ms ease-out; }
+.tk .sbi.hidden { display: none; }
+.tk .sbi.leave { opacity: 0; pointer-events: none; }
+.tk .sbi.enter { animation: tk-fade-in 180ms ease-out both; }
+
+.tk .srow { display: flex; align-items: center; padding-left: 10px; border-radius: 15px; color: var(--ink-2); transition: transform var(--dur-layout) var(--ease-layout), opacity 150ms ease-out, color var(--hover-out); }
+.tk .srow:hover { color: var(--ink); transition: transform var(--dur-layout) var(--ease-layout), opacity 150ms ease-out, color var(--hover-in); }
+.tk .srow.cur { color: var(--ink); background: var(--fill-strong); box-shadow: inset 0 0 0 0.5px var(--edge-outer), inset 0 0 0 1px var(--edge-inner); }
+.tk.light .srow.cur { box-shadow: inset 0 0 0 0.5px var(--edge-outer), inset 0 0 0 1px var(--edge-inner); }
+.tk .srow.arch { color: var(--ink-3); }
+.tk .srow.arch:hover, .tk .srow.arch.cur { color: var(--ink); }
+.tk .srow .tl { flex: 1; min-width: 0; margin-left: 7px; white-space: nowrap; overflow: hidden; padding-right: 34px; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 46px), transparent calc(100% - 30px)); mask-image: linear-gradient(to right, #000 calc(100% - 46px), transparent calc(100% - 30px)); transform: translateY(-0.5px); }
+.tk .srow .ct { position: absolute; right: 8px; top: 0; height: 30px; display: flex; align-items: center; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.tk .srow.cur .ct { color: var(--ink-2); }
+.tk .srow .ct.hint { font-size: 12px; color: var(--ink-2); }
+.tk .srow.drop { background: var(--accent-tint); color: var(--accent-text); box-shadow: inset 0 0 0 2px var(--accent); }
+.tk .srow.drop .ct { color: var(--accent-text); }
+.tk .srow.dragsrc { opacity: 0; }
+.tk .srow.editing { background: var(--fill-control); box-shadow: inset 0 0 0 1.5px var(--accent); color: var(--ink); }
+.tk .srow .ri { flex: 1; min-width: 0; margin-left: 7px; margin-right: 10px; height: 30px; color: var(--ink); }
+
+/* List tile: Rex's 5:4 program tile, a monogram in the list's terminal color. */
+.tk .tile { width: 20px; height: 16px; flex: none; border-radius: 4px; display: grid; place-items: center; background: var(--fill-strong); box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.10); font: 700 10px/1 var(--mono); }
+.tk.light .tile { background: #E3E3E4; box-shadow: inset 0 0 0 0.5px rgba(31, 35, 40, 0.10); }
+.tk .tile.sm { width: 16px; height: 13px; border-radius: 3.5px; font-size: 8.5px; }
+.tk .tile .i { width: 12px; height: 12px; }
+.tk .c-ink { color: var(--ansi-ink); } .tk .c-blue { color: var(--ansi-blue); } .tk .c-magenta { color: var(--ansi-magenta); }
+.tk .c-green { color: var(--ansi-green); } .tk .c-cyan { color: var(--ansi-cyan); } .tk .c-yellow { color: var(--ansi-yellow); } .tk .c-red { color: var(--ansi-red); }
+
+/* Group labels ("Lists", "Archive", Today's list names): reveal their action on hover. */
+.tk .glabel { display: flex; align-items: flex-start; padding: 10px 0 0 12px; height: 32px; font: 600 11px/14px var(--font); color: var(--ink-3); }
+.tk .glabel .gl { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; }
+.tk .reveal { opacity: 0; transition: opacity var(--hover-out), background-color var(--icon), color var(--icon); }
+.tk .glabel:hover .reveal, .tk .glabel .reveal.on { opacity: 1; transition: opacity var(--hover-in), background-color var(--icon), color var(--icon); }
+.tk .gbtn { position: absolute; right: 5px; top: 6px; width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; color: var(--ink-3); }
+.tk .gbtn:hover { background: var(--hover); color: var(--ink-2); }
+.tk .gbtn:active { background: var(--press); transition: none; }
+.tk .gchev { transition: transform 200ms ease-out; }
+.tk .gchev.open { transform: rotate(90deg); }
+
+/* ---------- Panes ---------- */
+.tk .pane { position: absolute; top: 8px; bottom: 8px; border-radius: 10px; overflow: hidden; background: var(--dim); box-shadow: inset 0 0 0 1px var(--line-pane-dim);
+  transition: background-color var(--focus), box-shadow var(--focus), right var(--dur-natural) var(--ease-natural), left var(--decel); }
+.tk .pane.focused { background: var(--base); box-shadow: inset 0 0 0 1px var(--line-pane); }
+.tk .ph { position: absolute; left: 0; right: 0; top: 0; height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 12px; transition: padding-left var(--decel); }
+.tk .ph .pt { font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tk .ph .ps { color: var(--ink-2); white-space: nowrap; }
+.tk .ph .acts { margin-left: auto; display: flex; gap: 2px; transition: opacity var(--focus); }
+.tk .pane:not(.focused) .ph .acts { opacity: 0.55; }
+.tk .pane:not(.focused) .ph .pt { color: var(--ink-2); }
+.tk .hb { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; color: var(--ink-q); transition: background-color var(--icon), color var(--icon); }
+.tk .hb:hover { background: var(--hover); color: var(--ink-2); }
+.tk .hb:active { background: var(--press); color: var(--ink); transition: none; }
+.tk .hb.on { color: var(--ink-2); }
+.tk .pcs { position: absolute; left: 0; right: 0; top: 34px; bottom: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; }
+.tk .pcc { position: relative; min-height: 100%; }
+
+/* ---------- Task rows: 30pt on a 32pt pitch. No hover fill; the open button fades in. ---------- */
+.tk .row { position: absolute; left: 10px; right: 10px; top: 0; height: 30px; display: flex; align-items: center; padding: 0 5px 0 10px; border-radius: 8px; z-index: 2;
+  transition: transform var(--dur-layout) var(--ease-layout), opacity 150ms ease-out; }
+.tk .row.hidden { display: none; }
+.tk .row.leave { opacity: 0; pointer-events: none; }
+.tk .row.enter { animation: tk-fade-in 180ms ease-out both; }
+.tk .row.dragsrc { opacity: 0; transition: none; }
+.tk .row.dragsrc.linemode { opacity: 0.35; }
+.tk .row.editing { background: var(--base); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.tk .row .tt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; margin-left: 10px; transform: translateY(-0.5px);
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+  transition: color 200ms ease-out; }
+.tk .row .tt.empty { color: var(--ink-3); }
+.tk .row .ri { flex: 1; min-width: 0; margin-left: 10px; height: 30px; color: var(--ink); }
+.tk .row.done .tt { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-q); }
+.tk .row .where { color: var(--ink-3); font-size: 12px; margin-left: 8px; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+.tk .chips { display: flex; align-items: center; gap: 6px; flex: none; margin-left: 8px; }
+.tk .open { width: 22px; height: 22px; margin-left: 4px; border-radius: 6px; display: grid; place-items: center; color: var(--ink-3); opacity: 0;
+  transition: opacity var(--hover-out), background-color var(--icon), color var(--icon); }
+.tk .row:hover .open { opacity: 1; transition: opacity var(--hover-in), background-color var(--icon), color var(--icon); }
+.tk .open:hover { background: var(--hover); color: var(--ink-2); }
+.tk .open:active { background: var(--press); transition: none; }
+.tk .row.editing .open, .tk .row.done .open, .tk.detail-open .open { visibility: hidden; }
+
+/* Selection: the row's own fill, joined across adjacent rows. Instant, never animated. */
+.tk .row.sel { background: var(--sel); }
+.tk .pane:not(.focused) .row.sel { background: var(--sel-dim); }
+.tk .row.sel.sj-t { border-top-left-radius: 0; border-top-right-radius: 0; }
+.tk .row.sel.sj-b { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.tk .row.sel.sj-b::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; background: inherit; }
+.tk .row::before, .tk .crow::before { content: ""; position: absolute; left: 0; right: 0; top: -1px; bottom: -1px; }
+
+/* Checkbox: a 16pt ring. Hovering the box itself brightens it; pressing shrinks it. */
+.tk .check { position: relative; width: 16px; height: 16px; flex: none; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--line-field); color: transparent; display: grid; place-items: center;
+  transition: box-shadow var(--hover-out), background-color 160ms ease-out, transform var(--dur-snappy) var(--ease-snappy); }
+.tk .check::after { content: ""; position: absolute; inset: -7px; }
+.tk .check:hover { box-shadow: inset 0 0 0 1.5px var(--ink-2); transition: box-shadow var(--hover-in), background-color 160ms ease-out, transform var(--dur-snappy) var(--ease-snappy); }
+.tk .check:active { transform: scale(0.86); transition: transform 80ms ease-out; }
+.tk .check .ck { width: 10px; height: 10px; }
+.tk .check .ck path { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 14; stroke-dashoffset: 14; transition: stroke-dashoffset 160ms ease-out 40ms; }
+.tk .check.on { background: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); color: var(--on-accent); }
+.tk .check.on .ck path { stroke-dashoffset: 0; }
+.tk .check.pop { animation: tk-pop var(--dur-snappy) var(--ease-snappy); }
+.tk .check.new { box-shadow: inset 0 0 0 1.5px var(--ink-q); opacity: 0.7; }
+.tk .check.new::after { display: none; }
+
+/* Date chips: 18pt capsules. Only a chip that opens something reacts to the pointer. */
+.tk .chip { height: 18px; display: inline-flex; align-items: center; gap: 4px; padding: 0 7px; border-radius: 9px; background: var(--fill-control); color: var(--ink-2); font: 500 11px/14px var(--font); white-space: nowrap; flex: none;
+  transition: background-color var(--icon), color var(--icon), filter var(--icon); }
+.tk button.chip:hover { filter: brightness(1.18); }
+.tk.light button.chip:hover { filter: brightness(0.96); }
+.tk button.chip:active { filter: brightness(0.86); transition: none; }
+.tk .chip.due { background: var(--attn-tint); color: var(--attn); }
+.tk .chip.late { background: var(--danger-tint); color: var(--danger); }
+.tk .chip.open-picker, .tk .chip.pending { background: var(--accent-tint); color: var(--accent-text); }
+.tk .chip.pending { box-shadow: inset 0 0 0 1px var(--accent); }
+.tk .chip.lg { height: 22px; padding: 0 9px; border-radius: 11px; font-size: 12px; gap: 5px; }
+.tk .chip.ghost { background: transparent; color: var(--ink-3); box-shadow: inset 0 0 0 1px var(--line-sep); }
+.tk button.chip.ghost:hover { filter: none; background: var(--hover); color: var(--ink-2); }
+
+/* The empty slot under the last open task: hovering it shows where a new task lands. */
+.tk .addzone { position: absolute; left: 0; right: 0; bottom: 0; z-index: 0; }
+.tk .ghostrow { position: absolute; left: 10px; right: 10px; top: 0; height: 30px; display: flex; align-items: center; padding-left: 10px; color: var(--ink-3); opacity: 0; transition: opacity var(--hover-out); }
+.tk .addzone:hover .ghostrow { opacity: 1; transition: opacity var(--hover-in); }
+.tk .ghostrow .check { box-shadow: inset 0 0 0 1.5px var(--ink-q); opacity: 0.8; }
+.tk .ghostrow .gt { margin-left: 10px; }
+
+/* "Completed 23" disclosure row in a list. */
+.tk .crow { position: absolute; left: 10px; height: 30px; top: 0; display: flex; align-items: center; gap: 6px; padding: 0 10px 0 12px; border-radius: 8px; color: var(--ink-2); z-index: 2;
+  transition: transform var(--dur-layout) var(--ease-layout), color var(--hover-out); }
+.tk .crow:hover { color: var(--ink); transition: transform var(--dur-layout) var(--ease-layout), color var(--hover-in); }
+.tk .crow .cl { font-weight: 500; }
+.tk .crow .cn { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+/* Today's group labels sit on the row grid; "+" reveals on hover. */
+.tk .tglabel { position: absolute; left: 10px; right: 10px; top: 0; height: 32px; z-index: 2; transition: transform var(--dur-layout) var(--ease-layout), opacity 150ms ease-out; }
+.tk .tglabel.hidden { display: none; }
+.tk .tglabel.leave { opacity: 0; }
+
+/* Drag: the lifted copy, the insertion line, the count badge. */
+.tk .lifted { position: absolute; height: 30px; display: flex; align-items: center; padding: 0 10px; border-radius: 8px; background: var(--lift); box-shadow: var(--shadow-lift); z-index: 60; pointer-events: none;
+  transition: width 160ms ease-out, opacity 150ms ease-out; }
+.tk .lifted.cap { border-radius: 15px; background: var(--fill-strong); color: var(--ink); }
+.tk .lifted.flying { transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1), width 160ms ease-out, opacity 160ms ease-out; }
+.tk .lifted.shrink { opacity: 0; }
+.tk .lifted .tt { flex: 1; min-width: 0; margin-left: 10px; white-space: nowrap; overflow: hidden; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent); }
+.tk .lifted .chip { background: var(--fill-track); }
+.tk.dark .lifted .chip { background: #3A3A3A; }
+.tk .lifted .chip.late { background: var(--danger-tint); }
+.tk .lifted .chip.due { background: var(--attn-tint); }
+.tk .badge { position: absolute; right: -7px; top: -7px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: var(--on-accent); font: 600 11px/18px var(--font); text-align: center; }
+.tk .iline { position: absolute; height: 2px; border-radius: 1px; background: var(--accent); z-index: 5; pointer-events: none; }
+.tk .iline::before { content: ""; position: absolute; left: -8px; top: -3px; width: 8px; height: 8px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--accent); background: var(--base); }
+
+/* ---------- Detail pane ---------- */
+.tk .dp { right: 8px; width: 420px; transform: translateX(0); opacity: 1;
+  transition: background-color var(--focus), box-shadow var(--focus), transform var(--dur-natural) var(--ease-natural), opacity var(--dur-natural) var(--ease-natural); }
+.tk .dp.out { transform: translateX(428px); opacity: 0; }
+.tk .dbody { position: absolute; left: 0; right: 0; top: 34px; bottom: 0; overflow-y: auto; padding: 8px 18px 18px; display: flex; flex-direction: column; }
+.tk .dtitle { display: flex; align-items: flex-start; gap: 10px; }
+.tk .dtitle .check { margin-top: 2px; }
+.tk .dtitle textarea { flex: 1; min-width: 0; resize: none; font: 600 15px/20px var(--font); color: var(--ink); field-sizing: content; min-height: 20px; overflow: hidden; }
+.tk .dmulti { font: 600 15px/20px var(--font); color: var(--ink); padding-left: 26px; }
+.tk .props { margin: 12px 0 0 26px; display: flex; flex-direction: column; }
+.tk .prow { position: relative; height: 32px; display: flex; align-items: center; gap: 8px; }
+.tk .prow .pl { width: 76px; flex: none; display: flex; align-items: center; gap: 7px; color: var(--ink-2); }
+.tk .prow .rel { color: var(--ink-3); font-size: 12px; white-space: nowrap; }
+.tk .chipwrap { position: relative; display: inline-flex; align-items: center; }
+.tk .clr { position: absolute; right: -24px; top: 0; width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; color: var(--ink-3); opacity: 0;
+  transition: opacity var(--hover-out), background-color var(--icon), color var(--icon); }
+.tk .prow:hover .clr { opacity: 1; transition: opacity var(--hover-in), background-color var(--icon), color var(--icon); }
+.tk .clr:hover { background: var(--hover); color: var(--ink-2); }
+.tk .prow .rel.after-clr { margin-left: 26px; }
+.tk .popup { height: 22px; display: inline-flex; align-items: center; gap: 6px; padding: 0 6px 0 4px; margin-left: -4px; border-radius: 6px; color: var(--ink); transition: background-color var(--icon); }
+.tk .popup:hover { background: var(--hover); }
+.tk .popup:active { background: var(--press); transition: none; }
+.tk .popup .ud { color: var(--ink-3); }
+.tk .dsep { height: 1px; background: var(--line-sep); margin: 10px 0 12px 26px; flex: none; }
+.tk .notes { margin-left: 26px; flex: 1; min-height: 120px; display: flex; flex-direction: column; }
+.tk .notes textarea { flex: 1; width: 100%; resize: none; font: 13px/19px var(--font); color: var(--ink); min-height: 120px; }
+.tk .md { font: 13px/19px var(--font); color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; flex: 1; cursor: text; }
+.tk .md.md-ph { color: var(--ink-3); }
+.tk .md a { color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; cursor: pointer; }
+.tk .md code { font: 12px/16px var(--mono); background: var(--fill-control); padding: 1px 4px; border-radius: 4px; }
+.tk .dmeta { margin: 14px 0 0 26px; font-size: 11px; line-height: 14px; color: var(--ink-3); }
+.tk .banner { margin: 6px 10px 2px; padding: 9px 10px 9px 12px; border-radius: 8px; background: var(--fill-control); display: flex; align-items: center; gap: 10px; }
+.tk .banner .bt { flex: 1; min-width: 0; }
+.tk .banner .bs { color: var(--ink-2); font-size: 12px; }
+
+/* Buttons (Pane capsules). Press darkens to 86%. */
+.tk .btn { height: 24px; padding: 0 12px; border-radius: 12px; display: inline-flex; align-items: center; gap: 6px; background: var(--fill-track); color: var(--ink); white-space: nowrap; transition: filter var(--icon); }
+.tk .btn:hover { filter: brightness(1.12); }
+.tk.light .btn:hover { filter: brightness(0.97); }
+.tk .btn:active { filter: brightness(0.86); transition: none; }
+.tk .btn.tinted { background: var(--accent-tint); color: var(--accent-text); }
+
+/* ---------- Empty states ---------- */
+.tk .empty { position: absolute; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 0 24px; pointer-events: none; }
+.tk .empty .e1 { color: var(--ink-2); font-weight: 500; }
+.tk .empty .e2 { color: var(--ink-3); font-size: 12px; line-height: 16px; max-width: 280px; }
+.tk .empty .eg { color: var(--ink-q); margin-bottom: 4px; }
+.tk .empty .eg .i { width: 22px; height: 22px; }
+
+/* ---------- Popovers: menus, date picker, notice, tooltip ---------- */
+.tk .menu { position: absolute; z-index: 80; min-width: 190px; padding: 5px; border-radius: 10px; background: var(--popover); box-shadow: var(--shadow-popover); animation: tk-pop-in 120ms cubic-bezier(0, 0, 0.2, 1) both; }
+.tk .mi { height: 24px; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 9px; border-radius: 5px; color: var(--ink); white-space: nowrap; }
+.tk .mi .mk { margin-left: auto; padding-left: 18px; color: var(--ink-3); font-size: 12px; }
+.tk .mi .sub { margin-left: auto; color: var(--ink-3); }
+.tk .mi.hot { background: var(--accent); color: var(--on-accent); }
+.tk .mi.hot .mk, .tk .mi.hot .sub { color: rgba(255, 255, 255, 0.78); }
+.tk .mi.dis { opacity: 0.4; }
+.tk .mi .chk { width: 12px; flex: none; }
+.tk .msep { height: 1px; background: var(--line-sep); margin: 4px 9px; }
+.tk .mhead { padding: 4px 9px 5px; font: 600 11px/14px var(--font); color: var(--ink-3); }
+
+.tk .picker { position: absolute; z-index: 80; padding: 8px; border-radius: 12px; background: var(--popover); box-shadow: var(--shadow-popover); animation: tk-pop-in 120ms cubic-bezier(0, 0, 0.2, 1) both; }
+.tk .pf { height: 28px; display: flex; align-items: center; gap: 7px; padding: 0 9px; border-radius: 8px; background: var(--fill-control); color: var(--ink-3); }
+.tk .pf input { flex: 1; min-width: 0; height: 28px; color: var(--ink); }
+.tk .qp { display: flex; gap: 6px; margin: 8px 0 2px; flex-wrap: wrap; }
+.tk .qb { height: 22px; padding: 0 9px; border-radius: 11px; background: var(--fill-control); color: var(--ink); font-size: 12px; display: inline-flex; align-items: center; transition: background-color var(--icon), color var(--icon); }
+.tk .qb:hover { background: var(--fill-track); filter: brightness(1.12); }
+.tk .qb.hot { background: var(--accent-tint); color: var(--accent-text); }
+.tk .qb.clear { color: var(--ink-2); }
+.tk .mon { display: flex; align-items: center; padding: 8px 2px 4px 4px; }
+.tk .mon .mt { font-weight: 600; flex: 1; }
+.tk .nb { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; color: var(--ink-2); transition: background-color var(--icon); }
+.tk .nb:hover { background: var(--hover); color: var(--ink); }
+.tk .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); row-gap: 2px; }
+.tk .cal .dw { height: 20px; display: grid; place-items: center; font: 600 10px/12px var(--font); color: var(--ink-3); }
+.tk .cal .d { height: 28px; display: grid; place-items: center; border-radius: 14px; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink); position: relative; transition: background-color var(--icon); }
+.tk .cal .d:hover { background: var(--hover); }
+.tk .cal .d.out { color: var(--ink-q); }
+.tk .cal .d.today { color: var(--accent-text); font-weight: 600; }
+.tk .cal .d.val { box-shadow: inset 0 0 0 1.5px var(--accent); }
+.tk .cal .d.other::after { content: ""; position: absolute; bottom: 3px; left: calc(50% - 2px); width: 4px; height: 4px; border-radius: 50%; background: var(--attn); }
+.tk .cal .d.hot { background: var(--accent); color: var(--on-accent); font-weight: 600; box-shadow: none; }
+.tk .pv { display: flex; align-items: center; gap: 8px; padding: 8px 4px 2px; border-top: 1px solid var(--line-sep); margin-top: 6px; color: var(--ink-2); font-size: 12px; }
+.tk .pv .pvt { flex: 1; min-width: 0; color: var(--ink); }
+.tk .pv .pvt.none { color: var(--ink-3); }
+.tk .kbd { font: 500 11px/14px var(--font); color: var(--ink-3); }
+.tk .sug { margin-top: 6px; }
+.tk .sg { height: 26px; display: flex; align-items: center; gap: 8px; padding: 0 9px; border-radius: 6px; }
+.tk .sg .sd { margin-left: auto; color: var(--ink-3); font-size: 12px; white-space: nowrap; }
+.tk .sg.hot { background: var(--accent); color: var(--on-accent); }
+.tk .sg.hot .sd { color: rgba(255, 255, 255, 0.78); }
+.tk .sg.dim { color: var(--ink-3); }
+
+.tk .notice { position: absolute; right: 12px; bottom: 12px; z-index: 70; height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 5px 0 12px; border-radius: 10px; background: var(--popover); box-shadow: var(--shadow-popover); white-space: nowrap;
+  animation: tk-notice-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.tk .notice.out { animation: tk-notice-out 160ms ease-in both; }
+.tk .notice .nk { color: var(--ink-3); font-size: 12px; }
+
+.tk .tip { position: absolute; z-index: 90; padding: 4px 7px; border-radius: 6px; background: var(--popover); box-shadow: var(--shadow-popover); font-size: 11px; line-height: 14px; color: var(--ink); white-space: nowrap; pointer-events: none; animation: tk-fade-in 100ms ease-out both; }
+.tk .tip .tk2 { color: var(--ink-2); margin-left: 6px; }
+
+/* ---------- Prototype strip (not part of the app) ---------- */
+.tk .stage { position: absolute; left: 0; right: 0; bottom: 0; height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 6px 0 10px; border-radius: 10px; background: var(--ground); box-shadow: var(--win-edge); font-size: 11px; line-height: 14px; color: var(--stage-ink); white-space: nowrap; overflow: hidden; }
+.tk .stage .sl { color: var(--stage-ink); margin-left: 6px; }
+.tk .stage .sl:first-child { margin-left: 0; font-weight: 600; }
+.tk .seg { display: inline-flex; padding: 2px; gap: 2px; border-radius: 999px; background: var(--fill-track); }
+.tk .seg button { height: 20px; padding: 0 8px; border-radius: 999px; color: var(--stage-ink); font-size: 11px; }
+.tk .seg button:hover { color: var(--stage-ink-strong); }
+.tk .seg button.on { background: var(--fill-thumb); color: var(--stage-ink-strong); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
+.tk .stage .lnk { color: var(--stage-ink); text-decoration: underline; text-underline-offset: 2px; }
+.tk .stage .lnk:hover { color: var(--stage-ink-strong); }
+.tk .keys { position: absolute; z-index: 95; right: 0; bottom: 46px; width: 470px; padding: 14px 16px; border-radius: 12px; background: var(--popover); box-shadow: var(--shadow-popover); font-size: 12px; line-height: 16px; color: var(--ink); animation: tk-pop-in 120ms ease-out both; }
+.tk .keys .kh { font-weight: 600; margin: 8px 0 4px; color: var(--ink-2); }
+.tk .keys .kh:first-child { margin-top: 0; }
+.tk .keys .kr { display: flex; gap: 10px; }
+.tk .keys .kr .kk { width: 120px; flex: none; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.tk .keys .note { margin-top: 10px; color: var(--ink-3); white-space: normal; }
+
+@keyframes tk-fade-in { from { opacity: 0; } }
+@keyframes tk-pop-in { from { opacity: 0; transform: translateY(-3px) scale(0.985); } }
+@keyframes tk-pop { 0% { transform: scale(0.8); } 100% { transform: scale(1); } }
+@keyframes tk-notice-in { from { opacity: 0; transform: translateY(8px); } }
+@keyframes tk-notice-out { to { opacity: 0; transform: translateY(4px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .tk *, .tk *::before, .tk *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }
+}
