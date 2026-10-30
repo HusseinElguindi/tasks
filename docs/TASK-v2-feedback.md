@@ -36,3 +36,16 @@ The user's words: "i want the active pane color to only appear when there is mor
 - **The change between the two** follows the detail pane's open and close transition rather than snapping at the end.
 
 Do not open or drive Rex to check this; the user's rule wins. Update the spec and the prototype source.
+
+## 4. Panes can be resized by dragging (after the compact)
+
+The user's words: "i want these panes to be draggable in size"
+
+- **What to resize:** drag the gap between the list pane and the detail pane, and between the sidebar and the list pane, to resize them.
+- **Behaviour:** use Rex's divider behaviour as described in `design/REX-REFERENCE.md`. If it doesn't cover dividers, do the simplest thing that feels native:
+  - a resize cursor over the gap, with no visible handle;
+  - sensible minimum widths;
+  - double-click the gap to reset to the default width;
+  - widths remembered across launches, and the detail pane reopening at its last width.
+- **The detail pane's open and close transition must keep working at any width.**
+- Update the spec and the prototype source.
