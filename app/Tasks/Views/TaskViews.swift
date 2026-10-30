@@ -14,12 +14,23 @@ struct TaskListView: View {
     @FocusState private var listFocused: Bool
 
     var body: some View {
+        ScrollViewReader { proxy in
+            list
+                // ⌘N in a long list opens quick add below the last open task, possibly offscreen, where the lazy List
+                // hasn't built the row yet: bring it into view so its field can take focus.
+                .onChange(of: window.quickAdd?.focusToken) { _, token in
+                    if token != nil { proxy.scrollTo(QuickAddRow.rowID) }
+                }
+        }
+    }
+
+    private var list: some View {
         let actions = WindowActions(store: store, window: window)
-        List(selection: $window.selection) {
+        return List(selection: $window.selection) {
             switch mode {
             case .today:
                 if window.quickAdd != nil {
-                    QuickAddRow(store: store, window: window, listID: nil).paneRow().selectionDisabled()
+                    QuickAddRow(store: store, window: window, listID: nil).paneRow().selectionDisabled().id(QuickAddRow.rowID)
                 }
                 ForEach(store.projection.activeLists.ids, id: \.self) { listID in
                     TodayGroup(store: store, window: window, listID: listID)
@@ -57,6 +68,12 @@ struct TaskListView: View {
         // responder, which silently breaks ↑ ↓, Space and Return.
         .focused($listFocused)
         .onChange(of: listFocused) { _, focused in if focused { window.focus = .list } }
+        // Clicking a row selects it but doesn't give the List keyboard focus (SwiftUI on macOS 27; Tab does), so the
+        // keys above went to the window. Take focus when the selection changes, unless text is being edited.
+        .onChange(of: window.selection) { _, selection in
+            guard !selection.isEmpty, !listFocused, !(NSApp.keyWindow?.firstResponder is NSText) else { return }
+            listFocused = true
+        }
     }
 }
 
@@ -157,7 +174,7 @@ struct ListContent: View {
                 store.reorder(r.moving, in: listID, at: r.anchor, undoManager: window.undoManager)
             }
             if window.quickAdd != nil {
-                QuickAddRow(store: store, window: window, listID: listID).paneRow().selectionDisabled()
+                QuickAddRow(store: store, window: window, listID: listID).paneRow().selectionDisabled().id(QuickAddRow.rowID)
             } else if open.isEmpty {
                 EmptyListRow(window: window, store: store, hasCompleted: !completed.isEmpty).paneRow().selectionDisabled()
             }
@@ -218,6 +235,7 @@ struct TaskRowCell: View {
         let ids = window.selection.contains(taskID)
             ? window.selection.sorted { (store.projection.task($0)?.order ?? "") < (store.projection.task($1)?.order ?? "") }
             : [taskID]
+        window.dragged = .tasks(ids)
         let provider = NSItemProvider()
         let data = (try? JSONEncoder().encode(ids)) ?? Data()
         provider.registerDataRepresentation(forTypeIdentifier: UTType.taskIDs.identifier, visibility: .all) { done in

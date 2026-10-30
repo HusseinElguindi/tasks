@@ -51,24 +51,30 @@ point if the session is compacted.
   and Today's group labels now reveal ⊕ (New Task in that list) like the sidebar's "Lists". Each Pane difference is in
   design/PANE-UPSTREAM.md.
 
-## Known bugs (next up)
+## Fixed after the screen was unlocked (verified live with HID input on the scratch build)
 
-1. **Keyboard in task lists**: clicking a row selects it, but the table never becomes first responder (the window
-   stays first responder), so ↑ ↓, Space and Return do nothing; ⌘-shortcuts from the menu work, and quick add's title
-   field doesn't get focus when ⌘N opens it. Removing the List's tap gesture didn't fix it. Suspects: the
-   `.contextMenu(forSelectionType:primaryAction:)` / `.itemProvider` combination, or `PaneTableStyle`'s NSTableView
-   tweaks. Bisect those, then re-test with the key logger (`-debugKeyLog <file>`).
-2. Drag (reorder within a list, drop on a sidebar list, list reorder) not yet re-verified on screen.
-3. The detail pane's tap gesture (`DetailPane.swift`) may have the same first-responder problem for its fields.
-4. **Not yet verified with a real pointer**: the Mac's screen has been locked since about 05:12 (window captures come
-   back black), so the sidebar work above was checked with offscreen renders (`-snapshotTo` plus the new
-   `-debugHover`) and a hover event log (`-debugKeyLog`), not with HID moves. Still to do on screen: a hover-out
-   recording (`screencapture -v` + `.uitools/frames.swift`) to confirm the 85 ms fade, moving onto a row's ••• (the
-   row must stay hovered), and scrolling a hovered list. Offscreen renders also draw a faint vertical line at the
-   current capsule's right end that real screen captures don't show.
-5. The UI reviewer subagent (reviewing the 2b367c9 code, stopped as stale) was last chasing an exception in one of its
-   probes ("this run hung instead of crashing; I'll catch the throw under lldb"). Unknown whether it was the app or its
-   probe; reproduce with the current build before assuming either.
+- **Hover, live**: a 60 fps recording shows hover-in at 78% on its first frame (Rex ~80%) and hover-out settled 67–83 ms
+  after the pointer leaves, with the exit and the fade in the same millisecond of the event log. Moving onto a row's
+  ••• keeps the row hovered; opening its menu and moving away clears it; scrolling under a still pointer moves the
+  hover row by row and ends on the row under the pointer.
+- **Keyboard in task lists** (was known bug 1): SwiftUI's List never takes keyboard focus when a row is clicked on
+  this macOS. A bare `List(selection:)` with plain text rows does the same, and an in-app click event too, while Tab
+  does focus it. So it wasn't our row code: the list now takes focus when its selection changes (unless text is being
+  edited). ↓, Space, ⌘Z, Return and Esc verified.
+- **⌘N focus**: quick add's focus request was made before its List row was in the window, and in a long list the row
+  sits below the last open task, offscreen, so it was never built. ⌘N now scrolls it into view and focuses it after
+  the row appears; typing lands in the field (verified in a 47-task list and in Today).
+- **Dropping tasks on a sidebar list didn't work** (was known bug 2): the dragged row's item provider was cancelled
+  before the asynchronous load finished, so nothing moved, and SwiftUI calls `dropUpdated` again after `performDrop`,
+  so the "Move to …" highlight stuck. Drags now record their payload when they start and drops read it directly;
+  the highlight only shows during a live drag. The insertion line above the first list was clipped by the sidebar's
+  scroll view; it now has room. Verified: reorder within a list, drop on a sidebar list, sidebar list reorder.
+- **Detail pane fields** (was known bug 3): they take focus on click and accept typing; nothing to fix.
+- **The stopped reviewer's lead** (was known bug 4): four crash reports at 04:35–04:40 are from its own probe build
+  (bundle `com.elguindi.TasksProbe`, its modified code), not from your app or mine. All four segfault inside Swift's
+  runtime main-actor check in the closure of `ListModel.monogram`. Our builds ran dozens of times tonight without it,
+  so I couldn't reproduce it; the helper is now nonisolated so that closure carries no such check.
+- My `typetext` tool posts per-process Unicode key events, which text fields here ignore; typing tests use HID keys.
 
 ## For the user to decide
 
@@ -88,7 +94,6 @@ point if the session is compacted.
 
 ## Still to do (TASK-overnight list)
 
-- Fix the known bugs above, re-verify drags and keys on screen.
 - Item 2: remaining C5 gaps vs. the A1 boards (light theme pass, empty states, archive).
 - Item 3: full test suite, release benchmarks, e2e (`app/Scripts/e2e.sh`, now pointing at "Tasks Dev").
 - Item 4: finish this file with install steps for the new Release build.

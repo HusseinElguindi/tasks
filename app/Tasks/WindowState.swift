@@ -40,6 +40,13 @@ final class WindowState {
     /// list id) and the sidebar's.
     let rowHover = PaneHoverRegion<EntityID>()
     let sidebarHover = PaneHoverRegion<SidebarItem>()
+    /// What the drag in progress carries, recorded when it starts; drops read it directly.
+    @ObservationIgnored var dragged: Dragged?
+
+    enum Dragged: Equatable {
+        case tasks([EntityID])
+        case list(EntityID)
+    }
     /// The window's undo manager, captured from the environment so commands can register with it.
     @ObservationIgnored weak var undoManager: UndoManager?
 

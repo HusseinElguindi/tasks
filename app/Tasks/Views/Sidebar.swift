@@ -35,14 +35,18 @@ struct Sidebar: View {
 
             SidebarGroupLabel(window: window, item: .listsLabel, text: "Lists", help: "New List ⇧⌘N") { actions.newList() }
 
+            // 5pt of room inside the clip, taken back outside it, so an insertion line above the first list or below
+            // the last isn't cut off.
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 2) {
                     ForEach(p.activeLists.ids, id: \.self) { id in
                         ListSidebarRow(store: store, window: window, listID: id, drop: $drop)
                     }
                 }
+                .padding(.vertical, 5)
             }
             .scrollBounceBehavior(.basedOnSize)
+            .padding(.vertical, -5)
 
             Spacer(minLength: 0)
 
@@ -210,6 +214,7 @@ struct ListSidebarRow: View {
             }
             .onDrag {
                 window.sidebarHover.clear()
+                window.dragged = .list(listID)
                 let p = NSItemProvider()
                 let data = Data(listID.utf8)
                 p.registerDataRepresentation(forTypeIdentifier: UTType.listID.identifier, visibility: .all) { done in
@@ -261,33 +266,29 @@ struct SidebarDropDelegate: DropDelegate {
     func performDrop(info: DropInfo) -> Bool {
         let target = drop
         drop = nil
-        let store = store, window = window, listID = listID
-        if let provider = info.itemProviders(for: [.taskIDs]).first {
-            provider.loadDataRepresentation(forTypeIdentifier: UTType.taskIDs.identifier) { data, _ in
-                guard let data, let ids = try? JSONDecoder().decode([String].self, from: data) else { return }
-                Task { @MainActor in
-                    store.move(ids, to: listID, undoManager: window.undoManager)
-                }
-            }
+        // Read the payload recorded when the drag started: a dragged List row's item provider is cancelled before an
+        // async load of it completes.
+        let dragged = window.dragged
+        window.dragged = nil
+        switch dragged {
+        case .tasks(let ids):
+            store.move(ids, to: listID, undoManager: window.undoManager)
             return true
-        }
-        if let provider = info.itemProviders(for: [.listID]).first, case .list(_, let above) = target {
-            provider.loadDataRepresentation(forTypeIdentifier: UTType.listID.identifier) { data, _ in
-                guard let data, let dragged = String(data: data, encoding: .utf8), dragged != listID else { return }
-                Task { @MainActor in
-                    store.reorderLists([dragged], at: above ? .before(listID) : .after(listID), undoManager: window.undoManager)
-                }
-            }
+        case .list(let id):
+            guard id != listID, case .list(_, let above) = target else { return true }
+            store.reorderLists([id], at: above ? .before(listID) : .after(listID), undoManager: window.undoManager)
             return true
+        case nil:
+            return false
         }
-        return false
     }
 
+    /// Only while one of our drags is live: SwiftUI calls dropUpdated again after performDrop.
     private func update(_ info: DropInfo) {
-        if info.hasItemsConforming(to: [.taskIDs]) {
-            drop = .tasks(listID)
-        } else {
-            drop = .list(listID, above: info.location.y < 15)
+        switch window.dragged {
+        case .tasks: drop = .tasks(listID)
+        case .list: drop = .list(listID, above: info.location.y < 15)
+        case nil: break
         }
     }
 }

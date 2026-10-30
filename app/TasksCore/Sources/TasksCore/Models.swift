@@ -152,7 +152,11 @@ public final class ListModel: Identifiable {
     public let colorSlot: Int
 
     /// The monogram on the list mark: the first letter or digit of the name.
-    public var monogram: String {
+    public var monogram: String { Self.monogram(for: name) }
+
+    /// Nonisolated, so the closure carries no runtime main-actor check: a reviewer's probe build crashed inside that
+    /// check here (app/NOTES-overnight.md).
+    nonisolated static func monogram(for name: String) -> String {
         name.first(where: { $0.isLetter || $0.isNumber }).map { String($0).uppercased() } ?? "·"
     }
 

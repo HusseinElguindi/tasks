@@ -16,6 +16,8 @@ struct QuickAddRow: View {
     @State private var deadlinePicker = false
 
     enum Field { case title, notes }
+    /// Its row id in the task List, to scroll it into view.
+    static let rowID = "quick-add"
 
     var body: some View {
         if let draft = window.quickAdd {
@@ -103,7 +105,8 @@ struct QuickAddRow: View {
             }
             .padding(.vertical, 4)
             .onExitCommand { window.quickAdd = nil }
-            .onAppear { field = .title }
+            // A List row appears before it is in the window, where a focus request made right away is dropped.
+            .onAppear { DispatchQueue.main.async { field = .title } }
             .onChange(of: draft.focusToken) { _, _ in field = .title }
         }
     }

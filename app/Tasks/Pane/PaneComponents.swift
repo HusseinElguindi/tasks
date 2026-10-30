@@ -324,8 +324,8 @@ extension EnvironmentValues {
 
 /// Rex's measured timings (design/REX-REFERENCE.md, design/INTERACTIONS.md).
 extension PaneMotion {
-    /// A row's hover appearing: near-instant.
-    static var hoverIn: Animation { .easeOut(duration: 0.06) }
+    /// A row's hover appearing: near-instant, about 80% on the first frame and settled within 60 ms, as Rex.
+    static var hoverIn: Animation { .timingCurve(0.16, 1, 0.3, 1, duration: 0.06) }
     /// A row's hover fading, from the moment the pointer leaves (Rex holds nothing).
     static var hoverOut: Animation { .easeOut(duration: 0.085) }
     /// Icon-button hover and press release, both ways.

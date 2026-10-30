@@ -24,8 +24,8 @@ style states themselves. The bar is the detail pane's open and close, which stay
 
 | Interaction | Rex (measured) | Tasks |
 |---|---|---|
-| Row hover in | ~80% on the first frame, settled in 50–70 ms | `hoverIn`: ease-out 60 ms |
-| Row hover out | fades ~85 ms from the moment the pointer leaves; no hold | `hoverOut`: ease-out 85 ms, at once |
+| Row hover in | ~80% on the first frame, settled in 50–70 ms | `hoverIn`: 60 ms on a fast-out curve (measured: 78% on the first frame) |
+| Row hover out | fades ~85 ms from the moment the pointer leaves; no hold | `hoverOut`: ease-out 85 ms, at once (measured: settled 67–83 ms after the exit) |
 | Icon-button hover in and out | ~100 ms ease-out, no delay | `icon`: ease-out 100 ms both ways |
 | Pane focus change | ~60 ms | `focus`: ease-out 60 ms |
 | List / tab switch | instant | instant (no animation) |
@@ -111,4 +111,6 @@ title moves right of the toggle. Expanding reverses it.
 | ⌘R | Sync now |
 | ⌘, | Settings |
 
-Text fields keep their own keys: while typing, Space, Return and ⌘⌫ edit text.
+Text fields keep their own keys: while typing, Space, Return and ⌘⌫ edit text. Clicking a row puts keyboard focus
+in the list (SwiftUI's List doesn't take it on a click, so the list takes it when its selection changes). ⌘N scrolls
+quick add into view before focusing it.
