@@ -351,7 +351,7 @@ Every non-200 response has the same body:
 | 401 | `bad_token` | Token missing or wrong. | **Stop syncing. No retry loop.** Show a "Check sync token" state in the sidebar footer and in Settings. Pending ops stay queued. Syncing resumes when the token is changed or on ⌘R. |
 | 404 | `not_found` | Wrong path. | Misconfigured server URL. Same as `bad_request`: stop, show the error, no retry. |
 | 405 | `method_not_allowed` | Not `POST`. | Same as `404`. |
-| 409 | `log_mismatch` | `from > head`, or `base` doesn't match the hash at `from − 1`. | Delete `log.jsonl` and `snapshot.json`, keep pending, and **retry immediately** with `from: 0, base: null`. That can't 409 again. |
+| 409 | `log_mismatch` | `from > head`, or `base` doesn't match the hash at `from − 1`. | **Never discard an op.** Make every known op (confirmed log + pending) pending, delete `snapshot.json`, move `log.jsonl` aside, and **retry immediately** with `from: 0, base: null`. That request can't 409 again. Details: "Recovering from a 409" below. |
 | 413 | `too_large` | Body over 1 MB or more than 500 ops. | Client bug, since the client chunks requests (below). Halve the batch and **retry**. |
 | 5xx, timeouts, network errors, non-JSON bodies | — | Server or network trouble. A Cloudflare edge error may be an HTML page. | **Retry** with exponential backoff: 1 s doubling, capped at 1 min. |
 
@@ -475,7 +475,28 @@ Content-Type: application/json; charset=utf-8
 {"error":"log_mismatch","message":"base does not match the log at seq 1."}
 ```
 
-The client deletes its log and snapshot, keeps pending, and sends `{"from":0,"base":null,"ops":[…pending]}`.
+The client recovers (below): it moves its log aside and re-pushes every op it knows, here its confirmed `opA` and `opB` (its pending queue is empty).
+
+```http
+POST /v1/sync HTTP/1.1
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{"from":0,"base":null,"ops":[opA,opB]}
+```
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json; charset=utf-8
+
+{"entries":[
+  {"seq":0,"received":1761811261234,"hash":"bc2a6e3a4de77a2ce16c4a38c6f4d76237a98434f7d213049e3fd77dde66dacd","op":opA},
+  {"seq":1,"received":1761811261234,"hash":"d26a435858c180d340e58ccc240e66e280a27dbb8a68c6581cea8c5e7341448b","op":{…"Buy bread"…}},
+  {"seq":2,"received":1761811261234,"hash":"2a34469203cb49eae9ac47f94f152dd5096801d50cd45dccb5682ea889992350","op":opB}
+],"head":3,"more":false}
+```
+
+The server deduplicates `opA` and appends the missing `opB` at seq 2. The example reuses one task id for both creates, so the reducer ignores `opB` (rule 1) and the task reads "Buy bread" on every Mac; `opB` itself is kept in the log. Real task ids never collide, so in practice the re-appended create brings the task back.
 
 ### Client sync loop and offline queue
 
@@ -503,6 +524,44 @@ A sync:
 Errors are handled per the table in the API contract. Only `5xx` and network failures back off (1 s doubling, capped at 1 min). `401`, `404`, `405` and `bad_request` stop syncing until the user acts. `409`, `invalid_op` and `413` retry immediately after their fix.
 
 If the app crashes before `pending.jsonl` is rewritten, the next launch drops pending ops that are already in the log tail (§8). Resending is harmless anyway, because the server dedupes by op id.
+
+### Recovering from a 409: re-push everything
+
+A `409` means the Mac's log and the server's have diverged: the server was wiped, reset or restored from an older backup, or the Mac's own log is damaged. In the first three cases the Macs may hold the only copy of some ops. So the rule is: **a Mac never discards an op it knows.** It re-pushes all of them, and the server's op-id dedup keeps the ones it's missing.
+
+On `409`, the client:
+
+1. Builds the **recovery queue**: every op in `log.jsonl` in `seq` order, then the pending queue in order, keeping the first occurrence of each op id. Log ops are copied as their `op` JSON text verbatim, never decoded and re-encoded, because decoding drops types and keys this client doesn't know (rule 6), and those may come from a newer client on another Mac.
+2. Writes it atomically as the new `pending.jsonl`.
+3. Deletes `snapshot.json`.
+4. Renames `log.jsonl` to `log.jsonl.bak-<epoch ms>`.
+5. Resets confirmed state to empty, the cursor to 0 and `base` to `null`, and syncs as usual: `from: 0`, in the normal chunks, until `more` is false and nothing is pending. 100k ops is 200 pushes.
+
+The server needs nothing new. To it these are ordinary pushes:
+
+| Server | Result |
+|--------|--------|
+| Wiped (head 0) | Nothing is deduplicated. The log is rebuilt from this Mac. |
+| Restored to an older point, maybe grown since | Ops it has are deduplicated; the missing ones are appended at head. |
+| Fine, but this Mac's log is damaged | Everything is deduplicated. Nothing is appended; the Mac just re-downloads. |
+
+Several Macs recovering at once is fine: each re-pushes its own ops, and whatever another Mac already re-pushed is deduplicated. A `409` in the middle of a recovery (the server changed again) just starts another one from the current log + pending, which still holds every op.
+
+**Automatic, with no prompt.** There's one user, and recovery only ever adds back ops that user made, so a dialog would have one sensible answer. The app stays fully usable while it runs, and new edits queue behind the recovery queue. The sidebar footer shows "Restoring sync · 1,500 of 12,000" (recovery-queue ops confirmed so far, of the total) and goes back to normal when it's done.
+
+**The screen doesn't jump.** With confirmed state empty and everything pending, the overlay (§9) is a replay of the old log + pending, which is exactly what was on screen. As pages come back, each id they target is rebuilt from `confirmed[id]` plus its remaining pending ops, as in the §9 general path, with one difference: **every** id in the page counts as touched, ours included, because our own ops can come back in a different order than the overlay applied them (some were already on the server, behind other Macs' ops). That costs O(page) on a rare path.
+
+**Known effect: last-writer-wins can shift.** Re-appended ops land after anything the server gained since its backup, so where both wrote the same field, the re-appended value now wins. Every Mac still converges on the same state. Acceptable.
+
+**Hash chain:** unchanged. Appended ops get a new `seq` and hash from the server, and the client stores whatever comes back. Nothing is hashed on the client.
+
+**Inbox seeding:** unaffected. The seed's `list.create` is in the log, so it's in the recovery queue and the state (confirmed + pending) still has the Inbox. If it were seeded again anyway, its fixed op id is deduplicated.
+
+**Crash safety** comes from the step order. A crash before step 4 leaves `log.jsonl` in place: launch loads it (from the snapshot, or by full replay if step 3 ran), the next sync `409`s again, and recovery reruns and builds the same queue. Until then, pending also holds ops that are already confirmed. Re-applying a log on top of its own result changes nothing except in odd cases (an update that came before its create in the log), and the recovery corrects those. A crash after step 4 finds no log and no snapshot: confirmed is empty, everything is pending, and the recovery carries on.
+
+**Backups:** the app never reads `log.jsonl.bak-*`, since every op in them is already pending. They're a safety net for bugs in this path. All of them are deleted when a sync ends with `more: false` and nothing pending.
+
+**Deleting the server no longer erases data.** A wiped or deleted-and-redeployed server is rebuilt by the first Mac that syncs. Starting over for real also means deleting each Mac's Application Support data before it syncs again.
 
 ### Realtime: polling, no WebSocket
 
@@ -559,7 +618,7 @@ The design is close to Git, and the mapping is useful. Where it breaks down is w
 The protocol trusts a bare index ("give me everything after `k`"). If the server log is ever reset, or restored from a Durable Object point-in-time backup, and then grows again, a client's index silently points into a *different* log. The client would apply the wrong ops with no error. The existing `from > head` check only catches the case where the log ends up shorter.
 
 - **Server:** each entry stores `hash = SHA-256(prevHash + "\n" + opText)` as hex, where `opText` is the op JSON exactly as the server stores it and `prevHash` is `""` for `seq 0`.
-- **Client:** sends `base`, the hash of its last entry. A mismatch returns `409`, and the client resyncs from 0 (§5).
+- **Client:** sends `base`, the hash of its last entry. A mismatch returns `409`, and the client re-pushes every op it knows and resyncs from 0 (§5).
 - **Why it's cheap:** the client never computes a hash. It stores the server's hash with each entry and echoes the last one back. So no canonical-JSON rules exist anywhere.
 - **Cost:** one column, one hash per append, one comparison per sync, ~65 bytes per op.
 - **Not adopted:** clients verifying the whole chain on load. The torn-tail rule (§8) covers the realistic local failure.
@@ -685,6 +744,9 @@ Files in Application Support:
 | `log.jsonl` | Confirmed entries exactly as the server sent them (`seq`, `received`, `hash`, `op`). Append-only. | Appended after each sync that returns entries. |
 | `pending.jsonl` | Pending ops. Append-only. | One append per local op. Rewritten atomically after a sync confirms some. |
 | `snapshot.json` | `{schema, cursor, hash, logOffset, state}`: the reduced confirmed state at `cursor`. | Debounced after syncs, and on quit (below). |
+| `log.jsonl.bak-<ms>` | A log moved aside by a `409` recovery (§5). Never read by the app. | Created on `409`; deleted when the recovery finishes. |
+
+**Pending ops are sent verbatim.** A request carries each pending op as its `pending.jsonl` line, unchanged. For a local op that's its JSON as the client wrote it; for an op recovered from the log (§5) it's the server's text, which may hold keys this client can't decode.
 
 - **The log is the source of truth.** The snapshot is a cache that can always be rebuilt from it.
 - **Torn tails:** if a crash leaves the last line of a `.jsonl` file torn, that line is dropped on load. A torn log entry is simply refetched.
@@ -731,7 +793,7 @@ Files in Application Support:
 
 Bump `schema` whenever the shape of `AppState` or the reducer's semantics change. The next launch then rebuilds from the log with the new reducer, which is one reason the log stays the source of truth. A full replay of 100k ops takes about a second, and only once.
 
-**On `409`:** delete `log.jsonl` and `snapshot.json`, keep pending and sync from 0.
+**On `409`:** recover as in §5 ("Recovering from a 409"): the confirmed log's ops plus pending become the new `pending.jsonl`, then `snapshot.json` is deleted and `log.jsonl` is moved aside, in that order, and the Mac syncs from 0. No op is ever discarded.
 
 ### Shape
 
@@ -758,6 +820,7 @@ Unit tests cover the pure parts with fixed inputs:
   - The setup is two or three simulated Macs making random ops and syncing in random orders, with partial pushes and ops created while a request is in flight.
   - After every sync, visible state, indexes and model values must equal a from-scratch replay of `confirmed log + pending`.
 - **Snapshot:** loading the snapshot and applying the tail equals a full replay. A corrupt, missing or old-schema snapshot falls back correctly.
+- **409 recovery:** against a server that was wiped, restored to an older point (and grown since), or healthy with a damaged client log, the server ends up holding every op id any Mac ever had, and all Macs converge. The rebase test includes restores at random points. A crash after each recovery step still ends there. Unknown keys in recovered log ops are re-pushed byte for byte.
 - **Ordering:** ties, rebalance, concurrent moves replayed in both orders.
 - **Today predicate:** midnight, both dates set, completed yesterday, list archived.
 - **Seeding:** two Macs seeding offline and then syncing in either order end up with one Inbox. A renamed or archived Inbox survives a re-seed.
@@ -904,7 +967,7 @@ Two tracks, server (S) and macOS (C), run in parallel. Each step ends with somet
 |------|-------|-------------|
 | S1 | Worker skeleton: routing, `404`/`405`, auth (`401`), JSON error bodies. | `vitest` with `@cloudflare/vitest-pool-workers`, running locally. |
 | S2 | Parsing and validation: `400 bad_request`, `400 invalid_op` (with `index`/`field`), `413`. | A table-driven test per rule in the validation table, plus the 400/401 fixtures. |
-| S3 | The DO: log table, append with dedup, hash chain, page read with `more`, `409`. | The hash vectors (`opA`/`opB` must produce exactly the fixture hashes), the 200 push/pull and 409 fixtures, idempotent retry, a 2,345-entry pagination test. |
+| S3 | The DO: log table, append with dedup, hash chain, page read with `more`, `409`. | The hash vectors (`opA`/`opB` must produce exactly the fixture hashes), the 200 push/pull and 409 fixtures (`05b` is the recovery re-push: one op deduplicated, one appended), idempotent retry, a 2,345-entry pagination test. |
 | S4 | Response compression, then **deploy to `*.workers.dev`, only after the user approves**: Worker, DO migration, `API_TOKEN` secret. | `curl` smoke test: a pull from 0, and `curl --compressed -sI` showing `Content-Encoding`. |
 
 Until S4, everything runs locally (`vitest`, `wrangler dev`) and no Cloudflare resources are created.
@@ -915,13 +978,13 @@ Until S4, everything runs locally (`vitest`, `wrangler dev`) and no Cloudflare r
 |------|-------|-------------|
 | C1 | Pure core: `Op` Codable, the `AppState` reducer, `FractionalIndex`, the Today predicate, Inbox seeding. | Unit tests: conflict cases (§5), ordering, Today, seeding, and decoding every fixture op. |
 | C2 | Projection: pending overlay, fast-path and general-path rebase, indexes, model registry. | The randomized rebase test (§8) and the incremental-vs-rebuilt index check. |
-| C3 | Persistence: `log.jsonl`, `pending.jsonl`, the snapshot and its fallback, write ordering. | Snapshot and crash tests (§8), launch and edit benchmarks (§9). |
-| C4 | `SyncClient`: chunking, the error table, backoff. | Against `wrangler dev` from S3, or a stub that serves the fixtures: every row of the error table. |
+| C3 | Persistence: `log.jsonl`, `pending.jsonl`, the snapshot and its fallback, write ordering, the `409` recovery's file steps (§5). | Snapshot and crash tests, including a crash after each recovery step (§8); launch and edit benchmarks (§9). |
+| C4 | `SyncClient`: chunking, the error table, backoff, `409` recovery. | Against `wrangler dev` from S3, or a stub that serves the fixtures: every row of the error table. Recovery against a wiped, a restored and a healthy server (§8). |
 | C5 | UI with the Pane theme and `design/`: sidebar, Today, list screens, Archive, drag, ⌘Z, the token setting. | Manual testing plus the remaining §9 benchmarks. |
 
 C1 has a hard dependency: §9's projection relies on the reducer returning the single changed id, so C1 has to provide that before C2 starts.
 
-**End-to-end check (after S4 and C5):** run two app instances against the deployed Worker, then edit, reorder and archive on both, online and offline. The two instances run on one Mac with separate data directories, via a `-dataDirectory <path>` launch argument that exists for testing only. Done means both instances converge, and each matches a fresh third instance that syncs from 0.
+**End-to-end check (after S4 and C5):** run two app instances against the deployed Worker, then edit, reorder and archive on both, online and offline. The two instances run on one Mac with separate data directories, via a `-dataDirectory <path>` launch argument that exists for testing only. Done means both instances converge, and each matches a fresh third instance that syncs from 0. Then wipe the server log (a fresh local `wrangler dev` state, not the deployed Worker) and check that both instances recover it with nothing lost.
 
 ## 11. Later
 
@@ -929,8 +992,8 @@ Deferred on purpose. Each is additive and needs no change to what v1 stores.
 
 - **Hard deletes:** permanently removing deleted tasks and archived lists.
   - The log keeps everything, so a real purge means rewriting history, like `git filter-repo`: rebuild the log without the purged entities, which gives a new hash chain.
-  - Every Mac's `base` then mismatches, so each gets a `409` and resyncs from 0. That path already exists (§5).
-  - The open design work is producing the rewritten log on the server, which needs reduced state there (a server snapshot).
+  - Every Mac's `base` then mismatches, so each gets a `409`. But `409` recovery (§5) re-pushes every op a Mac knows, which would put the purged ops straight back. A purge therefore needs its own signal, e.g. a distinct error that tells Macs to drop ops for the purged ids before recovering.
+  - The other open design work is producing the rewritten log on the server, which needs reduced state there (a server snapshot).
 - **Server snapshots / compaction:** for faster first sync on a new Mac (§5, §6).
 - **Realtime:** a WebSocket "head is now N" poke from the DO (§5).
 - **Per-task history view** (§6).
