@@ -294,6 +294,9 @@ final class TaskListView: NSView {
 
         CATransaction.commit()
 
+        #if DEBUG
+        if !sameView, !L.order.isEmpty { DebugTiming.rowAppeared() }
+        #endif
         currentLayout = L
         prevKey = L.key
         prevYs = L.ys
