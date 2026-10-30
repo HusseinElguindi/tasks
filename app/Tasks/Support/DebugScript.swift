@@ -76,7 +76,7 @@ enum DebugScript {
         for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
             if let e = NSEvent.mouseEvent(with: type, location: p, modifierFlags: flags, timestamp: ProcessInfo.processInfo.systemUptime,
                                           windowNumber: w.windowNumber, context: nil, eventNumber: 0, clickCount: count, pressure: 1) {
-                NSApp.sendEvent(e)
+                post(e, in: w)
             }
         }
     }
@@ -85,7 +85,26 @@ enum DebugScript {
         let p = NSPoint(x: x, y: w.contentLayoutRect.height - y)
         if let e = NSEvent.mouseEvent(with: type, location: p, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
                                       windowNumber: w.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1) {
-            NSApp.sendEvent(e)
+            post(e, in: w)
+        }
+    }
+
+    /// While the app is active, through `NSApp.sendEvent` as a real event goes. In the background (someone else is using
+    /// the Mac) the window would swallow the first press on a view that doesn't take the first mouse, so the press goes
+    /// straight to the view under it and the drag and release to that same view, as NSWindow routes them (local event
+    /// monitors don't see these).
+    private static var pressed: NSView?
+    private static func post(_ e: NSEvent, in w: NSWindow) {
+        if NSApp.isActive { NSApp.sendEvent(e); return }
+        switch e.type {
+        case .leftMouseDown:
+            pressed = w.contentView?.superview?.hitTest(e.locationInWindow)
+            pressed?.mouseDown(with: e)
+        case .leftMouseDragged: pressed?.mouseDragged(with: e)
+        case .leftMouseUp:
+            pressed?.mouseUp(with: e)
+            pressed = nil
+        default: NSApp.sendEvent(e)
         }
     }
 
@@ -93,6 +112,8 @@ enum DebugScript {
         let chars: String = switch code {
         case 125: String(UnicodeScalar(NSDownArrowFunctionKey)!)
         case 126: String(UnicodeScalar(NSUpArrowFunctionKey)!)
+        case 123: String(UnicodeScalar(NSLeftArrowFunctionKey)!)
+        case 124: String(UnicodeScalar(NSRightArrowFunctionKey)!)
         case 36: "\r"
         case 49: " "
         case 53: "\u{1b}"
@@ -107,7 +128,9 @@ enum DebugScript {
             if let e = NSEvent.keyEvent(with: type, location: .zero, modifierFlags: flags, timestamp: ProcessInfo.processInfo.systemUptime,
                                         windowNumber: w.windowNumber, context: nil, characters: chars,
                                         charactersIgnoringModifiers: chars, isARepeat: false, keyCode: code) {
-                NSApp.sendEvent(e)
+                // In the background there's no key window to route to: straight to the first responder (menu key
+                // equivalents don't work this way).
+                if NSApp.isActive { NSApp.sendEvent(e) } else if type == .keyDown { w.firstResponder?.keyDown(with: e) }
             }
         }
     }

@@ -11,8 +11,10 @@ Status: **final, 2026-10-30.** The user reviewed the prototype and made the four
 - Item 3: a pane alone in the window shows no focus; the focused look appears only with two panes (§4 Pane focus).
 - Item 4: the sidebar's edge and the gap before the detail pane are dividers that resize the panes (§4 Resizing the
   panes).
+- Item 5: no flicker on a rename or a drop. The rename field and the label swap in one frame, on the same pixels and at
+  the same weight (§7); a dropped copy fades out over its row instead of vanishing while the row fades in (§14).
 
-The prototype source matches all three.
+The prototype source matches all four (item 5's rename part is the app's drawing; the browser has no equivalent).
 
 **The prototype is the reference implementation:** https://claude.ai/artifact/QetdV1H57SC6kLXtNzJRXM (press Play on the
 main board, then click inside it once so it has the keys). Its source is in `design/prototype-v2/`, and this spec cites
@@ -444,7 +446,11 @@ typed afterwards are their own step ("Edit Notes"). Drafts never enter the undo 
 | Return on the selected task (list focused) or list (sidebar focused) | Whole title selected |
 | Rename in the context menu | Whole title selected |
 
-The field replaces the title in place, in the same font, origin and color. The row is always selected while it's renamed,
+The field replaces the title in place, in the same font, origin and color, and in the same frame: the title hides and
+the field draws in one Core Animation transaction, never a frame with neither or both. Its text lands on the title's
+pixels at the same weight (the labels are `CATextLayer`s, which draw without font smoothing, so the field's editor
+draws without it too; AppKit's default editor drew the title visibly bolder while renaming, v2 feedback 5). The row is
+always selected while it's renamed,
 so it keeps `fill-row-selected` and adds a 1.5pt inset `accent` ring at radius 8; the › is hidden
 (`css:165`, `css:182`: the `.row.editing` fill never shows, because the selection
 rule comes later); a list row in the sidebar gets `fill-control` with the same ring
@@ -768,14 +774,15 @@ the drop will land; there is no insertion line. Source: `dc:1162–1177`,
 | Over the list | The other rows in the group part on `layout` to open a gap (as many slots as rows dragged) at the target. The target is the nearest slot to the copy. The copy stays inside its group: it stops 6pt past the first and last slot (a list's open tasks; one Today group) |
 | Near the top or bottom (24pt) | The list scrolls 8pt every 16 ms |
 | Over a sidebar list | The gap closes and everything below the group moves up (the rows are leaving). The target row shows the drop-target state. The copy becomes a compact tag, 210 wide (width on 160 ms ease-out) at the pointer +12, +8, so the target stays readable. Today is a target (sets When = today) unless you're in Today; the current list, archived lists and labels aren't |
-| Drop on the list | The copy flies into its slot (160 ms, cubic-bezier(0.2, 0.8, 0.2, 1)); at 170 ms the new order is written (one op per task, `keysBetween`, SPEC §3) and the rows show in place. Dropping where it started writes nothing |
+| Drop on the list | The copy flies into its slot (160 ms, cubic-bezier(0.2, 0.8, 0.2, 1)); at 170 ms the new order is written (one op per task, `keysBetween`, SPEC §3) and the grabbed row shows at once, exactly under the copy, which then fades out over it (150 ms ease-out), so the lift dissolves into the row; the other rows that came along fade in (150 ms). Dropping where it started writes nothing |
 | Drop on a sidebar list | The copy flies to the row's left (x 10) and fades out (160 ms); at 170 ms the move is written; notice "Moved to Errands" |
-| Esc (or the system cancelling the drag) | The copy flies back to where it started (160 ms) and the gap closes. Nothing is written. Releasing anywhere else drops at the last slot shown, as in a Mac list |
+| Esc (or the system cancelling the drag) | The copy flies back to where it started (160 ms) and the gap closes; the row then shows under it and the copy fades out over it, as for a drop. Nothing is written. Releasing anywhere else drops at the last slot shown, as in a Mac list |
 
-**Sidebar lists** drag the same way, vertically only, after 4pt: the copy is the capsule (`fill-strong`, 209 wide,
-radius 15, `shadow-lift`, tile and name in `ink`) at x 10, clamped 6pt past the first and last list; the other lists part
-on `layout`; the drop flies to its slot (160 ms) and the order is written at 170 ms. Today and archived lists can't be
-dragged (`dc:1262–1270`, `dc:1271–1285`, `dc:1286–1300`, `css:242`).
+**Sidebar lists** drag the same way, vertically only, after 4pt: the copy is the capsule (`fill-strong`, the row's
+width, radius 15, `shadow-lift`, tile and name in `ink`, the name on the row's text line) at x 10, clamped 6pt past the
+first and last list; the other lists part on `layout`; the drop flies to its slot (160 ms), the order is written at
+170 ms, and the row shows at once under the copy, which fades out over it (150 ms; Esc the same). Today and archived
+lists can't be dragged (`dc:1262–1270`, `dc:1271–1285`, `dc:1286–1300`, `css:242`).
 
 ---
 
@@ -1026,8 +1033,10 @@ Found by an audit of the spec against the prototype; each is what the prototype 
   chip, its left edge is 300 left of the row's right end (`dc:1136`).
 - **The drag copy**: 10 padding on both sides and no › slot, so its chips sit 21pt further right than in the row; in
   light theme its chips sit on `fill-track`; the compact tag over the sidebar drops the chips. Only selected rows from
-  the grabbed row's group come along (`dc:1166`). After a drop the rows fade back in
-  (150 ms). A sidebar row being dragged fades out over 150 ms rather than vanishing (`css:118`).
+  the grabbed row's group come along (`dc:1166`). After a drop the grabbed row shows at once under the copy, which
+  fades out over it (150 ms); the other rows fade back in (150 ms). Never hide the copy while its row fades in: that
+  leaves a frame or more with neither (v2 feedback 5). A sidebar row being dragged fades out over 150 ms rather than
+  vanishing (`css:118`).
 - **Keys**: ↑ / ↓ with several rows selected go below the last or above the first of them
   (`dc:706–720`). Scrolling a row into view starts within 4pt of an edge and jumps (no
   animation). With the detail pane focused but not editing, arrows, letters and Return act on the list and move focus

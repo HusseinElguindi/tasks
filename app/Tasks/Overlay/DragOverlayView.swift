@@ -15,6 +15,8 @@ final class DragOverlayView: NSView {
     private var palette = TK.Palette.dark
     private var fullWidth: CGFloat = 0
     private var compact = false
+    /// Bumped by every new copy, so a settling copy's late hide can't hide the next one.
+    private var generation = 0
 
     override var isFlipped: Bool { true }
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
@@ -42,6 +44,7 @@ final class DragOverlayView: NSView {
     func beginTaskCopy(_ m: RowModel, palette: TK.Palette, frame: CGRect, count: Int) {
         self.palette = palette
         model = m
+        generation += 1
         fullWidth = frame.width
         compact = false
         let row = copy ?? TaskRowView(style: .lifted)
@@ -125,6 +128,20 @@ final class DragOverlayView: NSView {
     func endCopy() {
         copy?.isHidden = true
         model = nil
+    }
+
+    /// The copy has landed on its row, which shows at full opacity under it in this same frame: the copy fades out over
+    /// it (`fadeOut`, 150 ms), so the lift dissolves into the row. Hiding the copy while the row faded in left a frame or
+    /// more with nothing there, a blink (v2 feedback 5).
+    func settleCopy() {
+        model = nil
+        guard let row = copy, let rl = row.layer, !TK.CA.reduce else { copy?.isHidden = true; return }
+        rl.animate("opacity", to: Float(0), TK.CA.fadeOutT)
+        let g = generation
+        DispatchQueue.main.asyncAfter(deadline: .now() + TK.CA.fadeOutT.duration + 0.02) { [weak self] in
+            guard let self, self.generation == g else { return }
+            row.isHidden = true
+        }
     }
 }
 

@@ -406,7 +406,7 @@ const TIP_WARM_MS = 600;       // ...and at once for this long after the last on
 const HINT_HOLD_MS = 450;      // holding ⌘ this long shows ⌘1–9 in the sidebar
 const TYPE_SELECT_MS = 1000;   // type-to-select keeps adding letters within this
 const DETAIL_CLOSE_MS = 460;   // the detail pane's 450 ms exit, then it's removed
-const FLY_MS = 170;            // a dropped copy's 160 ms flight, then the change is written
+const FLY_MS = 170, LAND_MS = 160;   // a dropped copy's 160 ms flight, then the change is written; then the copy fades out over its row (v2 feedback 5)
 const MOTION_WINDOW_MS = 240;  // rows keep their entering or leaving look this long
 const DRAG_SLOP = 4;           // points a press moves before it becomes a drag
 const SCROLL_EDGE = 24, SCROLL_STEP = 8;   // drag autoscroll: within 24pt of an edge, 8pt per 16 ms
@@ -1229,7 +1229,7 @@ class Component extends DCLogic {
     const L = this.lastLayout;
     if (cancel) {
       this.setState({ drag: { ...d, phase: 'fly', target: d.target, over: null, flyTo: { x: d.left, y: d.startTop }, cancel: true } });
-      setTimeout(() => this.setState({ drag: null }), 200);
+      setTimeout(() => { this.setState({ drag: { ...this.state.drag, phase: 'done' } }); setTimeout(() => this.setState({ drag: null }), LAND_MS); }, 200);
       return;
     }
     if (d.over) {
@@ -1253,8 +1253,8 @@ class Component extends DCLogic {
     this.setState({ drag: { ...d, phase: 'fly', flyTo: { x: d.left, y: slotY } } });
     setTimeout(() => {
       if (!(contiguous && d.target === origTarget)) this.reorder(d.group, d.ids, clamp(d.target, 0, others.length));
-      this.setState({ drag: { ...d, phase: 'done' } });
-      setTimeout(() => this.setState({ drag: null }), 40);
+      this.setState({ drag: { ...this.state.drag, phase: 'done' } });
+      setTimeout(() => this.setState({ drag: null }), LAND_MS);
     }, FLY_MS);
   }
 
@@ -1294,8 +1294,8 @@ class Component extends DCLogic {
     this.setState({ sbDrag: { ...d, target: to, phase: 'fly', flyTo: ty } });
     setTimeout(() => {
       if (!cancel && to !== from) this.moveList(d.id, to);
-      this.setState({ sbDrag: { ...d, phase: 'done' } });
-      setTimeout(() => this.setState({ sbDrag: null }), 40);
+      this.setState({ sbDrag: { ...this.state.sbDrag, phase: 'done' } });
+      setTimeout(() => this.setState({ sbDrag: null }), LAND_MS);
     }, FLY_MS);
   }
 
@@ -1862,7 +1862,7 @@ class Component extends DCLogic {
       const done = t.completedAt != null;
       if (done) cls += ' done';
       if (this.entering.has(t.id) && !lv) cls += ' enter';
-      if (d && d.ids.includes(t.id) && d.phase !== 'done') cls += ' dragsrc';
+      if (d && d.ids.includes(t.id) && d.phase !== 'done') cls += ' dragsrc'; else if (d && d.phase === 'done' && t.id === d.grabbed) cls += ' landed';
       const isEd = !!(ed && ed.kind === 'task' && ed.id === t.id);
       if (isEd) cls += ' editing';
       if (visSel(t.id) && !lv) {
@@ -1983,7 +1983,7 @@ class Component extends DCLogic {
       if (key === curKey) cls += ' cur';
       if (o.arch) cls += ' arch';
       if (overKey === key) cls += ' drop';
-      if (sbd && sbd.id === key && sbd.phase !== 'done') cls += ' dragsrc';
+      if (sbd && sbd.id === key && sbd.phase !== 'done') cls += ' dragsrc'; else if (sbd && sbd.id === key) cls += ' landed';
       if (this.sbEntering.has(key) && !lv) cls += ' enter';
       const isEd = !!(ed && ed.kind === 'list' && ed.id === key);
       if (isEd) cls += ' editing';
@@ -2005,19 +2005,19 @@ class Component extends DCLogic {
 
     // ----- Overlays
     let drag = { show: false };
-    if (d && d.phase !== 'done') {
+    if (d) {
       const t = this.task(d.grabbed);
-      const pos = d.phase === 'fly' ? d.flyTo : { x: d.x, y: d.y };
+      const pos = d.phase === 'drag' ? { x: d.x, y: d.y } : d.flyTo;
       const width = d.over || (d.phase === 'fly' && d.shrink) ? 210 : d.w;
       const chips = t && !d.over ? rows.find((r) => r.id === t.id).chips : [];
-      drag = { show: true, cls: 'lifted' + (d.phase === 'fly' ? ' flying' : '') + (d.shrink ? ' shrink' : ''), style: 'transform: translate(' + pos.x + 'px, ' + pos.y + 'px); width: ' + width + 'px',
+      drag = { show: true, cls: 'lifted' + (d.phase === 'fly' ? ' flying' : '') + (d.phase === 'done' ? ' settle' : '') + (d.shrink ? ' shrink' : ''), style: 'transform: translate(' + pos.x + 'px, ' + pos.y + 'px); width: ' + width + 'px',
         title: t ? t.title || 'New Task' : '', chips, multi: d.count > 1, count: String(d.count), checkCls: 'check' };
     }
     let sbLift = { show: false };
-    if (sbd && sbd.phase !== 'done') {
+    if (sbd) {
       const l = this.list(sbd.id);
-      const y = sbd.phase === 'fly' ? sbd.flyTo : sbd.y;
-      sbLift = { show: true, cls: 'lifted cap' + (sbd.phase === 'fly' ? ' flying' : ''), style: 'transform: translate(10px, ' + y + 'px); width: ' + (s.sbW - 21) + 'px', name: l ? l.name : '', tileCls: 'tile ' + (l ? COLOR_CLASS[l.color] : ''), mono: l ? monogram(l.name) : '' };
+      const y = sbd.phase === 'drag' ? sbd.y : sbd.flyTo;
+      sbLift = { show: true, cls: 'lifted cap' + (sbd.phase === 'fly' ? ' flying' : '') + (sbd.phase === 'done' ? ' settle' : ''), style: 'transform: translate(10px, ' + y + 'px); width: ' + (s.sbW - 21) + 'px', name: l ? l.name : '', tileCls: 'tile ' + (l ? COLOR_CLASS[l.color] : ''), mono: l ? monogram(l.name) : '' };
     }
 
     const mapMenu = (items, hot, level) => {

@@ -386,3 +386,10 @@
 .tk.resizing, .tk.resizing * { cursor: col-resize !important; user-select: none; }
 .tk.resizing .pane, .tk.resizing .sb { transition: none !important; }
 .tk.springback .pane, .tk.springback .sb { transition: left var(--dur-natural) var(--ease-natural), right var(--dur-natural) var(--ease-natural), width var(--dur-natural) var(--ease-natural) !important; }
+
+/* A drop's hand-off (v2 feedback 5): the row under the landed copy shows at once and exactly in place (.landed: no
+   transitions), and the copy fades out over it in 150 ms (.settle), so the lift dissolves into the row. Hiding the copy
+   while the row faded back in left a blank frame. The list's lifted name sits on the row's text line. */
+.tk .row.landed, .tk .srow.landed { transition: none !important; }
+.tk .lifted.settle { opacity: 0; transition: opacity 150ms ease-out; }
+.tk .lifted.cap .tt { transform: translateY(-0.5px); }

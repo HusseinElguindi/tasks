@@ -206,10 +206,11 @@ final class SidebarLiftLayer: CALayer {
         tile.set(monogram: monogram, color: p.listColor(slot: slot), palette: p)
         tile.position = CGPoint(x: SB.tileX + tile.bounds.width / 2, y: SB.rowHeight / 2)
         addSublayer(tile)
-        // `.tt`: 7 after the tile to the 10pt right padding, centered on the row (no nudge here).
+        // `.tt`: 7 after the tile to the 10pt right padding, on the row's own text line (the row's 0.5 nudge too, so the
+        // copy's name lies exactly on the row's as it fades out over it after a drop, v2 feedback 5).
         let width = rowWidth - SB.titleX - 10
         label.set(text, font: TK.Font.body, color: p.ink)
-        label.place(x: SB.titleX, lineTop: (SB.rowHeight - 16) / 2, lineHeight: 16, width: width)
+        label.place(x: SB.titleX, lineTop: SB.titleLineTop, lineHeight: 16, width: width)
         fade.update(width: width, height: label.bounds.height, fade: 24)
         label.mask = fade
         addSublayer(label)

@@ -18,6 +18,11 @@ final class InlineField: NSTextField, NSTextFieldDelegate {
     var singleLine = true
     private let fieldUndo = UndoManager()
 
+    override class var cellClass: AnyClass? {
+        get { InlineFieldCell.self }
+        set {}
+    }
+
     override init(frame: NSRect) {
         super.init(frame: frame)
         isBordered = false
@@ -34,8 +39,9 @@ final class InlineField: NSTextField, NSTextFieldDelegate {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    /// Wrapping (the detail title): grows with its text.
+    /// Wrapping (the detail title): grows with its text. It replaces no label, so it keeps AppKit's own editor.
     func makeWrapping() {
+        (cell as? InlineFieldCell)?.matchesLabel = false
         cell?.isScrollable = false
         cell?.wraps = true
         lineBreakMode = .byWordWrapping
@@ -106,4 +112,32 @@ final class InlineField: NSTextField, NSTextFieldDelegate {
 
     // A press inside the field moves the caret and never ends the edit (§7).
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
+/// The labels a rename field replaces are `CATextLayer`s, which draw text without font smoothing; AppKit's field
+/// editor smooths, so the title thickened for the length of a rename, a visible jump as it began and ended (v2 feedback
+/// 5). This cell draws, and edits with, an editor that doesn't smooth: the same weight as the label, pixel for pixel.
+private final class InlineFieldCell: NSTextFieldCell {
+    var matchesLabel = true
+    private lazy var editor: NSTextView = {
+        let v = UnsmoothedFieldEditor(usingTextLayoutManager: false)
+        v.isFieldEditor = true
+        return v
+    }()
+
+    override func fieldEditor(for controlView: NSView) -> NSTextView? {
+        matchesLabel ? editor : super.fieldEditor(for: controlView)
+    }
+
+    override func drawInterior(withFrame cellFrame: NSRect, in controlView: NSView) {
+        if matchesLabel { NSGraphicsContext.current?.cgContext.setShouldSmoothFonts(false) }
+        super.drawInterior(withFrame: cellFrame, in: controlView)
+    }
+}
+
+private final class UnsmoothedFieldEditor: NSTextView {
+    override func draw(_ dirtyRect: NSRect) {
+        NSGraphicsContext.current?.cgContext.setShouldSmoothFonts(false)
+        super.draw(dirtyRect)
+    }
 }

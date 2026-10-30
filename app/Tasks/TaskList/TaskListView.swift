@@ -56,6 +56,8 @@ final class TaskListView: NSView {
     private var press: (target: Target, point: CGPoint, event: NSEvent)?
     private var pendingCollapse: EntityID?
     private var drag: DragSession?
+    /// While the hand-off renders: the row the dragged copy has just landed on (`land(on:_:)`).
+    private var landing: EntityID?
     private var autoscrollTimer: Timer?
 
     init(store: Store, window: WindowState) {
@@ -328,11 +330,22 @@ final class TaskListView: NSView {
             } else if v.frame.width != rowW {
                 place(v, y: y, width: rowW)
             }
+            if id == landing, let layer = v.layer {
+                // The copy settled on this row: it shows at once, exactly where the copy is (any move toward the gap
+                // that was still running unseen is cut), under the fading copy (v2 feedback 5).
+                for key in layer.animationKeys() ?? [] where key == "opacity" || key.hasPrefix("move-") {
+                    layer.removeAnimation(forKey: key)
+                }
+                layer.opacity = 1
+            }
         }
 
         Self.phase()
         renderLabels(L, rowW: rowW, animate: animate, now: now)
         renderExtras(L, width: width, rowW: rowW, contentH: contentH, animate: animate)
+        // In this transaction, so the field and the title it replaces swap in one frame. Added after the commit, the
+        // field drew a frame late: the title was already hidden, and the row showed no title for a frame (v2 feedback 5).
+        updateRenameField(rename, layout: L)
 
         CATransaction.commit()
         Self.phase()
@@ -347,7 +360,6 @@ final class TaskListView: NSView {
         prevCompletedY = L.completedY
         paletteChanged = false
         firstRender = false
-        updateRenameField(rename, layout: L)
         if !leaving.isEmpty || !labelsLeaving.isEmpty || !keepUntil.isEmpty { scheduleCleanup() }
         if let id = pendingScroll, L.contains(id) {
             pendingScroll = nil
@@ -543,9 +555,12 @@ final class TaskListView: NSView {
             }
         }
         f.textColor = palette.ink
-        // The field replaces the title in place: same font, origin and color (NSTextField draws its text 2pt in).
+        // The field replaces the title in place: same font, origin and color (NSTextField draws its text 2pt in). Its
+        // text lands on the title's pixels (measured frame by frame across the swap, v2 feedback 5).
         let t = row.titleFrame
-        f.frame = CGRect(x: row.frame.minX + t.minX - 2, y: row.frame.minY + t.minY - 0.5, width: t.width + 4, height: 17)
+        f.frame = CGRect(x: row.frame.minX + t.minX - 2, y: row.frame.minY + t.minY, width: t.width + 4, height: 17)
+        // Drawn now, into the transaction that hides the title, not in the window's next display pass.
+        f.displayIfNeeded()
     }
 
     // MARK: - Scrolling
@@ -1021,8 +1036,8 @@ final class TaskListView: NSView {
             state.drag?.phase = .fly
             overlay?.flyCopy(to: d.startFrame.origin, shrink: false)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
-                overlay?.endCopy()
                 self?.state.drag = nil
+                self?.land(on: d.ids.first, overlay)
             }
             return
         }
@@ -1055,9 +1070,19 @@ final class TaskListView: NSView {
             guard let self else { return }
             if !(contiguous && current.target == d.origTarget) { a.reorder(group: d.group, ids: d.ids, target: current.target) }
             self.state.drag?.phase = .done
-            overlay?.endCopy()
+            self.land(on: d.ids.first, overlay)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) { [weak self] in self?.state.drag = nil }
         }
+    }
+
+    /// The hand-off when the copy has flown onto its row (a drop in the list, or Esc flying it back): the row is drawn
+    /// now, in the same Core Animation transaction as the copy starting to fade, so no frame shows neither. The other
+    /// dragged rows, which the copy only counted, fade in as before.
+    private func land(on id: EntityID?, _ overlay: DragOverlayView?) {
+        landing = id
+        render()
+        landing = nil
+        overlay?.settleCopy()
     }
 
     // MARK: - Accessibility

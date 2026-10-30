@@ -69,6 +69,8 @@ final class SidebarView: FlippedLayerView {
     }
     private var listDrag: ListDrag?
     private var lift: SidebarLiftLayer?
+    /// While the hand-off renders: the list whose lifted copy has just landed on its row.
+    private var landing: SidebarModel.Key?
 
     // Held ⌘ (§12, §18.13)
     nonisolated(unsafe) private var monitor: Any?
@@ -260,10 +262,12 @@ final class SidebarView: FlippedLayerView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         apply(m, animated: animated)
-        CATransaction.commit()
-
+        // In this transaction, so the rename field and the name it replaces swap in one frame. Synced after the commit,
+        // the field and its editor drew a frame late, after the name was hidden: a blank row for a frame (v2 feedback 5).
         sizeContent()
         syncField()
+        CATransaction.commit()
+
         if revealCurrent, let row = m.row(m.current) {
             revealCurrent = false
             content.scrollToVisible(rowRect(row.y).insetBy(dx: 0, dy: -4))
@@ -282,7 +286,14 @@ final class SidebarView: FlippedLayerView {
             if let layer = rowLayers[r.key] {
                 let returning = leaving.removeValue(forKey: r.key) != nil
                 layer.update(r, palette: palette, hovered: hovered, animated: animated)
-                if animated {
+                if r.key == landing {
+                    // The copy settled on this row: it shows at once, exactly where the copy is (a move toward the gap
+                    // still running unseen is cut), under the fading copy (v2 feedback 5).
+                    layer.removeAnimation(forKey: "opacity")
+                    layer.removeAnimation(forKey: "position.y")
+                    layer.position = CGPoint(x: SB.rowX, y: r.y)
+                    layer.opacity = opacity
+                } else if animated {
                     if layer.position.y != r.y { layer.spring("position.y", to: r.y, TK.CA.layout) }
                     if returning {
                         // Back before it finished leaving: it enters again (dc:1827).
@@ -418,6 +429,8 @@ final class SidebarView: FlippedLayerView {
                 editor.selectedTextAttributes = [.backgroundColor: palette.textSel]
                 editor.insertionPointColor = palette.ink
             }
+            // The field and its editor draw now, into the transaction that hides the name.
+            f.displayIfNeeded()
         } else if let f = field {
             placeField(f, rowY: row.y)
             if f.textColor != palette.ink {
@@ -427,14 +440,14 @@ final class SidebarView: FlippedLayerView {
         }
     }
 
-    /// `.ri`: from 7 after the tile to 10 short of the capsule's end, its 13/16 line centered in the 30pt row. The
-    /// field draws its text 2pt in (the cell's inset), so it starts 2pt early; with a 17pt frame 7 down, its text lands
-    /// on the title's pixels (measured on a 2x snapshot).
+    /// `.ri`: from 7 after the tile to 10 short of the capsule's end, on the title's own line. The field draws its text
+    /// 2pt in (the cell's inset), so it starts 2pt early; with a 17pt frame on the title's line top (6.5 down), its text
+    /// lands on the title's pixels (measured frame by frame across the swap; 7 down sat 0.5 low, v2 feedback 5).
     private func placeField(_ f: InlineField, rowY: CGFloat) {
         let inset = Self.fieldTextInset
         let h = Self.fieldHeight
         let x = SB.rowX + SB.titleX - inset.x
-        let frame = CGRect(x: x, y: rowY + 7 - inset.y, width: SB.rowX + rowWidth - SB.fieldRightPad - x, height: h)
+        let frame = CGRect(x: x, y: rowY + SB.titleLineTop - inset.y, width: SB.rowX + rowWidth - SB.fieldRightPad - x, height: h)
         if f.frame != frame { f.frame = frame }
     }
 
@@ -718,12 +731,21 @@ final class SidebarView: FlippedLayerView {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 if !cancel && to != from { self.actions.moveList(id, to: to) }
+                // The row is drawn at once, in the same transaction as the copy starting to fade out over it, so no
+                // frame shows neither; removing the copy while the row faded in blinked (v2 feedback 5).
                 let copy = self.lift
-                copy?.setInstant { copy?.removeFromSuperlayer() }
                 self.lift = nil
                 self.listDrag = nil
                 self.ui.drag = nil
+                self.landing = .list(id)
                 self.render()
+                self.landing = nil
+                if let copy {
+                    copy.animate("opacity", to: Float(0), TK.CA.fadeOutT)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + TK.CA.fadeOutT.duration + 0.02) {
+                        copy.setInstant { copy.removeFromSuperlayer() }
+                    }
+                }
             }
         }
     }

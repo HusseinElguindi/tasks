@@ -142,6 +142,22 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
    closing smoothly at 544. The prototype does the same in Chrome (limits, cursors, reset, `localStorage` across a
    reload). Not checked with a real pointer: the cursor itself and the feel of a live drag (the Mac was in use).
 
+5. **Flicker on rename and after a drop.** Found frame by frame: the window recorded with ScreenCaptureKit (works while
+   it's covered, up to 120 fps), every frame diffed against its neighbours.
+   - *Drop (tasks and sidebar lists, in a list, Esc too):* the copy was hidden the moment it landed while its row faded
+     back in from 0, so the row was gone for ~45 ms (5 frames at 0 text pixels) and then faded up. Now the row shows at
+     once, exactly under the copy (any slide toward the gap still running unseen is cut), in the same transaction as
+     the copy starting to fade out over it (150 ms): the row's text stays at full strength in every frame. Other rows of
+     a multi-row drag fade in as before; a drop on a sidebar list was already clean (the row leaves).
+   - *Rename (tasks and sidebar lists, entering and committing by Return or a click away):* three causes. The row's
+     changes went out in an explicit Core Animation transaction and the field was added after it, so one frame showed the
+     ring with no title; the field is now synced and drawn inside that transaction. AppKit's field editor draws with font
+     smoothing and the labels (`CATextLayer`) without, so the title went ~30% bolder while renaming; the field now has
+     its own editor that doesn't smooth. And both fields sat 0.5pt off the label (task field high, sidebar field low);
+     both now land on the label's pixels (same left and top edge, centroid within 0.4px).
+   - Prototype: the same drop hand-off (`.landed`, `.settle`; it also built the 'done' state from the pre-flight drag,
+     so its copy had no position), checked in Chrome.
+
 ## Notes for whoever drives the UI next
 
 - Scratch tools (not committed) are in the session scratchpad's `tools/`: `ui` (window-relative HID input that only
