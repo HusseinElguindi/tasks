@@ -1729,6 +1729,17 @@ final class TaskListView: NSView {
         overlay?.settleCopy()
     }
 
+    /// A press on a row's When or Deadline (or VoiceOver's): selects the row if it wasn't, then opens that date's
+    /// popover, for the whole selection if the row was in it.
+    private func openChip(_ id: EntityID, _ field: Overlays.Picker.Field) {
+        let a = actions
+        let ids = state.selection.contains(id) ? a.targetIDs : [id]
+        if !state.selection.contains(id) { a.select([id]) }
+        if let v = rows[id], let chip = v.chipFrame(field) {
+            a.openPicker(field, ids: ids, anchor: windowRect(chip, from: v))
+        }
+    }
+
     #if DEBUG
     /// Debug: hover at a window point (top-left origin), as the tracking area would.
     func debugScroll(_ y: CGFloat) {
@@ -1742,17 +1753,6 @@ final class TaskListView: NSView {
         guard let p, let w = window else { pointerExited(); return }
         let inWin = NSPoint(x: p.x, y: w.contentLayoutRect.height - p.y)
         pointerMoved(at: doc.convert(inWin, from: nil))
-    }
-
-    /// A press on a row's When or Deadline (or VoiceOver's): selects the row if it wasn't, then opens that date's
-    /// popover, for the whole selection if the row was in it.
-    private func openChip(_ id: EntityID, _ field: Overlays.Picker.Field) {
-        let a = actions
-        let ids = state.selection.contains(id) ? a.targetIDs : [id]
-        if !state.selection.contains(id) { a.select([id]) }
-        if let v = rows[id], let chip = v.chipFrame(field) {
-            a.openPicker(field, ids: ids, anchor: windowRect(chip, from: v))
-        }
     }
 
     /// Debug (§24): every row on screen, top to bottom, with what it shows of its dates.
