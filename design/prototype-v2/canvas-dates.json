@@ -215,73 +215,37 @@
       "h": 764,
       "radius": 12,
       "is_interactive": true,
-      "title": "Prototype · the scrolling calendar (Sticky month); click a When"
+      "title": "Prototype · the scrolling calendar; click a When or a Deadline"
     },
-    "Cal-Pages.dc.html": {
-      "x": 1260,
-      "y": 8360,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "As built: pages, left and right buttons"
-    },
-    "Cal-Sticky.dc.html": {
+    "Cal-Before.dc.html": {
       "x": 0,
       "y": 9460,
       "w": 1000,
       "h": 620,
       "radius": 12,
       "is_interactive": true,
-      "title": "Sticky month (recommended): the header names the month that fills the view; other months dim"
+      "title": "Before: pages, 288pt wide, four quick picks"
     },
-    "Cal-Inline.dc.html": {
+    "Cal-After.dc.html": {
       "x": 1080,
       "y": 9460,
       "w": 1000,
       "h": 620,
       "radius": 12,
       "is_interactive": true,
-      "title": "Inline months: no header; each 1st carries its month"
+      "title": "After: one column of weeks, 240pt wide; Next Week goes"
     },
-    "Cal-Tints.dc.html": {
-      "x": 2160,
-      "y": 9460,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Tinted months: the header, and every other month on a band"
-    },
-    "Cal-Sticky-Far.dc.html": {
+    "Cal-Far.dc.html": {
       "x": 0,
       "y": 10500,
       "w": 1000,
       "h": 620,
       "radius": 12,
       "is_interactive": true,
-      "title": "Scrolled five months on: Today ↑ in the header"
+      "title": "Scrolled eight years on: Today ↑ in the header"
     },
-    "Cal-Inline-Far.dc.html": {
+    "Cal-Typed.dc.html": {
       "x": 1080,
-      "y": 10500,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Inline: until a 1st scrolls in, nothing says which month; Today is in the footer"
-    },
-    "Cal-Tints-Far.dc.html": {
-      "x": 2160,
-      "y": 10500,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Tinted, scrolled on"
-    },
-    "Cal-Sticky-Typed.dc.html": {
-      "x": 3240,
       "y": 10500,
       "w": 1000,
       "h": 620,
@@ -289,14 +253,14 @@
       "is_interactive": true,
       "title": "Typed “dec 24”: it scrolls to December, its first week on top"
     },
-    "Cal-Sticky-Light.dc.html": {
-      "x": 0,
-      "y": 11540,
+    "Cal-Light.dc.html": {
+      "x": 2160,
+      "y": 10500,
       "w": 1000,
       "h": 620,
       "radius": 12,
       "is_interactive": true,
-      "title": "Sticky month · light"
+      "title": "Light"
     }
   },
   "order": [
@@ -322,15 +286,11 @@
     "Popover-Deadline.dc.html",
     "Popover-When-Light.dc.html",
     "Cal-Proto.dc.html",
-    "Cal-Pages.dc.html",
-    "Cal-Sticky.dc.html",
-    "Cal-Inline.dc.html",
-    "Cal-Tints.dc.html",
-    "Cal-Sticky-Far.dc.html",
-    "Cal-Inline-Far.dc.html",
-    "Cal-Tints-Far.dc.html",
-    "Cal-Sticky-Typed.dc.html",
-    "Cal-Sticky-Light.dc.html"
+    "Cal-Before.dc.html",
+    "Cal-After.dc.html",
+    "Cal-Far.dc.html",
+    "Cal-Typed.dc.html",
+    "Cal-Light.dc.html"
   ],
   "noteOrder": [
     "title",
@@ -340,7 +300,8 @@
     "t_lists",
     "t_detail",
     "t_cal",
-    "n_cal"
+    "n_cal",
+    "n_cal2"
   ],
   "notes": {
     "title": {
@@ -348,7 +309,7 @@
       "x": 0,
       "y": -300,
       "maxW": 4240,
-      "text": "Tasks · When and Deadline at a glance (§24 final; §25 proposed)"
+      "text": "Tasks · When and Deadline at a glance (§24 and §25, final)"
     },
     "howto": {
       "x": -560,
@@ -389,15 +350,22 @@
       "kind": "title1",
       "x": 0,
       "y": 8060,
-      "maxW": 4240,
-      "text": "Proposed (§25): a calendar that scrolls"
+      "maxW": 3160,
+      "text": "The calendar that scrolls (§25)"
     },
     "n_cal": {
       "x": -560,
       "y": 8360,
       "w": 480,
       "size": 24,
-      "text": "One column of weeks that scrolls up and down, months running into each other. Six weeks in view; it opens on the selected date's month, as the paged grid did, and keeps going either way. Snaps to a week when it comes to rest.\n\nThe prototype (left) has the strip's Calendar and Scroll switches; the prototype at the top still opens the paged grid, as built.\n\nTry: scroll with the trackpad; ↑↓←→; Page Up and Page Down; type “mar 3”; scroll far and press Today."
+      "text": "One column of weeks that scrolls up and down, months running into each other, endless both ways. Six weeks in view; it opens on the selected date's month, as the paged grid did. The header names the month that fills most of the view; other months' days dim. It settles on a week when it comes to rest.\n\nOnly the weeks in view and four either side exist; they're made as you scroll.\n\nTry: scroll with the trackpad, far; ↑↓←→; Page Up and Page Down; type “mar 3” or “jan 3 1990”; then Today."
+    },
+    "n_cal2": {
+      "x": -560,
+      "y": 9460,
+      "w": 480,
+      "size": 24,
+      "text": "240pt wide instead of 288, the days 32pt apart instead of 39.\n\nThe width was set by the quick picks: Today, Tomorrow, Next Week and Clear took 271 of the 272pt inside. Next Week goes (typing “next” or “mon” still gets it), so Today, Tomorrow and Clear fit in 186.\n\nThe last line keeps one line: when the date and its words don't fit, ↩ goes, then the weekday, then the relative words."
     }
   }
 }

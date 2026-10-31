@@ -40,9 +40,9 @@ The sidebar (§12) gains their rows, and ⌘1–⌘9 now open the sidebar's firs
 list's notes, and a large list title, with the user's picks (§23, final). Its canvas is
 https://claude.ai/artifact/9dQ4fC46yZLLhf61gLiELx. Where §1–§22 disagree, §23 wins; its last part lists where.
 
-**A calendar that scrolls (`docs/TASK-design-calendar-scroll.md`): proposed, not built (§25).** The date popover's
-month as one column of weeks that scrolls up and down; the prototype has it behind its strip's Calendar switch
-(the default is still the paged grid, as built), on the dates canvas.
+**A calendar that scrolls (`docs/TASK-design-calendar-scroll.md`): final, not built yet (§25).** The date popover's
+month as one column of weeks that scrolls up and down, endless both ways, in a popover 240pt wide; the prototype opens
+it, and the dates canvas shows it before and after. Where §25 differs from §11 and §24, §25 wins.
 
 **When and Deadline at a glance (`docs/TASK-design-dates.md`, `-2.md`): final, not built yet (§24).** The quiet
 When after the title, the countdown wording and the checkbox ring; the prototype has them, and so does its own canvas:
@@ -1703,99 +1703,142 @@ is display only.
 
 ---
 
-## 25. A calendar that scrolls (proposed)
+## 25. A calendar that scrolls
 
-Status: **proposed, 2026-10-31** (`docs/TASK-design-calendar-scroll.md`). Nothing here is built. §11's popover (the
-month with ‹ › buttons) describes the app, and the prototype opens that by default. The user's words: "I want
-calendar to be scrollable (i.e. up and down and all connected), instead of left-right buttons."
+Status: **final, 2026-10-31** (`docs/TASK-design-calendar-scroll.md`), not built yet. The user's words: "I want
+calendar to be scrollable (i.e. up and down and all connected), instead of left-right buttons." Their picks: the
+sticky month header, snapping to weeks, the Today pill, a narrower popover, and a calendar that is endless both ways,
+its weeks made as you scroll. Where §25 differs from §11 and §24, §25 wins (the last part lists where).
 
-The canvas is the dates canvas, https://claude.ai/artifact/2wUF9Dz2JEt8Xp2pBDahy2, section "Proposed (§25)". It has:
-- a clickable prototype, opening the scrolling calendar, whose strip switches Calendar and Scroll;
-- the paged grid as built;
-- the three month-label variants, each opened and each scrolled five months away;
+The canvas is the dates canvas, https://claude.ai/artifact/2wUF9Dz2JEt8Xp2pBDahy2, section "The calendar that scrolls
+(§25)":
+- a clickable prototype;
+- the popover before (paged, 288pt) and after (scrolling, 240pt), side by side;
+- scrolled eight years on, with Today ↑;
 - a typed date;
 - a light board.
 
-The prototype's code is the template at `dc:224–231`, the constants at `dc:475–481`, and the logic at
-`dc:2622–2710`, plus `css:521–542`. The strip's switches are `CAL_OPTS`; a board sets them with `v-cal` and `v-snap`.
+The main prototype opens the scrolling calendar too; a board sets `v-cal="pages"` only for the "before". The code is
+the template at `dc:213–233`, the constants at `dc:474–484`, the footer fit at `dc:2629–2640` (and `textW` at
+`dc:344`), the calendar at `dc:2625–2745`, the past wording at `dc:305–314`, and `css:521–534`.
 
-### The core
+### The calendar
 
 - **One column of weeks.** The ‹ › buttons go. The six-week grid becomes a vertical scroll view of week rows, 30pt
   each (the 28pt day capsule and 1pt above and below), months running straight into each other. Weekday initials stay
   fixed above it.
-- **The viewport** is six rows, 180pt: the paged grid's height, so the popover keeps its size (288 × about 344).
+- **The viewport** is six rows, 180pt: the paged grid's height.
 - **It opens where the paged grid did:** the selected date's month (today's, when the tasks have none), with that
-  month's first week on top. Nothing is lost against the paged grid; the calendar just keeps going either way.
-- **The range** runs from five years back to ten years ahead of today, about 780 weeks.
+  month's first week on top. It never animates on opening.
+- **Endless both ways.** There's no first or last week. Weeks are made as they come near the view and dropped as they
+  leave it: the six showing and four either side, 14 at most, wherever you are.
+- **The month** is in the header: the month with the most of the 42 days showing (at a tie, the later). Days of the
+  other months are `ink-quiet`, as days outside the month are in the paged grid. The header and the dimming change
+  together as you scroll. At rest it looks like the paged grid.
 - **Days** look as in §11 and §24: today `accent-text` semibold; the current date a 1.5pt `accent` ring; the
   highlighted day an `accent` fill; the other date a 4pt dot (`attention` for a deadline, `ink-tertiary` for a When).
-  The §24 checkbox rings belong to rows; the calendar doesn't show them.
-
-### Month labels
-
-| Variant | How you know the month | Recommended |
-|---|---|---|
-| **Sticky month** | The header names the month that fills the view: the one with the most of the 42 days showing. Days of the other months are `ink-quiet`, as days outside the month are in the paged grid. The header and the dimming change together as you scroll. | **yes** |
-| **Inline months** | No header. Each month's 1st carries its name above the number (8.5pt semibold `accent-text`; January adds the year, "Jan ’27"). Every day is `ink`. | |
-| **Tinted months** | The header, as in Sticky, with no dimming. Every other month sits on a faint band (`hover` fill), so a boundary is a change of band. | |
-
-**Why Sticky.**
-- There's always one place that says which month you're in, as in the paged grid and macOS Calendar's scrolling
-  month view.
-- The dimming shows the boundary without adding anything.
-- It looks exactly like the paged grid at rest, so the change is only that it scrolls.
-
-**Inline** saves the header's 34pt, but until a 1st scrolls into view nothing says which month you're in, and the
-labels crowd the 1st's cell. **Tinted** marks the boundaries most clearly, but a band on every other month is louder
-than anything else in the popover, and in light it reads as a selection.
 
 ### Getting around
 
-- **Trackpad and wheel.** Native scrolling, with momentum.
-- **Snapping** (recommended: snap to weeks). When the scroll comes to rest, momentum included, it eases to the
-  nearest week (140ms, ease-out), so a row is never cut in half. "Free" leaves it where it stops.
+- **Trackpad and wheel.** Native scrolling, with momentum, which carries on across any number of years.
+- **Snapping to weeks.** When the scroll comes to rest, momentum included, it eases to the nearest week (140ms,
+  ease-out), so a row is never cut in half.
 - **Today.** Once today is more than two weeks out of view, the header shows a "Today" pill (11pt, `accent-tint` and
-  `accent-text`) with an arrow toward today: "Today ↑" or "Today ↓". It scrolls to today's month without picking
-  today; the quick pick "Today" still sets the date. In Inline, which has no header, the pill sits in the footer
-  before ↩.
+  `accent-text`, 20 tall) with an arrow toward today: "Today ↑" or "Today ↓". It scrolls back to today's month without
+  picking today; the quick pick "Today" still sets the date. It's the way back from far away, so it has no limit:
+  eight years back takes the same 260ms as eight weeks.
 - **Keys** (the field keeps them):
   - ← → move the highlighted day by a day, ↑ ↓ by a week.
   - Page Up and Page Down move it by a month, to the same day (clamped: Jan 31 → Feb 28).
   - When the highlighted day leaves the view, the grid scrolls the least that shows it: a row at a time as you walk
     off an edge.
-- **Typed dates.** Typing moves the highlighted day as now. If its week is out of view, the grid scrolls to its month
-  (the first week on top) in 260ms, ease-out. A jump of more than six weeks first lands six weeks short, then
-  animates the rest, so you see it move without flicking through years. Typing within the view doesn't move the grid,
-  so it doesn't jitter as you type.
-- **Opening** never animates; the grid appears in place.
+- **Typed dates.** Typing moves the highlighted day as now, at any distance ("jan 3 1990", "mar 4 2031"). If its week
+  is out of view, the grid scrolls to its month (the first week on top) in 260ms, ease-out. A jump of more than six
+  weeks first lands six weeks short, then animates the rest, so you see it move without flicking through years.
+  Typing within the view doesn't move the grid, so it doesn't jitter as you type.
+
+### The popover, narrower
+
+The popover is **240pt** wide instead of 288, so the days sit **32pt** apart (a 28pt circle and 4pt between) instead
+of 39. Everything inside is 224pt.
+
+- **What set the width:** the quick picks. Today, Tomorrow, Next Week and Clear take 271pt of the 272 inside 288.
+- **Next Week goes.** Today, Tomorrow and Clear take 186pt. Next Week is still a word away: "next" offers it as the
+  field's suggestion, "mon" picks Monday, and it's one row down in the calendar. Dropping it only when Clear shows
+  would make the row change with the selection, so it goes always.
+- **The field's hint** for a When is "When: try fri, 3d, nov 9" ("tom" goes with Next Week's room; Tomorrow is a
+  button). A Deadline's stays "Deadline: try fri, nov 9, 2w". Both fit.
+- **The last line** stays one line. In full it's the date with its weekday, then the relative words or the note
+  ("after the deadline", "before the When"), then ↩. When that doesn't fit 224pt, it drops, in order: ↩, then the
+  weekday (the grid shows it), then the relative words. The note always stays. Most dates this year fit in full;
+  those with a year or a note lose ↩ or the weekday:
+
+| Typed | The last line |
+|---|---|
+| fri | Fri, Nov 6 · after the deadline ↩ |
+| sep 30 2027 (a When) | Sep 30, 2027 · after the deadline |
+| sep 30 2027 (a Deadline) | Due Thu, Sep 30, 2027 · in 11 months |
+| dec 30 2025 (a Deadline) | Due Dec 30, 2025 · before the When |
+| jan 3 1990 (a When) | Wed, Jan 3, 1990 · 37 years ago ↩ |
+
+  "No date matches “…”" ends in an ellipsis when it's long.
+- **How far ago.** With decades in reach, the past reads like the future: under 14 days "N days ago", under 60 "N
+  weeks ago", under a year "N months ago", then "a year ago" and "N years ago"; for a deadline, "… overdue" ("10
+  months overdue", "1 year overdue"). Before, the past only had weeks ("1400 weeks ago").
 
 ### Building it
 
-SwiftUI, macOS 14 (the app's target), in place of the six-row `ForEach` in `DatePopover.swift`:
+macOS 14, in place of the six-row `ForEach` in `DatePopover.swift`. The calendar is an `NSScrollView` in an
+`NSViewRepresentable`, because endless scrolling needs one thing SwiftUI's `ScrollView` doesn't give on macOS 14: moving
+the content and the scroll offset by the same amount in the same frame, without stopping a flick.
 
-- **The list.** `ScrollView(.vertical) { LazyVStack(spacing: 0) { ForEach(weeks, id: \.self) { WeekRow(week: $0) } }
-  .scrollTargetLayout() }`. Here `weeks` is a range of `Int` week indexes (0 is the week five years back); a row
-  works out its seven dates from its index, so there's no array of dates. `LazyVStack` makes only the rows near the
-  view, about 780 in all, so the cost is a dozen rows at a time.
-- **Where it is.** `.scrollPosition(id: $topWeek, anchor: .top)` gives the top week as you scroll; the header's month
-  and the dimming come from it (the month with the most days in `topWeek ..< topWeek + 6`). Opening sets `topWeek`
-  without animation.
-- **Snapping.** `.scrollTargetBehavior(.viewAligned)` snaps to rows, momentum included. If it feels too sticky with a
-  trackpad, the AppKit way is an `NSScrollView` whose clip view overrides `constrainBoundsRect(_:)` to round
-  `origin.y` to 30pt; that's applied during the momentum, so it settles on a row with no second motion.
-- **Moving to a date** (typed, Page Up and Down, Today):
-  `withAnimation(.smooth(duration: 0.26)) { topWeek = target }`. For a far jump, set it six weeks short without
-  animation first, then animate the rest.
+**The window of weeks.** The scroll view's document is a fixed strip, 120 weeks tall (3,600pt), and doesn't grow.
+
+- **Week numbers.** Every week has a number counted from today's week (0; earlier weeks negative), and a row works out
+  its seven dates from its number. `base` is the week at the strip's top, so week `n` sits at y = (n − base) × 30.
+- **Where the view is** in weeks from today: pos = clip origin.y + base × 30. The header, the dimming and the Today pill
+  all come from pos.
+- **Recentring.** `postsBoundsChangedNotifications` is on, and each bounds change runs a check. When the view is within
+  30 weeks of either end of the strip, it moves the window:
+  - newBase = round(pos / 30) − 57, which puts the view in the strip's middle.
+  - The clip view's origin moves by −(newBase − base) × 30 with `setBoundsOrigin` and `reflectScrolledClipView`.
+  - The rows are placed again at their new y.
+
+  All of this runs in the same turn of the run loop, before the next draw, so nothing on screen moves. Momentum keeps
+  going, because the scroll view adds each momentum event's delta to the origin it finds. 30 weeks is far more than a
+  flick moves in one frame (the prototype's fastest step is 10). `verticalScrollElasticity = .none`; the ends are
+  never reached.
+- **Rows.** About 14 `WeekRow` views (an `NSHostingView` each, or drawn in AppKit), reused. After each scroll, rows
+  outside first … last are given the weeks that came in, where first = floor(pos / 30) − 4 and last = first + 14.
+  Nothing else exists.
+- **Snapping.** On `NSScrollView.didEndLiveScrollNotification`, which comes after the momentum ends, animate the clip
+  origin to the nearest multiple of 30: `NSAnimationContext` with 0.14s, ease-out, through `clipView.animator()`.
+  Don't round in `constrainBoundsRect`, which would make every scroll step in whole rows.
+- **Moving to a date** (typed, Page Up and Down, Today), to `target`, the top of its month's first week:
+  - If it's six weeks or less away, animate the clip origin there (0.26s, ease-out).
+  - Otherwise, first set `base` for the target, move the origin to six weeks short of it without animation, then
+    animate the rest.
+  - Don't recentre while it animates. The strip's middle leaves 57 weeks either way, far more than six.
 - **Keys:** the same `onKeyPress` handlers as now, plus `.pageUp` and `.pageDown`; after moving, scroll only if the
-  highlighted day's week is outside `topWeek ..< topWeek + 6`.
-- **The scroller** is the system's overlay scroller, shown only while scrolling. The prototype hides its own.
+  highlighted day's week is outside the six showing.
+- **The scroller** is the system's overlay scroller, shown only while scrolling.
+- **Dates** come from `Calendar` arithmetic on week numbers, which works for any year a person will scroll to.
+- **The footer fit:** `ViewThatFits(in: .horizontal)` over the four lines, in the order above.
 
-### Questions for the user
+**Why not SwiftUI.** A `LazyVStack` over a huge fixed range (say ±10,000 weeks) would look endless and make only the
+rows near the view. But on macOS 14, jumping across it with `scrollPosition(id:)` makes SwiftUI estimate every row
+between, and the scroll bar's size has no meaning. Prepending rows to a lazy stack shifts the content, and correcting
+that with `scrollPosition` lands a frame late and stops the momentum. The window of weeks has neither problem, and the
+prototype does the same thing in a browser (`dc:2625–2745`).
 
-- **Month labels:** Sticky (recommended), Inline or Tinted?
-- **Snapping:** snap to weeks (recommended), or free?
-- **The range:** five years back and ten ahead. Should it go back at all? Past dates are rare for a When, but a
-  deadline sometimes needs one.
+### Where this changes §11 and §24
 
+- **§11, the popover:** 240pt, not 288; days 32pt apart; no ‹ ›; the scrolling calendar in place of the paged grid.
+- **§11, the quick picks:** Today · Tomorrow, and Clear when the tasks share a date. Next Week goes; the field still
+  offers it for "next".
+- **§11, the field's hint:** "When: try fri, 3d, nov 9".
+- **§11, the last line:** it now has a fit rule (↩, then the weekday, then the relative words).
+- **§11 and §24, the past wording:** "N months ago", "N years ago" (and "… overdue"), after "N weeks ago". This changes
+  the rows' tooltips and the detail pane for dates more than about two months back. The §24 tables don't change,
+  because none of their rows are that far back.
 ---

@@ -221,14 +221,14 @@ body{margin:0}
 <sc-for list="{{pk.days}}" as="c" hint-placeholder-count="0"><span class="{{c.cls}}" data-date="{{c.date}}" onClick="{{onPickDay}}">{{c.label}}</span></sc-for>
 </div>
 </sc-if>
-<sc-if value="{{pk.scroll}}"><div class="{{pk.csCls}}">
-<sc-if value="{{pk.hasHead}}"><div class="mon"><span class="mt">{{pk.monthTitle}}</span><sc-if value="{{pk.todayBtn}}"><button class="tdy" type="button" aria-label="Scroll to today" onClick="{{onCalToday}}">Today<span class="ar">{{pk.todayArrow}}</span></button></sc-if></div></sc-if>
+<sc-if value="{{pk.scroll}}"><div class="cs">
+<div class="mon"><span class="mt">{{pk.monthTitle}}</span><sc-if value="{{pk.todayBtn}}"><button class="tdy" type="button" aria-label="Scroll to today" onClick="{{onCalToday}}">Today<span class="ar">{{pk.todayArrow}}</span></button></sc-if></div>
 <div class="cal cdw"><sc-for list="{{pk.dows}}" as="w" hint-placeholder-count="0"><span class="dw">{{w}}</span></sc-for></div>
-<div class="{{pk.csvCls}}"><div class="csp" style="{{pk.spaceStyle}}">
-<sc-for list="{{pk.weeks}}" as="wk" hint-placeholder-count="0"><div class="cal wk" style="{{wk.style}}"><sc-for list="{{wk.days}}" as="c" hint-placeholder-count="0"><span class="{{c.cls}}" data-date="{{c.date}}" onClick="{{onPickDay}}"><sc-if value="{{c.ml}}"><span class="ml">{{c.mlText}}</span></sc-if><span class="dn">{{c.label}}</span></span></sc-for></div></sc-for>
+<div class="csv"><div class="csp" style="{{pk.spaceStyle}}">
+<sc-for list="{{pk.weeks}}" as="wk" hint-placeholder-count="0"><div class="cal wk" style="{{wk.style}}"><sc-for list="{{wk.days}}" as="c" hint-placeholder-count="0"><span class="{{c.cls}}" data-date="{{c.date}}" onClick="{{onPickDay}}">{{c.label}}</span></sc-for></div></sc-for>
 </div></div>
 </div></sc-if>
-<div class="pv"><span class="{{pk.previewCls}}">{{pk.preview}}<sc-if value="{{pk.hint}}"><span class="pvh">{{pk.hint}}</span></sc-if></span><sc-if value="{{pk.todayFloat}}"><button class="tdy fl" type="button" aria-label="Scroll to today" onClick="{{onCalToday}}">Today<span class="ar">{{pk.todayArrow}}</span></button></sc-if><span class="kbd">↩</span></div>
+<div class="pv"><span class="{{pk.previewCls}}">{{pk.preview}}<sc-if value="{{pk.hint}}"><span class="pvh">{{pk.hint}}</span></sc-if></span><sc-if value="{{pk.kbd}}"><span class="kbd">↩</span></sc-if></div>
 </div>
 </sc-if>
 
@@ -238,7 +238,7 @@ body{margin:0}
 <sc-if value="{{stage.show}}">
 <div class="stage" aria-label="Prototype controls">
 <span class="sl">Prototype</span>
-<span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Edit tasks</span><span class="seg"><sc-for list="{{stage.editTasks}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><sc-for list="{{stage.vars}}" as="vg" hint-placeholder-count="0"><span class="sl">{{vg.label}}</span><span class="seg"><sc-for list="{{vg.opts}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span></sc-for>
+<span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Edit tasks</span><span class="seg"><sc-for list="{{stage.editTasks}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
 <span class="sn">The browser keeps ⌘N, ⌘T and ⌘1–9, so ⌥N, ⌥T and ⌃1–9 also work here.</span>
 <span style="flex: 1;"></span>
 <button class="lnk" type="button" data-k="reset" data-v="1" onClick="{{onStage}}">Reset</button>
@@ -308,8 +308,10 @@ function relText(s, today) {
   if (n === 1) return 'tomorrow';
   if (n === -1) return 'yesterday';
   if (n > 0) return n <= 14 ? 'in ' + n + ' days' : n < 60 ? 'in ' + Math.round(n / 7) + ' weeks' : n < 365 ? 'in ' + Math.round(n / 30) + ' months' : Math.round(n / 365) === 1 ? 'in a year' : 'in ' + Math.round(n / 365) + ' years';
-  return -n < 14 ? -n + ' days ago' : Math.round(-n / 7) + ' weeks ago';
+  return pastSpan(-n, 'a year') + ' ago';
 }
+// How long ago, for a date the calendar can now reach decades back (§25): days under two weeks, then weeks, months, years.
+function pastSpan(d, oneYear) { return d < 14 ? d + ' days' : d < 60 ? Math.round(d / 7) + ' weeks' : d < 365 ? Math.round(d / 30) + ' months' : Math.round(d / 365) === 1 ? oneYear : Math.round(d / 365) + ' years'; }
 function localDayOfMs(ms) { return ymdOf(new Date(ms)); }
 
 // How the row chips read (§24). A deadline counts the whole days left, not its own day: "14d left" … "1d left", then
@@ -332,12 +334,14 @@ function deadlineChip(s, today) {
 // the distance ("in 3 weeks").
 function dueRelText(s, today) {
   const n = diffDays(today, s);
-  if (n < 0) return -n === 1 ? '1 day overdue' : -n < 14 ? -n + ' days overdue' : Math.round(-n / 7) + ' weeks overdue';
+  if (n < 0) return -n === 1 ? '1 day overdue' : pastSpan(-n, '1 year') + ' overdue';
   if (n === 0) return 'due today';
   if (n <= LEFT_MAX) return n === 1 ? '1 day left' : n + ' days left';
   return relText(s, today);
 }
 // The popover's note on a When after the deadline, or a deadline before the When (no rule forbids either; SPEC §2).
+// The footer's text width, 12pt system (for the fit above).
+function textW(t) { const c = textW.c || (textW.c = document.createElement('canvas').getContext('2d')); c.font = '12px -apple-system, "SF Pro Text", system-ui, "Helvetica Neue", sans-serif'; return c.measureText(t).width; }
 function pkHint(p, hot) { return !p.none && p.other && ((p.field === 'when' && hot > p.other) || (p.field === 'deadline' && hot < p.other)); }
 // A chip's tooltip: the full date and how far it is.
 function dateTip(field, s, today) {
@@ -467,18 +471,17 @@ const VIEW_EMPTY = {
 };
 // Headings, a list's notes and its title (INTERACTIONS-v2 §23).
 const HEAD_AIR = 8;   // a heading's air above its row
-// A scrolling calendar in the date popover (INTERACTIONS-v2 §25, proposed): one column of weeks, 30pt a row, six in
-// view, from five years back to ten ahead; only the rows in view and four either side are drawn. It opens where the
-// paged grid did: the selected date's (or today's) month, its first week on top. The strip switches the month labels
-// and the snapping (the default is the paged grid, as built, until the user picks); a board sets them with v-cal and
-// v-snap.
-const CAL_ROW = 30, CAL_ROWS = 6, CAL_BUF = 4, CAL_BACK = 260, CAL_FWD = 520, CAL_JUMP = 6, CAL_ANIM_MS = 260;
-const CAL_DEFAULTS = { cal: 'pages', snap: 'weeks' };   // as built, until the user picks (§25)
-const CAL_OPTS = {
-  cal: [['sticky', 'Sticky month'], ['inline', 'Inline months'], ['tints', 'Tinted months'], ['pages', 'Pages (as built)']],
-  snap: [['weeks', 'Snap to weeks'], ['free', 'Free']],
-};
-const CAL_LABEL = { cal: 'Calendar', snap: 'Scroll' };
+// A scrolling calendar in the date popover (INTERACTIONS-v2 §25): one column of weeks, 30pt a row, six in view,
+// endless both ways. Weeks are numbered from today's (0; earlier ones negative), and a week is made only when it's near
+// the view: the six showing and four either side. They're placed in a window CAL_SPAN rows tall whose first row is
+// week `base`. When the view comes within CAL_EDGE rows of either end of the window, base moves so the view is in the
+// middle again, and the scroll offset moves by the same number of rows in the same frame, so nothing on screen moves
+// and a flick keeps its momentum. It opens where the paged grid did: the selected date's (or today's) month, its first
+// week on top. The header names the month with the most days showing, and the other months' days dim. Scrolling
+// settles on a whole week. The popover is 240pt wide, its days 32pt apart. A board can set v-cal="pages" for the
+// popover as it was built before §25 (the paged grid, 288pt wide, with Next Week), for the before-and-after.
+const CAL_ROW = 30, CAL_ROWS = 6, CAL_BUF = 4, CAL_SPAN = 120, CAL_EDGE = 30, CAL_JUMP = 6, CAL_ANIM_MS = 260;
+const PK_W = 240, PK_W_PAGED = 288;
 // The checkbox's cue classes (§24): late (a past deadline), due (a deadline today), plate (a When on or before today,
 // so it's in Today; not drawn in Today itself, where every task is). Open tasks only, never in Trash.
 // …and the same, read aloud on the checkbox's label: "Complete: ECE 358 lab report, overdue, planned for today".
@@ -1517,10 +1520,10 @@ class Component extends DCLogic {
     const other = field === 'when' ? t.deadline : t.when;
     const hot = cur || this.today;
     const { w, h } = this.winSize();
-    const pw = 288, ph = 344;
+    const pw = this.calPaged() ? PK_W_PAGED : PK_W, ph = 344;
     let x = clamp(anchor.left, 8, w - pw - 8), y = anchor.bottom + 6;
     if (y + ph > h - 8) y = Math.max(8, anchor.top - ph - 6);
-    this.setState({ picker: { field, ids, text: '', hot, cur, other, month: hot.slice(0, 7), x, y, top: this.calMonthTop(hot), key: uid('pk') }, menu: null, tip: null });
+    this.setState({ picker: { field, ids, text: '', hot, cur, other, month: hot.slice(0, 7), x, y, ...this.calAt(this.calMonthPos(hot)), key: uid('pk') }, menu: null, tip: null });
   }
   openPickerForRows(field, ids) {
     ids = this.onlyTasks(ids);
@@ -2619,13 +2622,31 @@ class Component extends DCLogic {
   onPickMonth = (e) => { const p = this.state.picker, n = +e.currentTarget.dataset.dir; const m = addMonths(p.month + '-01', n).slice(0, 7); this.setState({ picker: { ...p, month: m } }); const el = this.rootRef.current.querySelector('.picker input'); if (el) el.focus(); };
   onPickerDown = (e) => { if (!isTextTarget(e.target)) { e.preventDefault(); } };
 
-  // ---------- The scrolling calendar (§25, proposed) ----------
-  cv(k) { const o = this.state.cv && this.state.cv[k]; return o || this.props['v' + k[0].toUpperCase() + k.slice(1)] || CAL_DEFAULTS[k]; }
-  calW0() { if (this._calW0For !== this.today) { this._calW0For = this.today; this._calW0 = addDays(this.today, -weekdayIdx(this.today) - 7 * CAL_BACK); } return this._calW0; }
+  // ---------- The scrolling calendar (§25) ----------
+  // Positions are in points from the top of today's week (pos; negative above it). The scroll view's offset is
+  // pos − base × row, base being the window's first week.
+  calPaged() { return this.props.vCal === 'pages'; }
+  // The popover's last line at 240pt (§25): the date, then its relative words or the note, then ↩. When it doesn't
+  // fit, ↩ goes first, then the weekday (the grid shows it), then the relative words; the note always stays.
+  pkPreview(p, hot, T, paged) {
+    if (p.none) return { preview: 'No date matches “' + p.text.trim() + '”', previewCls: 'pvt none', kbd: true };
+    const pre = p.field === 'deadline' ? 'Due ' : '', wd = WD[weekdayIdx(hot)] + ', ', date = mdy(hot, T), note = pkHint(p, hot);
+    const rel = note ? '' : ' · ' + (p.field === 'deadline' && hot < T ? dueRelText(hot, T) : relText(hot, T));
+    const tries = [[pre + wd + date + rel, true], [pre + wd + date + rel, false], [pre + date + rel, false], [pre + date, false]];
+    const room = PK_W - 16 - 8, noteW = note ? 6 + textW('· ' + this.pkHintText(p, hot)) : 0;
+    const fit = paged ? tries[0] : tries.find(([t, k]) => textW(t) + noteW <= room - (k ? 19 : 0)) || tries[3];
+    return { preview: fit[0], previewCls: 'pvt', kbd: fit[1] };
+  }
+  pkHintText(p, hot) { return p.field === 'when' ? 'after the deadline' : 'before the When'; }
+  calW0() { if (this._calW0For !== this.today) { this._calW0For = this.today; this._calW0 = addDays(this.today, -weekdayIdx(this.today)); } return this._calW0; }
   calWeek(ymd) { return Math.floor(diffDays(this.calW0(), ymd) / 7); }
-  calMonthTop(ymd) { return this.calWeek(ymd.slice(0, 8) + '01') * CAL_ROW; }   // a date's month, its first week on top
-  // The scroll view, once the runtime has written it (a frame or so after componentDidUpdate): a newly opened popover
-  // starts on the selected date's week.
+  calMonthPos(ymd) { return this.calWeek(ymd.slice(0, 8) + '01') * CAL_ROW; }   // a date's month, its first week on top
+  calBaseFor(pos) { return Math.round(pos / CAL_ROW) - Math.floor((CAL_SPAN - CAL_ROWS) / 2); }   // the view in the window's middle
+  calAt(pos) { return { pos, base: this.calBaseFor(pos) }; }
+  calBase() { const el = this.calEl; return el && el.dataset.base != null ? +el.dataset.base : (this.state.picker ? this.state.picker.base : 0); }
+  calPos() { const el = this.calEl; return el ? el.scrollTop + this.calBase() * CAL_ROW : (this.state.picker ? this.state.picker.pos : 0); }
+  // The scroll view, once the runtime has written it. Its offset is set here, after the rows for a new base are in the
+  // page and before it's drawn: a newly opened popover, a jump, or the window moving under the view.
   calSync() {
     cancelAnimationFrame(this.calSyncRaf);
     const step = (n) => {
@@ -2634,78 +2655,92 @@ class Component extends DCLogic {
       if (!p) return;
       if (!el) { if (n < 8) this.calSyncRaf = requestAnimationFrame(() => step(n + 1)); return; }
       if (!el.dataset.on) { el.dataset.on = '1'; el.addEventListener('scroll', this.onCalScroll, { passive: true }); }
-      if (el.dataset.k !== p.key) { el.dataset.k = p.key; el.scrollTop = p.top; }
+      if (el.dataset.k !== p.key || el.dataset.base !== String(p.base)) {
+        el.dataset.k = p.key; el.dataset.base = String(p.base);
+        this.calQuiet = true; el.scrollTop = p.pos - p.base * CAL_ROW;
+      }
     };
     step(0);
   }
-  // Snapping to weeks happens when the scroll comes to rest, momentum included: 120ms after the last scroll event the
-  // view eases to the nearest row. (In AppKit, the clip view's constrainBoundsRect does it during the momentum.)
-  onCalScroll = (e) => {
-    const top = e.currentTarget.scrollTop, p = this.state.picker;
-    if (p && Math.abs((p.top || 0) - top) >= 1) this.setState({ picker: { ...p, top } });
+  // Each scroll: where the view is now, and whether the window should move under it. Snapping to weeks happens when
+  // the scroll comes to rest, momentum included: 120ms after the last scroll event the view eases to the nearest row.
+  onCalScroll = () => {
+    const p = this.state.picker, el = this.calEl;
+    if (!p || !el) return;
+    if (this.calQuiet) { this.calQuiet = false; return; }   // our own offset change when the window moved
+    const pos = this.calPos(), off = el.scrollTop / CAL_ROW;
+    const near = off < CAL_EDGE || off > CAL_SPAN - CAL_ROWS - CAL_EDGE;
+    if (near) this.setState({ picker: { ...p, ...this.calAt(pos) } });
+    else if (Math.abs(p.pos - pos) >= 1) this.setState({ picker: { ...p, pos } });
     clearTimeout(this.calSnapTimer);
-    if (this.cv('snap') === 'weeks' && !this.calAnimating) this.calSnapTimer = setTimeout(() => {
-      const el = this.calEl;
-      if (el && !this.calAnimating) { const t = Math.round(el.scrollTop / CAL_ROW) * CAL_ROW; if (Math.abs(t - el.scrollTop) >= 1) this.calScrollTo(t, 140); }
+    if (!this.calAnimating) this.calSnapTimer = setTimeout(() => {
+      if (this.calEl && !this.calAnimating) { const at = this.calPos(), t = Math.round(at / CAL_ROW) * CAL_ROW; if (Math.abs(t - at) >= 1) this.calScrollTo(t, 140); }
     }, 120);
   };
   // Bring a date's week into view. From the keys, the least scroll that shows it; typed, its month with its first week
   // on top, as the paged grid showed it; Today, the same for today's month. Only when it's out of view, so typing
-  // doesn't jitter the grid. A far jump lands six rows short
-  // and animates the rest, so it reads as motion without flicking through years.
+  // doesn't jitter the grid.
   calReveal(ymd, why) {
-    if (this.cv('cal') === 'pages') return;
+    if (this.calPaged()) return;
     setTimeout(() => {
-      const el = this.calEl, p = this.state.picker;
-      if (!el || !p) return;
-      const r = this.calWeek(ymd), first = el.scrollTop / CAL_ROW, last = first + CAL_ROWS - 1;
+      if (!this.calEl || !this.state.picker) return;
+      const r = this.calWeek(ymd), first = this.calPos() / CAL_ROW, last = first + CAL_ROWS - 1;
       let target = null;
-      if (why === 'today') target = this.calMonthTop(ymd);
-      else if (r < first - 0.01 || r > last + 0.01) target = why === 'key' ? (r < first ? r : r - CAL_ROWS + 1) * CAL_ROW : this.calMonthTop(ymd);
+      if (why === 'today') target = this.calMonthPos(ymd);
+      else if (r < first - 0.01 || r > last + 0.01) target = why === 'key' ? (r < first ? r : r - CAL_ROWS + 1) * CAL_ROW : this.calMonthPos(ymd);
       if (target != null) this.calScrollTo(target);
     }, 0);
   }
+  // Ease to a position (ease-out, 260ms). A far jump first moves the window to the target and lands six rows short of
+  // it, then animates the rest, so it reads as motion without flicking through years. Each frame sets the offset from
+  // the window's current base, so the window can move under it mid-animation.
   calScrollTo(target, ms) {
     const el = this.calEl;
     if (!el || !el.isConnected) return;
     cancelAnimationFrame(this.calRaf);
-    const dist = target - el.scrollTop;
-    if (Math.abs(dist) > CAL_JUMP * CAL_ROW) el.scrollTop = target - Math.sign(dist) * CAL_JUMP * CAL_ROW;
-    const from = el.scrollTop, t0 = performance.now(), dur = ms || CAL_ANIM_MS;
-    this.calAnimating = true;   // no snapping while it moves
-    const step = () => {
-      const k = Math.min(1, (performance.now() - t0) / dur), e = 1 - Math.pow(1 - k, 3);
-      el.scrollTop = from + (target - from) * e;
-      if (k < 1) this.calRaf = requestAnimationFrame(step); else this.calAnimating = false;
+    const run = (from) => {
+      const t0 = performance.now(), dur = ms || CAL_ANIM_MS;
+      this.calAnimating = true;   // no snapping while it moves
+      const step = () => {
+        const k = Math.min(1, (performance.now() - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+        el.scrollTop = from + (target - from) * e - this.calBase() * CAL_ROW;
+        if (k < 1) this.calRaf = requestAnimationFrame(step);
+        else { this.calAnimating = false; const p = this.state.picker; if (p) this.setState({ picker: { ...p, pos: this.calPos() } }); }
+      };
+      this.calRaf = requestAnimationFrame(step);
     };
-    this.calRaf = requestAnimationFrame(step);
+    const dist = target - this.calPos();
+    if (Math.abs(dist) <= CAL_JUMP * CAL_ROW) { run(this.calPos()); return; }
+    const from = target - Math.sign(dist) * CAL_JUMP * CAL_ROW, p = this.state.picker;
+    this.setState({ picker: { ...p, pos: from, base: this.calBaseFor(target) } });
+    const wait = (n) => { if (this.calBase() === this.calBaseFor(target) || n > 8) run(from); else this.calRaf = requestAnimationFrame(() => wait(n + 1)); };
+    this.calRaf = requestAnimationFrame(() => wait(0));
   }
   onCalToday = () => { this.calReveal(this.today, 'today'); const el = this.rootRef.current && this.rootRef.current.querySelector('.picker input'); if (el) el.focus(); };
   calVM(p, T) {
-    const mode = this.cv('cal'), top = p.top || 0, W0 = this.calW0();
-    const first = Math.max(0, Math.floor(top / CAL_ROW) - CAL_BUF), last = Math.min(CAL_BACK + CAL_FWD, Math.ceil(top / CAL_ROW) + CAL_ROWS + CAL_BUF);
+    const pos = p.pos || 0, base = p.base || 0, W0 = this.calW0();
+    const first = Math.max(base, Math.floor(pos / CAL_ROW) - CAL_BUF), last = Math.min(base + CAL_SPAN, Math.ceil(pos / CAL_ROW) + CAL_ROWS + CAL_BUF);
     // The month in view: the one with the most days in the six rows showing (at a tie, the later).
-    const r0 = Math.round(top / CAL_ROW), tally = {};
+    const r0 = Math.round(pos / CAL_ROW), tally = {};
     for (let i = 0; i < CAL_ROWS * 7; i++) { const m = addDays(W0, r0 * 7 + i).slice(0, 7); tally[m] = (tally[m] || 0) + 1; }
     const focus = Object.keys(tally).sort((a, b) => tally[b] - tally[a] || (a < b ? 1 : -1))[0];
     const weeks = [];
     for (let i = first; i < last; i++) {
       const days = [];
       for (let j = 0; j < 7; j++) {
-        const dd = addDays(W0, i * 7 + j), m = dOf(dd).getMonth(), one = dd.slice(8) === '01';
-        const cls = 'd' + (mode === 'sticky' && dd.slice(0, 7) !== focus ? ' out' : '') + (mode === 'tints' && m % 2 === 1 ? ' band' : '') + (one && mode === 'inline' ? ' first' : '')
+        const dd = addDays(W0, i * 7 + j);
+        const cls = 'd' + (dd.slice(0, 7) !== focus ? ' out' : '')
           + (dd === T ? ' today' : '') + (dd === p.cur ? ' val' : '') + (dd === p.other ? ' other ' + (p.field === 'when' ? 'o-dl' : 'o-when') : '') + (dd === p.hot && !p.none ? ' hot' : '');
-        days.push({ date: dd, label: String(+dd.slice(8)), cls, ml: one && mode === 'inline', mlText: m === 0 ? 'Jan \u2019' + dd.slice(2, 4) : MO[m] });
+        days.push({ date: dd, label: String(+dd.slice(8)), cls });
       }
-      weeks.push({ style: 'transform: translateY(' + i * CAL_ROW + 'px)', days });
+      weeks.push({ key: 'w' + i, style: 'transform: translateY(' + (i - base) * CAL_ROW + 'px)', days });
     }
-    const tw = this.calWeek(T), inView = tw >= top / CAL_ROW - 2.5 && tw <= top / CAL_ROW + CAL_ROWS + 1.5;   // Today shows once today is more than two weeks out of view
+    const tw = this.calWeek(T), inView = tw >= pos / CAL_ROW - 2.5 && tw <= pos / CAL_ROW + CAL_ROWS + 1.5;   // Today shows once today is more than two weeks out of view
     const fd = dOf(focus + '-01');
     return {
-      paged: false, scroll: true, csCls: 'cs cs-' + mode, hasHead: mode !== 'inline',
-      csvCls: 'csv', spaceStyle: 'height: ' + (CAL_BACK + CAL_FWD) * CAL_ROW + 'px', weeks,
+      paged: false, scroll: true, spaceStyle: 'height: ' + CAL_SPAN * CAL_ROW + 'px', weeks,
       monthTitle: MOL[fd.getMonth()] + ' ' + fd.getFullYear(),
-      todayBtn: !inView && mode !== 'inline', todayFloat: !inView && mode === 'inline', todayArrow: tw * CAL_ROW < top ? '\u2191' : '\u2193',
+      todayBtn: !inView, todayArrow: tw * CAL_ROW < pos ? '↑' : '↓',
     };
   }
 
@@ -2730,7 +2765,6 @@ class Component extends DCLogic {
   onStage = (e) => {
     const k = e.currentTarget.dataset.k, v = e.currentTarget.dataset.v;
     if (k === 'theme') this.instant({ theme: v }); else if (k === 'editTasks') this.setEditTasks(v);
-    else if (k.startsWith('cv:')) this.setState({ cv: { ...this.state.cv, [k.slice(3)]: v } });   // §25's choices
     else if (k === 'reset') { const seed = makeSeed(this.today); this.undoStack = []; this.redoStack = []; this.instant({ lists: seed.lists, tasks: seed.tasks, sel: [], edit: null, picker: null, menu: null, pins: {}, route: this.routeFromProp(this.props.start, seed.lists), detail: 'closed', notice: null, sbVisible: true, collapsed: {}, scrolled: false }); }
     else if (k === 'keys') this.setState({ keysOpen: !this.state.keysOpen });
     this.focusRoot();
@@ -3030,20 +3064,21 @@ class Component extends DCLogic {
         days.push({ date: dd, label: String(+dd.slice(8)), cls: 'd' + (out ? ' out' : '') + (dd === T ? ' today' : '') + (dd === p.cur ? ' val' : '') + (dd === p.other ? ' other ' + (p.field === 'when' ? 'o-dl' : 'o-when') : '') + (dd === hot && !p.none ? ' hot' : '') });
       }
       const mo = dOf(p.month + '-01');
-      const quick = [['Today', T], ['Tomorrow', addDays(T, 1)], ['Next Week', nextWeekStart(T)]].map(([label, date]) => ({ label, date, cls: 'qb' + (date === hot && p.text ? ' hot' : '') }));
+      const paged = this.calPaged();   // §25: Next Week goes, so Today, Tomorrow and Clear fit 240pt; it's still typed (“next”, “mon”)
+      const quick = [['Today', T], ['Tomorrow', addDays(T, 1)], ...(paged ? [['Next Week', nextWeekStart(T)]] : [])].map(([label, date]) => ({ label, date, cls: 'qb' + (date === hot && p.text ? ' hot' : '') }));
       if (p.cur) quick.push({ label: 'Clear', date: 'none', cls: 'qb clear' });
       pk = {
-        show: true, style: 'left: ' + p.x + 'px; top: ' + p.y + 'px; width: 288px', text: p.text,
-        placeholder: p.field === 'when' ? 'When: try tom, fri, 3d, nov 9' : 'Deadline: try fri, nov 9, 2w',
+        show: true, style: 'left: ' + p.x + 'px; top: ' + p.y + 'px; width: ' + (paged ? PK_W_PAGED : PK_W) + 'px', text: p.text,
+        placeholder: p.field === 'when' ? (paged ? 'When: try tom, fri, 3d, nov 9' : 'When: try fri, 3d, nov 9') : 'Deadline: try fri, nov 9, 2w',
         quick, monthTitle: MOL[mo.getMonth()] + ' ' + mo.getFullYear(), days, dows: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
         // §24: a deadline previews as "Due …"; a When after the deadline, or a deadline before the When, gets a quiet note.
         hint: p.none || !p.other ? '' : p.field === 'when' && hot > p.other ? 'after the deadline' : p.field === 'deadline' && hot < p.other ? 'before the When' : '',
         // With a note, it takes the relative words' place, so the line stays one line.
-        preview: p.none ? 'No date matches “' + p.text.trim() + '”' : (p.field === 'deadline' ? 'Due ' : '') + longDate(hot, T) + (pkHint(p, hot) ? '' : ' · ' + (p.field === 'deadline' && hot < T ? dueRelText(hot, T) : relText(hot, T))), previewCls: 'pvt' + (p.none ? ' none' : ''),
+        ...this.pkPreview(p, hot, T, paged),
         isWhen: p.field === 'when', isDl: p.field === 'deadline', paged: true, scroll: false,
         autoFocus: !p.demo,
       };
-      if (this.cv('cal') !== 'pages') Object.assign(pk, this.calVM(p, T));
+      if (!paged) Object.assign(pk, this.calVM(p, T));
     }
 
     const notice = s.notice ? { show: true, cls: 'notice' + (s.notice.out ? ' out' : ''), text: s.notice.text, undo: s.notice.undo } : { show: false };
@@ -3053,7 +3088,6 @@ class Component extends DCLogic {
     const stage = { show: stageOn,
       theme: seg('theme', [['dark', 'Dark'], ['light', 'Light']]),
       editTasks: [['detail', 'Open in detail pane'], ['list', 'Rename in the list']].map(([v, label]) => ({ k: 'editTasks', v, label, cls: this.editTasksMode() === v ? 'on' : '' })),
-      vars: Object.keys(CAL_OPTS).map((k) => ({ label: CAL_LABEL[k], opts: CAL_OPTS[k].map(([v, label]) => ({ k: 'cv:' + k, v, label, cls: this.cv(k) === v ? 'on' : '' })) })),
     };
 
     return {
@@ -3850,13 +3884,13 @@ class Component extends DCLogic {
       if (el) { const r = this.rectIn(el); this.setState({ tip: { text: el.dataset.tip, keys: '', x: this.tipX(r, el.dataset.tip), y: r.bottom + 6 } }); }
       return;
     }
-    if (/^cal/.test(kind)) {   // §25: the When popover open; scrolled five months on; or typed "dec 24"
+    if (/^cal/.test(kind)) {   // §25: the When popover open; scrolled eight years on; or typed "dec 24"
       this.select([t.id]);
       setTimeout(() => {
         this.openPickerForRows('when', [t.id]);
         const p = this.state.picker;
         if (!p) return;
-        if (kind === 'calfar') { const top = p.top + 22 * CAL_ROW; this.setState({ picker: { ...p, demo: true, top } }); setTimeout(() => { if (this.calEl) this.calEl.scrollTop = top; }, 40); }
+        if (kind === 'calfar') this.setState({ picker: { ...p, demo: true, ...this.calAt(this.calMonthPos(addMonths(p.hot, 100)) + 2 * CAL_ROW), key: uid('pk') } });   // eight years on, mid-month
         else if (kind === 'caltyped') { const hot = parseDate('dec 24', this.today); this.setState({ picker: { ...p, demo: true, text: 'dec 24', hot, month: hot.slice(0, 7) } }); this.calReveal(hot, 'typed'); }
         else this.setState({ picker: { ...p, demo: true } });
       }, 30);

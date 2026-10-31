@@ -26,14 +26,14 @@ Its boards: `Sections` (the prototype on that list), `Title-Large` and `Title-Sc
 title once it has scrolled under), `Heading-*` (adding, collapsed, mid-drag, from `demo="newhead|collapse|dragsec"`)
 and the light ones. The code is the block at the end of the component, after the four views'.
 
-**§25, a calendar that scrolls (`docs/TASK-design-calendar-scroll.md`): proposed.** The date popover's month as one
-column of weeks that scrolls up and down, behind the strip's Calendar (Pages as built, Sticky month, Inline months,
-Tinted months) and Scroll (Snap to weeks, Free) switches; the default is Pages until the user picks, and a board sets
-them with `v-cal` and `v-snap`. Its boards are on the dates canvas: `Cal-Proto` (the prototype opening the scrolling
-calendar), `Cal-Pages`, `Cal-Sticky|Inline|Tints` (from `demo="calopen"`), `Cal-*-Far` (`demo="calfar"`: five
-months on), `Cal-Sticky-Typed` (`demo="caltyped"`) and `Cal-Sticky-Light`. The code is the block after the date
-popover's handlers ("The scrolling calendar") and the template's `pk.scroll` branch; the CSS is the block at the end
-of `tasks-v2.css`.
+**§25, a calendar that scrolls (`docs/TASK-design-calendar-scroll.md`): final.** The date popover's month as one
+column of weeks that scrolls up and down, endless both ways (a window of 120 weeks that recentres under the view; only
+the rows in view and four either side exist), with the sticky month header, snapping to weeks and the Today pill, in a
+popover 240pt wide with Today, Tomorrow and Clear. The prototype opens it; `v-cal="pages"` gives the popover as it was
+before (paged, 288pt, with Next Week), for the before-and-after. Its boards are on the dates canvas: `Cal-Proto`,
+`Cal-Before`, `Cal-After` (`demo="calopen"`), `Cal-Far` (`demo="calfar"`: eight years on), `Cal-Typed`
+(`demo="caltyped"`) and `Cal-Light`. The code is the block after the date popover's handlers ("The scrolling
+calendar") and the template's `pk.scroll` branch; the CSS is the block at the end of `tasks-v2.css`.
 
 **§24, When and Deadline at a glance (`docs/TASK-design-dates.md`, `-2.md`): final.** Its canvas is
 https://claude.ai/artifact/2wUF9Dz2JEt8Xp2pBDahy2 (private until shared), laid out by `canvas-dates.json`. The
