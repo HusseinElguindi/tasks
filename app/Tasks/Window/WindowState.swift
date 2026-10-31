@@ -104,6 +104,10 @@ final class WindowState {
     var focus: Focus = .list
     var detailOpen = false
     var sidebarVisible = true
+    /// The pointer is over the sidebar's header row: the sync cloud shows even when synced or off (§26).
+    var sidebarHeaderHovered = false
+    /// The sidebar's header row has scrolled out of view: offline and stopped show in the title band (§26).
+    var sidebarHeaderHidden = false
     /// The sidebar's and the detail pane's widths as set by their dividers, remembered across launches (v2 feedback
     /// 4); `PaneGeometry` fits them to the window.
     var sidebarWidth = PaneWidth.sidebar.stored
@@ -154,6 +158,17 @@ final class WindowState {
     @ObservationIgnored weak var nsWindow: NSWindow?
     @ObservationIgnored weak var taskList: TaskListView?
     @ObservationIgnored weak var sidebarView: SidebarView?
+    /// Opens the Settings window (set by the scene, which has `openSettings`).
+    @ObservationIgnored var openSettings: (() -> Void)?
+    @ObservationIgnored private var syncIndicator: SyncIndicator?
+
+    /// The window's sync indicator (§26), made on first use.
+    func sync(_ store: Store) -> SyncIndicator {
+        if let s = syncIndicator { return s }
+        let s = SyncIndicator(store: store)
+        syncIndicator = s
+        return s
+    }
     @ObservationIgnored weak var dragOverlay: DragOverlayView?
     /// The detail pane's first responder when none of its fields is editing (Esc, Tab, arrows from there).
     @ObservationIgnored weak var detailKeySink: KeySinkView?
@@ -208,6 +223,8 @@ final class Overlays {
 
     struct Tip: Equatable {
         var text: String
+        /// A second line in `ink-tertiary` (the sync cloud's, §26).
+        var detail = ""
         var keys: String
         /// Top-left in window coordinates.
         var origin: CGPoint
@@ -261,15 +278,15 @@ final class Overlays {
     // MARK: Tooltips (§16): 600 ms, at once within 600 ms of the last one closing; 6pt below the button, its left edge
     // 60pt left of the button's center, kept between 6 and the window's width − 160.
 
-    func hoverTip(_ text: String, keys: String = "", for rect: CGRect, windowWidth: CGFloat) {
+    func hoverTip(_ text: String, detail: String = "", keys: String = "", for rect: CGRect, windowWidth: CGFloat) {
         tipTimer?.invalidate()
         // A long name ("New Task in" a 200-character list) is cut at 300pt, and the tip stays inside the window, by
         // its measured width (v2 feedback 16).
         let text = Menus.fit(text, width: 300, font: TK.Font.tooltip)
         func w(_ s: String) -> CGFloat { s.isEmpty ? 0 : ceil((s as NSString).size(withAttributes: [.font: TK.Font.tooltip]).width) }
-        let width = w(text) + (keys.isEmpty ? 0 : 6 + w(keys)) + 14
+        let width = max(w(text) + (keys.isEmpty ? 0 : 6 + w(keys)), w(detail)) + 14
         let origin = CGPoint(x: max(6, min(max(rect.midX - 60, 6), windowWidth - width - 6)), y: rect.maxY + 6)
-        let tip = Tip(text: text, keys: keys, origin: origin)
+        let tip = Tip(text: text, detail: detail, keys: keys, origin: origin)
         if Date.timeIntervalSinceReferenceDate - lastTipClosed < TK.Timer.tipWarm || self.tip != nil {
             self.tip = tip
         } else {

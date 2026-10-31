@@ -126,6 +126,27 @@ enum DebugScript {
                     model.debugDerivedTheme = arg == "derived"
                 case "sys":
                     NSApp.appearance = arg == "dark" ? NSAppearance(named: .darkAqua) : arg == "light" ? NSAppearance(named: .aqua) : nil
+                case "sync":
+                    // The sync indicator (Support/DebugSync.swift).
+                    guard let store = model.store else { continue }
+                    if arg == "click" {
+                        // SwiftUI's button sees the press and the release in separate turns.
+                        // Through the window (not straight to the view, as `mouse` does while the app is inactive): the cloud
+                        // takes the first click there, as a person's would.
+                        if let c = DebugSync.cloudPoint(window: window, store: store) {
+                            // From the window's top (as `hit:` reads it), not the content layout rect's.
+                            let p = NSPoint(x: c.x, y: (w.contentView?.superview?.bounds.height ?? w.frame.height) - c.y)
+                            for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+                                if let e = NSEvent.mouseEvent(with: type, location: p, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                                                              windowNumber: w.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1) {
+                                    NSApp.sendEvent(e)
+                                }
+                                try? await Task.sleep(for: .milliseconds(80))
+                            }
+                        }
+                    } else {
+                        await DebugSync.step(arg, window: window, store: store)
+                    }
                 case "act":
                     // The four views' actions and traces (Support/DebugViews.swift).
                     if let store = model.store { DebugViews.act(arg, window: window, store: store) }

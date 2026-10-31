@@ -178,6 +178,8 @@ extension TK {
         /// The list pane header's left padding with the sidebar hidden, so its tile starts at window x 132 (css:146,
         /// dc:1914).
         static let headerInsetCollapsed: CGFloat = 124
+        /// …and 156 while the sync cloud shows beside the toggle (§26).
+        static let headerInsetCloud: CGFloat = 156
         static let headerInset: CGFloat = 12
 
         // Task rows (css:160–188)
@@ -223,7 +225,13 @@ extension TK {
 extension TK {
     /// SwiftUI animations (§3 Motion). `nil` under Reduce Motion.
     enum Motion {
-        static var reduce: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+        static var reduce: Bool {
+            #if DEBUG
+            // `-debugReduceMotion YES`: Reduce Motion without changing the system setting.
+            if UserDefaults.standard.bool(forKey: "debugReduceMotion") { return true }
+            #endif
+            return NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        }
 
         static var hoverIn: Animation? { reduce ? nil : .timingCurve(0, 0.8, 0.2, 1, duration: 0.06) }
         static var hoverOut: Animation? { reduce ? nil : .timingCurve(0, 0, 0.2, 1, duration: 0.085) }

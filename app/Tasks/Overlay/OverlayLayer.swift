@@ -53,7 +53,8 @@ struct PressCatcher: NSViewRepresentable {
 }
 
 // MARK: - Tooltip (css:349–350): `surface-popover`, `shadow-popover`, radius 6, padding 4 / 7, 11/14; keys 6 after
-// the name in `ink-secondary`; in over 100 ms ease-out, out at once.
+// the name in `ink-secondary`; a second line, when there's more to say, in `ink-tertiary` (the sync cloud's, §26); in
+// over 100 ms ease-out, out at once.
 
 struct TooltipView: View {
     let overlays: Overlays
@@ -61,9 +62,12 @@ struct TooltipView: View {
 
     var body: some View {
         if let tip = overlays.tip {
-            HStack(spacing: 6) {
-                Text(tip.text).foregroundStyle(tk.ink.swiftUI)
-                if !tip.keys.isEmpty { Text(tip.keys).foregroundStyle(tk.inkSecondary.swiftUI) }
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 6) {
+                    Text(tip.text).foregroundStyle(tk.ink.swiftUI)
+                    if !tip.keys.isEmpty { Text(tip.keys).foregroundStyle(tk.inkSecondary.swiftUI) }
+                }
+                if !tip.detail.isEmpty { Text(tip.detail).foregroundStyle(tk.inkTertiary.swiftUI) }
             }
             .font(Font(TK.Font.tooltip))
             .lineLimit(1)
@@ -74,7 +78,7 @@ struct TooltipView: View {
             .offset(x: tip.origin.x, y: tip.origin.y)
             .transition(.asymmetric(insertion: .opacity.animation(TK.Motion.tooltipIn), removal: .identity))
             .allowsHitTesting(false)
-            .id(tip.text + tip.keys + "\(tip.origin)")
+            .id(tip.text + tip.detail + tip.keys + "\(tip.origin)")
         }
     }
 }

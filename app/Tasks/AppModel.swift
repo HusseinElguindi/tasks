@@ -131,7 +131,12 @@ final class AppModel {
     private static func isDark(_ a: NSAppearance) -> Bool { a.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua }
 
     private func load() async {
+        #if DEBUG
+        // Debug builds sync through a transport the sync indicator's debug steps can slow down or fail (DebugSync).
+        let store = await Store.open(directory: dataDirectory, transport: DebugSync.Transport())
+        #else
         let store = await Store.open(directory: dataDirectory)
+        #endif
         self.store = store
         nudges = SyncNudgeListener(store: store)
         applyConfig()

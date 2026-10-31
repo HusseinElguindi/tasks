@@ -24,6 +24,8 @@ final class SidebarView: FlippedLayerView {
     /// Rows and labels live here, below any subview (the rename field).
     private let host = CALayer()
     private let header = SidebarHeaderLayer()
+    /// The sync cloud at the header row's right end (§26), in the scrolled content so it scrolls with the row.
+    private var cloud: CloudHost?
     private let listsLabel = SidebarLabelLayer(title: "Lists", glyph: .plus)
     private let archiveLabel = SidebarLabelLayer(title: "Archive", glyph: .chevronRight)
 
@@ -108,7 +110,52 @@ final class SidebarView: FlippedLayerView {
         NotificationCenter.default.addObserver(self, selector: #selector(clipScrolled(_:)), name: NSView.boundsDidChangeNotification,
                                                object: scroll.contentView)
         setAccessibilityElement(false)
+        let c = CloudHost(rootView: headerCloud())
+        c.sizingOptions = []
+        content.addSubview(c)
+        content.cloud = c
+        cloud = c
         render()
+    }
+
+    // MARK: - The sync cloud (§26)
+
+    /// Wide enough for "Syncing…" beside the cloud; the cloud keeps the label buttons' column, 5pt in from the row's
+    /// end, so its glyph ends where the counts do.
+    private static let cloudWidth: CGFloat = 100
+
+    private func headerCloud() -> HeaderCloud {
+        HeaderCloud(sync: ui.sync(store), ui: ui, palette: palette) { [weak self] in
+            guard let self, let c = self.cloud else { return .zero }
+            let r = CGRect(x: c.frame.maxX - SB.buttonSize, y: c.frame.minY, width: SB.buttonSize, height: SB.buttonSize)
+            return self.windowTopLeftRect(fromContent: r) ?? .zero
+        }
+    }
+
+    private func placeCloud() {
+        let f = CGRect(x: SB.rowX + rowWidth - SB.buttonRight - Self.cloudWidth, y: (SB.headerHeight - SB.buttonSize) / 2,
+                       width: Self.cloudWidth, height: SB.buttonSize)
+        if cloud?.frame != f { cloud?.frame = f }
+    }
+
+    #if DEBUG
+    func debugScroll(_ y: CGFloat) {
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: y))
+        scroll.reflectScrolledClipView(scroll.contentView)
+    }
+
+    /// The header cloud's centre in window coordinates from the top left.
+    func debugCloudCenter() -> CGPoint? {
+        guard let c = cloud else { return nil }
+        let r = CGRect(x: c.frame.maxX - SB.buttonSize, y: c.frame.minY, width: SB.buttonSize, height: SB.buttonSize)
+        return windowTopLeftRect(fromContent: r).map { CGPoint(x: $0.midX, y: $0.midY) }
+    }
+    #endif
+
+    /// Offline and stopped move to the title band once the header row is out of view.
+    private func noteHeaderShown() {
+        let hidden = content.visibleRect.minY >= SB.headerHeight
+        if ui.sidebarHeaderHidden != hidden { ui.sidebarHeaderHidden = hidden }
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -137,6 +184,8 @@ final class SidebarView: FlippedLayerView {
             scheduleRender()
         }
         sizeContent()
+        placeCloud()
+        noteHeaderShown()
     }
 
     private func sizeContent() {
@@ -374,6 +423,7 @@ final class SidebarView: FlippedLayerView {
             labelsPalette = palette
             header.setPalette(palette)
             header.setScaleDeep(scale)
+            cloud?.rootView = headerCloud()
             listsLabel.setPalette(palette)
             archiveLabel.setPalette(palette)
             listsLabel.setScaleDeep(scale)
@@ -532,6 +582,9 @@ final class SidebarView: FlippedLayerView {
     }
 
     func pointerMoved(to p: CGPoint?) {
+        // The header row brings the cloud in when synced or off (§26).
+        let overHeader = p.map { canHover && $0.y >= 0 && $0.y < SB.headerHeight && $0.x >= SB.rowX && $0.x < SB.rowX + rowWidth } ?? false
+        if ui.sidebarHeaderHovered != overHeader { ui.sidebarHeaderHovered = overHeader }
         guard let p, canHover, isFrontmost(p) else { setHover(nil, button: nil); return }
         let h = hit(at: p)
         var b: Label?
@@ -583,7 +636,10 @@ final class SidebarView: FlippedLayerView {
 
     private func label(_ l: Label) -> SidebarLabelLayer { l == .lists ? listsLabel : archiveLabel }
 
-    @objc private func clipScrolled(_ n: Notification) { refreshHover() }
+    @objc private func clipScrolled(_ n: Notification) {
+        refreshHover()
+        noteHeaderShown()
+    }
 
     @objc private func windowResignedKey(_ n: Notification) {
         hideHints()
@@ -968,6 +1024,8 @@ final class SidebarContentView: FlippedLayerView {
     weak var owner: SidebarView?
     private var tracking: NSTrackingArea?
     private var axElements: [NSAccessibilityElement] = []
+    /// The sync cloud's host: its "Sync" button comes before the rows.
+    weak var cloud: NSView?
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
@@ -1005,7 +1063,7 @@ final class SidebarContentView: FlippedLayerView {
     override func isAccessibilityElement() -> Bool { true }
     override func accessibilityRole() -> NSAccessibility.Role? { .list }
     override func accessibilityLabel() -> String? { "Lists" }
-    override func accessibilityChildren() -> [Any]? { axElements }
+    override func accessibilityChildren() -> [Any]? { (cloud.map { [$0 as Any] } ?? []) + axElements }
     override func accessibilitySelectedChildren() -> [Any]? { axElements.filter { $0.isAccessibilitySelected() } }
 
     func rebuildAccessibility() {
@@ -1068,5 +1126,27 @@ struct SidebarRepresentable: NSViewRepresentable {
     func updateNSView(_ nsView: SidebarView, context: Context) {
         if window.sidebarView !== nsView { window.sidebarView = nsView }
         nsView.setPalette(palette)
+    }
+}
+
+/// Takes the first click, as the sidebar's content does.
+final class CloudHost: NSHostingView<HeaderCloud> {
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
+/// The header row's sync cloud, right-aligned in its host (§26).
+struct HeaderCloud: View {
+    let sync: SyncIndicator
+    let ui: WindowState
+    let palette: TK.Palette
+    let anchor: () -> CGRect
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Spacer(minLength: 0)
+            SyncCloud(indicator: sync, overlays: ui.overlays, rowHovered: ui.sidebarHeaderHovered, anchor: anchor,
+                      openSettings: { ui.openSettings?() })
+        }
+        .environment(\.tk, palette)
     }
 }

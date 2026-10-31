@@ -50,10 +50,15 @@ struct MainLayout: View {
     @Bindable var window: WindowState
     @Environment(\.tk) private var tk
     @Environment(\.paneInterfaceStyle) private var style
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         GeometryReader { geo in
             let g = PaneGeometry(width: geo.size.width, window: window)
+            let sync = window.sync(store)
+            // Offline and stopped beside the toggle while the sidebar is hidden or its header has scrolled away (§26).
+            let inBand = !window.sidebarVisible || window.sidebarHeaderHidden
+            let collapsedInset = inBand && sync.showsInBand ? TK.M.headerInsetCloud : TK.M.headerInsetCollapsed
             let narrow = g.narrow
             let paneHeight = max(0, geo.size.height - 2 * TK.M.gutter)
             ZStack(alignment: .topLeading) {
@@ -64,7 +69,9 @@ struct MainLayout: View {
                     .opacity(style == .glass && !window.sidebarVisible ? 0 : 1)
                 HStack(spacing: TK.M.gutter) {
                     if !(narrow && window.detailOpen) {
-                        ListPane(store: store, window: window, leadingInset: window.sidebarVisible ? TK.M.headerInset : TK.M.headerInsetCollapsed)
+                        // The band's title makes room for the cloud on the sidebar's curve.
+                        ListPane(store: store, window: window, leadingInset: window.sidebarVisible ? TK.M.headerInset : collapsedInset)
+                            .animation(TK.Motion.sidebar, value: collapsedInset)
                     }
                     if window.detailOpen {
                         // v1's transition, kept exactly (§4).
@@ -90,10 +97,14 @@ struct MainLayout: View {
                 // The window's controls, above everything (Rex): the toggle's 28pt circle at (93, 11).
                 ToolbarToggle(window: window, actions: WindowActions(store: store, window: window))
                     .offset(x: 93, y: 11)
+                SyncCloud(indicator: sync, overlays: window.overlays, round: true, inBand: inBand,
+                          anchor: { CGRect(x: 125, y: 11, width: 28, height: 28) }, openSettings: { openSettings() })
+                    .offset(x: 125, y: 11)
                 OverlayLayer(store: store, window: window, size: geo.size)
                 DragOverlayRepresentable(window: window, palette: tk)
                     .allowsHitTesting(false)
             }
+            .onAppear { window.openSettings = { openSettings() } }
         }
     }
 }
