@@ -25,9 +25,12 @@ Status: **final, 2026-10-30.** The user reviewed the prototype and made the four
 - Item 9: Settings ▸ Theme (System, Dark, Light, in any order) and the system's own appearance switch the whole window
   in one frame, and the traffic lights stay at their centers through it (§4 Theme, The top band). System follows the
   system appearance as it changes.
+- Item 10: Settings ▸ Interface style ▸ Glass shows the desktop through the window: a translucent ground and 88% pane
+  fills (§4 Glass). It had changed nothing. The prototype draws Classic only.
 
 The prototype source matches all seven (item 5's rename part is the app's drawing; the browser has no equivalent).
-Item 9 has no counterpart there: the prototype has no System choice and draws its own window controls.
+Items 9 and 10 have no counterpart there: the prototype has no System choice and no Glass, and draws its own window
+controls.
 
 **The prototype is the reference implementation:** https://claude.ai/artifact/QetdV1H57SC6kLXtNzJRXM (press Play on the
 main board, then click inside it once so it has the keys). Its source is in `design/prototype-v2/`, and this spec cites
@@ -323,6 +326,23 @@ open the rule above applies. Becoming or ceasing to be the only pane rides the d
 edge, icons and title change on `natural` while the pane slides (in the prototype the list pane takes `.swap` for the
 460 ms of the move); selected rows switch at once, as they always do (`css:144`, `css:149–150`, `css:183`, `dc:748`,
 `dc:754`, `dc:1912`).
+
+### Glass (Settings ▸ Interface style)
+
+Settings ▸ Appearance ▸ **Interface style** is Pane's Classic / Glass choice, kept per Mac in UserDefaults
+(`interfaceStyle`: `classic` or `glass`, the default `classic`). Classic is everything above: an opaque ground and
+opaque panes. In Glass the window shows what's behind it (v2 feedback 10):
+
+- **The ground** (under the sidebar, the gutters and the top band) is the sidebar material blending behind the window,
+  in the theme's appearance, with `surface-ground` over it at 60%. The desktop shows through, blurred, while the
+  ground keeps its color, so the sidebar's tokens and contrast hold. It stays translucent when the window isn't key.
+- **The panes** keep `surface-base` / `surface-dim` at 88% (DIRECTIONS: 84–90% keeps `ink-secondary` legible), so a
+  little of the glass shows through them. Their edges, rows, chips, popovers and the lifted copy stay opaque.
+- **Hiding the sidebar** also fades it out on the same curve, since the panes would otherwise show it through their
+  fills. Showing it fades it back in. In Classic it's simply covered, as above.
+- The choice applies at once, with no animation, like the theme.
+
+The prototype has no interface-style switch; it draws Classic.
 
 ---
 

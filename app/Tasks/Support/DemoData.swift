@@ -88,6 +88,7 @@ enum DemoData {
             if !ids.isEmpty { actions.select(ids) }
         }
         if d.bool(forKey: "debugDetail") { window.detailOpen = true }
+        if d.bool(forKey: "debugSidebarHidden") { window.sidebarVisible = false }
         if d.bool(forKey: "debugAdd") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { actions.newTask() }
         }

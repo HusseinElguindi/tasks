@@ -5,11 +5,12 @@ struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.tk) private var tk
     @Environment(\.undoManager) private var undoManager
+    @Environment(\.paneInterfaceStyle) private var style
     @State private var window = WindowState()
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            tk.ground.swiftUI
+            if style == .glass { GlassGround() } else { tk.ground.swiftUI }
             if let store = model.store {
                 MainLayout(store: store, window: window)
                     .focusedSceneValue(\.store, store)
@@ -47,6 +48,7 @@ struct MainLayout: View {
     let store: Store
     @Bindable var window: WindowState
     @Environment(\.tk) private var tk
+    @Environment(\.paneInterfaceStyle) private var style
 
     var body: some View {
         GeometryReader { geo in
@@ -57,6 +59,8 @@ struct MainLayout: View {
                 SidebarRepresentable(store: store, window: window, palette: tk)
                     .frame(width: g.sidebar)
                     .frame(maxHeight: .infinity, alignment: .top)
+                    // In Glass the panes would show it through their fills: it fades as they slide over it.
+                    .opacity(style == .glass && !window.sidebarVisible ? 0 : 1)
                 HStack(spacing: TK.M.gutter) {
                     if !(narrow && window.detailOpen) {
                         ListPane(store: store, window: window, leadingInset: window.sidebarVisible ? TK.M.headerInset : TK.M.headerInsetCollapsed)

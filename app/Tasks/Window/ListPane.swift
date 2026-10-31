@@ -101,7 +101,8 @@ struct ListPaneHeader: View {
 extension View {
     /// `surface-base` and a 1pt inset `line-pane` edge when focused, `surface-dim` and `line-pane-dim` when not; radius
     /// 10 (css:142–144). A pane alone in the window (`single`) shows no focus, whatever has the keys: the unfocused
-    /// fill and edge, its header and selected rows as in a focused pane (v2 feedback 3).
+    /// fill and edge, its header and selected rows as in a focused pane (v2 feedback 3). In Glass the fill lets the
+    /// window's glass ground through (`TK.Glass.paneFill`).
     func paneChrome(focused: Bool, single: Bool) -> some View { modifier(PaneChromeModifier(focused: focused, single: single)) }
 
     /// Focus changes on `focus` (60 ms); becoming or ceasing to be the only pane rides the detail pane's open and
@@ -115,12 +116,13 @@ private struct PaneChromeModifier: ViewModifier {
     let focused: Bool
     let single: Bool
     @Environment(\.tk) private var tk
+    @Environment(\.paneInterfaceStyle) private var style
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: TK.M.paneRadius, style: .circular)
         let lit = focused && !single
         content
-            .background((lit ? tk.base : tk.dim).swiftUI, in: shape)
+            .background((lit ? tk.base : tk.dim).swiftUI.opacity(style == .glass ? TK.Glass.paneFill : 1), in: shape)
             .overlay(shape.strokeBorder((lit ? tk.linePane : tk.linePaneDim).swiftUI, lineWidth: 1))
             .clipShape(shape)
             .paneLookAnimation(focused: focused, single: single)

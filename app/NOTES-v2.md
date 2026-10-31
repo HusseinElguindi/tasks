@@ -243,6 +243,41 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
      - `sidebar`;
      - `picker:when|deadline`.
 
+10. **Glass made no difference, because it was wired to nothing.** The setting reached the environment
+    (`paneInterfaceStyle`), and only Pane's `PaneChrome` read it, as a `glassEffect` behind each pane. v1 used
+    `PaneChrome`, but even there the glass sat on an opaque window ground with nothing behind it to show. The v2
+    foundation (7031b6e) gave the panes their own `paneChrome` modifier with opaque `base` / `dim` fills, so nothing
+    read the setting anymore. Classic and Glass rendered the same pixels, and the window had no material view at all.
+    The intent (Settings: "Glass is translucent"; DIRECTIONS: Pane's interface style, fills at 84–90% to keep
+    `ink-secondary` legible) is now drawn (spec §4 Glass):
+    - The ground under the sidebar, gutters and top band is the sidebar material blending behind the window (`.active`,
+      in the theme's appearance), with the theme's ground over it at 60% (`GlassGround`).
+    - The panes' fills are at 88%.
+    - Hiding the sidebar also fades it out, or the panes would show it through.
+    - Classic is untouched. `WindowConfigurator` is unchanged: the window stays opaque, and the material blends
+      behind it as a sidebar's does.
+
+    The screen was locked, so `screencapture` and ScreenCaptureKit returned nothing, and this was checked inside the
+    app. A new `glasssnap:` script step renders the window with its materials hidden and no window background, so
+    the alpha shows how much covers the glass. It also writes the window's opacity and every material view. Results:
+    - Before: Classic and Glass were identical (except the lists' random tile colors), opaque everywhere, with no
+      material.
+    - Now, Classic: identical to before in all six cases (dark and light; one pane, two panes, sidebar hidden).
+    - Now, Glass: one behind-window `.sidebar` material over the whole window, unhidden. The ground is covered at
+      0.60, so 40% of the material shows. The panes are covered at 0.95, and rows, chips and the sidebar's current
+      capsule at 1.0. With the sidebar hidden, nothing of it shows through the list pane.
+    - A composite of those renders over a blurred test pattern (a simulation, not the material) is in the scratchpad.
+
+    Not checked with the lock on:
+    - the real material over a real desktop, and tuning the 60% / 88%;
+    - contrast over bright and dark wallpapers;
+    - the window's corners and shadow;
+    - switching the style while the window is open (only the code was read; a script step would have written the shared
+      defaults);
+    - full screen.
+
+    Settings keeps its opaque ground.
+
 ## Notes for whoever drives the UI next
 
 - Scratch tools (not committed) are in the session scratchpad's `tools/`: `ui` (window-relative HID input that only
@@ -256,4 +291,5 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
 - Launch the scratch app through LaunchServices (`open -n … --args …`): run directly from a shell, it has no
   accessibility windows. Its windows are owned by "Tasks" (the display name), so find them by bundle id or PID.
 - Debug flags are in `app/README.md` (`-demoData`, `-demoBulk`, `-debugRoute`, `-debugSelect`, `-debugDetail`,
-  `-debugAdd`, `-debugRenderTimes`, the sidebar's `-debugSidebarScript`, the popover's `-debugPicker`).
+  `-debugAdd`, `-debugSidebarHidden`, `-debugRenderTimes`, the sidebar's `-debugSidebarScript`, the popover's
+  `-debugPicker`).

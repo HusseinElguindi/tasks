@@ -7,6 +7,7 @@ import Foundation
 ///
 ///     click:X,Y   dbl:X,Y   cmdclick:X,Y   shiftclick:X,Y     (window points from the top left)
 ///     key:CODE[:cmd|shift]   wait:MS   snap:/path.png   log:/path.txt  (appends the selection and first responder)
+///     glasssnap:/path.png   (what covers the window's glass, as alpha, plus /path.txt: `GlassDebug`)
 ///     hit:X,Y     (prints the view AppKit hit-tests there)   size:W,H   (resizes the window, keeping its top left)
 ///     drag:X1,Y1,X2,Y2[,STEPS]   (press, move in steps 16 ms apart, release)
 ///     down:X,Y   move:X1,Y1,X2,Y2[,STEPS]   up:X,Y   (the same, a step at a time, to hold a drag)
@@ -73,6 +74,8 @@ enum DebugScript {
                     try? await Task.sleep(for: .milliseconds(Int(arg) ?? 100))
                 case "snap":
                     snapshot(w, to: arg)
+                case "glasssnap":
+                    GlassDebug.snapshot(w, to: arg)
                 case "hit":
                     // hit:X,Y — logs the view AppKit hit-tests at that window point (top-left origin).
                     let xy = arg.split(separator: ",").compactMap { Double($0) }
