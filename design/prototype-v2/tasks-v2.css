@@ -492,15 +492,34 @@
 .tk .chip.when:not(.lg) { background: transparent; padding: 0 5px; color: var(--ink-3); }
 .tk button.chip.when:not(.lg):hover { filter: none; background: var(--hover); color: var(--ink-2); }
 .tk .chip.when.open-picker:not(.lg) { background: var(--accent-tint); color: var(--accent-text); }
-/* Cues on the checkbox, open tasks only. The ring carries the deadline: late (picked) is danger; due today (proposed)
-   is attention. When today, seen outside Today (proposed): a 4pt dot inside the ring in Today's yellow, the ring in
-   accent, or the box filled with accent-tint. The dot and the fill sit with a deadline's ring; the blue ring gives way
-   to it (lower specificity, by :where). Hover keeps the cue's ring. */
+/* Cues on the checkbox, open tasks only (picked): the ring in danger when overdue, attention when due today, and
+   accent-text when the task is on today's plate (its When is today or earlier), seen outside Today. Hover keeps the
+   cue's ring. */
 .tk .check.late:not(.on) { box-shadow: inset 0 0 0 1.5px var(--danger); }
-.tk.due-ring .check.due:not(.on) { box-shadow: inset 0 0 0 1.5px var(--attn); }
-.tk.mark-ring :where(.check.plate):not(.on) { box-shadow: inset 0 0 0 1.5px var(--accent-text); }
-.tk.mark-dot .check.plate:not(.on)::before { content: ""; position: absolute; left: 6px; top: 6px; width: 4px; height: 4px; border-radius: 50%; background: var(--ansi-yellow); }
-.tk.mark-fill .check.plate:not(.on) { background: var(--accent-tint); }
+.tk .check.due:not(.on) { box-shadow: inset 0 0 0 1.5px var(--attn); }
+.tk :where(.check.plate):not(.on) { box-shadow: inset 0 0 0 1.5px var(--accent-text); }
+/* Planned for today and a deadline's ring (proposed, mix): Double, the deadline's ring outside and a 1.25pt blue ring
+   inside, 1.5 apart; Split, the left half blue and the right half the deadline's; Wins, the deadline's ring alone, and
+   the blue moves to the When's "Today". */
+.tk.mix-double .check.plate.late:not(.on)::before, .tk.mix-double .check.plate.due:not(.on)::before { content: ""; position: absolute; inset: 3px; border-radius: 50%; box-shadow: inset 0 0 0 1.25px var(--accent-text); }
+.tk.mix-split .check.plate.late:not(.on), .tk.mix-split .check.plate.due:not(.on) { box-shadow: none; }
+.tk.mix-split .check.plate.late:not(.on)::before, .tk.mix-split .check.plate.due:not(.on)::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 180deg, var(--accent-text) 0 50%, var(--ring) 50% 100%);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.25px)); mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.25px)); }
+.tk.mix-split .check.late { --ring: var(--danger); }
+.tk.mix-split .check.due { --ring: var(--attn); }
+.tk.mix-wins .row.ptaken .chip.when:not(.open-picker) { color: var(--accent-text); }
+/* Where the When sits (experiment, wa). Right is as built. After: in the title's slot, after the notes hint (6 apart),
+   and it drops before the title goes under 120pt. Column: an 80pt column after the checkbox, in lists only, empty
+   when there's no When, so titles line up. Below: a second line under the title, the row 14 taller. */
+.tk .row .ttw .chip.when { margin-left: -5px; }
+.tk .row .wcol { flex: none; width: 80px; margin-left: 10px; display: flex; align-items: center; }
+.tk .row .wcol .chip.when { margin-left: -5px; }
+.tk .row .wcol + .ttw { margin-left: 4px; }
+.tk .row.two { height: 44px; align-items: flex-start; padding-top: 6px; }
+.tk .row.two .chips { margin-top: -1px; }
+.tk .row.two .open { margin-top: -3px; }
+.tk .row .wbelow { position: absolute; left: 31px; top: 25px; height: 16px; display: flex; align-items: center; }
+.tk .row .wbelow .chip.when { height: 16px; }
 /* Narrow widths, as the app built v2 feedback 16 (f08ca77), approximated: the title keeps up to 120pt with its hint;
    dates keep their size and drop from the first (the When before the deadline); the list name truncates (fading
    when cut); only then does the title go under 120pt. A deadline always shows. Nothing overlaps. */
