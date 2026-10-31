@@ -974,13 +974,14 @@ final class TaskListView: NSView {
         d.lastPoint = p
         drag = d
         var over: WindowState.Drag.Over?
-        if state.sidebarVisible, p.x < (state.sidebarView?.bounds.width ?? TK.M.sidebar) - 4 {
+        let sidebar = state.sidebarVisible && p.x < (state.sidebarView?.bounds.width ?? TK.M.sidebar) - 4
+        if sidebar {
             over = state.sidebarView?.dropTarget(at: p, groupList: d.group)
             if over == .today && state.route == .today { over = nil }
         }
         var target = state.drag?.target ?? d.origTarget
         var copyOrigin: CGPoint
-        if over == nil {
+        if !sidebar {
             // The copy stays inside its group: it stops 6pt past the first and last slot (dc:1196–1203).
             let others = g.ids.filter { !d.ids.contains($0) }.count
             let docTop = doc.convert(CGPoint(x: 0, y: 0), to: nil)
@@ -991,12 +992,14 @@ final class TaskListView: NSView {
             target = min(max(Int(((y - top) / TK.M.pitch).rounded()), 0), others)
             copyOrigin = CGPoint(x: p.x - d.offset.x, y: y)
         } else {
-            // Over a sidebar list the copy becomes a compact tag at the pointer, so the target stays readable.
+            // Over the sidebar the copy becomes a compact tag at the pointer, so the target stays readable. It stays one
+            // between targets too, where nothing is highlighted (v2 feedback 7).
             copyOrigin = CGPoint(x: p.x + 12, y: p.y + 8)
         }
-        state.dragOverlay?.moveCopy(to: copyOrigin, compact: over != nil)
-        if state.drag?.over != over || state.drag?.target != target {
+        state.dragOverlay?.moveCopy(to: copyOrigin, compact: sidebar)
+        if state.drag?.over != over || state.drag?.sidebar != sidebar || state.drag?.target != target {
             state.drag?.over = over
+            state.drag?.sidebar = sidebar
             state.drag?.target = target
         }
         autoscroll(p)
@@ -1029,9 +1032,11 @@ final class TaskListView: NSView {
         autoscrollTimer = nil
         let a = actions
         let overlay = state.dragOverlay
-        if cancel {
-            // The copy flies back and the gap closes; nothing is written.
+        if cancel || (current.sidebar && current.over == nil) {
+            // The copy flies back and the gap closes; nothing is written. A drop on the sidebar where no row takes it
+            // is a cancel too.
             state.drag?.over = nil
+            state.drag?.sidebar = false
             state.drag?.target = d.origTarget
             state.drag?.phase = .fly
             overlay?.flyCopy(to: d.startFrame.origin, shrink: false)

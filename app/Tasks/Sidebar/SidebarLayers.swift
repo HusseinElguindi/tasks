@@ -43,6 +43,10 @@ final class SidebarRowLayer: CALayer {
         addSublayer(count)
         title.mask = fade
         count.alignmentMode = .right
+        // A text layer redraws its contents at commit time, outside the sidebar's no-actions transaction, and the
+        // default `contents` action crossfaded it over 250 ms: a list's count stayed blue after a drag moved on to the
+        // next list (v2 feedback 7). The count's color changes at once (css:113–117).
+        count.actions = TaskRowView.noActions
     }
 
     override init(layer: Any) { super.init(layer: layer) }

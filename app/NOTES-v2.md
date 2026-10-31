@@ -167,6 +167,23 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
    the title row's right inset. Checked one task, two selected, a new task (dimmed), no task, and the pane at its 340pt
    minimum (the relative date still clears the edge). The prototype measures the same in Chrome.
 
+7. **Dragging a task across sidebar lists.** Recorded holding a task over School, then Inbox, then over Home past
+   the task's own list. Sidebar rows are 30 tall on a 32 pitch, and the 2pt between them hit no row, nor did the
+   task's own list, a label, Today in Today or an archived list. On any of those the drag counted as back over the
+   task list for that event: the copy jumped back to a full-width row across the sidebar, the highlight dropped, and
+   the task rows parted and closed again (frames 146–147 of the recording; again for the ~30pt across the own list).
+   - Now each row's hit area takes half the gap either side, so the target goes straight from one row to the next in
+     one frame. Anywhere over the sidebar the copy stays a tag at the pointer and the group stays closed up
+     (`Drag.sidebar`), with no highlight where nothing takes the drop. A drop there cancels: the tag flies home,
+     widening back into the row.
+   - A fast sweep showed a second, smaller smear: a list's count stayed blue for ~250 ms after the target left it,
+     three at once. The count's text layer redrew at commit time with Core Animation's default `contents` crossfade.
+     It now has no implicit actions and changes in the same frame as the fill and ring (css:117 has no transition).
+     The title keeps its `hover-out` ease; it needs that redraw, and without it the title froze partway to grey.
+   - Checked frame by frame: slow and fast sweeps, Today in the Today view, the archive group, back into the list
+     and out again, a drop on no target, a drop on Home (moved) and Esc (back in its slot). The prototype had the
+     same dead band and got the same fix, checked in Chrome.
+
 ## Notes for whoever drives the UI next
 
 - Scratch tools (not committed) are in the session scratchpad's `tools/`: `ui` (window-relative HID input that only

@@ -9,6 +9,7 @@ import Foundation
 ///     key:CODE[:cmd|shift]   wait:MS   snap:/path.png   log:/path.txt  (appends the selection and first responder)
 ///     hit:X,Y     (prints the view AppKit hit-tests there)   size:W,H   (resizes the window, keeping its top left)
 ///     drag:X1,Y1,X2,Y2[,STEPS]   (press, move in steps 16 ms apart, release)
+///     down:X,Y   move:X1,Y1,X2,Y2[,STEPS]   up:X,Y   (the same, a step at a time, to hold a drag)
 @MainActor
 enum DebugScript {
     static func runIfRequested(_ window: WindowState, _ describe: @escaping @MainActor () -> String) {
@@ -44,6 +45,20 @@ enum DebugScript {
                         mouse(w, .leftMouseDragged, x: v[0] + (v[2] - v[0]) * f, y: v[1] + (v[3] - v[1]) * f)
                     }
                     mouse(w, .leftMouseUp, x: v[2], y: v[3])
+                case "down", "up":
+                    let xy = arg.split(separator: ",").compactMap { Double($0) }
+                    guard xy.count == 2 else { continue }
+                    mouse(w, parts[0] == "down" ? .leftMouseDown : .leftMouseUp, x: xy[0], y: xy[1])
+                case "move":
+                    // move:X1,Y1,X2,Y2[,STEPS]: the button stays down (between down: and up:).
+                    let v = arg.split(separator: ",").compactMap { Double($0) }
+                    guard v.count >= 4 else { continue }
+                    let n = v.count > 4 ? max(1, Int(v[4])) : 8
+                    for i in 1...n {
+                        try? await Task.sleep(for: .milliseconds(16))
+                        let f = Double(i) / Double(n)
+                        mouse(w, .leftMouseDragged, x: v[0] + (v[2] - v[0]) * f, y: v[1] + (v[3] - v[1]) * f)
+                    }
                 case "size":
                     let wh = arg.split(separator: ",").compactMap { Double($0) }
                     guard wh.count == 2 else { continue }

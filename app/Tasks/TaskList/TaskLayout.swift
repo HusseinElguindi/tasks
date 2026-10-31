@@ -259,7 +259,7 @@ struct TaskLayout {
         ids.insert(id, at: i)
     }
 
-    /// The rows of the dragged group part to open a gap at the target; over a sidebar list the group closes up and
+    /// The rows of the dragged group part to open a gap at the target; over the sidebar the group closes up and
     /// everything below it moves up, because the rows are leaving (dc:655–676).
     private mutating func applyDrag(_ drag: WindowState.Drag?) {
         guard let drag, drag.phase != .done, case .tasks(let dragged, let groupID) = drag.kind,
@@ -268,12 +268,12 @@ struct TaskLayout {
         let draggedSet = Set(dragged)
         let others = g.ids.filter { !draggedSet.contains($0) }
         let k = CGFloat(dragged.count)
-        let gap = drag.over == nil
-        let target = drag.over != nil ? others.count : min(max(drag.target, 0), others.count)
+        let gap = !drag.sidebar
+        let target = drag.sidebar ? others.count : min(max(drag.target, 0), others.count)
         for (i, id) in others.enumerated() {
             if let r = index[id] { yList[r] = g.top + (CGFloat(i) + (gap && i >= target ? k : 0)) * Self.pitch }
         }
-        if drag.over != nil {
+        if drag.sidebar {
             let shift = k * Self.pitch
             let end = g.top + CGFloat(g.ids.count) * Self.pitch
             for r in yList.indices where yList[r] >= end && groupIndex[r] != gi { yList[r] -= shift }

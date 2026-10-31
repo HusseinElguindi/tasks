@@ -15,8 +15,12 @@ Status: **final, 2026-10-30.** The user reviewed the prototype and made the four
   the same weight (§7); a dropped copy fades out over its row instead of vanishing while the row fades in (§14).
 - Item 6: the detail pane's rows, separator, notes and footer start at the checkbox's left edge and span the width
   (§21 Detail-pane spacing).
+- Item 7: dragging a task from one sidebar list to another is continuous. Each row takes half the 2pt gap on either
+  side, so the target passes straight from row to row. Anywhere over the sidebar the copy stays a tag and the group
+  stays closed up, so a row that takes no drop never snaps the copy back into the list. A drop there cancels, and a
+  list's count changes colour in the same frame as its row (§14).
 
-The prototype source matches all five (item 5's rename part is the app's drawing; the browser has no equivalent).
+The prototype source matches all six (item 5's rename part is the app's drawing; the browser has no equivalent).
 
 **The prototype is the reference implementation:** https://claude.ai/artifact/QetdV1H57SC6kLXtNzJRXM (press Play on the
 main board, then click inside it once so it has the keys). Its source is in `design/prototype-v2/`, and this spec cites
@@ -775,9 +779,10 @@ the drop will land; there is no insertion line. Source: `dc:1162–1177`,
 | Move 4pt | Lift: a copy of the row (the grabbed row, for a multi-selection) follows the pointer, keeping the grab offset: `fill-lift`, radius 8, `shadow-lift`, the checkbox ring, title and chips (chips on #3A3A3A in dark). The rows being dragged leave their places (hidden). Several tasks: an `accent` badge with the count, 18 tall, 11 semibold `on-accent`, 7pt past the copy's top-right corner. Tooltips, menus and popovers close |
 | Over the list | The other rows in the group part on `layout` to open a gap (as many slots as rows dragged) at the target. The target is the nearest slot to the copy. The copy stays inside its group: it stops 6pt past the first and last slot (a list's open tasks; one Today group) |
 | Near the top or bottom (24pt) | The list scrolls 8pt every 16 ms |
-| Over a sidebar list | The gap closes and everything below the group moves up (the rows are leaving). The target row shows the drop-target state. The copy becomes a compact tag, 210 wide (width on 160 ms ease-out) at the pointer +12, +8, so the target stays readable. Today is a target (sets When = today) unless you're in Today; the current list, archived lists and labels aren't |
+| Over the sidebar | The gap closes and everything below the group moves up (the rows are leaving). The copy becomes a compact tag, 210 wide (width on 160 ms ease-out) at the pointer +12, +8, so the target stays readable. It stays a tag, and the group stays closed, anywhere over the sidebar, on a target or not. The row under the pointer shows the drop-target state if it takes the drop. Each row's hit area takes half the 2pt gap on either side, so the state passes straight from one row to the next, with the fill, ring and count changing in one frame and the title easing on `hover-out`. Today is a target (sets When = today) unless you're in Today; the current list, archived lists and labels aren't, and over them nothing is highlighted |
 | Drop on the list | The copy flies into its slot (160 ms, cubic-bezier(0.2, 0.8, 0.2, 1)); at 170 ms the new order is written (one op per task, `keysBetween`, SPEC §3) and the grabbed row shows at once, exactly under the copy, which then fades out over it (150 ms ease-out), so the lift dissolves into the row; the other rows that came along fade in (150 ms). Dropping where it started writes nothing |
 | Drop on a sidebar list | The copy flies to the row's left (x 10) and fades out (160 ms); at 170 ms the move is written; notice "Moved to Errands" |
+| Drop on the sidebar elsewhere | As Esc: the copy flies home, widening back into the row, and nothing is written |
 | Esc (or the system cancelling the drag) | The copy flies back to where it started (160 ms) and the gap closes; the row then shows under it and the copy fades out over it, as for a drop. Nothing is written. Releasing anywhere else drops at the last slot shown, as in a Mac list |
 
 **Sidebar lists** drag the same way, vertically only, after 4pt: the copy is the capsule (`fill-strong`, the row's

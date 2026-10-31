@@ -660,10 +660,10 @@ class Component extends DCLogic {
     const others = g.ids.filter((id) => !d.ids.includes(id));
     const k = d.ids.length;
     // Over the list, the other rows part to open a k-row gap at the target slot.
-    const gap = !d.over;
-    const target = d.over ? others.length : clamp(d.target, 0, others.length);
+    const gap = !d.sb;
+    const target = d.sb ? others.length : clamp(d.target, 0, others.length);
     others.forEach((id, i) => L.ys.set(id, g.top + (i + (gap && i >= target ? k : 0)) * PITCH));
-    if (d.over) {
+    if (d.sb) {
       // The group closes up: the dragged rows are leaving it.
       const shift = k * PITCH;
       const end = g.top + g.ids.length * PITCH;
@@ -1181,18 +1181,21 @@ class Component extends DCLogic {
     const p = this.winXY(e);
     const x = p.x - d.offX, y = p.y - d.offY;
     let over = null;
-    if (this.state.sbVisible && p.x < this.state.sbW - 4) {
+    // Anywhere over the sidebar the copy stays a tag and the group stays closed up, target or not, so passing a row that
+    // takes no drop never snaps it back into the list. Each row takes half the 2px gap either side (v2 feedback 7).
+    const sb = this.state.sbVisible && p.x < this.state.sbW - 4;
+    if (sb) {
       const sc = this.sbScrollRef.current ? this.sbScrollRef.current.scrollTop : 0;
       const sy = p.y - SB_TOP + sc;
       const S = this.lastSidebar;
-      const hit = S.rows.find((r) => sy >= r.y && sy < r.y + 30);
+      const hit = S.rows.find((r) => sy >= r.y - 1 && sy < r.y + 31);
       if (hit) {
         if (hit.key === 'today') over = this.state.route.kind === 'today' ? null : { kind: 'today', key: 'today' };
         else { const l = this.list(hit.key); if (l && !l.archivedAt && !l.draft && l.id !== d.group) over = { kind: 'list', key: l.id }; }
       }
     }
     let target = d.target, cy = y;
-    if (!over) {
+    if (!sb) {
       // The row can't leave its group (a list's open tasks, or one Today group): it stops at the edges.
       const sc = this.listScrollRef.current ? this.listScrollRef.current.scrollTop : 0;
       const L = this.lastLayout;
@@ -1202,13 +1205,13 @@ class Component extends DCLogic {
       cy = clamp(y, top - 6, top + others * PITCH + 6);
       target = clamp(Math.round((cy - top) / PITCH), 0, others);
     }
-    // Over a sidebar list the copy turns into a small tag at the pointer, so the target row stays readable.
-    const px = over ? p.x + 12 : x, py = over ? p.y + 8 : cy;
+    // Over the sidebar the copy turns into a small tag at the pointer, so the target row stays readable.
+    const px = sb ? p.x + 12 : x, py = sb ? p.y + 8 : cy;
     const el = this.liftRef.current;
     if (el) el.style.transform = 'translate(' + px + 'px,' + py + 'px)';
     d.x = px; d.y = py; d.rawX = x; d.rawY = y;
     const overKey = over ? over.key : null, prevKey = d.over ? d.over.key : null;
-    if (overKey !== prevKey || target !== d.target) this.setState({ drag: { ...d, over, target } });
+    if (overKey !== prevKey || sb !== !!d.sb || target !== d.target) this.setState({ drag: { ...d, over, sb, target } });
     this.autoScroll(p);
   }
   autoScroll(p) {
@@ -1227,8 +1230,11 @@ class Component extends DCLogic {
     clearTimeout(this.scrollTimer);
     if (!d || d.phase !== 'drag') return;
     const L = this.lastLayout;
-    if (cancel) {
-      this.setState({ drag: { ...d, phase: 'fly', target: d.target, over: null, flyTo: { x: d.left, y: d.startTop }, cancel: true } });
+    if (cancel || (d.sb && !d.over)) {
+      // A drop on the sidebar where no row takes it is a cancel too: the copy flies home and the gap reopens there.
+      const g0 = L.groups.find((x) => x.listId === d.group);
+      const home = g0 ? g0.ids.slice(0, g0.ids.indexOf(d.ids[0])).filter((id) => !d.ids.includes(id)).length : d.target;
+      this.setState({ drag: { ...d, phase: 'fly', target: home, over: null, sb: false, flyTo: { x: d.left, y: d.startTop }, cancel: true } });
       setTimeout(() => { this.setState({ drag: { ...this.state.drag, phase: 'done' } }); setTimeout(() => this.setState({ drag: null }), LAND_MS); }, 200);
       return;
     }
@@ -2008,8 +2014,8 @@ class Component extends DCLogic {
     if (d) {
       const t = this.task(d.grabbed);
       const pos = d.phase === 'drag' ? { x: d.x, y: d.y } : d.flyTo;
-      const width = d.over || (d.phase === 'fly' && d.shrink) ? 210 : d.w;
-      const chips = t && !d.over ? rows.find((r) => r.id === t.id).chips : [];
+      const width = d.sb || (d.phase === 'fly' && d.shrink) ? 210 : d.w;
+      const chips = t && !d.sb ? rows.find((r) => r.id === t.id).chips : [];
       drag = { show: true, cls: 'lifted' + (d.phase === 'fly' ? ' flying' : '') + (d.phase === 'done' ? ' settle' : '') + (d.shrink ? ' shrink' : ''), style: 'transform: translate(' + pos.x + 'px, ' + pos.y + 'px); width: ' + width + 'px',
         title: t ? t.title || 'New Task' : '', chips, multi: d.count > 1, count: String(d.count), checkCls: 'check' };
     }

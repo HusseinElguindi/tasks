@@ -3,7 +3,7 @@ import QuartzCore
 import SwiftUI
 
 /// The window-level layer that draws a dragged task's lifted copy (§14, css:239–250): a copy of the grabbed row on
-/// `fill-lift`, radius 8, `shadow-lift`, with a count badge when several tasks travel. Over a sidebar list it becomes a
+/// `fill-lift`, radius 8, `shadow-lift`, with a count badge when several tasks travel. Over the sidebar it becomes a
 /// compact 210pt tag at the pointer. It never takes the pointer. Coordinates are the window's, y down.
 final class DragOverlayView: NSView {
     private let container = CALayer()
@@ -88,8 +88,15 @@ final class DragOverlayView: NSView {
         }
     }
 
-    /// Follows the pointer (no animation); `compact` over a sidebar list: 210 wide, no chips, width on 160 ms ease-out.
+    /// Follows the pointer (no animation); `compact` over the sidebar: 210 wide, no chips, width on 160 ms ease-out.
     func moveCopy(to origin: CGPoint, compact c: Bool) {
+        guard let row = copy else { return }
+        setCompact(c)
+        row.layer?.removeAnimation(forKey: "fly")
+        row.frame.origin = origin
+    }
+
+    private func setCompact(_ c: Bool) {
         guard let row = copy, var m = model else { return }
         if c != compact {
             compact = c
@@ -106,14 +113,13 @@ final class DragOverlayView: NSView {
                 rl.add(a, forKey: "width")
             }
         }
-        row.layer?.removeAnimation(forKey: "fly")
-        row.frame.origin = origin
     }
 
     /// The drop or cancel: the copy flies to `origin` (160 ms, cubic-bezier(0.2, 0.8, 0.2, 1)); `shrink` also fades it
-    /// out (a drop on a sidebar list).
+    /// out (a drop on a sidebar list). Otherwise a tag widens back into the row on the way (dc:2011).
     func flyCopy(to origin: CGPoint, shrink: Bool) {
         guard let row = copy, let rl = row.layer else { return }
+        if !shrink { setCompact(false) }
         let from = rl.presentation()?.position ?? rl.position
         row.frame.origin = origin
         let to = rl.position

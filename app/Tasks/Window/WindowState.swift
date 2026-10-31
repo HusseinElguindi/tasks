@@ -72,6 +72,10 @@ final class WindowState {
         var kind: Kind
         var target: Int
         var over: Over?
+        /// A task drag's pointer is over the sidebar, on a target or not: the copy stays a tag at the pointer and the
+        /// group stays closed up the whole way across, so passing a row that takes no drop (the gap between two rows,
+        /// a label, the task's own list) never snaps the copy back into the list for a frame (v2 feedback 7).
+        var sidebar = false
         var phase: Phase = .drag
     }
 

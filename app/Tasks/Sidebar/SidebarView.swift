@@ -177,11 +177,13 @@ final class SidebarView: FlippedLayerView {
     }
 
     /// The sidebar row a task drag is over (window point, top-left origin, y down): Today unless the view is Today,
-    /// or an active list other than `groupList`. Archived lists and labels aren't targets (dc:1183–1192).
+    /// or an active list other than `groupList`. Archived lists and labels aren't targets (dc:1183–1192). Each row
+    /// takes half the 2pt gap on either side, so the target passes straight from one row to the next (v2 feedback 7).
     func dropTarget(at windowPoint: CGPoint, groupList: EntityID?) -> WindowState.Drag.Over? {
         guard ui.sidebarVisible, windowPoint.x < bounds.width - 4, let p = contentPoint(fromWindowTopLeft: windowPoint),
               scroll.frame.contains(convert(p, from: content)) else { return nil }
-        guard let row = model.rows.first(where: { p.y >= $0.y && p.y < $0.y + SB.rowHeight }) else { return nil }
+        let half = (TK.M.pitch - SB.rowHeight) / 2
+        guard let row = model.rows.first(where: { p.y >= $0.y - half && p.y < $0.y + SB.rowHeight + half }) else { return nil }
         switch row.key {
         case .today:
             return ui.route == .today ? nil : .today
