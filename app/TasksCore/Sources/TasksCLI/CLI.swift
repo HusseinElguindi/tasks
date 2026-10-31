@@ -34,6 +34,7 @@ enum CLI {
         defer {
             c.cleanup()
             session?.store.persistNow()
+            session?.nudgeIfPushed()
         }
         let reply = try await inv.command.run(c, inv.args)
 

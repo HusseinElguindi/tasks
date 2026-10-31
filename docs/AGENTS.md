@@ -80,6 +80,9 @@ Every read pulls first, so it's current. `--cached` reads the replica without th
   per line, for pipes. Errors go to stderr (with `--json`, as `{"error": {type, message, field, candidates}}`).
 - Exit `0`: done and in the server's log. `75`: applied on this Mac but not synced yet (offline); it goes out with
   the next command that reaches the server. `1`: an error, nothing written. `2`: a usage mistake.
+- The app shows your change within about a second: after a command pushes, `tasks` nudges the Tasks app on this Mac
+  to sync at once (a Darwin notification, `com.elguindi.Tasks.changed`). A burst of commands is one sync in the app.
+  A debug build of `tasks` nudges only the debug app on the same server, never the installed one.
 
 ## Changes, review and undo
 

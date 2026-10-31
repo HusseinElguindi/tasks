@@ -42,6 +42,8 @@ struct Environment: @unchecked Sendable {
     var keychainToken: () -> String?
     /// Sleeps between sync retries; tests skip it.
     var sleep: (Double) async -> Void
+    /// After a push the server took: nudges the app on that server to sync now (`SyncNudge`, spec §5 "Realtime").
+    var nudge: (URL) -> Void = { _ in }
 
     static func live() -> Environment {
         Environment(
@@ -54,7 +56,8 @@ struct Environment: @unchecked Sendable {
             out: { FileHandle.standardOutput.write(Data(($0 + "\n").utf8)) },
             err: { FileHandle.standardError.write(Data(($0 + "\n").utf8)) },
             keychainToken: Keychain.appToken,
-            sleep: { try? await Task.sleep(for: .seconds($0)) }
+            sleep: { try? await Task.sleep(for: .seconds($0)) },
+            nudge: { SyncNudge.post(server: $0) }
         )
     }
 
@@ -203,10 +206,22 @@ final class Session {
 
     var retries: Int { env["TASKS_RETRIES"].flatMap(Int.init) ?? 3 }
 
+    /// Whether this command's syncs pushed anything the server took.
+    private(set) var pushed = false
+
+    /// At the end of a command (or an MCP call): if it pushed, nudge the app on this server to sync now, once
+    /// (feedback item 14, spec §5 "Realtime").
+    func nudgeIfPushed() {
+        guard pushed else { return }
+        pushed = false
+        env.nudge(server.config.url)
+    }
+
     /// Syncs until up to date. Returns true when nothing of ours is left unconfirmed, false when the server
     /// couldn't be reached (the ops stay queued: exit 75). Throws when sync stopped (401, 404, invalid op…).
     func sync() async throws -> Bool {
         store.notice = nil
+        let queued = Set(store.projection.pending.map(\.op.id))
         var tries = 0
         while true {
             await store.sync()
@@ -218,6 +233,9 @@ final class Session {
             }
             break
         }
+        // An op leaves pending only on the server's answer: if any did, the push went through. A pull alone, or a
+        // push that didn't reach the server, doesn't count.
+        if !queued.isEmpty, !queued.isSubset(of: Set(store.projection.pending.map(\.op.id))) { pushed = true }
         if store.notice != nil {
             store.notice = nil
             throw CLIError(kind: .sync, message: "The server rejected a change (it's in \(directory.appendingPathComponent("rejected.jsonl").path)). This is a bug in tasks.")

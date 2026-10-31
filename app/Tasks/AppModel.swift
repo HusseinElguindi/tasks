@@ -63,6 +63,8 @@ final class AppModel {
     @ObservationIgnored private var periodic: Task<Void, Never>?
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
     @ObservationIgnored private var appearanceObservation: NSKeyValueObservation?
+    /// The CLI's nudge: sync at once after `tasks` pushed (feedback item 14).
+    @ObservationIgnored private var nudges: SyncNudgeListener?
 
     enum Keys {
         static let serverURL = "serverURL"
@@ -106,6 +108,7 @@ final class AppModel {
     private func load() async {
         let store = await Store.open(directory: dataDirectory)
         self.store = store
+        nudges = SyncNudgeListener(store: store)
         applyConfig()
         startTriggers(store)
     }
@@ -135,7 +138,9 @@ final class AppModel {
     }
 
     private func applyConfig() {
-        store?.config = syncConfig
+        let config = syncConfig
+        store?.config = config
+        nudges?.listen(server: config?.url)
     }
 
     // MARK: Triggers

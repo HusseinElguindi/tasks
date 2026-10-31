@@ -118,5 +118,6 @@ Compiled out of Release builds.
 | `-snapshotSettings <png>` | Renders Settings (⌘,) to a PNG without opening its window. |
 | `-debugScript "<steps>"` | Posts clicks and keys inside the app, then quits (see `Support/DebugScript.swift`). Its `glasssnap:<png>` step renders how much of the Glass ground each pixel covers (alpha), plus a `.txt` of the window and its materials; `act:<action>` runs a window action by name and `act:rows`, `act:menu`, `act:trace` log the four views' rows, menus and motion (`Support/DebugViews.swift`). |
 | `-debugRenderTimes <file>` | Logs each task-list render's duration and phases. |
+| `-debugNudgeLog <file>` | Logs the CLI's sync nudges (feedback item 14), each sync they request, and every sync state change with the cursor and task count, with times (`Support/SyncNudgeListener.swift`). |
 | `-debugMeasureSwitch <file>` | The list-switch benchmark (`Scripts/switch-bench.sh`). |
 | `-debugActions '<json>'`, `-debugDumpTo <json>` | Performs actions through the Store, syncs, dumps state, quits (used by `Scripts/e2e.sh`). |

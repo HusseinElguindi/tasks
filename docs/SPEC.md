@@ -610,6 +610,17 @@ Sync triggers:
 - ~1s after any local change.
 - Every 30s while a window is open.
 - ⌘R.
+- **The CLI's nudge.** After a `tasks` command (or a `tasks run` script, or an MCP call) pushed ops the server took,
+  the CLI posts a Darwin notification (`notify_post`). The app listens for it (`notify_register_dispatch` on the main
+  queue) and runs its normal sync, so a CLI change shows in about half a second instead of at the next 30s tick.
+  - It carries no data: the changes still come through `/v1/sync`. A read, a `--dry-run`, a `--cached` write or a
+    push that didn't reach the server posts nothing; ops queued offline post when a later command pushes them.
+  - Debounced in the app: the sync runs 0.5s after the last nudge, and no later than 5s after the first of a burst, so
+    a burst of commands is one sync. A nudge during a sync asks for one more pass after it, as any request does.
+  - The name: Release builds use `com.elguindi.Tasks.changed`. Debug builds (the "Tasks Dev" app, a `swift build`
+    CLI) use `com.elguindi.Tasks.changed.dev.<hash>`, the hash being FNV-1a of the server's origin
+    (`scheme://host:port`), so a test run against a `wrangler dev` reaches only Debug apps syncing with that server
+    and never the installed app (`SyncNudge` in TasksCore).
 
 **Pushback:** a WebSocket (DO hibernation API) would cut sync latency from up to 30s to near-instant. For one person's Macs, 30s is fine. If it's ever wanted, the socket only needs to send "head is now N" and clients keep using `/v1/sync`, so the protocol doesn't change.
 
