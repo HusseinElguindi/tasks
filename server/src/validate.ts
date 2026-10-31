@@ -73,7 +73,8 @@ const TYPES: Record<string, { allowed: Set<string>; required: string[] }> = {
   "list.create": { allowed: new Set(["name", "order"]), required: ["name", "order"] },
   "list.update": { allowed: new Set(["name", "order", "archivedAt"]), required: [] },
 };
-const ENVELOPE = new Set(["id", "at", "type", "target", "set"]);
+// `actor` and `batch` are optional attribution keys (SPEC §5): who wrote the op, and the change it belongs to.
+const ENVELOPE = new Set(["id", "at", "type", "target", "set", "actor", "batch"]);
 const isId = isString(1, 64);
 
 /** Validates ops[index]. Checks run in a fixed order and the first failure is reported. */
@@ -82,13 +83,15 @@ function prepareOp(op: unknown, index: number): PreparedOp {
     new HttpError(400, "invalid_op", `ops[${index}]${field === "op" ? "" : "." + field} ${problem}`, index, field);
 
   if (!isObject(op)) throw fail("op", "must be an object");
-  const { id, at, type, target, set } = op;
+  const { id, at, type, target, set, actor, batch } = op;
   if (!isId(id)) throw fail("id", "must be a string of 1 to 64 characters");
   if (!isNat(at)) throw fail("at", "must be an integer >= 0");
   const rules = typeof type === "string" && Object.hasOwn(TYPES, type) ? TYPES[type] : undefined;
   if (!rules) throw fail("type", "must be one of task.create, task.update, list.create, list.update");
   if (!isId(target)) throw fail("target", "must be a string of 1 to 64 characters");
   if (!isObject(set)) throw fail("set", "must be an object");
+  if (Object.hasOwn(op, "actor") && !isId(actor)) throw fail("actor", "must be a string of 1 to 64 characters");
+  if (Object.hasOwn(op, "batch") && !isId(batch)) throw fail("batch", "must be a string of 1 to 64 characters");
   for (const key of Object.keys(op)) if (!ENVELOPE.has(key)) throw fail(key, "is not an op field");
 
   for (const key of Object.keys(set)) {
@@ -98,8 +101,9 @@ function prepareOp(op: unknown, index: number): PreparedOp {
   }
   for (const key of rules.required) if (!Object.hasOwn(set, key)) throw fail(`set.${key}`, `is required for ${type}`);
 
-  // Top-level keys in this order, `set` keys in the order received (SPEC §5).
-  return { id: id as string, text: JSON.stringify({ id, at, type, target, set }) };
+  // Top-level keys in this order, `set` keys in the order received (SPEC §5). JSON.stringify omits an absent
+  // actor or batch, so an op without them is stored exactly as before.
+  return { id: id as string, text: JSON.stringify({ id, at, type, target, set, actor, batch }) };
 }
 
 /** Parses and validates a request body. Throws HttpError(400 / 413). */

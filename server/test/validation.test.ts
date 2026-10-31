@@ -95,6 +95,16 @@ describe("400 invalid_op", () => {
     ["set an array", { ...tu, set: [] }, "set"],
     ["set a string", { ...tu, set: "{}" }, "set"],
     ["unknown envelope key", { ...tu, seq: 3 }, "seq"],
+    ["unknown envelope key next to actor", { ...tu, actor: "cli", seq: 3 }, "seq"],
+    ["actor empty", { ...tu, actor: "" }, "actor"],
+    ["actor 65 chars", { ...tu, actor: s(65) }, "actor"],
+    ["actor null", { ...tu, actor: null }, "actor"],
+    ["actor a number", { ...tu, actor: 1 }, "actor"],
+    ["actor a lone surrogate", { ...tu, actor: "agent:\ud800" }, "actor"],
+    ["batch empty", { ...tu, batch: "" }, "batch"],
+    ["batch 65 chars", { ...tu, batch: s(65) }, "batch"],
+    ["batch null", { ...tu, batch: null }, "batch"],
+    ["batch an object", { ...tu, batch: {} }, "batch"],
 
     // Keys allowed per type.
     ["unknown set key", withSet(tu, { color: "red" }), "set.color"],
@@ -173,13 +183,17 @@ describe("400 invalid_op", () => {
     expect(res.body).toMatchObject({ index: 2, field: "id" });
   });
 
-  it("checks envelope fields in order id, at, type, target, set, then set keys, then required keys", async () => {
+  it("checks envelope fields in order id, at, type, target, set, actor, batch, unknown keys, then set keys, then required keys", async () => {
     const first = async (op: unknown) => (await sync({ from: 0, base: null, ops: [op] })).body.field;
     expect(await first({})).toBe("id");
     expect(await first({ id: "x" })).toBe("at");
     expect(await first({ id: "x", at: 0 })).toBe("type");
     expect(await first({ id: "x", at: 0, type: "task.create" })).toBe("target");
     expect(await first({ id: "x", at: 0, type: "task.create", target: "t" })).toBe("set");
+    expect(await first({ id: "x", at: 0, type: "task.create", target: "t", set: null, actor: "" })).toBe("set");
+    expect(await first({ id: "x", at: 0, type: "task.create", target: "t", set: { title: 1 }, actor: "", batch: "" })).toBe("actor");
+    expect(await first({ id: "x", at: 0, type: "task.create", target: "t", set: { title: 1 }, batch: "", seq: 1 })).toBe("batch");
+    expect(await first({ id: "x", at: 0, type: "task.create", target: "t", set: { title: 1 }, seq: 1 })).toBe("seq");
     expect(await first({ id: "x", at: 0, type: "task.create", target: "t", set: { title: 1, bad: 1 } })).toBe("set.title");
     expect(await first({ id: "x", at: 0, type: "task.create", target: "t", set: { title: "t" } })).toBe("set.list");
   });
@@ -221,6 +235,25 @@ describe("valid ops", () => {
   it.each(accepted)("%s", async (_, op) => {
     const page = await ok(0, null, [op]);
     expect(page.entries.map((e) => e.op)).toEqual([op]);
+  });
+
+  it.each([
+    ["actor and batch", { actor: "agent:claude-code", batch: "2c1f9e0a-0000-4000-8000-000000000001" }],
+    ["actor and batch of 1 and 64 chars", { actor: "a", batch: s(64) }],
+    ["actor only", { actor: "cli" }],
+    ["batch only", { batch: "b" }],
+  ])("%s", async (_, keys) => {
+    const op = { ...taskUpdate({ title: "t" }), ...keys };
+    const page = await ok(0, null, [op]);
+    expect(page.entries.map((e) => e.op)).toEqual([op]);
+  });
+
+  it("stores actor and batch after set, in that order, whatever order they're sent in", async () => {
+    const op = taskUpdate({ title: "t" });
+    const res = await post({ from: 0, base: null, ops: [{ batch: "b1", actor: "cli", ...op }] });
+    const text = await res.text();
+    const { id, at, type, target, set } = op;
+    expect(text).toContain(`"op":${JSON.stringify({ id, at, type, target, set })}`.slice(0, -1) + ',"actor":"cli","batch":"b1"}');
   });
 });
 

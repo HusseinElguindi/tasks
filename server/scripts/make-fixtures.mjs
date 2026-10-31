@@ -26,7 +26,10 @@ const opX = { id: "6c1d7d2f-4a1b-4d9f-8e72-1a5a7a2b3c4d", at: 1761811270000, typ
 const SPEC_HASH_0 = "bc2a6e3a4de77a2ce16c4a38c6f4d76237a98434f7d213049e3fd77dde66dacd";
 const SPEC_HASH_1 = "184ceb4c3d11bd53025385963c25f50298c2d652f84d5989941d2ec13a66fd79";
 
-const opText = (op) => JSON.stringify({ id: op.id, at: op.at, type: op.type, target: op.target, set: op.set });
+// Example 11: an agent's op, with the optional attribution keys.
+const opC = { id: "3a7f2c1e-8b4d-4e6a-9c5f-1d2e3f4a5b6c", at: 1761811320000, type: "task.update", target: TASK, set: { when: "2026-11-06" }, actor: "agent:claude-code", batch: "2c1f9e0a-7b3d-4c5e-8f6a-9b0c1d2e3f4a" };
+
+const opText = (op) => JSON.stringify({ id: op.id, at: op.at, type: op.type, target: op.target, set: op.set, actor: op.actor, batch: op.batch });
 const sha256 = (s) => createHash("sha256").update(s).digest("hex");
 
 /** The log the server would hold after appending `ops` in order, as entries. */
@@ -65,6 +68,7 @@ const logAB = log([opA, opB]);
 const logAXB = log([opA, opX, opB]);
 const log2345 = log([opA, opB, ...filler]);
 const after3 = log([opA, opB, op3a]);
+const afterC = log([opA, opB, opC]);
 
 if (logAB[0].hash !== SPEC_HASH_0 || logAB[1].hash !== SPEC_HASH_1) throw new Error("hash vectors disagree with SPEC §5");
 // Example 5's recovery response, entries 1 and 2.
@@ -182,6 +186,13 @@ const fixtures = {
     setup: { log: [] },
     request: request(undefined, { method: "GET" }),
     response: response(405, { error: "method_not_allowed", message: "Use POST for /v1/sync." }, { Allow: "POST" }),
+  },
+  "11-push-with-actor": {
+    spec: "§5 op schema, actor and batch",
+    description: "An agent pushes an op with the optional actor and batch keys. They're stored after set and hashed with the op; ops without them are stored exactly as before.",
+    setup: { log: [opA, opB] },
+    request: request({ from: 2, base: hash1, ops: [opC] }),
+    response: response(200, page(afterC, 2)),
   },
 };
 
