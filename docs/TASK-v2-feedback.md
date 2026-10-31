@@ -179,3 +179,19 @@ The user's words: "we need some branding. like the small app logo and Tasks befo
 - The window-controls line (spec §4) and the alignment rules stay intact.
 
 Update the spec and the prototype source, then commit, rebuild Release and report back.
+
+## 13. ⌘Z doesn't work inside the notes
+
+The user's words: "why does cmd+z not work inside the notes?" They're running the four-views build (6580d4d) with Markdown notes.
+
+- **Expected:** while the caret is in the notes editor, ⌘Z and ⇧⌘Z undo and redo text edits, one typing run at a time, just like any NSTextView. That includes the Markdown edits (list continuation, ⌘B and ⌘I, paste, and checkbox toggles made while editing). When the editor commits ("Edit Notes" on Esc or ⌘Return, or a click away), the app's undo stack gets one step for the whole session, as the spec says.
+- **Likely causes to check:**
+  - the app's Edit ▸ Undo menu item or a key handler sending ⌘Z to the Store's UndoManager instead of the first responder's;
+  - `allowsUndo` being off;
+  - the editor's `undoManager` returning the window's or the Store's manager;
+  - the Markdown restyling clearing or breaking the text view's undo groups;
+  - SwiftUI's `.onKeyPress` or a commands override swallowing ⌘Z.
+- **Check the other text fields too:** the task title in the detail pane, renaming a row in place, renaming a list in place, and the date field. ⌘Z there was never checked. All of them should undo text first; outside a text field, ⌘Z keeps undoing app actions.
+- **Verify** with real key events on the scratch instance if the screen is unlocked. Otherwise use the debug steps, and say which.
+
+Commit, rebuild Release and report back.
