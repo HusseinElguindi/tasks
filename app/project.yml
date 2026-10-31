@@ -36,6 +36,10 @@ targets:
           - UTTypeIdentifier: com.elguindi.tasks.list-id
             UTTypeDescription: Task List
             UTTypeConformsTo: [public.data]
+    # The signing identity: ad hoc, or "Tasks Local Signing" once Scripts/make-signing-identity.sh has run.
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
     settings:
       configs:
         # Debug builds are a separate app to macOS: their own defaults, saved state, Keychain item and data folder,
@@ -51,8 +55,8 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "6.0"
         SWIFT_STRICT_CONCURRENCY: complete
-        # No Apple Developer account: ad-hoc "Sign to Run Locally", no sandbox (spec §7).
-        CODE_SIGN_IDENTITY: "-"
+        # No Apple Developer account: a local identity or ad hoc (CODE_SIGN_IDENTITY is in Signing.xcconfig, set
+        # there and not here so the local override wins), no sandbox (spec §7).
         CODE_SIGN_STYLE: Manual
         DEVELOPMENT_TEAM: ""
         ENABLE_HARDENED_RUNTIME: NO

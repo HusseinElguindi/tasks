@@ -8,6 +8,8 @@ The SwiftUI client from `docs/SPEC.md` (§8–§9) in the A1 · Split design (`d
 | `Tasks/` | The macOS 14+ app: views only, rebuilt for v2 from `design/prototype-v2/` (`design/INTERACTIONS-v2.md`). `Theme/` has the prototype's tokens (`TK`) and the AppKit drawing pieces; `Window/` the window state, every action, the menus and the panes' chrome; `TaskList/` and `Sidebar/` are AppKit lists; `Detail/` and `Overlay/` (date popover, notice, tooltip, the drag copy) are SwiftUI with AppKit fields. `Pane/` is the v1 theme, still used by Settings. |
 | `project.yml` | XcodeGen spec for `Tasks.xcodeproj` (generated, not checked in). |
 | `Scripts/e2e.sh` | The end-to-end check against a local `wrangler dev`. |
+| `Scripts/make-signing-identity.sh` | Makes the local signing identity once per Mac (see Signing). |
+| `Signing.xcconfig` | The signing identity: ad hoc, or the local one once the script has run. |
 
 ## Build and run
 
@@ -22,7 +24,37 @@ open .build/DerivedData/Build/Products/Debug/Tasks.app
 
 Why XcodeGen: the project is ~60 lines of YAML that review and merge like code, with nothing hand-edited in a
 `.pbxproj`. The app's sources are a synchronized folder, so adding a file never needs a regeneration; only target
-settings do. The app is ad-hoc signed and not sandboxed (no Apple Developer account, spec §7).
+settings do. The app is not sandboxed and has no Apple Developer account (spec §7).
+
+### Signing (keeps Keychain access across builds)
+
+Ad-hoc builds get a new code signature every time, and the Keychain ties "Always Allow" on the sync token to that
+signature, so every new build asked again. Builds signed with a stable local identity keep the same designated
+requirement, so the token's "Always Allow" sticks. Once per Mac:
+
+```sh
+Scripts/make-signing-identity.sh      # makes "Tasks Local Signing" in the login keychain; safe to run again
+```
+
+- **What the script makes:** a self-signed code-signing certificate (20 years) and its key in the login keychain.
+  - It generates the key in a temporary folder and deletes that copy after importing. The key isn't stored or
+    exported anywhere else.
+  - It lets `/usr/bin/codesign` use the key without asking.
+  - It writes `Signing.local.xcconfig` (not checked in), which `Signing.xcconfig` includes. Without that file, builds
+    are ad hoc as before.
+  - It needs no password.
+- **Trust:** the certificate shows as "not trusted" (`CSSMERR_TP_NOT_TRUSTED`). That doesn't matter: codesign signs
+  with it, and the requirement is pinned to the certificate itself. `Scripts/make-signing-identity.sh --trust` marks
+  it trusted for code signing. That step is optional, and macOS asks for your password.
+- **Check:** `codesign -dr - .build/DerivedData/Build/Products/Release/Tasks.app` should print
+  `identifier "com.elguindi.Tasks" and certificate leaf = H"…"`, the same for every build. An ad-hoc build prints a
+  `cdhash` instead.
+- **After switching:** the first build signed this way asks for the token once more. "Always Allow" then holds for
+  later builds.
+- **Removing it:** delete the "Tasks Local Signing" certificate and key in Keychain Access, then
+  `Signing.local.xcconfig`.
+- **Trade-off:** anything running as you can use `codesign` with this identity. So, like the app, it could read the
+  sync token without a prompt.
 
 Sync: Settings (⌘,) → Server URL (the Worker's base URL) and Token. The token goes to the login Keychain. Until
 both are set the sidebar footer says "Sync off".

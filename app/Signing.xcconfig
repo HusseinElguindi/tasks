@@ -1,0 +1,6 @@
+// Code signing for both configurations (v2 feedback 11). Ad hoc ("Sign to Run Locally"), unless
+// Scripts/make-signing-identity.sh has made the "Tasks Local Signing" identity on this Mac and written
+// Signing.local.xcconfig (not checked in), which signs with it instead. A stable identity keeps the same designated
+// requirement from build to build, so Keychain access granted to one build carries over to the next.
+CODE_SIGN_IDENTITY = -
+#include? "Signing.local.xcconfig"
