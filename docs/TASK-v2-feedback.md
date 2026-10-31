@@ -141,3 +141,22 @@ The user's words: "I also dont see a difference with and without glass. investig
 - If it's wired to nothing, or the effect is hidden under an opaque surface, either make it show the intended translucency or report that it should be removed, and why. Then check how it looks.
 
 For both items: if item 10 is independent of item 9, hand it to a worktree subagent. Commit, make one Release build and report back.
+
+## 11. Stop the Keychain prompt on every new build
+
+The user keeps getting "Tasks wants to use your confidential information stored in 'Tasks sync token' in your keychain" after every install.
+
+**Cause:** builds are signed ad hoc, so each build has a new code signature. The Keychain ACL, including "Always Allow", is tied to that signature.
+
+**Fix:** sign every build with a stable local identity.
+1. Add `app/Scripts/make-signing-identity.sh`. It creates a self-signed code-signing certificate named "Tasks Local Signing" with openssl (codeSigning extended key usage, long validity), then imports the key and certificate into the login keychain with `security import ... -T /usr/bin/codesign`.
+   - It must be idempotent: do nothing if the identity already exists.
+   - Avoid anything that needs the user's password. If marking the certificate as trusted turns out to be required, make that a separate, optional step and say so.
+   - Never export the private key anywhere else, and never commit it.
+2. In `app/project.yml`, sign with "Tasks Local Signing" when it exists, otherwise fall back to ad hoc. A build setting or an xcconfig chosen by the script is fine; keep it simple.
+3. Run the script on this Mac. Build Release, then check:
+   - `codesign -dr - Tasks.app` shows a designated requirement tied to the certificate, not a cdhash;
+   - two consecutive builds have the same designated requirement.
+4. **Don't touch the "Tasks sync token" Keychain item.** The user will click Always Allow once on the next build; after that it should stick.
+
+Document it in `app/README.md`. Commit, build Release and report back.
