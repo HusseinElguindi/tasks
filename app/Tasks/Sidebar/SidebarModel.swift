@@ -37,6 +37,9 @@ enum SB {
     static let bottomPad: CGFloat = 16
     /// The gap above the Archive label (dc:695).
     static let archiveGap: CGFloat = 8
+    /// `.sbhead`: the brand header, 34 tall at the top of the content, and Today 6 below it (v2 feedback 12).
+    static let headerHeight: CGFloat = 34
+    static let headerGap: CGFloat = 6
 
     /// The + / chevron button, in the label's coordinates.
     static func buttonFrame(rowWidth: CGFloat) -> CGRect {
@@ -173,7 +176,7 @@ struct SidebarModel {
             return row
         }
 
-        var y: CGFloat = 0
+        var y = SB.headerHeight + SB.headerGap
         var today = Row(key: .today, y: y, name: "Today")
         today.current = m.current == .today
         today.drop = over == .today

@@ -27,8 +27,9 @@ Status: **final, 2026-10-30.** The user reviewed the prototype and made the four
   system appearance as it changes.
 - Item 10: Settings ▸ Interface style ▸ Glass shows the desktop through the window: a translucent ground and 88% pane
   fills (§4 Glass). It had changed nothing. The prototype draws Classic only.
+- Item 12: the sidebar opens with a brand header, the app's mark and "Tasks", with Today below it (§12 Brand header).
 
-The prototype source matches all seven (item 5's rename part is the app's drawing; the browser has no equivalent).
+The prototype source matches all eight (item 5's rename part is the app's drawing; the browser has no equivalent).
 Items 9 and 10 have no counterpart there: the prototype has no System choice and no Glass, and draws its own window
 controls.
 
@@ -155,7 +156,7 @@ tooltips 11/14. Tiles and inline code use SF Mono. Counts and day numbers use ta
 | Row grid | Every row is a 30pt shape on a 32pt pitch **Rex** | `dc:394` |
 | Toolbar band | 50 tall. Traffic lights 14pt circles 9 apart, first at (18, 18), so centers x 25, 48, 71, y 25 **Rex** | `css:87–89` |
 | Sidebar toggle | 28pt circle at (93, 11), center (107, 25) **Rex**; glyph 16pt | `css:92–95` |
-| Sidebar | 230 wide **Rex** by default, 180–400 by its divider (§4); rows start at y 50 | `dc:395`, `dc:396` |
+| Sidebar | 230 wide **Rex** by default, 180–400 by its divider (§4); its content starts at y 50: the brand header (34), then Today 6 below it, at y 90 (§12) | `dc:395`, `dc:396` |
 | Sidebar row | Capsule x 10–219 (209 wide), 30 tall, radius 15 **Rex**; tile 10 in; title 7 after the tile, nudged up 0.5 **Rex**; count right-aligned 8 from the capsule's right edge | `css:102–105`, `css:107–120` |
 | List tile | 20×16, radius 4, 700 10pt mono glyph; dark `fill-strong` with a white 10% 0.5pt ring, light #E3E3E4 with a #1F2328 10% ring. Small (headers, menus): 16×13, radius 3.5, 8.5pt | `css:123–125` |
 | Group label | A 32pt slot: 11/14 semibold `ink-tertiary`, 12 in from the row edge, text top 10 **Rex**. Reveal button 22×22, radius 6, 5 from the right, top 6 | `css:131–139` |
@@ -764,8 +765,29 @@ Clear in the popover, ⌫ in its empty field, the × beside a detail-pane chip, 
 Pressing a row opens it on mouse-down (instantly) and focuses the sidebar. Counts are open tasks (Today: open tasks in
 Today). Long names fade out over 16pt before the count instead of an ellipsis (Rex) `css:112`.
 
-**Layout**: Today at the top, the "Lists" label, the active lists, then 8pt and the "Archive" label when anything is
-archived (`dc:678–701`).
+**Layout**: the brand header, Today 6 below it, the "Lists" label, the active lists, then 8pt and the "Archive" label
+when anything is archived (`dc:678–701`).
+
+**Brand header** (v2 feedback 12; the logo canvas's "Sidebar header" board, `design/logo/Sheet.dc.html` ~168)
+`dc:21`, `dc:396`, `dc:681`, `css:396–411`:
+
+- A 34pt row at the top of the sidebar's content, inset 10 like the rows.
+- The bare 04 · Log mark at 18pt, 10 in.
+- 8 after the mark, "Tasks" in 13/16 semibold `ink`.
+
+The mark is the icon's small cut (`design/logo/final/gen.py`: the rings are dots and the strokes are thicker); the full
+cut's rings and check are hairlines at 18pt. It's drawn as vectors.
+
+| Sidebar | Head | Head's bar | Rings | Trail |
+|---|---|---|---|---|
+| Dark | `#2F81F7` | `#E6EDF3` | `#A8ADB1` | `#6D7072` |
+| Light | `#0969DA` | `#1F2328` | `#626568` | `#A9ACAF` |
+
+The dark colours are the icon's own. The light ones are the variant the mark was designed with, since the icon itself
+is dark only. In both, the check is cut out of the head.
+
+It's a label. It has no hover, and a press there is a press on the sidebar's empty space. It scrolls with the sidebar's
+content, and when the sidebar collapses the panes cover it with everything else; it never moves into the top band.
 
 **Group labels.** "Lists" reveals a + (New List ⇧⌘N) on hover. "Archive" reveals a chevron, and pressing the label
 toggles the group (collapsed by default; the chevron turns 90° in 200 ms ease-out and stays shown while open). The

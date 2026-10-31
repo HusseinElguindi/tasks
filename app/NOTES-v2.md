@@ -293,6 +293,20 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
     - Not checked: that "Always Allow" on the next install holds for the build after it. That needs the real app and
       its token item.
 
+12. **The brand header.** The sidebar's content now starts with the 04 · Log mark and "Tasks" (34 tall), and Today is 6
+    below it. Every row's y comes from `SidebarModel`, so hit-testing, drops, scrolling and list drags follow the
+    shift. `SidebarHeaderLayer` draws the mark as `CAShapeLayer`s from `gen.py`'s shapes (`BrandMark`), so it stays
+    crisp at any scale. On the light sidebar it uses the mark's designed light colours.
+    - The cut: the small and full cuts rendered at 18pt, 1× and 2×, on both sidebars. The small one reads; the full
+      cut's rings and trail turn to hairlines (grey smudges at 1×). The small cut is used.
+    - Checked in-process (`snap:`): dark and light, collapsed (the panes cover it; nothing moves into the top band),
+      a theme switch while collapsed, then shown again. A click on the header only gives the sidebar the keys, as
+      empty sidebar space does; there's no hover target there.
+    - The prototype, in headless Chrome: the header in both themes, on the same pixels as the app ("Tasks" at x 46,
+      centred on y 67; Today centred on y 105). Rows still open on a click, and a click on the header does nothing.
+      Its line numbers are unchanged.
+    - VoiceOver doesn't announce the header (it's not in the sidebar's accessibility elements).
+
 ## Notes for whoever drives the UI next
 
 - Scratch tools (not committed) are in the session scratchpad's `tools/`: `ui` (window-relative HID input that only

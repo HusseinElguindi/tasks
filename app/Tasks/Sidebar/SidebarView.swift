@@ -23,6 +23,7 @@ final class SidebarView: FlippedLayerView {
     private let content = SidebarContentView()
     /// Rows and labels live here, below any subview (the rename field).
     private let host = CALayer()
+    private let header = SidebarHeaderLayer()
     private let listsLabel = SidebarLabelLayer(title: "Lists", glyph: .plus)
     private let archiveLabel = SidebarLabelLayer(title: "Archive", glyph: .chevronRight)
 
@@ -99,6 +100,8 @@ final class SidebarView: FlippedLayerView {
         content.owner = self
         content.layer?.addSublayer(host)
         host.anchorPoint = .zero
+        header.position = CGPoint(x: SB.rowX, y: 0)
+        host.addSublayer(header)
         host.addSublayer(listsLabel)
         host.addSublayer(archiveLabel)
         archiveLabel.isHidden = true
@@ -355,6 +358,8 @@ final class SidebarView: FlippedLayerView {
         // Labels: always "Lists"; "Archive" only when something is archived. They appear in place and move with the rows.
         if labelsDark != palette.isDark {
             labelsDark = palette.isDark
+            header.setPalette(palette)
+            header.setScaleDeep(scale)
             listsLabel.setPalette(palette)
             archiveLabel.setPalette(palette)
             listsLabel.setScaleDeep(scale)

@@ -393,3 +393,19 @@
 .tk .row.landed, .tk .srow.landed { transition: none !important; }
 .tk .lifted.settle { opacity: 0; transition: opacity 150ms ease-out; }
 .tk .lifted.cap .tt { transform: translateY(-0.5px); }
+
+/* v2 feedback 12: the brand header at the top of the sidebar's content, 34 tall and inset 10 like the rows (Today is 6
+   below it, SB_HEAD): the bare 04 · Log mark at 18 (the icon's small cut, gen.py), 8 before "Tasks" in 13/16 semibold
+   ink. A label: no hover, and presses fall through to the sidebar. The icon's dark layers, and on the light sidebar the
+   light variant the mark was designed with. */
+.tk .sbhead { position: absolute; left: 10px; top: 0; height: 34px; display: flex; align-items: center; gap: 8px; padding-left: 10px; font-weight: 600; color: var(--ink); pointer-events: none; }
+.tk .sbhead .mk { display: block; flex: none; }
+.tk .mk-chk { fill: none; stroke: #000; stroke-width: 30; stroke-linecap: round; stroke-linejoin: round; }
+.tk .mk-trail { fill: #6D7072; }
+.tk .mk-rings { fill: #A8ADB1; }
+.tk .mk-bar { fill: #E6EDF3; }
+.tk .mk-head { fill: #2F81F7; }
+.tk.light .mk-trail { fill: #A9ACAF; }
+.tk.light .mk-rings { fill: #626568; }
+.tk.light .mk-bar { fill: #1F2328; }
+.tk.light .mk-head { fill: #0969DA; }
