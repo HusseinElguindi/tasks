@@ -22,7 +22,7 @@ body{margin:0}
 <sc-for list="{{sb.items}}" as="it" hint-placeholder-count="8">
 <sc-if value="{{it.isRow}}" hint-placeholder-val="{{true}}">
 <div class="{{it.cls}}" style="{{it.style}}" data-key="{{it.key}}" onPointerDown="{{onSbRowDown}}" onPointerMove="{{onSbRowMove}}" onPointerUp="{{onSbRowUp}}" onPointerCancel="{{onSbRowUp}}" onDoubleClick="{{onSbRowDbl}}" onContextMenu="{{onSbRowCtx}}">
-<span class="{{it.tileCls}}">{{it.mono}}<sc-if value="{{it.isToday}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6"></circle><path d="M8 1.9v1.3M8 12.8v1.3M1.9 8h1.3M12.8 8h1.3M3.7 3.7l.9.9M11.4 11.4l.9.9M3.7 12.3l.9-.9M11.4 4.6l.9-.9"></path></svg></sc-if></span>
+<span class="{{it.tileCls}}">{{it.mono}}<sc-if value="{{it.isToday}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6"></circle><path d="M8 1.9v1.3M8 12.8v1.3M1.9 8h1.3M12.8 8h1.3M3.7 3.7l.9.9M11.4 11.4l.9.9M3.7 12.3l.9-.9M11.4 4.6l.9-.9"></path></svg></sc-if><sc-if value="{{it.isUp}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg></sc-if><sc-if value="{{it.isUnd}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l5.5 2.75L8 8 2.5 5.25z"></path><path d="M2.5 8l5.5 2.75L13.5 8M2.5 10.75l5.5 2.75 5.5-2.75"></path></svg></sc-if><sc-if value="{{it.isDone}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"></circle><path d="M5.3 8.2l1.9 1.9 3.6-4"></path></svg></sc-if><sc-if value="{{it.isTrash}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9"></path></svg></sc-if></span>
 <sc-if value="{{it.editing}}"><input class="ri" data-key="{{it.key}}" value="{{it.editText}}" placeholder="New List" spellCheck="false" autoFocus="{{true}}" aria-label="List name" onChange="{{onEditChange}}" onKeyDown="{{onEditKey}}" onBlur="{{onEditBlur}}" onFocus="{{onEditFocus}}"></sc-if>
 <sc-if value="{{it.notEditing}}"><span class="tl">{{it.name}}</span></sc-if>
 <span class="{{it.ctCls}}">{{it.count}}</span>
@@ -44,12 +44,12 @@ body{margin:0}
 
 <section class="{{lp.cls}}" style="{{lp.style}}" aria-label="{{lp.title}}" onPointerDown="{{onListPaneDown}}">
 <header class="ph" style="{{lp.headStyle}}">
-<sc-if value="{{lp.isToday}}"><span class="c-yellow"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6"></circle><path d="M8 1.9v1.3M8 12.8v1.3M1.9 8h1.3M12.8 8h1.3M3.7 3.7l.9.9M11.4 11.4l.9.9M3.7 12.3l.9-.9M11.4 4.6l.9-.9"></path></svg></span></sc-if>
+<sc-if value="{{lp.isToday}}"><span class="c-yellow"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6"></circle><path d="M8 1.9v1.3M8 12.8v1.3M1.9 8h1.3M12.8 8h1.3M3.7 3.7l.9.9M11.4 11.4l.9.9M3.7 12.3l.9-.9M11.4 4.6l.9-.9"></path></svg></span></sc-if><sc-if value="{{lp.isUp}}"><span class="c-magenta"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg></span></sc-if><sc-if value="{{lp.isUnd}}"><span class="c-cyan"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l5.5 2.75L8 8 2.5 5.25z"></path><path d="M2.5 8l5.5 2.75L13.5 8M2.5 10.75l5.5 2.75 5.5-2.75"></path></svg></span></sc-if><sc-if value="{{lp.isDone}}"><span class="c-green"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"></circle><path d="M5.3 8.2l1.9 1.9 3.6-4"></path></svg></span></sc-if><sc-if value="{{lp.isTrash}}"><span class="c-mute"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9"></path></svg></span></sc-if>
 <sc-if value="{{lp.isList}}"><span class="{{lp.tileCls}}">{{lp.mono}}</span></sc-if>
 <span class="pt">{{lp.title}}</span>
 <span class="ps">{{lp.sub}}</span>
 <span class="acts">
-<button class="hb" type="button" data-add="1" aria-label="{{lp.newTip}}" data-tip="{{lp.newTip}}" data-keys="⌘N" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onNewTaskBtn}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"></path></svg></button>
+<button class="{{lp.addCls}}" type="button" data-add="1" aria-label="{{lp.newTip}}" data-tip="{{lp.newTip}}" data-keys="⌘N" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onNewTaskBtn}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"></path></svg></button>
 <button class="{{lp.detailBtnCls}}" type="button" aria-label="{{lp.detailTip}}" data-tip="{{lp.detailTip}}" data-keys="⌘D" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onToggleDetail}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="2"></rect><line x1="10" y1="3" x2="10" y2="13"></line></svg></button>
 </span>
 </header>
@@ -68,9 +68,9 @@ body{margin:0}
      These lines stand in for the removed markup so the
      spec's dc: citations keep their line numbers. -->
 <sc-for list="{{labels}}" as="g" hint-placeholder-count="0">
-<div class="{{g.cls}}" style="{{g.style}}">
-<div class="glabel"><span class="gl">{{g.name}}</span>
-<sc-if value="{{g.plus}}"><button class="gbtn reveal" type="button" data-add="1" data-list="{{g.id}}" aria-label="{{g.tipText}}" data-tip="{{g.tipText}}" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onPointerDown="{{stopPD}}" onClick="{{onGroupPlus}}"><svg class="i i--sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"></path></svg></button></sc-if>
+<div class="{{g.cls}}" style="{{g.style}}" data-day="{{g.day}}" onDoubleClick="{{onLabelDbl}}">
+<div class="glabel"><span class="gl">{{g.name}}</span><span class="gs">{{g.sub}}</span>
+<sc-if value="{{g.plus}}"><button class="gbtn reveal" type="button" data-add="1" data-list="{{g.list}}" data-day="{{g.day}}" aria-label="{{g.tipText}}" data-tip="{{g.tipText}}" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onPointerDown="{{stopPD}}" onClick="{{onGroupPlus}}"><svg class="i i--sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"></path></svg></button></sc-if>
 </div>
 </div>
 </sc-for>
@@ -87,14 +87,14 @@ body{margin:0}
 </span>
 <button class="open" type="button" data-id="{{r.id}}" aria-label="Show details" data-tip="Show Details" data-keys="⌘D" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onPointerDown="{{stopPD}}" onClick="{{onOpen}}"><svg class="i i--sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4l4 4-4 4"></path></svg></button>
 </div>
-</sc-for>
+</sc-for><sc-for list="{{echoes}}" as="x" hint-placeholder-count="0"><div class="{{x.cls}}" style="{{x.style}}" data-id="{{x.id}}" onPointerDown="{{onEchoDown}}"><span class="check echo-ring"></span><span class="tt">{{x.title}}</span><span class="where">{{x.where}}</span><span class="chips"><span class="chip"><sc-if value="{{x.due}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 14V2.5M4 3h7.5L10 5.75 11.5 8.5H4"></path></svg></sc-if><sc-if value="{{x.plan}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg></sc-if>{{x.chip}}</span></span></div></sc-for>
 <sc-if value="{{lp.crow}}">
 <button class="{{lp.crowCls}}" type="button" style="{{lp.crowStyle}}" aria-label="Completed tasks" onPointerDown="{{stopPD}}" onClick="{{onToggleCompleted}}"><svg class="i i--sm {{lp.chevCls}}" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4l4 4-4 4"></path></svg><span class="cl">Completed</span><span class="cn">{{lp.crowCount}}</span></button>
 </sc-if>
 <sc-if value="{{lp.empty}}">
 <div class="empty" style="{{lp.emptyStyle}}">
 <sc-if value="{{lp.glyph}}"><span class="eg"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6"></circle><path d="M8 1.9v1.3M8 12.8v1.3M1.9 8h1.3M12.8 8h1.3M3.7 3.7l.9.9M11.4 11.4l.9.9M3.7 12.3l.9-.9M11.4 4.6l.9-.9"></path></svg></span></sc-if>
-<sc-if value="{{lp.emptyCheck}}"><span class="eg" style="color: var(--accent);"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2"></circle><path d="M5.3 8.2l1.9 1.9 3.6-4"></path></svg></span></sc-if>
+<sc-if value="{{lp.emptyCheck}}"><span class="eg" style="color: var(--accent);"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2"></circle><path d="M5.3 8.2l1.9 1.9 3.6-4"></path></svg></span></sc-if><sc-if value="{{lp.eCal}}"><span class="eg"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg></span></sc-if><sc-if value="{{lp.eLayers}}"><span class="eg"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l5.5 2.75L8 8 2.5 5.25z"></path><path d="M2.5 8l5.5 2.75L13.5 8M2.5 10.75l5.5 2.75 5.5-2.75"></path></svg></span></sc-if><sc-if value="{{lp.eDone}}"><span class="eg"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2"></circle><path d="M5.3 8.2l1.9 1.9 3.6-4"></path></svg></span></sc-if><sc-if value="{{lp.eTrash}}"><span class="eg"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9"></path></svg></span></sc-if>
 <span class="e1">{{lp.e1}}</span>
 <sc-if value="{{lp.hasE2}}"><span class="e2">{{lp.e2}}</span></sc-if>
 </div>
@@ -116,8 +116,8 @@ body{margin:0}
 <sc-if value="{{dp.multi}}"><span class="{{dp.headTile}}">{{dp.headMono}}</span><span class="pt" style="color: var(--ink-2); font-weight: 400;">{{dp.headName}}</span></sc-if>
 <span class="acts">
 <sc-if value="{{dp.none}}"><span></span></sc-if>
-<sc-if value="{{dp.single}}"><button class="{{dp.deleteCls}}" type="button" aria-label="Delete" data-tip="{{dp.deleteTip}}" data-keys="⌘⌫" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onDDelete}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9"></path></svg></button></sc-if>
-<sc-if value="{{dp.multi}}"><button class="hb" type="button" aria-label="Delete" data-tip="{{dp.deleteTip}}" data-keys="⌘⌫" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onDDelete}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9"></path></svg></button></sc-if>
+<sc-if value="{{dp.delOne}}"><button class="{{dp.deleteCls}}" type="button" aria-label="Delete" data-tip="{{dp.deleteTip}}" data-keys="⌘⌫" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onDDelete}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9"></path></svg></button></sc-if>
+<sc-if value="{{dp.delMany}}"><button class="hb" type="button" aria-label="Delete" data-tip="{{dp.deleteTip}}" data-keys="⌘⌫" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onDDelete}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9"></path></svg></button></sc-if><sc-if value="{{dp.putBack}}"><button class="hb" type="button" aria-label="{{dp.putBackTip}}" data-tip="{{dp.putBackTip}}" data-keys="⌘⌫" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onDDelete}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 3.5L3 6l2.5 2.5"></path><path d="M3 6h6.5a3.5 3.5 0 0 1 0 7H7"></path></svg></button></sc-if>
 <button class="hb" type="button" aria-label="Hide Details" data-tip="Hide Details" data-keys="⌘D" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onDClose}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"></path></svg></button>
 </span>
 </header>
@@ -126,7 +126,7 @@ body{margin:0}
 <sc-if value="{{dp.single}}">
 <div class="dtitle">
 <button class="{{dp.checkCls}}" type="button" aria-label="Complete" onClick="{{onDCheck}}"><svg class="ck" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.8 8.4l2.7 2.7 5.7-6.2"></path></svg></button>
-<textarea rows="1" value="{{dp.titleValue}}" placeholder="New Task" spellCheck="false" aria-label="Title" onFocus="{{onDTitleFocus}}" onChange="{{onDTitleChange}}" onKeyDown="{{onDTitleKey}}" onBlur="{{onDTitleBlur}}"></textarea>
+<textarea rows="1" value="{{dp.titleValue}}" placeholder="New Task" spellCheck="false" readOnly="{{dp.ro}}" aria-label="Title" onFocus="{{onDTitleFocus}}" onChange="{{onDTitleChange}}" onKeyDown="{{onDTitleKey}}" onBlur="{{onDTitleBlur}}"></textarea>
 </div>
 </sc-if>
 <sc-if value="{{dp.multi}}"><div class="dmulti">{{dp.multiTitle}}</div></sc-if>
@@ -216,7 +216,7 @@ body{margin:0}
 <sc-if value="{{stage.show}}">
 <div class="stage" aria-label="Prototype controls">
 <span class="sl">Prototype</span>
-<span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Edit tasks</span><span class="seg"><sc-for list="{{stage.editTasks}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
+<span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Edit tasks</span><span class="seg"><sc-for list="{{stage.editTasks}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Sidebar</span><span class="seg"><sc-for list="{{stage.sidebar}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Upcoming</span><span class="seg"><sc-for list="{{stage.upcoming}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Both dates</span><span class="seg"><sc-for list="{{stage.both}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
 <span class="sn">The browser keeps ⌘N, ⌘T and ⌘1–9, so ⌥N, ⌥T and ⌃1–9 also work here.</span>
 <span style="flex: 1;"></span>
 <button class="lnk" type="button" data-k="reset" data-v="1" onClick="{{onStage}}">Reset</button>
@@ -234,12 +234,12 @@ body{margin:0}
 <div class="kr"><span class="kk">⌘S · ⇧⌘D</span><span>When… · Deadline… (type tom, fri, 3d)</span></div>
 <div class="kr"><span class="kk">⌘T (⌥T here)</span><span>When: Today</span></div>
 <div class="kr"><span class="kk">⇧⌘M</span><span>Move to… (⌘1–9 picks)</span></div>
-<div class="kr"><span class="kk">⌥⌘↑ ⌥⌘↓</span><span>Move up or down</span></div>
-<div class="kr"><span class="kk">⌘⌫</span><span>Delete (Undo in the notice, or ⌘Z)</span></div>
+<div class="kr"><span class="kk">⌥⌘↑ ⌥⌘↓</span><span>Move up or down. In Upcoming: a day earlier or later</span></div>
+<div class="kr"><span class="kk">⌘⌫</span><span>Delete (Undo in the notice, or ⌘Z). In Trash: Put Back</span></div>
 <div class="kh">Moving around</div>
 <div class="kr"><span class="kk">↑ ↓ · ⇧ · ⌘-click</span><span>Select, extend, add to the selection</span></div>
 <div class="kr"><span class="kk">← → · Tab</span><span>Sidebar, list, details</span></div>
-<div class="kr"><span class="kk">⌘1–9 (⌃1–9 here)</span><span>Today, then lists. Hold ⌘ to see them.</span></div>
+<div class="kr"><span class="kk">⌘1–9 (⌃1–9 here)</span><span>The sidebar's first nine rows. Hold ⌘ to see them.</span></div>
 <div class="kr"><span class="kk">Type letters</span><span>Jump to a task or list by name</span></div>
 <div class="kr"><span class="kk">⇧⌘N (⌥⇧N here)</span><span>New list</span></div>
 <div class="kr"><span class="kk">⌘Z · ⇧⌘Z</span><span>Undo, redo</span></div>
@@ -248,7 +248,7 @@ body{margin:0}
 </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"sidebar":{"editor":"enum","options":["split","stacked"],"default":"split"},"upcoming":{"editor":"enum","options":["week","compact"],"default":"week"},"both":{"editor":"enum","options":["once","twice"],"default":"once"},"select":{"editor":null,"default":""},"detail":{"editor":null,"default":"closed"},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
 // ---------- Calendar dates: "YYYY-MM-DD" strings, never instants (SPEC §2). ----------
 const DAY_MS = 86400000;
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -412,6 +412,17 @@ const DRAG_SLOP = 4;           // points a press moves before it becomes a drag
 const SCROLL_EDGE = 24, SCROLL_STEP = 8;   // drag autoscroll: within 24pt of an edge, 8pt per 16 ms
 const COLOR_CLASS = { ink: 'c-ink', blue: 'c-blue', magenta: 'c-magenta', green: 'c-green', cyan: 'c-cyan', yellow: 'c-yellow', red: 'c-red' };
 const COLORS = ['blue', 'magenta', 'green', 'cyan', 'yellow', 'red', 'ink'];
+// The four views beside Today (INTERACTIONS-v2 §22): their names and tiles, their empty states, and the three choices
+// the user is picking between (props, and the strip's switches).
+const VIEWS = { upcoming: { name: 'Upcoming', tile: 'c-magenta' }, undated: { name: 'Undated', tile: 'c-cyan' }, completed: { name: 'Completed', tile: 'c-green' }, trash: { name: 'Trash', tile: 'c-mute' } };
+const VIEW_KEYS = ['upcoming', 'undated', 'completed', 'trash'];
+const VIEW_DEFAULTS = { sidebar: 'split', upcoming: 'week', both: 'once' };
+const VIEW_EMPTY = {
+  upcoming: { e1: 'Nothing upcoming', e2: 'Tasks with a date after today show up here, on the day they reach Today.', top: '34%', icon: 'cal' },
+  undated: { e1: 'Every task has a date', e2: 'Open tasks with no When and no Deadline show up here, by list.', top: '34%', icon: 'layers' },
+  completed: { e1: 'Nothing completed yet', e2: 'Tasks you check off show up here, newest first.', top: '34%', icon: 'done' },
+  trash: { e1: 'Trash is empty', e2: 'Deleted tasks wait here until you put them back.', top: '34%', icon: 'trash' },
+};
 
 let UID = 0;
 function uid(p) { UID += 1; return p + UID.toString(36) + Math.random().toString(36).slice(2, 6); }
@@ -443,7 +454,7 @@ function makeSeed(T) {
     n += 1;
     o = o || {};
     tasks.push({ id: 't' + n, list, order: n, title, notes: o.notes || '', when: o.when ?? null, deadline: o.deadline ?? null,
-      completedAt: o.done != null ? doneAt(o.done) : null, doneAt: o.done != null ? doneAt(o.done) : null, deleted: false, createdAt: now - (60 - n) * DAY_MS });
+      completedAt: o.done != null ? doneAt(o.done) : null, doneAt: o.done != null ? doneAt(o.done) : null, deleted: o.del != null, deletedAt: o.del != null ? doneAt(o.del) - 3600e3 : null, createdAt: now - ((n <= 31 ? 60 : 120) - n) * DAY_MS });
   };
   t('school', 'ECE 358 lab report', { when: d(-3), deadline: d(-2) });
   t('school', 'Email TA about midterm regrade', { when: d(0) });
@@ -475,6 +486,27 @@ function makeSeed(T) {
   t('move', 'Forward mail', { done: 50 });
   t('move', 'Cancel the old internet plan');
   t('move', 'Return the moving boxes');
+  // For the four views: dates after today (Upcoming), more undated tasks, a history of completed ones, and the Trash.
+  t('school', 'Midterm review session', { when: d(1) });
+  t('errands', 'Pick up winter tires', { when: d(11) });
+  t('tasks', 'Write the release notes', { deadline: d(4) });
+  t('errands', 'Return the drill to Alex', { when: d(12), deadline: d(9) });
+  t('home', 'Renew passport', { when: d(20), deadline: d(45) });
+  t('school', 'ECE 358 final exam', { deadline: d(38) });
+  t('inbox', 'Plan the winter break trip', { when: d(52) });
+  t('home', 'Book a dentist cleaning', { when: d(64) });
+  t('errands', 'Get a spare key cut');
+  t('school', 'Meet the ECE 358 lab group', { done: 3 });
+  t('home', 'Replace the smoke detector battery', { done: 6 });
+  t('inbox', 'Order new headphones', { done: 12 });
+  t('tasks', 'Draft the sync log spec', { done: 21 });
+  t('home', 'Pay rent', { done: 30 });
+  t('tasks', 'Pick a name for the app', { done: 47 });
+  t('inbox', 'Try the new notes app', { del: 0 });
+  t('school', 'Old group project notes', { del: 1, notes: 'Superseded by the shared doc.' });
+  t('home', 'Buy a second lamp', { del: 3, when: d(2), notes: 'The one by the window is fine after all.' });
+  t('errands', 'Pick up dry cleaning', { del: 8, done: 9 });
+  t('tasks', 'Prototype a menu bar widget', { del: 20 });
   return { lists, tasks };
 }
 
@@ -530,6 +562,7 @@ class Component extends DCLogic {
       const l = lists.find((x) => x.name.toLowerCase() === name || x.id === name);
       if (l) return { kind: 'list', id: l.id };
     }
+    if (VIEWS[start]) return { kind: start };
     return { kind: 'today' };
   }
 
@@ -538,6 +571,7 @@ class Component extends DCLogic {
     setTimeout(() => this.setState({ noAnim: false }), 60);
     if (this.props.demo === 'picker') setTimeout(() => this.demoPicker(), 250);
     if (this.props.demo === 'add') setTimeout(() => this.demoAdd(), 250);
+    if (this.props.select) setTimeout(() => this.demoSelect(), 250);
   }
   componentWillUnmount() { for (const k of ['settleTimer', 'noticeTimer', 'tipTimer', 'cmdTimer', 'cleanTimer', 'detailTimer', 'animTimer', 'scrollTimer']) clearTimeout(this[k]); }
   componentDidUpdate() {
@@ -572,7 +606,7 @@ class Component extends DCLogic {
   inTodayDates(t) { const T = this.today; return (t.when && t.when <= T) || (t.deadline && t.deadline <= T); }
   placedOpen(t) { const pin = this.state.pins[t.id]; return t.completedAt == null ? pin !== 'done' : pin === 'open'; }
   doneToday(t) { return (t.completedAt != null && localDayOfMs(t.completedAt) === this.today) || (t.completedAt == null && this.state.pins[t.id] === 'done' && t.doneAt && localDayOfMs(t.doneAt) === this.today); }
-  routeKey(r) { return r.kind === 'list' ? 'list:' + r.id : 'today'; }
+  routeKey(r) { return r.kind === 'list' ? 'list:' + r.id : r.kind; }
   defaultListId() { const a = this.activeLists().filter((l) => !l.draft); return a.length ? a[0].id : null; }
 
   // Drafts (a new task before its title commits, a new list before its name does) never reach undo.
@@ -597,9 +631,9 @@ class Component extends DCLogic {
   }
   restore(e, verb) {
     const patch = { lists: e.before.lists, tasks: e.before.tasks, pins: {}, edit: null, picker: null, menu: null, notice: null };
-    const route = e.route && (e.route.kind === 'today' || e.before.lists.some((l) => l.id === e.route.id)) ? e.route : { kind: 'today' };
+    const route = e.route && (e.route.kind !== 'list' || e.before.lists.some((l) => l.id === e.route.id)) ? e.route : { kind: 'today' };
     const sameRoute = this.routeKey(route) === this.routeKey(this.state.route);
-    patch.sel = (e.sel || []).filter((id) => e.before.tasks.some((t) => t.id === id && !t.deleted));
+    patch.sel = (e.sel || []).filter((id) => e.before.tasks.some((t) => t.id === id && (route.kind === 'trash' ? t.deleted : !t.deleted)));
     if (sameRoute) this.setState(patch); else this.instant({ ...patch, route });
     if (patch.sel.length) this.scrollToId = patch.sel[0];
     this.showNotice(verb + ' ' + e.label, false);
@@ -627,7 +661,7 @@ class Component extends DCLogic {
       }
       if (!open.length && !done.length) L.empty = 'list';
       L.height = y + 24;
-    } else {
+    } else if (s.route.kind === 'today') {
       const lists = this.activeLists();
       let y = L.top;
       for (const l of lists) {
@@ -647,14 +681,14 @@ class Component extends DCLogic {
       }
       L.done = done.length;
       L.height = y + 24;
-    }
+    } else this.layoutView(L, live);   // Upcoming, Undated, Completed, Trash (§22)
     this.applyDragToLayout(L);
     return L;
   }
 
   applyDragToLayout(L) {
     const d = this.state.drag;
-    if (!d || d.phase === 'done') return;
+    if (!d || d.phase === 'done' || d.mode !== 'group') return;   // Upcoming's drag is laid out by layoutView
     const g = L.groups.find((x) => x.listId === d.group);
     if (!g) return;
     const others = g.ids.filter((id) => !d.ids.includes(id));
@@ -679,7 +713,9 @@ class Component extends DCLogic {
     const s = this.state;
     const S = { ys: new Map(), height: 0, rows: [] };
     let y = SB_HEAD;
-    S.ys.set('today', y); S.rows.push({ key: 'today', y }); y += PITCH;
+    const row = (key) => { S.ys.set(key, y); S.rows.push({ key, y }); y += PITCH; };
+    const stacked = this.variant('sidebar') === 'stacked';   // where the four views sit (§22)
+    for (const k of stacked ? ['today'].concat(VIEW_KEYS) : ['today', 'upcoming', 'undated']) row(k);
     S.ys.set('lbl-lists', y); y += PITCH;
     const act = this.activeLists();
     S.listTop = y;
@@ -690,6 +726,7 @@ class Component extends DCLogic {
     if (d) S.ys.set(d.id, y + target * PITCH);
     y += act.length * PITCH;
     S.listEnd = y;
+    if (!stacked) { y += 8; row('completed'); row('trash'); }
     const arch = this.archivedLists();
     if (arch.length) {
       y += 8;
@@ -736,9 +773,9 @@ class Component extends DCLogic {
     if (this.listScrollRef.current) this.listScrollRef.current.scrollTop = 0;
     if (opts && opts.sel && opts.sel[0]) this.scrollToId = opts.sel[0];
   }
-  sidebarKeys() { return ['today'].concat(this.activeLists().filter((l) => !l.draft).map((l) => l.id)).concat(this.state.archiveOpen ? this.archivedLists().map((l) => l.id) : []); }
-  goKey(key) { if (key === 'today') this.go({ kind: 'today' }); else this.go({ kind: 'list', id: key }); }
-  currentSidebarKey() { return this.state.route.kind === 'today' ? 'today' : this.state.route.id; }
+  sidebarKeys() { return this.sidebarOrder(true); }
+  goKey(key) { if (key === 'today' || VIEWS[key]) this.go({ kind: key }); else this.go({ kind: 'list', id: key }); }
+  currentSidebarKey() { return this.state.route.kind === 'list' ? this.state.route.id : this.state.route.kind; }
 
   // ---------- Detail pane ----------
   openDetail() {
@@ -836,6 +873,7 @@ class Component extends DCLogic {
   // ---------- Adding: a new task opens in the detail pane ----------
   newTask(opts) {
     opts = opts || {};
+    if (this.noAdd()) { this.addInDefault(); return; }   // Completed and Trash add in the default list (§22)
     const s0 = this.state;
     if (this.untitledDraft()) {
       // Already adding and nothing typed yet: back to that title instead of a second task. From another Today group's +,
@@ -846,6 +884,7 @@ class Component extends DCLogic {
         this.setState({ tasks: s0.tasks.map((t) => (t.id === dr.id ? { ...t, list: opts.listId, order: max + 1 } : t)) });
         this.scrollToId = dr.id;
       }
+      if (dr && opts.day && opts.day !== dr.when) this.setState({ tasks: this.state.tasks.map((t) => (t.id === dr.id ? { ...t, when: opts.day } : t)) });
       this.focusTitle();
       return;
     }
@@ -862,8 +901,8 @@ class Component extends DCLogic {
     if (!listId) { this.showNotice('Create a list first: ⇧⌘N', false); return; }
     const max = s.tasks.filter((t) => t.list === listId).reduce((m, t) => Math.max(m, t.order), 0);
     const id = uid('n');
-    const inToday = s.route.kind === 'today';
-    const task = { id, list: listId, order: max + 1, title: '', notes: '', when: inToday ? this.today : null, deadline: null, completedAt: null, doneAt: null, deleted: false, createdAt: Date.now(), draft: true };
+    const inToday = s.route.kind === 'today', when = inToday ? this.today : this.newTaskWhen(opts);
+    const task = { id, list: listId, order: max + 1, title: '', notes: '', when, deadline: null, completedAt: null, doneAt: null, deleted: false, createdAt: Date.now(), draft: true };
     this.draftPrev = { sel: s.sel, paneOpen: s.detail === 'open' || s.detail === 'opening' };
     this.setState({ tasks: s.tasks.concat(task), sel: [id], anchor: id, cursor: id, focus: 'detail', edit: { kind: 'dtitle', id, text: '', orig: '', isNew: true }, picker: null, menu: null });
     this.openDetail();
@@ -879,8 +918,9 @@ class Component extends DCLogic {
   }
 
   // ---------- Task actions ----------
-  targetIds() { return this.state.sel.filter((id) => { const t = this.task(id); return t && !t.deleted && !t.draft; }); }
+  targetIds() { return this.state.sel.filter((id) => { const t = this.task(id); return t && this.hereNow(t) && !t.draft; }); }
   toggleComplete(ids) {
+    if (this.inTrash()) return;
     ids = ids.filter((id) => this.task(id));
     if (!ids.length) return;
     const anyOpen = ids.some((id) => this.task(id).completedAt == null);
@@ -898,7 +938,7 @@ class Component extends DCLogic {
   }
   armSettle() { clearTimeout(this.settleTimer); this.settleTimer = setTimeout(() => this.setState({ pins: {} }), SETTLE_MS); }
   nextSelAfterRemoving(ids) {
-    const order = this.visualOrder().filter((id) => { const t = this.task(id); return t && this.placedOpen(t); });
+    const order = this.visualOrder().filter((id) => { const t = this.task(id); return t && (this.flatDone() || this.placedOpen(t)); });
     const idx = order.findIndex((id) => ids.includes(id));
     const rest = order.filter((id) => !ids.includes(id));
     if (!rest.length) return [];
@@ -908,10 +948,11 @@ class Component extends DCLogic {
     return [after || before].filter(Boolean);
   }
   deleteTasks(ids) {
+    if (this.inTrash()) { this.putBack(ids); return; }   // ⌘⌫ in Trash is Put Back, as in the Finder
     ids = ids.filter((id) => this.task(id));
     if (!ids.length) return;
     const next = this.nextSelAfterRemoving(ids);
-    const tasks = this.state.tasks.map((t) => (ids.includes(t.id) ? { ...t, deleted: true } : t));
+    const tasks = this.state.tasks.map((t) => (ids.includes(t.id) ? { ...t, deleted: true, deletedAt: Date.now() } : t));
     this.commit(ids.length > 1 ? 'Delete ' + ids.length + ' Tasks' : 'Delete', { tasks, sel: next, anchor: next[0] || null, menu: null, picker: null });
     this.showNotice(ids.length > 1 ? 'Deleted ' + ids.length + ' tasks' : 'Deleted ' + quote(this.task(ids[0]).title), true);
     if (this.state.detail !== 'closed' && !next.length) this.closeDetail();
@@ -929,19 +970,19 @@ class Component extends DCLogic {
   }
   setDate(ids, field, ymd) {
     ids = ids.filter((id) => this.task(id));
-    if (!ids.length) return;
+    if (!ids.length || this.inTrash()) return;
     const tasks = this.state.tasks.map((t) => (ids.includes(t.id) ? { ...t, [field]: ymd } : t));
-    const leavesToday = this.state.route.kind === 'today' && ids.some((id) => { const t = tasks.find((x) => x.id === id); return !(t.when && t.when <= this.today) && !(t.deadline && t.deadline <= this.today); });
+    const leavesToday = this.leavesView(ids, tasks);   // Today's rule, and the views' (§22)
     const label = field === 'when' ? (ymd ? 'Set When' : 'Remove When') : (ymd ? 'Set Deadline' : 'Remove Deadline');
     const patch = { tasks, picker: null, menu: null };
     if (leavesToday) { const next = this.nextSelAfterRemoving(ids); patch.sel = next; patch.anchor = next[0] || null; }
     this.commit(label, patch);
-    if (leavesToday) this.showNotice(ymd ? (field === 'when' ? 'Scheduled for ' : 'Due ') + longDate(ymd, this.today) : 'Removed from Today', true);
+    if (leavesToday) this.showNotice(ymd ? (field === 'when' ? 'Scheduled for ' : 'Due ') + longDate(ymd, this.today) : 'Removed from ' + this.keyName(this.state.route.kind), true);
     this.focusRoot();
   }
   reorder(groupId, ids, target) {
     const s = this.state;
-    const inToday = s.route.kind === 'today';
+    const inToday = s.route.kind !== 'list';   // Today and Undated: groups by list, keyed in the full list
     const listId = groupId;
     const full = s.tasks.filter((t) => t.list === listId && !t.deleted && t.completedAt == null && !ids.includes(t.id)).sort(byOrder);
     let prev = null, next = null;
@@ -960,6 +1001,7 @@ class Component extends DCLogic {
     this.commit(ids.length > 1 ? 'Move ' + ids.length + ' Tasks' : 'Move', { tasks });
   }
   moveSelBy(delta) {
+    if (this.viewMoveBy(delta)) return;   // Upcoming: a day earlier or later; Completed and Trash: nothing (§22)
     const L = this.lastLayout, ids = this.targetIds().filter((id) => L.groupOf.get(id) && L.groupOf.get(id) !== 'done');
     if (!ids.length) return;
     const gid = L.groupOf.get(ids[0]);
@@ -1027,6 +1069,7 @@ class Component extends DCLogic {
     this.setState({ menu: { x: left, y: top, items, hot: -1, sub: null, kind: kind || 'ctx' }, tip: null });
   }
   taskMenu(ids, x, y) {
+    if (this.inTrash()) { this.trashMenu(ids, x, y); return; }
     const tasks = ids.map((id) => this.task(id)).filter(Boolean);
     const n = tasks.length, one = n === 1, t = tasks[0];
     const anyOpen = tasks.some((x) => x.completedAt == null);
@@ -1035,7 +1078,7 @@ class Component extends DCLogic {
     const items = [];
     if (one) items.push({ label: 'Show Details', keys: '⌘D', action: () => { this.select([t.id]); this.openDetail(); } });
     if (one) items.push({ label: 'Rename', keys: '↩', action: () => this.editTask(t.id, { selectAll: true }) });
-    if (one && this.state.route.kind === 'today') items.push({ label: 'Show in ' + this.list(t.list).name, action: () => this.go({ kind: 'list', id: t.list }, { sel: [t.id] }) });
+    if (one && this.state.route.kind !== 'list') items.push({ label: 'Show in ' + this.list(t.list).name, action: () => this.go({ kind: 'list', id: t.list }, { sel: [t.id] }) });
     items.push({ sep: true });
     items.push({ label: anyOpen ? (one ? 'Complete' : 'Complete ' + n + ' Tasks') : 'Mark as Not Done', keys: '⌘K', action: () => this.toggleComplete(ids) });
     items.push({ label: 'When', sub: [
@@ -1077,6 +1120,7 @@ class Component extends DCLogic {
     this.openMenu(x, y, items);
   }
   moveMenuAt(ids) {
+    if (this.inTrash()) return;
     const el = this.rowEl(ids[0]);
     const r = el ? this.rectIn(el) : { left: 300, bottom: 120 };
     const lists = this.activeLists().filter((l) => !l.draft);
@@ -1086,6 +1130,7 @@ class Component extends DCLogic {
     this.setState({ menu: { ...this.state.menu, hot: items.findIndex((it, k) => k > 0 && !it.disabled) } });
   }
   listPopupMenu(ids, anchor) {
+    if (this.inTrash()) return;
     const lists = this.activeLists().filter((l) => !l.draft);
     const cur = ids.length === 1 ? this.task(ids[0]).list : null;
     const items = lists.map((l, i) => ({ label: l.name, keys: i < 9 ? '⌘' + (i + 1) : '', tile: true, color: l.color, mono: monogram(l.name), check: l.id === cur, action: () => this.moveTasks(ids, l.id) }));
@@ -1113,7 +1158,7 @@ class Component extends DCLogic {
 
   // ---------- Date picker ----------
   openPicker(field, ids, anchor) {
-    if (!ids.length) return;
+    if (!ids.length || this.inTrash()) return;
     this.endEdit();
     const t = this.task(ids[0]);
     const cur = ids.every((id) => this.task(id)[field] === t[field]) ? t[field] : null;
@@ -1173,11 +1218,12 @@ class Component extends DCLogic {
     const p = this.winXY(e);
     this.endEdit();
     this.pendingCollapse = null;
-    this.setState({ drag: { ids, grabbed: c.id, group: gid, offX: c.wx - r.left, offY: c.wy - r.top, w: r.width, left: r.left, x: p.x - (c.wx - r.left), y: p.y - (c.wy - r.top), target, over: null, phase: 'drag', count: ids.length, startTop: r.top }, menu: null, picker: null, tip: null });
+    this.setState({ drag: { ids, grabbed: c.id, group: gid, offX: c.wx - r.left, offY: c.wy - r.top, w: r.width, left: r.left, x: p.x - (c.wx - r.left), y: p.y - (c.wy - r.top), target, over: null, phase: 'drag', count: ids.length, startTop: r.top, mode: this.dragMode(), toDay: null }, menu: null, picker: null, tip: null });
   }
   updateDrag(e) {
     const d = this.state.drag;
     if (!d || d.phase !== 'drag') return;
+    if (d.mode !== 'group') { this.updateViewDrag(e); return; }   // Upcoming, Completed, Trash (§22)
     const p = this.winXY(e);
     const x = p.x - d.offX, y = p.y - d.offY;
     let over = null; const sb = this.state.sbVisible && p.x < this.state.sbW - 4;   // on a target or not (v2 feedback 7)
@@ -1188,6 +1234,7 @@ class Component extends DCLogic {
       const hit = S.rows.find((r) => sy >= r.y - 1 && sy < r.y + 31);   // each row takes half the 2px gap either side
       if (hit) {
         if (hit.key === 'today') over = this.state.route.kind === 'today' ? null : { kind: 'today', key: 'today' };
+        else if (VIEWS[hit.key]) over = this.viewDrop(hit.key);
         else { const l = this.list(hit.key); if (l && !l.archivedAt && !l.draft && l.id !== d.group) over = { kind: 'list', key: l.id }; }
       }
     }
@@ -1226,6 +1273,7 @@ class Component extends DCLogic {
     const d = this.state.drag;
     clearTimeout(this.scrollTimer);
     if (!d || d.phase !== 'drag') return;
+    if (d.mode !== 'group') { this.endViewDrag(cancel); return; }
     const L = this.lastLayout;
     if (cancel || (d.sb && !d.over)) {   // a drop on the sidebar where no row takes it is a cancel too (v2 feedback 7)
       this.setState({ drag: { ...d, phase: 'fly', target: this.homeSlot(d), over: null, sb: false, flyTo: { x: d.left, y: d.startTop }, cancel: true } });
@@ -1240,7 +1288,7 @@ class Component extends DCLogic {
       setTimeout(() => {
         this.setState({ drag: null });
         if (d.over.kind === 'today') this.setDate(d.ids, 'when', this.today);
-        else this.moveTasks(d.ids, key);
+        else this.dropOnTarget(d);   // a list, Completed or Trash (§22)
       }, FLY_MS);
       return;
     }
@@ -1381,7 +1429,7 @@ class Component extends DCLogic {
     }
     if (cmd && /^Digit[1-9]$/.test(code)) {
       e.preventDefault();
-      const keys = ['today'].concat(this.activeLists().filter((l) => !l.draft).map((l) => l.id)), n = +code.slice(5);
+      const keys = this.numberKeys(), n = +code.slice(5);
       if (n - 1 < keys.length) this.goKey(keys[n - 1]);
       return;
     }
@@ -1434,12 +1482,12 @@ class Component extends DCLogic {
     const k = e.key, s = this.state, cmd = e.metaKey || e.ctrlKey;
     const keys = this.sidebarKeys(), cur = this.currentSidebarKey();
     const i = keys.indexOf(cur);
-    if (e.altKey && cmd && (k === 'ArrowUp' || k === 'ArrowDown')) { e.preventDefault(); if (cur !== 'today') this.moveListBy(cur, k === 'ArrowUp' ? -1 : 1); return true; }
-    if (cmd && k === 'Backspace') { e.preventDefault(); if (cur !== 'today') this.archiveList(cur); return true; }
+    if (e.altKey && cmd && (k === 'ArrowUp' || k === 'ArrowDown')) { e.preventDefault(); if (this.list(cur)) this.moveListBy(cur, k === 'ArrowUp' ? -1 : 1); return true; }
+    if (cmd && k === 'Backspace') { e.preventDefault(); if (this.list(cur)) this.archiveList(cur); return true; }
     switch (k) {
       case 'ArrowDown': e.preventDefault(); if (i < keys.length - 1) this.goKey(keys[i + 1]); this.setState({ focus: 'sidebar' }); return true;
       case 'ArrowUp': e.preventDefault(); if (i > 0) this.goKey(keys[i - 1]); this.setState({ focus: 'sidebar' }); return true;
-      case 'Enter': e.preventDefault(); if (cur !== 'today') this.startListRename(cur); return true;
+      case 'Enter': e.preventDefault(); if (this.list(cur)) this.startListRename(cur); else this.setState({ focus: 'list' }); return true;
       case 'ArrowRight': case 'Escape': case 'Tab': e.preventDefault(); this.setState({ focus: 'list' }); return true;
       default:
     }
@@ -1452,8 +1500,8 @@ class Component extends DCLogic {
     this.typeBuf = now - this.typeAt > TYPE_SELECT_MS ? ch.toLowerCase() : this.typeBuf + ch.toLowerCase();
     this.typeAt = now;
     if (where === 'sidebar') {
-      const l = this.activeLists().find((x) => x.name.toLowerCase().startsWith(this.typeBuf)) || (('today'.startsWith(this.typeBuf)) ? { id: 'today' } : null);
-      if (l) this.goKey(l.id);
+      const key = this.sidebarOrder(false).sort((a, b) => !!this.list(b) - !!this.list(a)).find((x) => this.keyName(x).toLowerCase().startsWith(this.typeBuf));   // lists first, then Today and the views
+      if (key) this.goKey(key);
       return;
     }
     const order = this.visualOrder();
@@ -1526,6 +1574,7 @@ class Component extends DCLogic {
     const id = e.currentTarget.dataset.id;
     if (e.target.closest && e.target.closest('button')) return;
     const t = this.task(id);
+    if (t && this.inTrash()) { this.openDetail(); return; }   // Trash reads but doesn't edit (§22)
     if (!t || t.completedAt != null) return;
     let caret = null;
     const span = e.currentTarget.querySelector('.tt');
@@ -1566,12 +1615,12 @@ class Component extends DCLogic {
   // starts from there: in Today the task goes to the default list.
   onScrollAreaDbl = (e) => {
     if (e.target !== e.currentTarget && !(e.target.classList && e.target.classList.contains('pcc'))) return;
-    if (e.button !== 0) return;
+    if (e.button !== 0 || this.noAdd()) return;
     this.newTask();
     // newTask puts the caret in the new task's title.
   };
   onToggleCompleted = () => { const id = this.state.route.id; this.setState({ completedOpen: { ...this.state.completedOpen, [id]: !this.state.completedOpen[id] } }); };
-  onGroupPlus = (e) => { e.stopPropagation(); this.newTask({ listId: e.currentTarget.dataset.list }); };
+  onGroupPlus = (e) => { e.stopPropagation(); this.newTask({ listId: e.currentTarget.dataset.list || undefined, day: e.currentTarget.dataset.day || undefined }); };
 
   // Inline editing
   onEditChange = (e) => { const ed = this.state.edit; if (ed) this.setState({ edit: { ...ed, text: e.target.value } }); };
@@ -1600,7 +1649,7 @@ class Component extends DCLogic {
   // Detail pane
   onDetailDown = () => { if (this.state.focus !== 'detail') this.setState({ focus: 'detail' }); };
   onDTitleFocus = () => {
-    const id = this.detailTaskId();
+    const id = this.inTrash() ? null : this.detailTaskId();
     const ed = this.state.edit;
     if (ed && ed.kind === 'dtitle' && ed.id === id) return;
     const t = this.task(id);
@@ -1635,7 +1684,7 @@ class Component extends DCLogic {
   startNotes = () => {
     const id = this.detailTaskId();
     const t = this.task(id);
-    if (!t) return;
+    if (!t || t.deleted) return;
     if (this.state.edit && this.state.edit.kind !== 'notes') this.commitEdit();
     this.setState({ edit: { kind: 'notes', id, text: t.notes, orig: t.notes, caret: t.notes.length }, focus: 'detail' });
   };
@@ -1662,7 +1711,7 @@ class Component extends DCLogic {
   onDDelete = () => { this.deleteTasks(this.detailIds()); };
   onDClose = () => { this.closeDetail(); };
   onLinkClick = (e) => { e.preventDefault(); e.stopPropagation(); this.showNotice('Opens ' + e.currentTarget.getAttribute('href'), false); };
-  detailIds() { return this.state.sel.filter((id) => { const t = this.task(id); return t && !t.deleted; }); }
+  detailIds() { return this.state.sel.filter((id) => { const t = this.task(id); return t && this.hereNow(t); }); }
   detailTaskId() { const ids = this.detailIds(); return ids.length === 1 ? ids[0] : null; }
 
   // Sidebar
@@ -1681,18 +1730,18 @@ class Component extends DCLogic {
   onSbRowMove = (e) => {
     const c = this.sbCand;
     if (this.state.sbDrag) { this.updateSbDrag(e); return; }
-    if (!c || c.pointerId !== e.pointerId || !(e.buttons & 1) || c.key === 'today') return;
+    if (!c || c.pointerId !== e.pointerId || !(e.buttons & 1) || !this.list(c.key)) return;
     const l = this.list(c.key);
     if (!l || l.archivedAt) return;
     if (Math.abs(e.clientY - c.y) < DRAG_SLOP) return;
     this.beginSbDrag(c, e);
   };
   onSbRowUp = (e) => { this.sbCand = null; if (this.state.sbDrag) this.endSbDrag(e.type === 'pointercancel'); };
-  onSbRowDbl = (e) => { const key = e.currentTarget.dataset.key; if (key !== 'today') this.startListRename(key); };
+  onSbRowDbl = (e) => { const key = e.currentTarget.dataset.key; if (this.list(key)) this.startListRename(key); };
   onSbRowCtx = (e) => {
     e.preventDefault(); e.stopPropagation();
     const key = e.currentTarget.dataset.key;
-    if (key === 'today') return;
+    if (!this.list(key)) return;
     const p = this.winXY(e);
     this.listMenu(key, p.x, p.y);
   };
@@ -1782,7 +1831,7 @@ class Component extends DCLogic {
   // Prototype strip
   onStage = (e) => {
     const k = e.currentTarget.dataset.k, v = e.currentTarget.dataset.v;
-    if (k === 'theme') this.instant({ theme: v }); else if (k === 'editTasks') this.setEditTasks(v);
+    if (k === 'theme') this.instant({ theme: v }); else if (k === 'editTasks') this.setEditTasks(v); else if (VIEW_DEFAULTS[k]) this.instant({ [k]: v });
     else if (k === 'reset') { const seed = makeSeed(this.today); this.undoStack = []; this.redoStack = []; this.instant({ lists: seed.lists, tasks: seed.tasks, sel: [], edit: null, picker: null, menu: null, pins: {}, route: this.routeFromProp(this.props.start, seed.lists), detail: 'closed', notice: null, sbVisible: true }); }
     else if (k === 'keys') this.setState({ keysOpen: !this.state.keysOpen });
     this.focusRoot();
@@ -1861,6 +1910,7 @@ class Component extends DCLogic {
       if (y == null) return { id: t.id, cls: 'row hidden', style: '', title: '', editing: false, notEditing: true, chips: [], checkCls: 'check', titleCls: 'tt', where: '', hasWhere: false, checkLabel: '' };
       const done = t.completedAt != null;
       if (done) cls += ' done';
+      if (t.deleted) cls += ' trashed';
       if (this.entering.has(t.id) && !lv) cls += ' enter';
       if (d && d.ids.includes(t.id) && d.phase !== 'done') cls += ' dragsrc'; else if (d && d.phase === 'done' && t.id === d.grabbed) cls += ' landed';
       const isEd = !!(ed && ed.kind === 'task' && ed.id === t.id);
@@ -1871,13 +1921,13 @@ class Component extends DCLogic {
         if (above && visSel(above) && !this.leaving.has(above)) cls += ' sj-t';
         if (below && visSel(below) && !this.leaving.has(below)) cls += ' sj-b';
       }
-      const chips = [];
+      const chips = [], gday = this.groupDay(L, t.id);   // in Upcoming, a day group's own date isn't repeated on its rows
       if (!done) {
         const opened = (f) => (pickerFor && pickerFor.has(t.id) && s.picker.field === f ? ' open-picker' : '');
-        if (t.when && !(inToday && t.when <= T)) chips.push({ field: 'when', cal: true, flag: false, text: whenChipText(t.when, T), cls: 'chip' + opened('when') });
-        if (t.deadline) { const dc = deadlineChip(t.deadline, T); chips.push({ field: 'deadline', cal: false, flag: true, text: dc.text, cls: 'chip ' + dc.tone + opened('deadline') }); }
+        if (t.when && !(inToday && t.when <= T) && t.when !== gday) chips.push({ field: 'when', cal: true, flag: false, text: whenChipText(t.when, T), cls: 'chip' + opened('when') });
+        if (t.deadline) { const dc = t.deadline === gday ? { text: 'Due', tone: '' } : deadlineChip(t.deadline, T); chips.push({ field: 'deadline', cal: false, flag: true, text: dc.text, cls: 'chip ' + dc.tone + opened('deadline') }); }
       }
-      const where = inToday && L.groupOf.get(t.id) === 'done' ? this.list(t.list).name : '';
+      const where = this.whereText(L, t, inToday);
       return {
         id: t.id, cls, style: 'transform: translateY(' + y + 'px)',
         title: t.title || 'New Task', titleCls: 'tt' + (t.title ? '' : ' untitled'),
@@ -1889,22 +1939,14 @@ class Component extends DCLogic {
     });
 
     // ----- Today's group labels, the Completed disclosure, the add slot, the empty states.
-    const labels = s.lists.concat([{ id: 'done', name: 'Completed' }]).map((l) => {
-      let y = L.labels.get(l.id);
-      const lv = this.lblLeaving.get(l.id);
-      let cls = 'tglabel';
-      if (y == null && lv) { y = lv.y; cls += ' leave'; }
-      if (y == null || !inToday) cls += ' hidden';
-      else if (this.lblEntering.has(l.id) && !lv) cls += ' enter';
-      return { id: l.id, name: l.name, cls, style: 'transform: translateY(' + (y || 0) + 'px)', plus: l.id !== 'done', tipText: 'New Task in ' + l.name };
-    });
+    const labels = this.labelVMs(L);   // Today's list names and Completed; the views' days, months and lists (§22)
     const crowOpen = !!(routeList && s.completedOpen[routeList.id]);
     const emptyMap = {
       list: { e1: 'No tasks', e2: 'Double-click anywhere here or press ⌘N to add one.', top: '34%', glyph: false, check: false },
       today: { e1: 'Nothing for today', e2: 'Tasks you plan for today, or that are due, show up here.', top: '34%', glyph: true, check: false },
       allDone: { e1: 'All done for today', e2: '', top: '40px', glyph: false, check: true },
     };
-    const em = L.empty && !(routeList && routeList.archivedAt && L.empty === 'list') ? emptyMap[L.empty] : null;
+    const em = L.empty && !(routeList && routeList.archivedAt && L.empty === 'list') ? emptyMap[L.empty] || VIEW_EMPTY[L.empty] : null;
 
     // ----- Header
     const todayCount = s.tasks.filter((t) => !t.deleted && !t.draft && t.completedAt == null && this.isActive(t.list) && this.inTodayDates(t)).length;
@@ -1912,18 +1954,19 @@ class Component extends DCLogic {
       cls: 'pane lp' + (!detailOpen ? ' single' : s.focus === 'list' ? ' focused' : '') + (Date.now() - (this.paneSwapAt || 0) < DETAIL_CLOSE_MS ? ' swap' : ''),   // alone: no focus look; the change rides the detail pane (v2 feedback 3)
       style: 'left: ' + (s.sbVisible ? s.sbW : GUTTER) + 'px; right: ' + (detailOpen ? GUTTER + s.detailW + GUTTER : GUTTER) + 'px',
       headStyle: s.sbVisible ? '' : 'padding-left: 124px',
-      isToday: inToday, isList: !inToday,
-      title: inToday ? 'Today' : routeList ? routeList.name || 'New List' : '',
+      isToday: inToday, isList: !!routeList, ...this.viewHead(),
+      title: inToday ? 'Today' : routeList ? routeList.name || 'New List' : this.keyName(s.route.kind),
       sub: inToday ? WD[weekdayIdx(T)] + ', ' + md(T) : routeList && routeList.archivedAt ? 'Archived' : '',
       tileCls: 'tile sm ' + (routeList ? COLOR_CLASS[routeList.color] : ''), mono: routeList ? monogram(routeList.name) : '',
-      newTip: inToday ? 'New Task in ' + ((s.sel.length && this.task(s.sel[0]) && this.list(this.task(s.sel[0]).list)) ? this.list(this.task(s.sel[0]).list).name : (this.list(this.defaultListId()) || { name: 'Inbox' }).name) : 'New Task',
+      newTip: !routeList ? 'New Task in ' + ((s.sel.length && this.task(s.sel[0]) && this.list(this.task(s.sel[0]).list)) ? this.list(this.task(s.sel[0]).list).name : (this.list(this.defaultListId()) || { name: 'Inbox' }).name) : 'New Task',
       detailTip: detailOpen ? 'Hide Details' : 'Show Details', detailBtnCls: 'hb' + (detailOpen ? ' on' : ''),
       contentStyle: 'height: ' + L.height + 'px',
       // No add zone and no hover "New Task" row (v2 feedback 2); a double-click on the empty space adds.
       hasZone: false, zoneStyle: '',
       ghostShow: false,
-      crow: !inToday && L.done > 0, crowCls: 'crow' + (Date.now() - (this.crowEnterAt || 0) < MOTION_WINDOW_MS ? ' enter' : ''), crowStyle: 'transform: translateY(' + (L.crowY || 0) + 'px)', crowCount: String(L.done), chevCls: 'gchev' + (crowOpen ? ' open' : ''),
-      empty: !!em, emptyStyle: em ? 'top: ' + em.top : '', e1: em ? em.e1 : '', e2: em ? em.e2 : '', hasE2: !!(em && em.e2), glyph: !!(em && em.glyph), emptyCheck: !!(em && em.check),
+      crow: !!routeList && L.done > 0, crowCls: 'crow' + (Date.now() - (this.crowEnterAt || 0) < MOTION_WINDOW_MS ? ' enter' : ''), crowStyle: 'transform: translateY(' + (L.crowY || 0) + 'px)', crowCount: String(L.done), chevCls: 'gchev' + (crowOpen ? ' open' : ''),
+      empty: !!em, emptyStyle: em ? 'top: ' + (L.emptyTop != null ? L.emptyTop + 'px' : em.top) : '', e1: em ? em.e1 : '', e2: em ? em.e2 : '', hasE2: !!(em && em.e2), glyph: !!(em && em.glyph), emptyCheck: !!(em && em.check),
+      eCal: !!(em && em.icon === 'cal'), eLayers: !!(em && em.icon === 'layers'), eDone: !!(em && em.icon === 'done'), eTrash: !!(em && em.icon === 'trash'),
       banner: !!(routeList && routeList.archivedAt), bannerDate: routeList && routeList.archivedAt ? 'Archived ' + md(ymdOf(new Date(routeList.archivedAt))) : '',
     };
 
@@ -1967,9 +2010,10 @@ class Component extends DCLogic {
       dpo.meta = 'Created ' + md(ymdOf(new Date(one.createdAt))) + (one.completedAt ? ' · Completed ' + md(ymdOf(new Date(one.completedAt))) : '');
     }
     if (many) dpo.multiTitle = many.length + ' tasks selected';
+    this.viewDetail(dpo, one, many);   // Trash: read-only, with Put Back in place of Delete (§22)
 
     // ----- Sidebar
-    const cmdKeys = ['today'].concat(this.activeLists().filter((l) => !l.draft).map((l) => l.id));
+    const cmdKeys = this.numberKeys();
     const hint = (key) => { const i = cmdKeys.indexOf(key); return i >= 0 && i < 9 ? '⌘' + (i + 1) : ''; };
     const sbd = s.sbDrag;
     const overKey = d && d.over ? d.over.key : null;
@@ -1989,10 +2033,11 @@ class Component extends DCLogic {
       if (isEd) cls += ' editing';
       const yy = y != null ? y : lv ? lv.y : 0;
       const count = s.cmdHints && hint(key) ? hint(key) : o.count;
-      sbItems.push({ isRow: true, isLabel: false, key, cls, style: 'transform: translateY(' + yy + 'px)', name: o.name, isToday: key === 'today', tileCls: o.tileCls, mono: o.mono,
+      sbItems.push({ isRow: true, isLabel: false, key, cls, style: 'transform: translateY(' + yy + 'px)', name: o.name, isToday: key === 'today', ...this.glyphFlags(key), tileCls: o.tileCls, mono: o.mono,
         count: count || '', ctCls: 'ct' + (s.cmdHints && hint(key) ? ' hint' : ''), editing: isEd, notEditing: !isEd, editText: isEd ? ed.text : '' });
     };
     mkRow('today', { name: 'Today', count: todayCount ? String(todayCount) : '', tileCls: 'tile c-yellow', mono: '' });
+    for (const k of VIEW_KEYS) mkRow(k, this.viewRowOpts(k));
     sbItems.push({ isRow: false, isLabel: true, key: 'lbl-lists', cls: 'sbi glabel', style: 'transform: translateY(' + S.ys.get('lbl-lists') + 'px)', name: 'Lists', plus: true, chev: false, revealCls: 'gbtn reveal' });
     for (const l of s.lists) {
       const arch = !!l.archivedAt;
@@ -2059,6 +2104,7 @@ class Component extends DCLogic {
     const seg = (k, opts) => opts.map(([v, label]) => ({ k, v, label, cls: s[k] === v ? 'on' : '' }));
     const stage = { show: stageOn,
       theme: seg('theme', [['dark', 'Dark'], ['light', 'Light']]), editTasks: [['detail', 'Open in detail pane'], ['list', 'Rename in the list']].map(([v, label]) => ({ k: 'editTasks', v, label, cls: this.editTasksMode() === v ? 'on' : '' })),
+      ...this.stripVariants(),
     };
 
     return {
@@ -2069,6 +2115,7 @@ class Component extends DCLogic {
       sb: { contentStyle: 'height: ' + S.height + 'px', items: sbItems },
       sbTip: s.sbVisible ? 'Hide Sidebar' : 'Show Sidebar', sbStyle: 'width: ' + s.sbW + 'px', dv: this.dividerVM(detailOpen),
       lp, rows, labels, dp: dpo, drag, sbLift, menu, pk, notice, tip: tipv, stage, keysOpen: s.keysOpen,
+      echoes: this.echoVMs(L), onLabelDbl: this.onLabelDbl, onEchoDown: this.onEchoDown,
       onKey: this.onKey, onKeyUp: this.onKeyUp, onRootMouseDown: this.onRootMouseDown, onRootPointerDownCapture: this.onRootPointerDownCapture, onRootClickCapture: this.onRootClickCapture, onRootContextMenu: this.onRootContextMenu, onRootFocusCapture: this.onRootFocusCapture,
       onRowDown: this.onRowDown, onRowMove: this.onRowMove, onRowUp: this.onRowUp, onRowDbl: this.onRowDbl, onRowCtx: this.onRowCtx,
       onCheck: this.onCheck, stopPD: this.stopPD, onChip: this.onChip, onOpen: this.onOpen, onListPaneDown: this.onListPaneDown, onScrollAreaDown: this.onScrollAreaDown,
@@ -2155,6 +2202,7 @@ class Component extends DCLogic {
     this.setState({ editTasks: v });
   }
   editTask(id, opts) {
+    if (this.inTrash()) { this.setState({ sel: [id], anchor: id, cursor: id }); this.openDetail(); return; }   // Return in Trash shows it
     if (this.editTasksMode() !== 'detail') { this.startRename(id, opts); return; }
     const t = this.task(id);
     if (!t || t.deleted) return;
@@ -2170,6 +2218,348 @@ class Component extends DCLogic {
   homeSlot(d) {
     const g = this.lastLayout.groups.find((x) => x.listId === d.group);
     return g ? g.ids.slice(0, g.ids.indexOf(d.ids[0])).filter((id) => !d.ids.includes(id)).length : d.target;
+  }
+
+  // ======================================================================
+  // The four views: Upcoming, Undated, Completed, Trash (docs/TASK-design-views.md, INTERACTIONS-v2 §22)
+  // ======================================================================
+  // Each is a list pane like Today: the same rows, group labels, header and detail pane. Three choices are open for the
+  // user and are props here (the strip's switches flip them): `sidebar` split | stacked, `upcoming` week | compact,
+  // `both` once | twice.
+  variant(k) { return this.state[k] || this.props[k] || VIEW_DEFAULTS[k]; }
+  inTrash() { return this.state.route.kind === 'trash'; }
+  noAdd() { const k = this.state.route.kind; return k === 'completed' || k === 'trash'; }
+  flatDone() { return this.noAdd(); }   // views whose rows aren't split into open and done
+  hereNow(t) { return this.inTrash() ? !!t.deleted : !t.deleted; }   // the tasks this view acts on
+  // The day a task reaches Today: the earlier of its dates (SPEC §4, either date brings it in). Upcoming shows it there.
+  upDay(t) { return t.when && t.deadline ? (t.when < t.deadline ? t.when : t.deadline) : t.when || t.deadline || null; }
+  doneStamp(t) { return t.completedAt || t.doneAt || 0; }
+  keyName(k) { return k === 'today' ? 'Today' : VIEWS[k] ? VIEWS[k].name : (this.list(k) || { name: '' }).name; }
+
+  // The sidebar, top to bottom. Split: Today, Upcoming, Undated · Lists · Completed, Trash · Archive.
+  // Stacked: Today, Upcoming, Undated, Completed, Trash · Lists · Archive. ⌘1–9 open its first nine rows.
+  sidebarOrder(withArchived) {
+    const lists = this.activeLists().filter((l) => !l.draft).map((l) => l.id);
+    const arch = withArchived && this.state.archiveOpen ? this.archivedLists().map((l) => l.id) : [];
+    if (this.variant('sidebar') === 'stacked') return ['today'].concat(VIEW_KEYS, lists, arch);
+    return ['today', 'upcoming', 'undated'].concat(lists, ['completed', 'trash'], arch);
+  }
+  numberKeys() { return this.sidebarOrder(false).slice(0, 9); }
+  viewRowOpts(k) {
+    const s = this.state, T = this.today, end = addDays(T, 7);
+    const open = (t) => !t.deleted && !t.draft && t.completedAt == null && this.isActive(t.list);
+    let n = 0;   // counts only in the stacked variant: Upcoming's next seven days, and Undated
+    if (this.variant('sidebar') === 'stacked' && k === 'upcoming') n = s.tasks.filter((t) => { const d = this.upDay(t); return open(t) && d && d > T && d <= end; }).length;
+    if (this.variant('sidebar') === 'stacked' && k === 'undated') n = s.tasks.filter((t) => open(t) && !t.when && !t.deadline).length;
+    return { name: VIEWS[k].name, count: n ? String(n) : '', tileCls: 'tile ' + VIEWS[k].tile, mono: '' };
+  }
+  glyphFlags(k) { return { isUp: k === 'upcoming', isUnd: k === 'undated', isDone: k === 'completed', isTrash: k === 'trash' }; }
+  viewHead() { const k = this.state.route.kind; return { ...this.glyphFlags(k), addCls: 'hb' + (this.noAdd() ? ' gone' : '') }; }
+  stripVariants() {
+    const seg = (k, opts) => opts.map(([v, label]) => ({ k, v, label, cls: this.variant(k) === v ? 'on' : '' }));
+    return { sidebar: seg('sidebar', [['split', 'Split'], ['stacked', 'Stacked']]), upcoming: seg('upcoming', [['week', 'Week'], ['compact', 'Compact']]), both: seg('both', [['once', 'Once'], ['twice', 'Twice']]) };
+  }
+
+  // ---------- Layout: each view's groups, on Today's grid (a 32pt label slot, then 32pt rows) ----------
+  layoutView(L, live) {
+    const s = this.state, T = this.today, k = s.route.kind;
+    L.labelInfo = new Map(); L.gmap = new Map(); L.echoYs = new Map();
+    const rank = new Map(this.activeLists().map((l, i) => [l.id, i]));
+    const byList = (a, b) => (rank.get(a.list) - rank.get(b.list)) || byOrder(a, b);
+    let y = L.top;
+    const group = (id, info, items, kind, day) => {
+      L.labels.set(id, y); L.labelInfo.set(id, info); y += PITCH;
+      const g = { listId: id, kind, day: day || null, top: y, ids: [] };
+      for (const it of items) {
+        if (it.echo) { L.echoYs.set(it.t.id, y); y += PITCH; continue; }
+        g.ids.push(it.t.id); L.ys.set(it.t.id, y); L.order.push(it.t.id); L.groupOf.set(it.t.id, id); y += PITCH;
+      }
+      L.groups.push(g); L.gmap.set(id, g);
+    };
+    const monthName = (m) => MOL[+m.slice(5, 7) - 1] + (m.slice(0, 4) !== T.slice(0, 4) ? ' ' + m.slice(0, 4) : '');
+    if (k === 'undated') {
+      // Open tasks with neither date, by list in sidebar order, each in its list's order (as Today).
+      for (const l of this.activeLists()) {
+        const open = live.filter((t) => t.list === l.id && this.placedOpen(t) && !t.when && !t.deadline).sort(byOrder);
+        if (open.length) group(l.id, { name: l.name, plus: true, list: l.id, tip: 'New Task in ' + l.name }, open.map((t) => ({ t })), 'list');
+      }
+      if (!L.order.length) L.empty = 'undated';
+    } else if (k === 'upcoming') {
+      // Each open task on the day it reaches Today. A drag shows its rows at the day under the pointer (toDay).
+      const d = s.drag && s.drag.mode === 'days' && !s.drag.cancel ? s.drag : null;
+      const dayOf = (t) => (d && d.toDay && d.ids.includes(t.id) ? d.toDay : this.upDay(t));
+      const twice = this.variant('both') === 'twice';
+      const items = [];
+      for (const t of live) {
+        if (!this.isActive(t.list) || !this.placedOpen(t)) continue;
+        const day = dayOf(t);
+        if (!day || day <= T) continue;
+        items.push({ t, day });
+        // "Twice": the later of its two dates gets a quiet echo row too.
+        if (twice && t.when && t.deadline && t.when !== t.deadline && !(d && d.ids.includes(t.id))) items.push({ t, day: t.when < t.deadline ? t.deadline : t.when, echo: true });
+      }
+      items.sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0) || byList(a.t, b.t) || (a.echo ? 1 : 0) - (b.echo ? 1 : 0));
+      const week = this.variant('upcoming') !== 'compact';
+      // Week: the next seven days always, then months. Compact: only days with tasks, through the end of next week,
+      // then months.
+      const horizon = week ? addDays(T, 7) : addDays(nextWeekStart(T), 6);
+      const bucketOf = (day) => {
+        if (day <= horizon) {
+          const n = diffDays(T, day), name = n === 1 ? 'Tomorrow' : WDL[weekdayIdx(day)];
+          return { id: 'd:' + day, kind: 'day', day, info: { name, sub: md(day), plus: true, day, tip: 'New Task for ' + name } };
+        }
+        const m = day.slice(0, 7);
+        return { id: 'm:' + m, kind: 'month', info: { name: (m === horizon.slice(0, 7) ? 'Later in ' : '') + monthName(m) } };
+      };
+      const buckets = new Map();
+      if (week) for (let i = 1; i <= 7; i++) { const b = bucketOf(addDays(T, i)); buckets.set(b.id, { ...b, items: [] }); }
+      for (const it of items) { const b = bucketOf(it.day); if (!buckets.has(b.id)) buckets.set(b.id, { ...b, items: [] }); buckets.get(b.id).items.push(it); }
+      for (const b of buckets.values()) group(b.id, { ...b.info, quiet: !b.items.length }, b.items, b.kind, b.day);
+      if (!items.length) { L.empty = 'upcoming'; if (week) L.emptyTop = y + 24; }
+    } else {
+      // Completed and Trash: newest first, a group per day for the last week, then per month.
+      const trash = k === 'trash';
+      const list = trash ? s.tasks.filter((t) => t.deleted && this.isActive(t.list)) : live.filter((t) => this.isActive(t.list) && !this.placedOpen(t));
+      const stamp = (t) => (trash ? t.deletedAt || 0 : this.doneStamp(t));
+      list.sort((a, b) => stamp(b) - stamp(a));
+      const buckets = new Map();
+      for (const t of list) {
+        const day = localDayOfMs(stamp(t)), n = diffDays(day, T);
+        const b = n < 7 ? { id: 'd:' + day, kind: 'day', info: { name: n === 0 ? 'Today' : n === 1 ? 'Yesterday' : WDL[weekdayIdx(day)], sub: md(day) } }
+          : { id: 'm:' + day.slice(0, 7), kind: 'month', info: { name: monthName(day.slice(0, 7)) } };
+        if (!buckets.has(b.id)) buckets.set(b.id, { ...b, items: [] });
+        buckets.get(b.id).items.push({ t });
+      }
+      for (const b of buckets.values()) group(b.id, b.info, b.items, b.kind);
+      if (!list.length) L.empty = k;
+    }
+    L.done = 0;
+    L.height = y + 24;
+  }
+
+  // In Upcoming, a day group's date; rows don't repeat it as a chip ("Due" marks a deadline on that day).
+  groupDay(L, id) { const g = this.state.route.kind === 'upcoming' && L.gmap && L.gmap.get(L.groupOf.get(id)); return g && g.kind === 'day' ? g.day : null; }
+  // The list name after the title where rows from several lists share a group; in a month group, the date too.
+  whereText(L, t, inToday) {
+    const k = this.state.route.kind, gid = L.groupOf.get(t.id) || '', name = (this.list(t.list) || { name: '' }).name;
+    if (inToday) return gid === 'done' ? name : '';
+    if (k === 'upcoming') return name;
+    if (k === 'completed' || k === 'trash') { const at = k === 'trash' ? t.deletedAt : this.doneStamp(t); return name + (gid.startsWith('m:') && at ? ' · ' + md(localDayOfMs(at)) : ''); }
+    return '';
+  }
+  // Group labels keep one node per id for as long as the view is open, so they move rather than swap.
+  labelVMs(L) {
+    if (this.lblView !== L.key) { this.lblView = L.key; this.lblKeys = []; this.lblInfo = new Map(); }
+    for (const id of L.labels.keys()) if (!this.lblKeys.includes(id)) this.lblKeys.push(id);
+    const d = this.state.drag;
+    return this.lblKeys.map((id) => {
+      let y = L.labels.get(id);
+      const lv = this.lblLeaving.get(id);
+      const info = this.labelInfo(L, id);
+      let cls = 'tglabel';
+      if (y == null && lv) { y = lv.y; cls += ' leave'; }
+      if (y == null) cls += ' hidden';
+      else if (this.lblEntering.has(id) && !lv) cls += ' enter';
+      if (info.quiet) cls += ' quiet';
+      if (d && d.mode === 'days' && d.phase === 'drag' && !d.sb && d.toDay && id === 'd:' + d.toDay) cls += ' drop';
+      return { id, name: info.name, sub: info.sub || '', cls, style: 'transform: translateY(' + (y || 0) + 'px)', plus: !!info.plus, tipText: info.tip || '', list: info.list || '', day: info.day || '' };
+    });
+  }
+  labelInfo(L, id) {
+    const got = L.labelInfo && L.labelInfo.get(id);
+    if (got) { this.lblInfo.set(id, got); return got; }
+    if (this.lblInfo.has(id)) return this.lblInfo.get(id);
+    if (id === 'done') return { name: 'Completed' };
+    const l = this.list(id);
+    return l ? { name: l.name, plus: true, list: l.id, tip: 'New Task in ' + l.name } : { name: '' };
+  }
+  echoVMs(L) {
+    const ys = L.echoYs || new Map(), T = this.today;
+    return this.state.tasks.map((t) => {
+      const y = ys.get(t.id);
+      if (y == null) return { id: t.id, cls: 'row echo hidden', style: '', title: '', where: '', chip: '', due: false, plan: false };
+      const due = t.deadline > t.when;
+      return { id: t.id, cls: 'row echo' + (this.state.sel.includes(t.id) ? ' lit' : ''), style: 'transform: translateY(' + y + 'px)', title: t.title, where: (this.list(t.list) || { name: '' }).name,
+        chip: due ? 'Due' : 'Planned', due, plan: !due, day: due ? t.deadline : t.when, today: T };
+    });
+  }
+  onEchoDown = (e) => { const id = e.currentTarget.dataset.id; this.setState({ sel: [id], anchor: id, cursor: id, focus: 'list' }); this.scrollToId = id; };
+  onLabelDbl = (e) => {
+    const day = e.currentTarget.dataset.day;
+    if (!day || this.state.route.kind !== 'upcoming' || (e.target.closest && e.target.closest('button'))) return;
+    this.newTask({ day });   // double-clicking a day's label adds a task for that day
+  };
+
+  // ---------- Adding ----------
+  // Upcoming: for the day whose + was pressed, else the selected task's day, else tomorrow. Undated: no dates.
+  newTaskWhen(opts) { return this.state.route.kind === 'upcoming' ? opts.day || this.selDay() || addDays(this.today, 1) : null; }
+  selDay() {
+    const L = this.lastLayout, id = this.state.sel[0];
+    const g = id && L && L.gmap && L.gmap.get(L.groupOf.get(id));
+    if (g && g.day) return g.day;
+    const t = id && this.task(id), d = t && this.upDay(t);
+    return d && d > this.today ? d : null;
+  }
+  addInDefault() {
+    const id = this.defaultListId();
+    if (!id) { this.showNotice('Create a list first: ⇧⌘N', false); return; }
+    this.go({ kind: 'list', id });
+    setTimeout(() => this.newTask({ listId: id }), 0);
+  }
+
+  // ---------- Dates, completing, deleting ----------
+  // Whether these tasks, changed, leave the open view (a notice says where they went, with Undo).
+  leavesView(ids, tasks) {
+    const k = this.state.route.kind, T = this.today;
+    const after = ids.map((id) => tasks.find((x) => x.id === id)).filter(Boolean);
+    if (k === 'today') return after.some((t) => !(t.when && t.when <= T) && !(t.deadline && t.deadline <= T));
+    if (k === 'upcoming') return after.some((t) => { const d = this.upDay(t); return !d || d <= T; });
+    if (k === 'undated') return after.some((t) => t.when || t.deadline);
+    return false;
+  }
+  // ⌥⌘↑ ⌥⌘↓ in Upcoming: a day earlier or later (sets When). Never past a deadline; a day before tomorrow is Today.
+  viewMoveBy(delta) {
+    const k = this.state.route.kind;
+    if (k === 'completed' || k === 'trash') return true;
+    if (k !== 'upcoming') return false;
+    const T = this.today, moves = new Map();
+    for (const id of this.targetIds()) {
+      const t = this.task(id), base = this.upDay(t);
+      if (!base) continue;
+      const nd = addDays(base, delta);
+      if (nd < T || (t.deadline && nd > t.deadline)) continue;
+      moves.set(id, nd);
+    }
+    if (!moves.size) return true;
+    const gone = [...moves.keys()].filter((id) => moves.get(id) <= T);
+    const patch = { tasks: this.state.tasks.map((t) => (moves.has(t.id) ? { ...t, when: moves.get(t.id) } : t)) };
+    if (gone.length) { const next = this.nextSelAfterRemoving(gone); patch.sel = next; patch.anchor = next[0] || null; }
+    this.commit('Set When', patch);
+    if (gone.length) this.showNotice('Scheduled for ' + longDate(T, T), true);
+    else this.scrollToId = [...moves.keys()][0];
+    return true;
+  }
+  completeTasks(ids) { const open = ids.filter((id) => { const t = this.task(id); return t && t.completedAt == null; }); if (open.length) this.toggleComplete(open); }
+  // Put Back: deleted = false (SPEC §5), in its own list at its old place; or at the bottom of another list.
+  putBack(ids, listId) {
+    ids = ids.filter((id) => { const t = this.task(id); return t && t.deleted; });
+    if (!ids.length) return;
+    const next = this.nextSelAfterRemoving(ids);
+    const homes = [...new Set(ids.map((id) => listId || this.task(id).list))];
+    let max = listId ? this.state.tasks.filter((t) => t.list === listId).reduce((m, t) => Math.max(m, t.order), 0) : 0;
+    const tasks = this.state.tasks.map((t) => (!ids.includes(t.id) ? t : listId && t.list !== listId ? { ...t, deleted: false, list: listId, order: ++max } : { ...t, deleted: false }));
+    this.commit(ids.length > 1 ? 'Put Back ' + ids.length + ' Tasks' : 'Put Back', { tasks, sel: next, anchor: next[0] || null, menu: null, picker: null });
+    this.showNotice((ids.length > 1 ? 'Put back ' + ids.length + ' tasks' : 'Put back ' + quote(this.task(ids[0]).title)) + (homes.length === 1 ? ' in ' + this.list(homes[0]).name : ''), true);
+    if (this.state.detail !== 'closed' && !next.length) this.closeDetail();
+  }
+  trashMenu(ids, x, y) {
+    const n = ids.length, one = n === 1, t = this.task(ids[0]);
+    const lists = this.activeLists().filter((l) => !l.draft);
+    const items = [];
+    if (one) items.push({ label: 'Show Details', keys: '⌘D', action: () => { this.select([t.id]); this.openDetail(); } }, { sep: true });
+    items.push({ label: one ? 'Put Back' : 'Put Back ' + n + ' Tasks', keys: '⌘⌫', action: () => this.putBack(ids) });
+    items.push({ label: 'Put Back in', sub: [{ head: 'Put back in' }].concat(lists.map((l) => ({ label: l.name, tile: true, color: l.color, mono: monogram(l.name), check: one && t.list === l.id, action: () => this.putBack(ids, l.id) }))) });
+    this.openMenu(x, y, items);
+  }
+  viewDetail(dpo, one, many) {
+    const trash = this.inTrash();
+    dpo.ro = trash; dpo.delOne = !!one && !trash; dpo.delMany = !!many && !trash; dpo.putBack = !!(one || many) && trash;
+    dpo.putBackTip = many ? 'Put Back ' + many.length + ' Tasks' : 'Put Back';
+    if (!trash) return;
+    dpo.propsCls += ' ro'; dpo.notesCls += ' ro';
+    if (one) { dpo.checkCls += ' ro'; dpo.meta = 'Created ' + md(ymdOf(new Date(one.createdAt))) + (one.deletedAt ? ' · Deleted ' + md(localDayOfMs(one.deletedAt)) : ''); }
+  }
+
+  // ---------- Drag in the views ----------
+  // Upcoming ('days'): the copy moves freely; the day group under it opens a gap where the task would land (its rows
+  // are laid out on that day), and the drop sets When. Completed and Trash ('sb'): rows don't part; only the sidebar
+  // takes the drop. Everywhere else ('group') is the drag in §14.
+  dragMode() { const k = this.state.route.kind; return k === 'upcoming' ? 'days' : k === 'completed' || k === 'trash' ? 'sb' : 'group'; }
+  viewDrop(key) {
+    const k = this.state.route.kind;
+    if (key === 'completed' && k !== 'completed' && k !== 'trash') return { kind: 'completed', key };
+    if (key === 'trash' && k !== 'trash') return { kind: 'trash', key };
+    return null;   // Upcoming and Undated aren't drop targets
+  }
+  sbOverAt(p, d) {
+    const sc = this.sbScrollRef.current ? this.sbScrollRef.current.scrollTop : 0, sy = p.y - SB_TOP + sc;
+    const hit = this.lastSidebar.rows.find((r) => sy >= r.y - 1 && sy < r.y + 31);
+    if (!hit) return null;
+    const k = this.state.route.kind, trash = k === 'trash';
+    if (hit.key === 'today') return k === 'today' || trash ? null : { kind: 'today', key: 'today' };
+    if (VIEWS[hit.key]) return this.viewDrop(hit.key);
+    const l = this.list(hit.key);
+    if (!l || l.archivedAt || l.draft) return null;
+    if (!trash && d.ids.every((id) => this.task(id).list === l.id)) return null;   // in Trash, its own list puts it back
+    return { kind: 'list', key: l.id };
+  }
+  dayTarget(d, y) {
+    const L = this.lastLayout, sc = this.listScrollRef.current ? this.listScrollRef.current.scrollTop : 0;
+    const top0 = PANE_TOP + HEAD_H - sc;
+    const first = L.groups.length ? L.labels.get(L.groups[0].listId) : 0;
+    const cy = clamp(y, top0 + first - 6, top0 + Math.max(first, L.height - 24 - PITCH) + 6);
+    const mid = cy + 15 - top0;
+    let pick = null;
+    for (const g of L.groups) { const ly = L.labels.get(g.listId); if (ly != null && ly <= mid) pick = g; }
+    // Only a day takes the drop, and never one after a dragged task's deadline: there the gap stays home.
+    const ok = pick && pick.kind === 'day' && d.ids.every((id) => { const t = this.task(id); return !t.deadline || pick.day <= t.deadline; });
+    return { day: ok ? pick.day : null, cy };
+  }
+  updateViewDrag(e) {
+    const d = this.state.drag;
+    const p = this.winXY(e);
+    const x = p.x - d.offX, y = p.y - d.offY;
+    const sb = this.state.sbVisible && p.x < this.state.sbW - 4;
+    const over = sb ? this.sbOverAt(p, d) : null;
+    let toDay = null, cy = y;
+    if (!sb && d.mode === 'days') { const r = this.dayTarget(d, y); toDay = r.day; cy = r.cy; }
+    const px = sb ? p.x + 12 : x, py = sb ? p.y + 8 : cy;
+    const el = this.liftRef.current;
+    if (el) el.style.transform = 'translate(' + px + 'px,' + py + 'px)';
+    d.x = px; d.y = py;
+    const overKey = over ? over.key : null, prevKey = d.over ? d.over.key : null;
+    if (overKey !== prevKey || sb !== !!d.sb || toDay !== d.toDay) this.setState({ drag: { ...d, over, sb, toDay } });
+    this.autoScroll(p);
+  }
+  endViewDrag(cancel) {
+    const d = this.state.drag;
+    const sc = this.listScrollRef.current ? this.listScrollRef.current.scrollTop : 0;
+    const settle = () => { this.setState({ drag: { ...this.state.drag, phase: 'done' } }); setTimeout(() => this.setState({ drag: null }), LAND_MS); };
+    const home = () => {
+      this.setState({ drag: { ...d, phase: 'fly', toDay: null, over: null, sb: false, cancel: true, flyTo: { x: d.left, y: d.startTop } } });
+      setTimeout(settle, 200);
+    };
+    if (cancel || (d.sb && !d.over)) { home(); return; }
+    if (d.over) {
+      const sy = this.sbScrollRef.current ? this.sbScrollRef.current.scrollTop : 0;
+      this.setState({ drag: { ...d, phase: 'fly', flyTo: { x: 10, y: SB_TOP + (this.lastSidebar.ys.get(d.over.key) || 0) - sy }, shrink: true } });
+      setTimeout(() => { this.setState({ drag: null }); this.dropOnTarget(d); }, FLY_MS);
+      return;
+    }
+    if (d.mode === 'days' && d.toDay && d.ids.some((id) => this.upDay(this.task(id)) !== d.toDay)) {
+      const slot = PANE_TOP + HEAD_H + (this.lastLayout.ys.get(d.grabbed) || 0) - sc;
+      this.setState({ drag: { ...d, phase: 'fly', flyTo: { x: d.left, y: slot } } });
+      setTimeout(() => { this.setDate(d.ids, 'when', d.toDay); settle(); }, FLY_MS);
+      return;
+    }
+    home();
+  }
+  dropOnTarget(d) {
+    const o = d.over;
+    if (o.kind === 'today') this.setDate(d.ids, 'when', this.today);
+    else if (o.kind === 'completed') this.completeTasks(d.ids);
+    else if (o.kind === 'trash') this.deleteTasks(d.ids);
+    else if (this.inTrash()) this.putBack(d.ids, o.key);
+    else this.moveTasks(d.ids, o.key);
+  }
+
+  // The canvas's boards open on a chosen task (`select`, a title's start), with the details shown (`detail="open"`).
+  demoSelect() {
+    const q = String(this.props.select).toLowerCase();
+    const t = this.state.tasks.find((x) => x.title.toLowerCase().startsWith(q));
+    if (!t) return;
+    this.setState({ sel: [t.id], anchor: t.id, cursor: t.id });
+    if (this.props.detail === 'open') this.openDetail();
   }
 }
 

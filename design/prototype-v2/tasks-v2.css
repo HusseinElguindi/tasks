@@ -409,3 +409,28 @@
 .tk.light .mk-rings { fill: #626568; }
 .tk.light .mk-bar { fill: #1F2328; }
 .tk.light .mk-head { fill: #0969DA; }
+
+/* ---------- The four views: Upcoming, Undated, Completed, Trash (INTERACTIONS-v2 §22) ---------- */
+.tk .c-mute { color: var(--ink-2); }   /* Trash's glyph: no colour of its own */
+.tk .hb.gone { display: none; }        /* Completed and Trash have no + */
+/* A group label's second, quieter part (a day's date); an empty day's label is quieter still; the day a drag in
+   Upcoming would land on turns accent. */
+.tk .tglabel .gl { flex: none; max-width: 70%; }
+.tk .glabel .gs { flex: 1; min-width: 0; margin-left: 6px; font-weight: 400; color: var(--ink-q); white-space: nowrap; overflow: hidden; }
+.tk .tglabel.quiet .gl { color: var(--ink-q); }
+.tk .tglabel .gl, .tk .tglabel .gs { transition: color var(--hover-out); }
+.tk .tglabel.drop .gl, .tk .tglabel.drop .gs { color: var(--accent-text); transition: color var(--hover-in); }
+/* Trash reads but doesn't edit: titles in ink-secondary, the checkbox and chips deaf to the pointer, the detail pane's
+   fields too (its title is read-only). */
+.tk .row.trashed .tt { color: var(--ink-2); }
+.tk .row.trashed.done .tt { color: var(--ink-3); }
+.tk .row.trashed .check, .tk .row.trashed .chip { pointer-events: none; }
+.tk .row.trashed .check { opacity: 0.6; }
+.tk .dp .ro { pointer-events: none; }
+.tk .dp .check.ro { opacity: 0.6; }
+/* "Both dates: twice": the later date shows a quiet echo of the task; pressing it selects the task. */
+.tk .row.echo { z-index: 1; }
+.tk .row.echo .tt { color: var(--ink-3); }
+.tk .row.echo.lit .tt { color: var(--ink-2); }
+.tk .check.echo-ring { box-shadow: inset 0 0 0 1.5px var(--line-sep); }
+.tk .check.echo-ring::after { display: none; }
