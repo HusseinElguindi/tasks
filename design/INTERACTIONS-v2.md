@@ -1153,6 +1153,9 @@ detail pane, notices and undo. Only what differs is written here; everything els
 **No new model fields.** Every view is a query over the fields SPEC §2 has. Trash orders by when a task was deleted:
 the client takes that from the `at` of the op that last set `deleted: true`, the way it derives `createdAt` and
 `updatedAt` (SPEC §2), so nothing new is written or synced. (The prototype stores it as `deletedAt`, `dc:947–954`.)
+The app as built takes the task's `updatedAt`, the `at` of its last op of any kind: the app never edits a trashed
+task, so that's the op that deleted it. An edit made elsewhere (the CLI) would move it in the Trash, and undoing a
+Put Back deletes it again at that moment.
 
 ### The sidebar
 

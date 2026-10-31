@@ -74,7 +74,7 @@ extension SidebarView {
                     // A task drag from the list, as the task list would drive it: the target under the point, its look,
                     // and the frame the dropped copy would fly to.
                     if let pt {
-                        let over = self.dropTarget(at: pt, groupList: self.ui.route.listID)
+                        let over = self.dropTarget(at: pt, dragged: self.ui.route.listID.map { Array(self.store.projection.openTasks(in: $0).ids.prefix(1)) } ?? [])
                         print("dropover \(pt): \(String(describing: over)) frame=\(String(describing: over.flatMap(self.rowFrame(for:))))")
                         self.ui.drag = .init(kind: .tasks(ids: [], group: self.ui.route.listID ?? ""), target: 0, over: over)
                     }

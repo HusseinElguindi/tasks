@@ -33,6 +33,7 @@ enum Menus {
     // MARK: A task (dc:1029–1060)
 
     static func task(_ ids: [EntityID], actions a: WindowActions) -> NSMenu {
+        if a.inTrash { return trash(ids, actions: a) }
         let p = a.p
         let tasks = ids.compactMap(p.task)
         let one = tasks.count == 1
@@ -42,7 +43,7 @@ enum Menus {
         if one, let t = tasks.first {
             items.append(Item("Show Details", key: "d") { a.select([t.id]); a.openDetail() })
             items.append(Item("Rename", key: returnKey, modifiers: []) { a.editTask(t.id, caret: .all) })
-            if a.window.route == .today {
+            if a.window.route.listID == nil {
                 items.append(Item("Show in \(a.listName(t.list))") { a.go(.list(t.list), select: [t.id]) })
             }
         }
@@ -73,6 +74,28 @@ enum Menus {
         items.append(move)
         items.append(.separator())
         items.append(Item(one ? "Delete" : "Delete \(n) Tasks", key: "\u{8}") { a.delete(ids) })
+        return menu(items)
+    }
+
+    /// A task in the Trash: Show Details, Put Back, Put Back in ▸ (§22, dc:2422–2430).
+    static func trash(_ ids: [EntityID], actions a: WindowActions) -> NSMenu {
+        let p = a.p
+        let tasks = ids.compactMap(p.task)
+        let n = tasks.count
+        var items: [NSMenuItem] = []
+        if n == 1, let t = tasks.first {
+            items.append(Item("Show Details", key: "d") { a.select([t.id]); a.openDetail() })
+            items.append(.separator())
+        }
+        items.append(Item(n == 1 ? "Put Back" : "Put Back \(n) Tasks", key: "\u{8}") { a.putBack(ids) })
+        let into = NSMenuItem(title: "Put Back in", action: nil, keyEquivalent: "")
+        into.submenu = menu([header("Put back in")] + p.activeLists.ids.map { listID in
+            let item = Item(a.listName(listID)) { a.putBack(ids, in: listID) }
+            if let m = p.listModel(listID) { item.image = tileImage(monogram: m.monogram, slot: m.colorSlot, palette: a.window.palette) }
+            if n == 1 && tasks[0].list == listID { item.state = .on }
+            return item
+        })
+        items.append(into)
         return menu(items)
     }
 

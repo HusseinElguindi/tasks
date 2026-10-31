@@ -9,7 +9,7 @@ import SwiftUI
 
 enum Glyph: CaseIterable {
     case sun, sidebarLeft, split, plus, chevronRight, chevronLeft, calendar, flag, xmark, trash, lines, archive,
-         checkCircle, upDown, check, notes, checklist
+         checkCircle, upDown, check, notes, checklist, layers, doneCircle, putBack
 
     /// SVG path data in a 16×16 view box, y down.
     private var svg: [String] {
@@ -32,6 +32,12 @@ enum Glyph: CaseIterable {
         // The row's notes hint (design/MARKDOWN.md §7, dc:82).
         case .notes: return ["M3.5 4.5h9M3.5 8h9M3.5 11.5h5.5"]
         case .checklist: return ["rect 2.5 2.5 11 11 3", "M5.4 8.2l1.8 1.8 3.4-3.7"]
+        // The four views (§22, dc:25): Undated's stacked layers and Completed's check in a circle (the sidebar's 6, not
+        // the empty state's 6.2); Put Back's arrow (dc:120).
+        case .layers: return ["M8 2.5l5.5 2.75L8 8 2.5 5.25z", "M2.5 8l5.5 2.75L13.5 8M2.5 10.75l5.5 2.75 5.5-2.75"]
+        case .doneCircle: return ["circle 8 8 6", "M5.3 8.2l1.9 1.9 3.6-4"]
+        // dc:120's half circle (a3.5 3.5 0 0 1 0 7) as two quarters, which is what the parser's arcs draw.
+        case .putBack: return ["M5.5 3.5L3 6l2.5 2.5", "M3 6h6.5a3.5 3.5 0 0 1 3.5 3.5a3.5 3.5 0 0 1 -3.5 3.5H7"]
         }
     }
 
@@ -238,6 +244,7 @@ final class TileLayer: CALayer {
     enum Size { case regular, small }
     private let letter = TextLayer()
     private let sun = GlyphLayer(.sun, size: 12)
+    private var glyph: Glyph = .sun
     private let ring = CALayer()
     private(set) var tileSize: Size = .regular
 
@@ -254,8 +261,8 @@ final class TileLayer: CALayer {
 
     static func dimensions(_ s: Size) -> CGSize { s == .regular ? CGSize(width: 20, height: 16) : CGSize(width: 16, height: 13) }
 
-    /// `monogram` nil draws Today's sun.
-    func set(monogram: String?, color: NSColor, palette: TK.Palette, size: Size = .regular) {
+    /// `monogram` nil draws `glyph`: Today's sun, or a view's (§22).
+    func set(monogram: String?, color: NSColor, palette: TK.Palette, size: Size = .regular, glyph: Glyph = .sun) {
         tileSize = size
         let d = Self.dimensions(size)
         bounds = CGRect(origin: .zero, size: d)
@@ -275,6 +282,10 @@ final class TileLayer: CALayer {
         } else {
             letter.isHidden = true
             sun.isHidden = false
+            if glyph != self.glyph {
+                self.glyph = glyph
+                sun.set(glyph, size: 12)
+            }
             sun.color = color
             // 1pt below center, as the prototype's tile lays its sun out (measured in Chrome).
             sun.position = CGPoint(x: d.width / 2, y: d.height / 2 + 1)

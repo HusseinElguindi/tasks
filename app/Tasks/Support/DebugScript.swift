@@ -91,6 +91,9 @@ enum DebugScript {
                     if let t = AppModel.ThemeChoice(rawValue: arg) { model.theme = t }
                 case "sys":
                     NSApp.appearance = arg == "dark" ? NSAppearance(named: .darkAqua) : arg == "light" ? NSAppearance(named: .aqua) : nil
+                case "act":
+                    // The four views' actions and traces (Support/DebugViews.swift).
+                    if let store = model.store { DebugViews.act(arg, window: window, store: store) }
                 case "picker":
                     if let store = model.store { WindowActions(store: store, window: window).openPicker(arg == "deadline" ? .deadline : .when) }
                 case "type":

@@ -50,6 +50,13 @@ struct ListPaneHeader: View {
                 if list.isArchived {
                     Text("Archived").font(Font(TK.Font.body)).foregroundStyle(tk.ink2.swiftUI).lineLimit(1)
                 }
+            } else if window.route.isView {
+                // A view's header is Today's: its glyph in its colour, its name, no subtitle (§22).
+                GlyphView(glyph: window.route.glyph ?? .sun, size: 14, color: window.route.glyphColor(tk).swiftUI)
+                Text(window.route.viewName ?? "")
+                    .font(Font(TK.Font.bodyMedium))
+                    .foregroundStyle((lit ? tk.ink : tk.ink2).swiftUI)
+                    .lineLimit(1)
             } else {
                 GlyphView(glyph: .sun, size: 14, color: tk.ansiYellow.swiftUI)
                 Text("Today")
@@ -62,7 +69,10 @@ struct ListPaneHeader: View {
             }
             Spacer(minLength: 0)
             HStack(spacing: 2) {
-                HeaderIconButton(glyph: .plus, tip: newTip, keys: "⌘N", overlays: window.overlays) { actions.newTask() }
+                // Completed and Trash have no + (§22).
+                if !window.route.noAdd {
+                    HeaderIconButton(glyph: .plus, tip: newTip, keys: "⌘N", overlays: window.overlays) { actions.newTask() }
+                }
                 HeaderIconButton(glyph: .split, tip: window.detailOpen ? "Hide Details" : "Show Details", keys: "⌘D",
                                  on: window.detailOpen, overlays: window.overlays) { actions.toggleDetail() }
             }
@@ -84,9 +94,9 @@ struct ListPaneHeader: View {
         }
     }
 
-    /// In Today the + names its target: "New Task in Inbox" (§6).
+    /// In Today and the views the + names its target: "New Task in Inbox" (§6, §22).
     private var newTip: String {
-        guard window.route == .today else { return "New Task" }
+        guard window.route.listID == nil else { return "New Task" }
         let actions = WindowActions(store: store, window: window)
         let p = store.projection
         if let sel = window.selection.first(where: { $0 != window.draft?.id }), let t = p.task(sel), p.isActive(list: t.list) {

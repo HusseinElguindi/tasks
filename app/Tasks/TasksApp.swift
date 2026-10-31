@@ -63,6 +63,9 @@ struct TasksCommands: Commands {
 
     private var pickerOpen: Bool { window?.overlays.picker != nil }
 
+    /// The Trash reads but doesn't edit: only Put Back and Show Details act on its tasks (§22).
+    private var inTrash: Bool { window?.route == .trash }
+
     /// Text is being typed somewhere: ⌘⌫ belongs to the field.
     private var typing: Bool {
         guard let w = window else { return false }
@@ -101,19 +104,19 @@ struct TasksCommands: Commands {
             Divider()
             Button(completeTitle) { run { $0.toggleComplete() } }
                 .keyboardShortcut("k")
-                .disabled(!hasTarget)
+                .disabled(!hasTarget || inTrash)
             Button("When…") { run { $0.openPicker(.when) } }
                 .keyboardShortcut("s")
-                .disabled(!hasTarget)
+                .disabled(!hasTarget || inTrash)
             Button("When: Today") { run { $0.setDate(nil, .when, $0.today) } }
                 .keyboardShortcut("t")
-                .disabled(!hasTarget)
+                .disabled(!hasTarget || inTrash)
             Button("Deadline…") { run { $0.openPicker(.deadline) } }
                 .keyboardShortcut("d", modifiers: [.command, .shift])
-                .disabled(!hasTarget)
+                .disabled(!hasTarget || inTrash)
             Button("Move to…") { run { $0.popMoveMenu() } }
                 .keyboardShortcut("m", modifiers: [.command, .shift])
-                .disabled(!hasTarget)
+                .disabled(!hasTarget || inTrash)
             Divider()
             Button("Move Up") { run { $0.moveUpDown(-1) } }
                 .keyboardShortcut(.upArrow, modifiers: [.command, .option])
@@ -122,18 +125,16 @@ struct TasksCommands: Commands {
                 .keyboardShortcut(.downArrow, modifiers: [.command, .option])
                 .disabled(actions == nil || typing)
             Divider()
-            Button(window?.focus == .sidebar ? "Archive List" : "Delete") { run { $0.deleteOrArchive() } }
+            Button(window?.focus == .sidebar ? "Archive List" : window?.route == .trash ? "Put Back" : "Delete") { run { $0.deleteOrArchive() } }
                 .keyboardShortcut(.delete)
                 .disabled(actions == nil || typing || (window?.focus != .sidebar && !hasTarget))
         }
         CommandGroup(before: .sidebar) {
-            Button("Today") { actions?.goNumber(1) }
-                .keyboardShortcut("1")
-                .disabled(actions == nil || pickerOpen)
-            ForEach(Array(listNames.enumerated()), id: \.offset) { i, name in
-                Button(name) { actions?.goNumber(i + 2) }
-                    .keyboardShortcut(KeyEquivalent(Character("\(i + 2)")))
-                    .disabled(pickerOpen)
+            // The sidebar's first nine rows, top to bottom: Today, Upcoming, Undated, then the lists (§22).
+            ForEach(Array(sidebarNames.enumerated()), id: \.offset) { i, name in
+                Button(name) { actions?.goNumber(i + 1) }
+                    .keyboardShortcut(KeyEquivalent(Character("\(i + 1)")))
+                    .disabled(actions == nil || pickerOpen)
             }
             Divider()
         }
@@ -148,10 +149,10 @@ struct TasksCommands: Commands {
         }
     }
 
-    /// The first eight active lists, for ⌘2–⌘9.
-    private var listNames: [String] {
-        guard let a = actions else { return [] }
-        return a.p.activeLists.ids.prefix(8).map(a.listName)
+    /// The sidebar's first nine rows, for ⌘1–⌘9.
+    private var sidebarNames: [String] {
+        guard let a = actions else { return ["Today", "Upcoming", "Undated"] }
+        return WindowState.Route.sidebarOrder(a.p).prefix(9).map(a.routeName)
     }
 
     private var completeTitle: String {

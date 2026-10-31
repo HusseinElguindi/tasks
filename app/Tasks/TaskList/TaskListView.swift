@@ -273,26 +273,30 @@ final class TaskListView: NSView {
             }
             let isDraft = id == draft?.id
             var m: RowModel
+            // In Upcoming a day group's own date isn't repeated on its rows (§22, dc:1921).
+            let groupDay = L.groupDay(id)
             if isDraft, let draft {
                 let untitled = draft.title.isEmpty
                 m = RowModel(id: id, title: draft.title, untitled: untitled, done: false, draft: true)
-                if let when = draft.when, !(inToday && when <= today) {
+                if let when = draft.when, !(inToday && when <= today), when != groupDay {
                     m.chips.append(.init(field: .when, content: .init(text: DateLabel.whenChip(when, today: today), glyph: .calendar)))
                 }
             } else if let t = p.taskModel(id) {
                 m = RowModel(id: id, title: t.title, untitled: t.title.isEmpty, done: t.isDone, draft: false)
                 m.notes = t.notesSummary
                 if !t.isDone {
-                    if let when = t.when, !(inToday && when <= today) {
+                    if let when = t.when, !(inToday && when <= today), when != groupDay {
                         m.chips.append(.init(field: .when, content: .init(text: DateLabel.whenChip(when, today: today), glyph: .calendar)))
                     }
                     if let dl = t.deadline {
-                        let c = DateLabel.deadlineChip(dl, today: today)
+                        let c = dl == groupDay ? (text: "Due", tone: DateLabel.Tone.neutral) : DateLabel.deadlineChip(dl, today: today)
                         let tone: ChipLayer.Tone = c.tone == .late ? .late : c.tone == .due ? .due : .neutral
                         m.chips.append(.init(field: .deadline, content: .init(text: c.text, glyph: .flag, tone: tone)))
                     }
                 }
                 if inToday && L.isDone(id) { m.whereText = actions.listName(t.list) }
+                if state.route.isView { m.whereText = viewWhere(L, id: id, list: t.list) }
+                m.trashed = t.deleted
             } else {
                 continue
             }
@@ -433,10 +437,15 @@ final class TaskListView: NSView {
             labels[key] = nil
             v.removeFromSuperview()
         }
+        let dropDay: EntityID? = {
+            guard let d = state.drag, d.mode == .days, d.phase == .drag, !d.sidebar, let day = d.toDay else { return nil }
+            return "d:" + day.string
+        }()
         for key in L.labelOrder {
             guard let y = L.labels[key] else { continue }
             let isDone = key == TaskLayout.doneGroup
-            let name = isDone ? "Completed" : actions.listName(key)
+            let info = L.labelInfo[key]
+            let name = info.map { $0.list.map(actions.listName) ?? $0.name } ?? (isDone ? "Completed" : actions.listName(key))
             var isNew = false
             let v: GroupLabelView
             if let existing = labels[key] { v = existing } else {
@@ -447,7 +456,8 @@ final class TaskListView: NSView {
                 isNew = true
             }
             _ = p
-            v.configure(key: key, name: name, plus: !isDone, palette: palette, width: rowW)
+            v.configure(key: key, name: name, plus: info?.plus ?? !isDone, palette: palette, width: rowW, sub: info?.sub, quiet: info?.quiet ?? false)
+            v.setDrop(key == dropDay, animated: animate)
             if isNew {
                 if animate, let old = prevLabels[key], old != y {
                     place(v, y: old, width: rowW, height: TK.M.pitch)
@@ -490,7 +500,7 @@ final class TaskListView: NSView {
             empty.isHidden = false
             empty.configure(kind, palette: palette, width: width)
             let visibleH = scroll.contentView.bounds.height
-            let top: CGFloat = kind == .allDone ? 40 : (visibleH * 0.34).rounded()
+            let top: CGFloat = L.emptyTop ?? (kind == .allDone ? 40 : (visibleH * 0.34).rounded())
             empty.frame.origin = CGPoint(x: 0, y: top)
         } else {
             empty.isHidden = true
@@ -503,6 +513,20 @@ final class TaskListView: NSView {
             banner.frame = CGRect(x: TK.M.rowInset, y: 6, width: rowW, height: h)
         } else {
             banner.isHidden = true
+        }
+    }
+
+    /// The list's name after the title in Upcoming, Completed and Trash; in a month group, the day too (dc:2321–2327).
+    private func viewWhere(_ L: TaskLayout, id: EntityID, list: EntityID) -> String? {
+        let name = actions.listName(list)
+        switch state.route {
+        case .upcoming: return name
+        case .completed, .trash:
+            guard L.groupKind(id) == .month, let t = store.projection.task(id) else { return name }
+            let at = state.route == .trash ? ViewItems.deletedAt(t) : t.completedAt
+            guard let at else { return name }
+            return name + " · " + DateLabel.monthDay(CalendarDate(Date(timeIntervalSince1970: TimeInterval(at) / 1000)))
+        default: return nil
         }
     }
 
@@ -705,7 +729,9 @@ final class TaskListView: NSView {
             }
         case .label(let key, plus: true):
             if let v = labels[key] {
-                overlays.hoverTip("New Task in \(actions.listName(key))", for: windowRect(v.plus.frame, from: v), windowWidth: window?.frame.width ?? 1200)
+                let info = currentLayout?.labelInfo[key]
+                let tip = info?.day != nil ? "New Task for \(info!.name)" : "New Task in \(actions.listName(info?.list ?? key))"
+                overlays.hoverTip(tip, for: windowRect(v.plus.frame, from: v), windowWidth: window?.frame.width ?? 1200)
             }
         default:
             // Only the tips this list showed: the pointer may have moved onto another control with its own.
@@ -740,7 +766,7 @@ final class TaskListView: NSView {
                 let flags = event.modifierFlags
                 pendingCollapse = nil
                 if event.clickCount == 2 {
-                    if let task = store.projection.task(id), task.completedAt == nil, id != state.draft?.id {
+                    if let task = store.projection.task(id), task.completedAt == nil || task.deleted, id != state.draft?.id {
                         let local = rows[id].map { CGPoint(x: p.x - $0.frame.minX, y: p.y - $0.frame.minY) } ?? p
                         let caret = rows[id]?.caretIndex(at: local)
                         a.editTask(id, caret: caret.map { .at($0) } ?? .end)
@@ -776,11 +802,17 @@ final class TaskListView: NSView {
             // double-click adds a task, as ⌘N does.
             press = nil
             if event.clickCount == 2 {
-                a.newTask()
+                if !state.route.noAdd { a.newTask() }
             } else if !editing, !state.selection.isEmpty {
                 state.selection = []
             }
-        case .completed, .label:
+        case .label(let key, plus: false):
+            // Double-clicking a day's label in Upcoming adds a task for that day (dc:2354).
+            if event.clickCount == 2, state.route == .upcoming, let day = currentLayout?.labelInfo[key]?.day {
+                press = nil
+                a.newTask(day: day)
+            }
+        case .completed:
             break
         }
     }
@@ -839,7 +871,13 @@ final class TaskListView: NSView {
             }
         case .label(let key, plus: true):
             labels[key]?.plus.pressed = false
-            if inside { a.newTask(in: key) }
+            if inside {
+                if let info = currentLayout?.labelInfo[key] {
+                    if let day = info.day { a.newTask(day: day) } else { a.newTask(in: info.list ?? key) }
+                } else {
+                    a.newTask(in: key)
+                }
+            }
         case .completed:
             if inside, case .list(let id) = state.route {
                 if state.completedOpen.contains(id) { state.completedOpen.remove(id) } else { state.completedOpen.insert(id) }
@@ -933,6 +971,7 @@ final class TaskListView: NSView {
         var startFrame: CGRect
         var origTarget: Int
         var lastPoint: CGPoint
+        var mode: WindowState.Drag.Mode = .group
     }
 
     private func beginDrag(_ id: EntityID, event: NSEvent, now: NSEvent) {
@@ -941,6 +980,9 @@ final class TaskListView: NSView {
             press = nil
             return
         }
+        // Upcoming's rows go onto any day; in Completed and Trash only the sidebar takes them (§22). The selected rows of
+        // the grabbed row's group travel, in every view (dc:1208).
+        let mode: WindowState.Drag.Mode = state.route == .upcoming ? .days : state.route.noAdd ? .sidebarOnly : .group
         var ids = state.selection.contains(id) ? L.order.filter { state.selection.contains($0) && L.group($0) == gid && $0 != state.draft?.id } : [id]
         if !ids.contains(id) { ids = [id] }
         let firstIdx = g.ids.firstIndex(of: ids[0]) ?? 0
@@ -954,7 +996,7 @@ final class TaskListView: NSView {
         let frame = windowRect(v.bounds, from: v)
         let start = windowPoint(event)
         drag = DragSession(ids: ids, group: gid, offset: CGPoint(x: start.x - frame.minX, y: start.y - frame.minY),
-                           startFrame: frame, origTarget: target, lastPoint: start)
+                           startFrame: frame, origTarget: target, lastPoint: start, mode: mode)
         pendingCollapse = nil
         var copy = model
         copy.selected = false
@@ -966,23 +1008,34 @@ final class TaskListView: NSView {
         copy.chips = copy.chips.map { var c = $0; c.content.glyph = nil; return c }
         copy.pickerField = nil
         state.dragOverlay?.beginTaskCopy(copy, palette: palette, frame: frame, count: ids.count)
-        state.drag = .init(kind: .tasks(ids: ids, group: gid), target: target)
+        state.drag = .init(kind: .tasks(ids: ids, group: gid), target: target, mode: mode)
         updateDrag(windowPoint: windowPoint(now))
     }
 
     private func updateDrag(windowPoint p: CGPoint) {
-        guard var d = drag, let L = currentLayout, let g = L.groups.first(where: { $0.listID == d.group }) else { return }
+        // A view's drag can empty the group it started in (a month whose only task moves): only §14's needs it.
+        guard var d = drag, let L = currentLayout else { return }
+        let g = L.groups.first(where: { $0.listID == d.group })
+        if d.mode == .group && g == nil { return }
         d.lastPoint = p
         drag = d
         var over: WindowState.Drag.Over?
         let sidebar = state.sidebarVisible && p.x < (state.sidebarView?.bounds.width ?? TK.M.sidebar) - 4
         if sidebar {
-            over = state.sidebarView?.dropTarget(at: p, groupList: d.group)
-            if over == .today && state.route == .today { over = nil }
+            over = state.sidebarView?.dropTarget(at: p, dragged: d.ids)
         }
         var target = state.drag?.target ?? d.origTarget
         var copyOrigin: CGPoint
-        if !sidebar {
+        var toDay: CalendarDate?
+        if !sidebar && d.mode == .days {
+            // Upcoming: the copy follows the pointer down the whole list; the day under its middle takes the drop.
+            let r = dayTarget(ids: d.ids, y: p.y - d.offset.y, in: L)
+            toDay = r.day
+            copyOrigin = CGPoint(x: p.x - d.offset.x, y: r.y)
+        } else if !sidebar && d.mode == .sidebarOnly {
+            // Completed and Trash: nothing parts; the copy just follows the pointer to the sidebar.
+            copyOrigin = CGPoint(x: p.x - d.offset.x, y: p.y - d.offset.y)
+        } else if !sidebar, let g {
             // The copy stays inside its group: it stops 6pt past the first and last slot (dc:1196–1203).
             let others = g.ids.filter { !d.ids.contains($0) }.count
             let docTop = doc.convert(CGPoint(x: 0, y: 0), to: nil)
@@ -998,10 +1051,11 @@ final class TaskListView: NSView {
             copyOrigin = CGPoint(x: p.x + 12, y: p.y + 8)
         }
         state.dragOverlay?.moveCopy(to: copyOrigin, compact: sidebar)
-        if state.drag?.over != over || state.drag?.sidebar != sidebar || state.drag?.target != target {
+        if state.drag?.over != over || state.drag?.sidebar != sidebar || state.drag?.target != target || state.drag?.toDay != toDay {
             state.drag?.over = over
             state.drag?.sidebar = sidebar
             state.drag?.target = target
+            state.drag?.toDay = toDay
         }
         autoscroll(p)
     }
@@ -1039,6 +1093,7 @@ final class TaskListView: NSView {
             state.drag?.over = nil
             state.drag?.sidebar = false
             state.drag?.target = d.origTarget
+            state.drag?.toDay = nil
             state.drag?.phase = .fly
             overlay?.flyCopy(to: d.startFrame.origin, shrink: false)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
@@ -1056,9 +1111,15 @@ final class TaskListView: NSView {
                 self?.state.drag = nil
                 switch over {
                 case .today: a.setDate(d.ids, .when, a.today)
-                case .list(let id): a.move(d.ids, to: id)
+                case .list(let id): if a.inTrash { a.putBack(d.ids, in: id) } else { a.move(d.ids, to: id) }
+                case .completed: a.completeTasks(d.ids)
+                case .trash: a.delete(d.ids)
                 }
             }
+            return
+        }
+        if d.mode != .group {
+            endViewDrag(d, current: current, overlay: overlay)
             return
         }
         // Drop on the list: the copy flies into its slot; at 170 ms the new order is written.
@@ -1081,6 +1142,54 @@ final class TaskListView: NSView {
         }
     }
 
+    /// Upcoming: the copy's top at window y `y`, kept between 6pt above the first label and 6pt below the last row, and
+    /// the day group whose label is the last above its middle, if it takes the drop: a day, and not one after any
+    /// dragged task's deadline (dc:2463–2474).
+    private func dayTarget(ids: [EntityID], y: CGFloat, in L: TaskLayout) -> (day: CalendarDate?, y: CGFloat) {
+        let top = windowRect(CGRect(x: 0, y: 0, width: 1, height: 1), from: doc).minY
+        let first = L.groups.first.flatMap { L.labels[$0.listID] } ?? 0
+        let cy = min(max(y, top + first - 6), top + max(first, L.height - 24 - TK.M.pitch) + 6)
+        let mid = cy + TK.M.row / 2 - top
+        var pick: TaskLayout.Group?
+        for g in L.groups { if let ly = L.labels[g.listID], ly <= mid { pick = g } }
+        let p = store.projection
+        guard let g = pick, g.kind == .day, let day = g.day,
+              ids.allSatisfy({ p.task($0)?.deadline.map { day <= $0 } ?? true }) else { return (nil, cy) }
+        return (day, cy)
+    }
+
+    /// The drop in Upcoming, Completed and Trash away from the sidebar: on a day that changes a task's, the copy flies
+    /// into the gap and When is set to that day (the deadline is never touched); anywhere else it flies home and
+    /// nothing is written (dc:2491–2513).
+    private func endViewDrag(_ d: DragSession, current: WindowState.Drag, overlay: DragOverlayView?) {
+        let a = actions
+        let p = store.projection
+        if d.mode == .days, let day = current.toDay, d.ids.contains(where: { id in
+            p.task(id).flatMap { ViewItems.upDay(when: $0.when, deadline: $0.deadline) } != day
+        }), let L = currentLayout, let grabbed = d.ids.first, let y = L.y(grabbed) {
+            let slot = windowRect(CGRect(x: TK.M.rowInset, y: y, width: 10, height: TK.M.row), from: doc)
+            state.drag?.phase = .fly
+            overlay?.flyCopy(to: CGPoint(x: d.startFrame.minX, y: slot.minY), shrink: false)
+            DispatchQueue.main.asyncAfter(deadline: .now() + TK.Timer.fly) { [weak self] in
+                guard let self else { return }
+                a.setDate(d.ids, .when, day)
+                self.state.drag?.phase = .done
+                self.land(on: grabbed, overlay)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) { [weak self] in self?.state.drag = nil }
+            }
+            return
+        }
+        state.drag?.over = nil
+        state.drag?.sidebar = false
+        state.drag?.toDay = nil
+        state.drag?.phase = .fly
+        overlay?.flyCopy(to: d.startFrame.origin, shrink: false)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+            self?.state.drag = nil
+            self?.land(on: d.ids.first, overlay)
+        }
+    }
+
     /// The hand-off when the copy has flown onto its row (a drop in the list, or Esc flying it back): the row is drawn
     /// now, in the same Core Animation transaction as the copy starting to fade, so no frame shows neither. The other
     /// dragged rows, which the copy only counted, fade in as before.
@@ -1098,7 +1207,7 @@ final class TaskListView: NSView {
     }
 
     override func accessibilityLabel() -> String? {
-        state.route == .today ? "Today" : state.route.listID.map(actions.listName) ?? "Tasks"
+        actions.routeName(state.route)
     }
 
     override func accessibilityChildren() -> [Any]? {

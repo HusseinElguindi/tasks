@@ -131,6 +131,14 @@ final class DragOverlayView: NSView {
         }
     }
 
+    #if DEBUG
+    /// The copy as drawn: its presentation origin and opacity, while it's shown.
+    var debugCopy: (origin: CGPoint, opacity: Float)? {
+        guard let row = copy, !row.isHidden, let l = row.layer?.presentation() ?? row.layer else { return nil }
+        return (l.frame.origin, l.opacity)
+    }
+    #endif
+
     func endCopy() {
         copy?.isHidden = true
         model = nil

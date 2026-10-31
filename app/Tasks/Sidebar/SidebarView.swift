@@ -179,19 +179,31 @@ final class SidebarView: FlippedLayerView {
         w.makeFirstResponder(self)
     }
 
-    /// The sidebar row a task drag is over (window point, top-left origin, y down): Today unless the view is Today,
-    /// or an active list other than `groupList`. Archived lists and labels aren't targets (dc:1183–1192). Each row
-    /// takes half the 2pt gap on either side, so the target passes straight from one row to the next (v2 feedback 7).
-    func dropTarget(at windowPoint: CGPoint, groupList: EntityID?) -> WindowState.Drag.Over? {
+    /// The sidebar row a task drag of `dragged` is over (window point, top-left origin, y down): Today unless the view
+    /// is Today or the Trash; Completed (it completes them) unless the view is Completed or the Trash; the Trash (it
+    /// deletes them) unless the view is the Trash; an active list other than the one they're all in, or in the Trash
+    /// any list (it puts them back there). Upcoming, Undated, archived lists and labels aren't targets (dc:1183–1192,
+    /// dc:2445–2462). Each row takes half the 2pt gap on either side, so the target passes straight from one row to the
+    /// next (v2 feedback 7).
+    func dropTarget(at windowPoint: CGPoint, dragged: [EntityID]) -> WindowState.Drag.Over? {
         guard ui.sidebarVisible, windowPoint.x < bounds.width - 4, let p = contentPoint(fromWindowTopLeft: windowPoint),
               scroll.frame.contains(convert(p, from: content)) else { return nil }
         let half = (TK.M.pitch - SB.rowHeight) / 2
         guard let row = model.rows.first(where: { p.y >= $0.y - half && p.y < $0.y + SB.rowHeight + half }) else { return nil }
+        let trash = ui.route == .trash
         switch row.key {
         case .today:
-            return ui.route == .today ? nil : .today
+            return ui.route == .today || trash ? nil : .today
+        case .completed:
+            return ui.route == .completed || trash ? nil : .completed
+        case .trash:
+            return trash ? nil : .trash
+        case .upcoming, .undated:
+            return nil
         case .list(let id):
-            guard !row.archived, !row.draft, id != groupList, store.projection.isActive(list: id) else { return nil }
+            let proj = store.projection
+            guard !row.archived, !row.draft, proj.isActive(list: id),
+                  trash || !dragged.allSatisfy({ proj.task($0)?.list == id }) else { return nil }
             return .list(id)
         }
     }
@@ -201,6 +213,8 @@ final class SidebarView: FlippedLayerView {
         let key: SidebarModel.Key
         switch over {
         case .today: key = .today
+        case .completed: key = .completed
+        case .trash: key = .trash
         case .list(let id): key = .list(id)
         }
         guard let row = model.row(key) else { return nil }
@@ -667,7 +681,8 @@ final class SidebarView: FlippedLayerView {
         a.endEdits()
         a.focus(.sidebar)
         switch hit(at: p) {
-        case .row(.today)?:
+        case .row(let key)? where !key.isList:
+            // Today and the views have no menu (§22).
             return nil
         case .row(.list(let id))?:
             guard store.projection.list(id) != nil else { return nil }
@@ -903,7 +918,7 @@ final class SidebarView: FlippedLayerView {
 
     var accessibilityRows: [AXRow] {
         model.rows.filter { !$0.draft }.sorted { $0.y < $1.y }.map { r in
-            AXRow(key: r.key, name: r.key == .today ? "Today" : r.name, count: r.hint ? "" : r.count, frame: rowRect(r.y), selected: r.current)
+            AXRow(key: r.key, name: r.key.viewName ?? r.name, count: r.hint ? "" : r.count, frame: rowRect(r.y), selected: r.current)
         }
     }
 
@@ -928,15 +943,15 @@ final class SidebarView: FlippedLayerView {
             let pres = layer.presentation() ?? layer
             let name: String
             switch key {
-            case .today: name = "Today"
             case .list(let id): name = p.list(id)?.name ?? "draft"
+            default: name = key.viewName ?? ""
             }
             let tc = pres.sublayers?.compactMap { $0 as? TextLayer }.first?.presentation()?.foregroundColor
             out.append("\(name) y=\(String(format: "%.1f", pres.position.y)) op=\(String(format: "%.2f", pres.opacity))\(leaving[key] != nil ? " leaving" : "") title=\(tc.map { NSColor(cgColor: $0)?.description ?? "" } ?? "")")
         }
         out.append("label Lists y=\(listsLabel.presentation()?.position.y ?? listsLabel.position.y) Archive y=\(archiveLabel.presentation()?.position.y ?? archiveLabel.position.y) hidden=\(archiveLabel.isHidden) chevron=\(archiveLabel.button.glyph.presentation()?.value(forKeyPath: "transform.rotation.z") ?? 0) reveal=\(listsLabel.button.presentation()?.opacity ?? 0)/\(archiveLabel.button.presentation()?.opacity ?? 0)")
         if let lift { out.append("lift y=\((lift.presentation() ?? lift).position.y) x=\((lift.presentation() ?? lift).position.x)") }
-        out.append("route=\(ui.route.listID.flatMap { p.list($0)?.name } ?? "Today") sel=\(ui.selection.count) hover=\(String(describing: hover)) button=\(String(describing: hoverButton)) drag=\(String(describing: ui.drag)) hints=\(ui.cmdHints) rename=\(String(describing: ui.rename)) focus=\(ui.focus) fr=\(window?.firstResponder.map { "\(type(of: $0))" } ?? "-")")
+        out.append("route=\(ui.route.listID.flatMap { p.list($0)?.name } ?? ui.route.viewName ?? "") sel=\(ui.selection.count) hover=\(String(describing: hover)) button=\(String(describing: hoverButton)) drag=\(String(describing: ui.drag)) hints=\(ui.cmdHints) rename=\(String(describing: ui.rename)) focus=\(ui.focus) fr=\(window?.firstResponder.map { "\(type(of: $0))" } ?? "-")")
         if let f = field { out.append("field frame=\(f.frame) text='\(f.stringValue)'") }
         return out.joined(separator: "\n")
     }
