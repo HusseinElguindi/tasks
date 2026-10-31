@@ -216,7 +216,7 @@ body{margin:0}
 <sc-if value="{{stage.show}}">
 <div class="stage" aria-label="Prototype controls">
 <span class="sl">Prototype</span>
-<span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
+<span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Edit tasks</span><span class="seg"><sc-for list="{{stage.editTasks}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
 <span class="sn">The browser keeps ⌘N, ⌘T and ⌘1–9, so ⌥N, ⌥T and ⌃1–9 also work here.</span>
 <span style="flex: 1;"></span>
 <button class="lnk" type="button" data-k="reset" data-v="1" onClick="{{onStage}}">Reset</button>
@@ -228,7 +228,7 @@ body{margin:0}
 <div class="keys" role="dialog" aria-label="Keyboard shortcuts">
 <div class="kh">Tasks</div>
 <div class="kr"><span class="kk">⌘N (⌥N here)</span><span>New task, opened in the details with the cursor in its title. Return goes on to the notes; Esc is done.</span></div>
-<div class="kr"><span class="kk">↩ · double-click</span><span>Rename. Esc cancels.</span></div>
+<div class="kr"><span class="kk">↩ · double-click</span><span>Edit the title: in the details, or in the row, as the strip's Edit tasks says. Esc cancels.</span></div>
 <div class="kr"><span class="kk">Space · ⌘K</span><span>Complete or uncomplete</span></div>
 <div class="kr"><span class="kk">⌘D · ›</span><span>Show or hide details</span></div>
 <div class="kr"><span class="kk">⌘S · ⇧⌘D</span><span>When… · Deadline… (type tom, fri, 3d)</span></div>
@@ -1034,7 +1034,7 @@ class Component extends DCLogic {
     const moveItems = lists.map((l, i) => ({ label: l.name, keys: i < 9 ? '⌘' + (i + 1) : '', tile: true, color: l.color, mono: monogram(l.name), check: one && t.list === l.id, disabled: tasks.every((x) => x.list === l.id), action: () => this.moveTasks(ids, l.id) }));
     const items = [];
     if (one) items.push({ label: 'Show Details', keys: '⌘D', action: () => { this.select([t.id]); this.openDetail(); } });
-    if (one) items.push({ label: 'Rename', keys: '↩', action: () => this.startRename(t.id, { selectAll: true }) });
+    if (one) items.push({ label: 'Rename', keys: '↩', action: () => this.editTask(t.id, { selectAll: true }) });
     if (one && this.state.route.kind === 'today') items.push({ label: 'Show in ' + this.list(t.list).name, action: () => this.go({ kind: 'list', id: t.list }, { sel: [t.id] }) });
     items.push({ sep: true });
     items.push({ label: anyOpen ? (one ? 'Complete' : 'Complete ' + n + ' Tasks') : 'Mark as Not Done', keys: '⌘K', action: () => this.toggleComplete(ids) });
@@ -1416,7 +1416,7 @@ class Component extends DCLogic {
         return;
       }
       case 'ArrowLeft': if (s.focus === 'list') { e.preventDefault(); this.setState({ focus: 'sidebar' }); } return;
-      case 'Enter': e.preventDefault(); if (ids.length === 1) this.startRename(ids[0], { selectAll: true }); else if (!ids.length) this.moveSel(1, false); return;
+      case 'Enter': e.preventDefault(); if (ids.length === 1) this.editTask(ids[0], { selectAll: true }); else if (!ids.length) this.moveSel(1, false); return;
       case ' ': e.preventDefault(); this.toggleComplete(ids); return;
       case 'Escape':
         e.preventDefault();
@@ -1533,7 +1533,7 @@ class Component extends DCLogic {
       const r = document.caretRangeFromPoint(e.clientX, e.clientY);
       if (r && span.contains(r.startContainer)) caret = r.startOffset;
     }
-    this.startRename(id, caret == null ? { selectAll: false, caret: t.title.length } : { caret });
+    this.editTask(id, caret == null ? { selectAll: false, caret: t.title.length } : { caret });
   };
   onRowCtx = (e) => {
     e.preventDefault();
@@ -1782,7 +1782,7 @@ class Component extends DCLogic {
   // Prototype strip
   onStage = (e) => {
     const k = e.currentTarget.dataset.k, v = e.currentTarget.dataset.v;
-    if (k === 'theme') this.instant({ theme: v });
+    if (k === 'theme') this.instant({ theme: v }); else if (k === 'editTasks') this.setEditTasks(v);
     else if (k === 'reset') { const seed = makeSeed(this.today); this.undoStack = []; this.redoStack = []; this.instant({ lists: seed.lists, tasks: seed.tasks, sel: [], edit: null, picker: null, menu: null, pins: {}, route: this.routeFromProp(this.props.start, seed.lists), detail: 'closed', notice: null, sbVisible: true }); }
     else if (k === 'keys') this.setState({ keysOpen: !this.state.keysOpen });
     this.focusRoot();
@@ -2058,7 +2058,7 @@ class Component extends DCLogic {
 
     const seg = (k, opts) => opts.map(([v, label]) => ({ k, v, label, cls: s[k] === v ? 'on' : '' }));
     const stage = { show: stageOn,
-      theme: seg('theme', [['dark', 'Dark'], ['light', 'Light']]),
+      theme: seg('theme', [['dark', 'Dark'], ['light', 'Light']]), editTasks: [['detail', 'Open in detail pane'], ['list', 'Rename in the list']].map(([v, label]) => ({ k: 'editTasks', v, label, cls: this.editTasksMode() === v ? 'on' : '' })),
     };
 
     return {
@@ -2141,6 +2141,28 @@ class Component extends DCLogic {
   onDpDivDown = (e) => this.divDown('dp', e);
   onSbDivDbl = () => this.divReset('sb');
   onDpDivDbl = () => this.divReset('dp');
+
+  // ---------- Edit tasks (v2 feedback 8): Settings ▸ Edit tasks in the app; the strip stands in for it here ----------
+  // What double-click, Return and Rename in the menu do to a task. 'detail' (the default) shows it in the detail pane
+  // with the caret at the end of its title (when the pane already shows it, only the title takes the caret); 'list'
+  // renames it in its row. Kept in localStorage like the widths.
+  editTasksMode() {
+    if (this.state.editTasks) return this.state.editTasks;
+    try { return localStorage.getItem('tasks-v2.editTasks') === 'list' ? 'list' : 'detail'; } catch (e) { return 'detail'; }
+  }
+  setEditTasks(v) {
+    try { if (v === 'detail') localStorage.removeItem('tasks-v2.editTasks'); else localStorage.setItem('tasks-v2.editTasks', v); } catch (e) {}
+    this.setState({ editTasks: v });
+  }
+  editTask(id, opts) {
+    if (this.editTasksMode() !== 'detail') { this.startRename(id, opts); return; }
+    const t = this.task(id);
+    if (!t || t.deleted) return;
+    this.endEdit();
+    this.setState({ sel: [id], anchor: id, cursor: id, focus: 'detail' });
+    this.openDetail();
+    this.focusTitle();
+  }
 }
 
 </script>
