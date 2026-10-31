@@ -17,6 +17,7 @@ let package = Package(
             dependencies: ["TasksCore"],
             resources: [.copy("Resources")]
         ),
-        .testTarget(name: "TasksCLITests", dependencies: ["TasksCLI"]),
+        // tasks.d.ts is the golden copy CodeModeTests compares against, read by path.
+        .testTarget(name: "TasksCLITests", dependencies: ["TasksCLI"], exclude: ["tasks.d.ts"]),
     ]
 )
