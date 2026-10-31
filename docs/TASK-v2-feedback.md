@@ -278,3 +278,11 @@ So a single completion click produced Complete and then, about 0.5 s later, an u
 The undo names should also stay honest: one Complete, one undo entry.
 
 Commit, rebuild Release and report back.
+
+## 19. Trash shows no dates
+
+The user decided that rows in Trash show no When and no Deadline: no text, no badge and no checkbox ring. This matches Completed.
+- Keep the dates in the detail pane for a trashed task, read-only, so they can still be seen.
+- Update §24 (or §22's Trash rules) and the prototype.
+
+Commit, rebuild Release and report back.
