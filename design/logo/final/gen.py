@@ -3,11 +3,13 @@
     uv run --with shapely python design/logo/final/gen.py
 
 Writes, next to this file:
-  svg/icon-{light,dark}.svg          1024 master: Big Sur grid, 824 body at 100, mark at full detail
-  svg/icon-{light,dark}-small.svg    the cut used below 60px: rings become dots, strokes thicken
-  svg/mark-{light,dark}[-small].svg  the bare mark, no body
-  AppIcon.icon/                      Icon Composer document (macOS 26+): background fill and four layers,
-                                     each with light and dark colours; tinted and clear are derived by the system
+  svg/icon-dark.svg                  1024 master: Big Sur grid, 824 body at 100, mark at full detail
+  svg/icon-dark-small.svg            the cut used below 60px: rings become dots, strokes thicken
+  svg/mark-dark[-small].svg          the bare mark, no body
+  AppIcon.icon/                      Icon Composer document (macOS 26+): background fill and four layers
+
+The icon is dark only: the dark colours are the default in every appearance, light included. Tinted (and clear, which
+follows it) has its own greys.
 
 Geometry is in the 1024 canvas used on the design canvas (body 100..924). Everything is filled outlines (no strokes),
 so every renderer, Icon Composer included, draws the same thing.
@@ -20,7 +22,6 @@ from shapely.ops import unary_union
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 COLORS = {
-    'light': {'top': '#FFFFFF', 'bot': '#ECECED', 'rim': 'rgba(0,0,0,0.08)', 'head': '#0969DA', 'bar': '#1F2328', 'rings': '#626568', 'trail': '#A9ACAF'},
     'dark': {'top': '#2A2A2A', 'bot': '#161616', 'rim': 'rgba(255,255,255,0.10)', 'head': '#2F81F7', 'bar': '#E6EDF3', 'rings': '#A8ADB1', 'trail': '#6D7072'},
 }
 
@@ -134,18 +135,16 @@ def main():
         write(os.path.join(ic, 'Assets', names[k] + '.svg'),
               '<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">\n'
               '<path fill="#000000" fill-rule="evenodd" d="%s"/>\n</svg>\n' % path_d(m[k], xf))
-    L, D = COLORS['light'], COLORS['dark']
+    D = COLORS['dark']
     doc = {
         'fill-specializations': [
-            {'value': {'linear-gradient': [hex_to_ic(L['top']), hex_to_ic(L['bot'])]}},
-            {'appearance': 'dark', 'value': {'linear-gradient': [hex_to_ic(D['top']), hex_to_ic(D['bot'])]}},
+            {'value': {'linear-gradient': [hex_to_ic(D['top']), hex_to_ic(D['bot'])]}},
         ],
         'groups': [{
             # Icon Composer lists layers front to back.
             'layers': [{
                 'fill-specializations': [
-                    {'value': {'solid': hex_to_ic(L[k])}},
-                    {'appearance': 'dark', 'value': {'solid': hex_to_ic(D[k])}},
+                    {'value': {'solid': hex_to_ic(D[k])}},
                     # Tinted is monochrome: the system reads each layer's lightness, so the head and its bar are white
                     # and the history steps down, the same order as in colour. (Icon Composer has no "clear" key.)
                     {'appearance': 'tinted', 'value': {'solid': hex_to_ic(MONO[k])}},
