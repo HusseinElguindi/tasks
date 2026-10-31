@@ -826,3 +826,23 @@ rejected change isn't amber, server errors read as offline, and the dot waits 3 
   - **The tooltip on screen.** Hover can't be posted; its text was read from the model.
   - **VoiceOver itself.** The labels and values were read back, not heard.
   - **A real network drop and a real recovery.** The failures were made by the debug transport.
+||||||| parent of 9116f12 (notes: v2 feedback 20, list switches instant again)
+
+## List switches are instant again (v2 feedback 20)
+
+- **What flickered:**
+  - **Text crossfading.** A `TextLayer` redraws during the commit, after the transaction that set its string has
+    closed, so Core Animation crossfaded old text into new over 0.25 s (twice, about 480 ms in all).
+    - It hit the date chips' labels, the large title, and the two sidebar names whose look changes with the
+      selection, on every switch.
+    - The rows' own text layers had no actions, so their titles, hints and list names didn't fade.
+    - The fix: `TextLayer` has no implicit `contents` action.
+  - **The band's title.** Leaving a scrolled list faded the *new* list's name out of the band over 150 ms. The band
+    now jumps to the new list's state when the route changes, and still fades as you scroll.
+- **Checked** with `act:frames:N:/f[:snap]`, which logs every layer with an animation running and every visible row
+  and heading as drawn, frame by frame (with snapshots for the SwiftUI band):
+  - **Switches:** School, PHYS 122 (one heading collapsed), Today, Upcoming, Home, Completed, Trash, and a scrolled
+    list, in dark and light.
+  - **Result:** no animation in any of 80 frames, and every row, heading, date, ring, hint, count and the title
+    change in one frame. In the band, the frame after the old one is the new list's final state.
+  - **List-switch benchmark:** 2.0–3.6 ms of work and 5.0–9.3 ms to first rows (2.1–4.0 and 5.5–10.0 before).
