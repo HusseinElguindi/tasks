@@ -307,6 +307,42 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
       Its line numbers are unchanged.
     - VoiceOver doesn't announce the header (it's not in the sidebar's accessibility elements).
 
+## Markdown notes (design/MARKDOWN.md)
+
+Built to the spec and the prototype (`design/prototype-markdown/`); §11 of the spec lists where the build differs.
+
+- **Pieces:**
+  - TasksCore `Markdown` scans lines and inline tokens over UTF-16 offsets, with the prototype's rules;
+    `NotesSummary` (on `TaskModel`, worked out per notes change) feeds the row's hint.
+  - `Detail/NotesMarkdown.swift` styles one line at a time: hidden marks are zero-advance glyphs; dots, numbers,
+    boxes, quote bars, code backgrounds and link underlines are drawn by the layout manager.
+  - `Detail/NotesView.swift` is the editor: the session, keys, paste, boxes, hover, VoiceOver.
+  - `Detail/NotesPaste.swift` turns RTF (or HTML) into Markdown.
+- **Checked in the scratch app** (screen locked: in-process renders, and new DebugScript steps `ncaret:`, `type:`,
+  `nbox:`, `npaste:` (a private pasteboard, never the user's clipboard), `nhover:`, `nax:`, `nlog:`, `nfrag:`,
+  `nbench:`, `mktask:`, `undo`):
+  - the seed notes against the prototype in headless Chrome, at rest and with the caret in a code block, dark and
+    light: the same layout, line for line;
+  - the marks near the caret: a token's, a heading's `#`, both fences of a block;
+  - typing, Return continuing a list or checklist, Return on an empty item ending it, Return at an item's start,
+    Backspace at an item's start, Tab and ⇧Tab (two levels at most, ⇧Tab at the left edge back to the title), ⌘B on a
+    word, Esc committing one "Edit Notes";
+  - a box at rest (its own undo step in the window's undo) and in a session (a step of the notes' undo, nothing
+    written until the session commits);
+  - pastes: a URL over a selection, a block mid-line, RTF with a heading, bold, a link, mono and a list;
+  - a link's hover (full underline, the address in the tooltip after 600 ms) and a box's;
+  - VoiceOver's value (the text without marks) and the boxes as checkboxes;
+  - the row hint: the glyph, "2/5", and a long title fading into the hint only when it's cut off.
+- **Budgets** (an optimized build, `nbench:`): a 20,000-character note opens in about 25 ms (scan 0.15, styling 11.5,
+  TextKit layout 13); a keystroke is 0.4 ms median (the session's first, about 12 ms, once); the scan alone is
+  0.05 ms in TasksCore's release test.
+- **Not checked:**
+  - with the screen locked: the marks' 100 ms fade, the boxes' press, check and pop animations, frame by frame;
+  - real typing with IME and dead keys (NSTextView's own marked text; restyling waits while there is any);
+  - a real drag-select (NSTextView's mouse tracking blocks a background script, so marks waiting for the button to
+    come up is only by the code);
+  - HTML-only paste (WebKit), and pastes from real apps' RTF.
+
 ## Notes for whoever drives the UI next
 
 - Scratch tools (not committed) are in the session scratchpad's `tools/`: `ui` (window-relative HID input that only

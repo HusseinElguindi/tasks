@@ -283,6 +283,8 @@ private struct SingleDetail: View {
     let viewport: CGFloat
     @State private var liveTitle: String?
     @State private var notesTick = 0
+    /// The notes' length while they're being edited, for the footer's count.
+    @State private var notesLength: Int?
     @Environment(\.tk) private var tk
 
     var body: some View {
@@ -301,7 +303,8 @@ private struct SingleDetail: View {
                     .padding(.top, 10)
                     .dimmed(inert)
                 NotesField(store: store, window: window, refs: refs, id: item.id, notes: item.notes, inert: inert,
-                           palette: tk, layoutTick: notesTick, onLayoutChange: { notesTick &+= 1 })
+                           palette: tk, layoutTick: notesTick, onLayoutChange: { notesTick &+= 1 },
+                           onLength: { if notesLength != $0 { notesLength = $0 } })
                     .padding(.top, 12)
                     .dimmed(inert)
                 Text(meta)
@@ -332,10 +335,18 @@ private struct SingleDetail: View {
         }
     }
 
-    /// "Created Oct 26 · Completed Oct 30" (dc:1964).
+    /// "Created Oct 26 · Completed Oct 30" (dc:1964), and the notes' length from 18,000 characters: " · 19,412 /
+    /// 20,000" (design/MARKDOWN.md §8, dc:2624).
     private var meta: String {
         func day(_ ms: Int) -> String { DateLabel.monthDay(CalendarDate(Date(timeIntervalSince1970: TimeInterval(ms) / 1000))) }
-        return "Created " + day(item.createdAt) + (item.completedAt.map { " · Completed " + day($0) } ?? "")
+        var s = "Created " + day(item.createdAt) + (item.completedAt.map { " · Completed " + day($0) } ?? "")
+        let n = notesLength ?? item.notes.utf16.count
+        if n >= NotesStyle.nearLength {
+            let f = NumberFormatter()
+            f.numberStyle = .decimal
+            s += " · " + (f.string(from: n as NSNumber) ?? "\(n)") + " / " + (f.string(from: NotesStyle.maxLength as NSNumber) ?? "20,000")
+        }
+        return s
     }
 }
 

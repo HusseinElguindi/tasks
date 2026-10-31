@@ -15,6 +15,8 @@ struct RowModel: Equatable {
     var done: Bool
     var draft: Bool
     var chips: [Chip] = []
+    /// The notes' hint after the title: a glyph, or the checklist's count (design/MARKDOWN.md §7).
+    var notes = NotesSummary()
     /// Today's Completed group: the list's name at the right (css:172).
     var whereText: String?
     var selected = false
@@ -43,6 +45,9 @@ final class TaskRowView: NSView {
     let check = CheckLayer()
     private let title = TextLayer()
     private let titleMask = FadeMask()
+    /// The notes hint, 6 after the title's text: the three-line glyph, or a box glyph and "2/5" (md:67–77).
+    private let hintGlyph = GlyphLayer(.notes, size: 11)
+    private let hintCount = TextLayer()
     private let strike = CALayer()
     private let whereLabel = TextLayer()
     private var chipLayers: [ChipLayer] = []
@@ -72,12 +77,14 @@ final class TaskRowView: NSView {
         layer.addSublayer(ring)
         layer.addSublayer(check)
         layer.addSublayer(title)
+        layer.addSublayer(hintGlyph)
+        layer.addSublayer(hintCount)
         layer.addSublayer(strike)
         layer.addSublayer(whereLabel)
         layer.addSublayer(open)
         open.setInstant { open.opacity = 0 }
         open.reveal(false, animated: false)
-        for l in [selection, ring, check, title, strike, whereLabel, open] as [CALayer] { l.actions = Self.noActions }
+        for l in [selection, ring, check, title, hintGlyph, hintCount, strike, whereLabel, open] as [CALayer] { l.actions = Self.noActions }
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -180,16 +187,26 @@ final class TaskRowView: NSView {
             whereLabel.isHidden = true
         }
 
-        // The title: flex 1, nudged up 0.5, its last 24pt fading out (css:166–168).
+        // The title: flex 1, nudged up 0.5. With notes, their hint follows the text 6 later and stays whole: the title
+        // shrinks first. Its last 24pt fade out only when it's cut off (css:166–168, md:67–77).
         let titleX = TK.M.rowPadLeft + TK.M.check + TK.M.titleGap
-        let titleW = max(0, right - titleX)
+        let slot = max(0, right - titleX)
         let color = (m.done || m.untitled) ? palette.ink3 : palette.ink
         let text = m.untitled ? "New Task" : m.title
         title.set(text, font: TK.Font.body, color: same ? (title.foregroundColor.flatMap(NSColor.init(cgColor:)) ?? color) : color)
+        let hintW = layoutHint(m, palette)
+        let room = hintW > 0 ? max(0, slot - hintW - 6) : slot
+        let clipped = title.textWidth > room + 0.5
+        let titleW = clipped ? room : min(room, ceil(title.textWidth) + 1)
         title.place(x: titleX, lineTop: (TK.M.row - 16) / 2 - 0.5, lineHeight: 16, width: titleW)
-        titleFrame = CGRect(x: titleX, y: (TK.M.row - 16) / 2 - 0.5, width: titleW, height: 16)
-        titleMask.update(width: titleW, height: title.bounds.height, fade: TK.M.titleFade)
+        titleFrame = CGRect(x: titleX, y: (TK.M.row - 16) / 2 - 0.5, width: slot, height: 16)
+        titleMask.update(width: titleW, height: title.bounds.height, fade: clipped ? TK.M.titleFade : 0)
         title.isHidden = m.renaming
+        let hintX = titleX + (clipped ? room : min(room, title.textWidth)) + 6
+        hintGlyph.position = CGPoint(x: hintX + (m.notes.total > 0 ? 0 : 1.5) + 5.5, y: TK.M.row / 2)
+        hintCount.place(x: hintX + 15, lineTop: (TK.M.row - 14) / 2, lineHeight: 14, width: hintCount.textWidth + 2)
+        hintGlyph.isHidden = hintW == 0 || m.renaming
+        hintCount.isHidden = m.notes.total == 0 || hintW == 0 || m.renaming
         // The strike is instant; the color takes 200 ms (css:169–171).
         strike.isHidden = !m.done || m.renaming
         strike.backgroundColor = palette.inkQ.cgColor
@@ -211,7 +228,8 @@ final class TaskRowView: NSView {
                 layer?.animate("opacity", to: 1, TK.CA.fadeOutT)
             }
         }
-        setAccessibilityLabel(([text] + m.chips.map(\.content.text) + [m.whereText].compactMap { $0 }).joined(separator: ", "))
+        let notesLabel = !m.notes.hasNotes ? nil : m.notes.total > 0 ? "\(m.notes.checked) of \(m.notes.total) checked" : "Has notes"
+        setAccessibilityLabel(([text, notesLabel].compactMap { $0 } + m.chips.map(\.content.text) + [m.whereText].compactMap { $0 }).joined(separator: ", "))
         setAccessibilitySelected(m.selected)
     }
 
@@ -252,6 +270,27 @@ final class TaskRowView: NSView {
         for (i, c) in chipLayers.enumerated() where i < chipFrames.count {
             c.pressed = part == .chip(chipFrames[i].0)
         }
+    }
+
+    nonisolated(unsafe) static let hintFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)   // .ncount 500 11/14
+
+    /// Sets the hint's glyph, count and colors, and returns its width (0 without notes): the glyph alone in a 14pt
+    /// box (`ink-quaternary`), or the box glyph, 4, and "2/5" in `ink-tertiary`, `ink-quaternary` once all are checked
+    /// or on a done row (md:74–77).
+    private func layoutHint(_ m: RowModel, _ p: TK.Palette) -> CGFloat {
+        guard m.notes.hasNotes, !m.untitled || !m.draft else { return 0 }
+        if m.notes.total > 0 {
+            let quiet = m.done || m.notes.checked == m.notes.total
+            let c = quiet ? p.inkQ : p.ink3
+            if hintGlyph.glyph != .checklist { hintGlyph.set(.checklist, size: 11) }
+            hintGlyph.color = c
+            let text = "\(m.notes.checked)/\(m.notes.total)"
+            hintCount.set(text, font: Self.hintFont, color: c)
+            return 11 + 4 + TextLayer.width(text, font: Self.hintFont)
+        }
+        if hintGlyph.glyph != .notes { hintGlyph.set(.notes, size: 11) }
+        hintGlyph.color = p.inkQ
+        return 14
     }
 
     private func updateOpen(animated: Bool) {

@@ -2,356 +2,59 @@ import AppKit
 import SwiftUI
 import TasksCore
 
-// The detail pane's notes (§7 Notes, css:276–281, dc:1635–1655): read as inline Markdown, edited as the raw text in the
-// same font and place. One NSTextView does both, so switching never moves a line.
-
-// MARK: - Inline Markdown (dc:481–497): bold, italic, `code` and links, line by line
-
-enum InlineMarkdown {
-    enum Kind: Equatable { case plain, bold, italic, code, link(String) }
-
-    struct Segment: Equatable {
-        var kind: Kind
-        var text: String
-    }
-
-    private static let token = try! NSRegularExpression(
-        pattern: #"(\*\*[^*\n]+\*\*|`[^`\n]+`|\[[^\]\n]+\]\([^)\s]+\)|\*[^*\n]+\*|_[^_\n]+_)"#)
-    private static let link = try! NSRegularExpression(pattern: #"^\[([^\]]+)\]\(([^)]+)\)$"#)
-
-    static func segments(_ src: String) -> [Segment] {
-        let ns = src as NSString
-        var out: [Segment] = []
-        var last = 0
-        for m in token.matches(in: src, range: NSRange(location: 0, length: ns.length)) {
-            if m.range.location > last {
-                out.append(.init(kind: .plain, text: ns.substring(with: NSRange(location: last, length: m.range.location - last))))
-            }
-            let tok = ns.substring(with: m.range) as NSString
-            func inner(_ n: Int) -> String { tok.substring(with: NSRange(location: n, length: tok.length - 2 * n)) }
-            if tok.hasPrefix("**") {
-                out.append(.init(kind: .bold, text: inner(2)))
-            } else if tok.hasPrefix("`") {
-                out.append(.init(kind: .code, text: inner(1)))
-            } else if tok.hasPrefix("["), let l = link.firstMatch(in: tok as String, range: NSRange(location: 0, length: tok.length)) {
-                out.append(.init(kind: .link(tok.substring(with: l.range(at: 2))), text: tok.substring(with: l.range(at: 1))))
-            } else {
-                out.append(.init(kind: .italic, text: inner(1)))
-            }
-            last = NSMaxRange(m.range)
-        }
-        if last < ns.length { out.append(.init(kind: .plain, text: ns.substring(from: last))) }
-        return out
-    }
-}
-
-// MARK: - Type
-
-extension NSAttributedString.Key {
-    /// A `code` span: drawn on `fill-control`, padding 1 / 4, radius 4 (css:281).
-    static let notesCode = NSAttributedString.Key("tasks.notes.code")
-    /// A link's href; drawn `accent-text`, underlined 1pt at offset 2 (css:280).
-    static let notesLink = NSAttributedString.Key("tasks.notes.link")
-}
-
-/// CSS line boxes in TextKit. The browser rounds the font's ascent and descent and splits the leading evenly (13/19
-/// puts the baseline 14.5 down, measured in Chromium); TextKit puts a forced line height's extra space above the
-/// glyphs. `baselineOffset` moves the glyphs up to where the browser has them.
-@MainActor
-enum LineBox {
-    /// The baseline's distance from the top of a CSS line box `lineHeight` tall.
-    static func cssBaseline(_ font: NSFont, lineHeight: CGFloat) -> CGFloat {
-        let a = font.ascender.rounded(), d = (-font.descender).rounded()
-        return a + (lineHeight - a - d) / 2
-    }
-
-    /// Where TextKit puts the baseline in a line forced to `lineHeight` (measured once per font and height).
-    static func textKitBaseline(_ font: NSFont, lineHeight: CGFloat) -> CGFloat {
-        let key = "\(font.fontName)|\(font.pointSize)|\(lineHeight)"
-        if let b = cache[key] { return b }
-        let ps = NSMutableParagraphStyle()
-        ps.minimumLineHeight = lineHeight
-        ps.maximumLineHeight = lineHeight
-        let storage = NSTextStorage(string: "Xg", attributes: [.font: font, .paragraphStyle: ps])
-        let lm = NSLayoutManager()
-        storage.addLayoutManager(lm)
-        let tc = NSTextContainer(size: NSSize(width: 1000, height: 1000))
-        tc.lineFragmentPadding = 0
-        lm.addTextContainer(tc)
-        lm.ensureLayout(for: tc)
-        let b = lm.lineFragmentRect(forGlyphAt: 0, effectiveRange: nil).minY + lm.location(forGlyphAt: 0).y
-        cache[key] = b
-        return b
-    }
-
-    static func baselineOffset(_ font: NSFont, lineHeight: CGFloat) -> CGFloat {
-        textKitBaseline(font, lineHeight: lineHeight) - cssBaseline(font, lineHeight: lineHeight)
-    }
-
-    static func paragraph(lineHeight: CGFloat) -> NSMutableParagraphStyle {
-        let ps = NSMutableParagraphStyle()
-        ps.minimumLineHeight = lineHeight
-        ps.maximumLineHeight = lineHeight
-        return ps
-    }
-
-    private static var cache: [String: CGFloat] = [:]
-}
-
-/// The notes' text: 13/19 `ink` (css:276–277), tabs every 8 spaces like the browser's `tab-size: 8`.
-@MainActor
-enum NotesStyle {
-    static let lineHeight: CGFloat = 19
-    static var font: NSFont { TK.Font.body }
-
-    static var paragraph: NSParagraphStyle {
-        let ps = LineBox.paragraph(lineHeight: lineHeight)
-        ps.tabStops = []
-        ps.defaultTabInterval = 8 * (" " as NSString).size(withAttributes: [.font: font]).width
-        return ps
-    }
-
-    static func base(_ tk: TK.Palette) -> [NSAttributedString.Key: Any] {
-        [.font: font, .foregroundColor: tk.ink, .paragraphStyle: paragraph,
-         .baselineOffset: LineBox.baselineOffset(font, lineHeight: lineHeight)]
-    }
-
-    static func placeholder(_ tk: TK.Palette) -> NSAttributedString {
-        var a = base(tk)
-        a[.foregroundColor] = tk.ink3
-        return NSAttributedString(string: "Notes", attributes: a)
-    }
-
-    /// The reading view: inline Markdown, or "Notes" in `ink-tertiary` when there are none (css:278).
-    static func reading(_ notes: String, _ tk: TK.Palette) -> NSAttributedString {
-        guard !notes.isEmpty else { return placeholder(tk) }
-        let base = base(tk)
-        let out = NSMutableAttributedString()
-        var codeRanges: [NSRange] = []
-        for seg in InlineMarkdown.segments(notes) {
-            var a = base
-            switch seg.kind {
-            case .plain: break
-            case .bold: a[.font] = NSFont.systemFont(ofSize: font.pointSize, weight: .bold)
-            case .italic: a[.font] = italic
-            case .code:
-                a[.font] = TK.Font.code
-                a[.notesCode] = true
-                // The mono font sits on the same baseline as the text around it.
-                a[.baselineOffset] = LineBox.baselineOffset(font, lineHeight: lineHeight)
-            case .link(let href):
-                a[.foregroundColor] = tk.accentText
-                a[.notesLink] = href
-            }
-            let start = out.length
-            out.append(NSAttributedString(string: seg.text, attributes: a))
-            if seg.kind == .code { codeRanges.append(NSRange(location: start, length: out.length - start)) }
-        }
-        // `padding: 0 4px` on an inline box: 4pt before and after the code's text, as kerning on the characters
-        // either side of its start and on its last character.
-        let s = out.string as NSString
-        for r in codeRanges where r.length > 0 {
-            if r.location > 0, s.character(at: r.location - 1) != 10 {
-                out.addAttribute(.kern, value: codePad, range: NSRange(location: r.location - 1, length: 1))
-            }
-            out.addAttribute(.kern, value: codePad, range: NSRange(location: NSMaxRange(r) - 1, length: 1))
-        }
-        return out
-    }
-
-    nonisolated static let codePad: CGFloat = 4
-
-    private static var italic: NSFont {
-        let d = font.fontDescriptor.withSymbolicTraits(.italic)
-        return NSFont(descriptor: d, size: font.pointSize) ?? font
-    }
-
-    /// An href as typed; one without a scheme opens as https.
-    static func url(_ href: String) -> URL? {
-        guard let u = URL(string: href) else { return nil }
-        if u.scheme != nil { return u }
-        return URL(string: "https://" + href)
-    }
-}
-
-// MARK: - Layout manager: code backgrounds and link underlines
-
-/// Draws a `code` span's rounded fill (its content area, the mono font's rounded ascent and descent, plus 1 / 4
-/// padding) and a link's 1pt underline 2pt under the baseline (`text-underline-offset: 2px`, measured in Chromium),
-/// both under the glyphs, as the browser paints them.
-final class NotesLayoutManager: NSLayoutManager {
-    var codeFill: NSColor = TK.Palette.dark.fillControl
-    var linkColor: NSColor = TK.Palette.dark.accentText
-
-    override func drawBackground(forGlyphRange glyphsToShow: NSRange, at origin: NSPoint) {
-        super.drawBackground(forGlyphRange: glyphsToShow, at: origin)
-        guard let storage = textStorage, storage.length > 0 else { return }
-        let chars = characterRange(forGlyphRange: glyphsToShow, actualGlyphRange: nil)
-        let mono = TK.Font.code
-        let monoAscent = mono.ascender.rounded(), monoDescent = (-mono.descender).rounded()
-        storage.enumerateAttribute(.notesCode, in: chars) { value, range, _ in
-            guard value != nil else { return }
-            codeFill.setFill()
-            spans(of: range) { line, x0, x1, baseline, first, _ in
-                let left = first ? max(line.minX, x0 - NotesStyle.codePad) : x0
-                let r = CGRect(x: origin.x + left, y: origin.y + baseline - monoAscent - 1,
-                               width: x1 - left, height: monoAscent + monoDescent + 2)
-                NSBezierPath(roundedRect: r, xRadius: 4, yRadius: 4).fill()
-            }
-        }
-        storage.enumerateAttribute(.notesLink, in: chars) { value, range, _ in
-            guard value != nil else { return }
-            linkColor.setFill()
-            spans(of: range) { _, x0, x1, baseline, _, last in
-                // The last glyph's kerning (a code span's padding) isn't underlined.
-                let end = last ? x1 - trailingKern(range) : x1
-                CGRect(x: origin.x + x0, y: origin.y + baseline + 2, width: end - x0, height: 1).fill()
-            }
-        }
-    }
-
-    private func trailingKern(_ range: NSRange) -> CGFloat {
-        guard let storage = textStorage, range.length > 0 else { return 0 }
-        return storage.attribute(.kern, at: NSMaxRange(range) - 1, effectiveRange: nil) as? CGFloat ?? 0
-    }
-
-    /// Each line's piece of `range`: its line fragment, the x span (container coordinates), the baseline, and whether
-    /// it's the first / last piece.
-    private func spans(of range: NSRange, _ body: (CGRect, CGFloat, CGFloat, CGFloat, Bool, Bool) -> Void) {
-        let glyphs = glyphRange(forCharacterRange: range, actualCharacterRange: nil)
-        guard glyphs.length > 0 else { return }
-        withoutActuallyEscaping(body) { body in spans(glyphs, body) }
-    }
-
-    private func spans(_ glyphs: NSRange, _ body: @escaping (CGRect, CGFloat, CGFloat, CGFloat, Bool, Bool) -> Void) {
-        enumerateLineFragments(forGlyphRange: glyphs) { rect, used, _, lineGlyphs, _ in
-            let piece = NSIntersectionRange(glyphs, lineGlyphs)
-            guard piece.length > 0 else { return }
-            let x0 = rect.minX + self.location(forGlyphAt: piece.location).x
-            let after = NSMaxRange(piece)
-            var x1: CGFloat
-            if after < NSMaxRange(lineGlyphs) {
-                x1 = rect.minX + self.location(forGlyphAt: after).x
-            } else {
-                x1 = used.maxX
-            }
-            // A line ending in a newline: don't run past the last visible glyph.
-            x1 = max(x0, x1)
-            let baseline = rect.minY + self.location(forGlyphAt: piece.location).y
-            body(rect, x0, x1, baseline, piece.location == glyphs.location, after == NSMaxRange(glyphs))
-        }
-    }
-}
+// The detail pane's notes (design/MARKDOWN.md): one always-editable NSTextView whose storage is the Markdown source.
+// It's rendered in place, and the marks show, faintly, only near the caret. Clicking puts the caret there and starts
+// the editing session; the session commits once ("Edit Notes"), as before. Styling is in NotesMarkdown.swift.
 
 // MARK: - The text view
 
 final class NotesTextView: NSTextView {
-    enum Command { case escape, commandReturn, backtab }
-
-    /// Reading (Markdown, presses start editing or open a link) or editing (the raw text).
-    var reading = true
-    /// Under an untitled new task: dimmed and deaf to the pointer (css:285–286).
-    var inert = false { didSet { if inert != oldValue { window?.invalidateCursorRects(for: self) } } }
-    var onReadingPress: (() -> Void)?
-    var onCommand: ((Command) -> Void)?
-    var onResign: (() -> Void)?
-    var onLeaveWindow: (() -> Void)?
+    weak var notes: NotesField.Coordinator?
+    /// Under an untitled new task: dimmed and deaf to the pointer.
+    var inert = false
     var placeholder: NSAttributedString?
-    /// The field's own undo while typing (§9), never the window's.
+    /// The notes' own undo while typing (§6), never the window's.
     private let notesUndo = UndoManager()
+    private var lastTyping: TimeInterval = 0
+    private var tracking: NSTrackingArea?
 
     override var undoManager: UndoManager? { notesUndo }
-    override var acceptsFirstResponder: Bool { !reading && super.acceptsFirstResponder }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func hitTest(_ point: NSPoint) -> NSView? { inert ? nil : super.hitTest(point) }
+    override var acceptableDragTypes: [NSPasteboard.PasteboardType] { [] }
+    override func dragSelection(with event: NSEvent, offset mouseOffset: NSSize, slideBack: Bool) -> Bool { false }
 
     func clearUndo() { notesUndo.removeAllActions() }
 
-    override func mouseDown(with event: NSEvent) {
-        guard reading else { super.mouseDown(with: event); return }
-        if let url = link(at: convert(event.locationInWindow, from: nil)) {
-            NSWorkspace.shared.open(url)
-            return
-        }
-        onReadingPress?()
-    }
-
-    override func rightMouseDown(with event: NSEvent) {
-        if reading { return }
-        super.rightMouseDown(with: event)
-    }
-
-    override func keyDown(with event: NSEvent) {
-        if !reading {
-            let mods = event.modifierFlags.intersection([.command, .shift, .option, .control])
-            if event.keyCode == 53, mods.isEmpty { onCommand?(.escape); return }
-            if event.keyCode == 36 || event.keyCode == 76, mods == .command { onCommand?(.commandReturn); return }
-        }
-        super.keyDown(with: event)
-    }
-
-    override func insertBacktab(_ sender: Any?) {
-        if reading { super.insertBacktab(sender) } else { onCommand?(.backtab) }
-    }
-
-    override func cancelOperation(_ sender: Any?) {
-        if reading { super.cancelOperation(sender) } else { onCommand?(.escape) }
+    override func becomeFirstResponder() -> Bool {
+        let ok = super.becomeFirstResponder()
+        if ok { notes?.sessionBegan() }
+        return ok
     }
 
     override func resignFirstResponder() -> Bool {
         let ok = super.resignFirstResponder()
-        if ok { onResign?() }
+        if ok { notes?.endEditing() }
         return ok
     }
 
     override func viewWillMove(toWindow newWindow: NSWindow?) {
-        if newWindow == nil { onLeaveWindow?() }
+        if newWindow == nil { notes?.endEditing() }
         super.viewWillMove(toWindow: newWindow)
     }
 
+    // MARK: Drawing
+
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
-        // The textarea's placeholder while editing empty notes.
-        if !reading, string.isEmpty, let placeholder {
+        // "Notes" in ink-tertiary while the text is empty, focused or not (md:8).
+        if string.isEmpty, let placeholder {
             placeholder.draw(with: NSRect(x: textContainerOrigin.x, y: textContainerOrigin.y, width: bounds.width, height: NotesStyle.lineHeight),
                              options: [.usesLineFragmentOrigin])
         }
     }
 
-    override func resetCursorRects() {
-        if inert { return }
-        guard reading else { super.resetCursorRects(); return }
-        // `cursor: text` on the notes, `pointer` on links (css:278, 280).
-        addCursorRect(visibleRect, cursor: .iBeam)
-        for r in linkRects() { addCursorRect(r, cursor: .pointingHand) }
-    }
-
-    /// The link under `p` (view coordinates), if the press is on its text.
-    func link(at p: NSPoint) -> URL? {
-        guard let lm = layoutManager, let tc = textContainer, let ts = textStorage, ts.length > 0 else { return nil }
-        let pt = NSPoint(x: p.x - textContainerOrigin.x, y: p.y - textContainerOrigin.y)
-        var frac: CGFloat = 0
-        let g = lm.glyphIndex(for: pt, in: tc, fractionOfDistanceThroughGlyph: &frac)
-        guard lm.boundingRect(forGlyphRange: NSRange(location: g, length: 1), in: tc).contains(pt) else { return nil }
-        let ci = lm.characterIndexForGlyph(at: g)
-        guard ci < ts.length, let href = ts.attribute(.notesLink, at: ci, effectiveRange: nil) as? String else { return nil }
-        return NotesStyle.url(href)
-    }
-
-    private func linkRects() -> [CGRect] {
-        guard let lm = layoutManager, let tc = textContainer, let ts = textStorage, ts.length > 0 else { return [] }
-        var rects: [CGRect] = []
-        ts.enumerateAttribute(.notesLink, in: NSRange(location: 0, length: ts.length)) { v, r, _ in
-            guard v != nil else { return }
-            let g = lm.glyphRange(forCharacterRange: r, actualCharacterRange: nil)
-            lm.enumerateEnclosingRects(forGlyphRange: g, withinSelectedGlyphRange: NSRange(location: NSNotFound, length: 0), in: tc) { rect, _ in
-                rects.append(rect.offsetBy(dx: self.textContainerOrigin.x, dy: self.textContainerOrigin.y))
-            }
-        }
-        return rects
-    }
-
-    /// The text's height at `width`: whole 19pt lines, at least one.
+    /// The text's height at `width`: whole lines, at least one.
     func fittingHeight(width: CGFloat) -> CGFloat {
         guard let lm = layoutManager, let tc = textContainer else { return NotesStyle.lineHeight }
         if abs(tc.containerSize.width - width) > 0.25 {
@@ -362,12 +65,353 @@ final class NotesTextView: NSTextView {
         if !lm.extraLineFragmentRect.isEmpty { h = max(h, lm.extraLineFragmentRect.maxY) }
         return max(NotesStyle.lineHeight, ceil(h))
     }
+
+    // MARK: Pointer (§6 Pointer)
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let tracking { removeTrackingArea(tracking) }
+        let t = NSTrackingArea(rect: .zero, options: [.mouseMoved, .mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                               owner: self, userInfo: nil)
+        addTrackingArea(t)
+        tracking = t
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        super.mouseMoved(with: event)
+        guard !inert, let n = notes else { return }
+        let p = convert(event.locationInWindow, from: nil)
+        n.hover(at: p)
+        if n.link(at: p) != nil { NSCursor.pointingHand.set() } else if n.box(at: p) != nil || n.inGutter(p) { NSCursor.arrow.set() }
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        notes?.hover(at: nil)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        guard !inert, let n = notes else { return }
+        let p = convert(event.locationInWindow, from: nil)
+        // A box toggles on release, inside; it never takes the caret or the keys (§5).
+        if let box = n.box(at: p) {
+            n.pressBox(box, down: true)
+            var inside = true
+            while let e = window?.nextEvent(matching: [.leftMouseUp, .leftMouseDragged]) {
+                inside = n.box(at: convert(e.locationInWindow, from: nil)) == box
+                n.pressBox(box, down: inside)
+                if e.type == .leftMouseUp { break }
+            }
+            n.pressBox(box, down: false)
+            if inside { n.toggleBox(box) }
+            return
+        }
+        // A link opens on a plain click, with no caret (§6). Dots and numbers take nothing.
+        if let url = n.link(at: p) {
+            n.hover(at: nil)
+            NSWorkspace.shared.open(url)
+            return
+        }
+        if n.inGutter(p) { return }
+        // The marks wait for the button to come up, so the text never moves under the pointer (§4).
+        n.dragging = true
+        super.mouseDown(with: event)
+        n.dragging = false
+        n.updateReveal()
+    }
+
+    // MARK: Keys (§6 Keys while editing)
+
+    override func keyDown(with event: NSEvent) {
+        let mods = event.modifierFlags.intersection([.command, .shift, .option, .control])
+        let returnKey = event.keyCode == 36 || event.keyCode == 76
+        if event.keyCode == 53, mods.isEmpty { notes?.done(); return }
+        if returnKey, mods == .command { notes?.done(); return }
+        if returnKey, mods == .shift { replace(selectedRange(), "\n", kind: .typing); return }
+        super.keyDown(with: event)
+    }
+
+    override func cancelOperation(_ sender: Any?) { notes?.done() }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        guard window?.firstResponder === self else { return super.performKeyEquivalent(with: event) }
+        let mods = event.modifierFlags.intersection([.command, .shift, .option, .control])
+        if mods == .command, let c = event.charactersIgnoringModifiers?.lowercased() {
+            if c == "b" { wrap(bold: true); return true }
+            if c == "i" { wrap(bold: false); return true }
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+
+    @objc func notesBold(_ sender: Any?) { wrap(bold: true) }
+    @objc func notesItalic(_ sender: Any?) { wrap(bold: false) }
+
+    override func insertText(_ string: Any, replacementRange: NSRange) {
+        // Typing coalesces into one undo step per 1.5 s pause (§6).
+        let now = Date.timeIntervalSinceReferenceDate
+        if now - lastTyping > 1.5 { breakUndoCoalescing() }
+        lastTyping = now
+        guard let s = (string as? String) ?? (string as? NSAttributedString)?.string else { return super.insertText(string, replacementRange: replacementRange) }
+        let r = replacementRange.location == NSNotFound ? (hasMarkedText() ? markedRange() : selectedRange()) : replacementRange
+        let room = NotesStyle.maxLength - ((self.string as NSString).length - r.length)
+        if (s as NSString).length > room {
+            notes?.overLimit()
+            guard room > 0 else { return }
+            super.insertText(Self.prefix(s, room), replacementRange: replacementRange)
+            return
+        }
+        super.insertText(string, replacementRange: replacementRange)
+    }
+
+    override func insertNewline(_ sender: Any?) {
+        if !newline() { super.insertNewline(sender) }
+    }
+
+    override func deleteBackward(_ sender: Any?) {
+        if !backspace() { super.deleteBackward(sender) }
+    }
+
+    override func insertTab(_ sender: Any?) {
+        if !indent(out: false) { replace(selectedRange(), "\t", kind: .typing) }
+    }
+
+    override func insertBacktab(_ sender: Any?) {
+        if !indent(out: true) { notes?.backToTitle() }
+    }
+
+    // MARK: Pasting (§6 Pasting)
+
+    override func paste(_ sender: Any?) { paste(plain: false) }
+    override func pasteAsPlainText(_ sender: Any?) { paste(plain: true) }
+    override func pasteAsRichText(_ sender: Any?) { paste(plain: false) }
+
+    func paste(plain: Bool, from pb: NSPasteboard = .general) {
+        guard let n = notes else { return }
+        let txt = (pb.string(forType: .string) ?? "").replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n")
+        let sel = selectedRange()
+        let t = string as NSString
+        let line = n.document.line(at: sel.location)
+        let plainOnly = plain || line?.kind == .code || line?.kind == .fence
+        let one = txt.trimmingCharacters(in: .whitespacesAndNewlines)
+        let isURL = one.range(of: #"^(https?://|mailto:)\S+$"#, options: [.regularExpression, .caseInsensitive]) != nil
+        // A URL over selected text links it: the way to make a named link.
+        if sel.length > 0, isURL, !t.substring(with: sel).contains("\n") {
+            let label = t.substring(with: sel).replacingOccurrences(of: "[", with: "").replacingOccurrences(of: "]", with: "")
+            let addr = one.replacingOccurrences(of: "(", with: "%28").replacingOccurrences(of: ")", with: "%29")
+            replace(sel, "[" + label + "](" + addr + ")", kind: .paste)
+            return
+        }
+        var ins = txt
+        if !plainOnly, !isURL, let rich = Self.richText(pb) {
+            let m = NotesPaste.markdown(from: rich)
+            if !m.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { ins = m }
+        }
+        // Blocks start on a line of their own and leave the rest of the line below them.
+        if !plainOnly, !ins.isEmpty,
+           ins.contains("\n") || ins.range(of: #"^(#{1,6} |[-*+] |\d+[.)] |> |```)"#, options: .regularExpression) != nil {
+            if sel.location > 0, t.character(at: sel.location - 1) != 10 { ins = "\n" + ins }
+            if NSMaxRange(sel) < t.length, t.character(at: NSMaxRange(sel)) != 10 { ins += "\n" }
+        }
+        guard !ins.isEmpty else { return }
+        replace(sel, ins, kind: .paste)
+    }
+
+    /// RTF first (fast); HTML only without it, as it loads WebKit, and only for a clipboard the notes could hold.
+    private static func richText(_ pb: NSPasteboard) -> NSAttributedString? {
+        if let d = pb.data(forType: .rtf), let a = NSAttributedString(rtf: d, documentAttributes: nil) { return a }
+        if let d = pb.data(forType: .html), d.count < 400_000,
+           let a = NSAttributedString(html: d, options: [.characterEncoding: String.Encoding.utf8.rawValue], documentAttributes: nil) {
+            return a
+        }
+        return nil
+    }
+
+    // MARK: Edits
+
+    enum EditKind { case typing, paste, structure }
+
+    /// One undoable change: the notes' undo groups it, past 20,000 characters it's trimmed with a notice.
+    func replace(_ r: NSRange, _ s: String, kind: EditKind, select: NSRange? = nil) {
+        var s = s
+        let room = NotesStyle.maxLength - ((string as NSString).length - r.length)
+        if (s as NSString).length > room {
+            notes?.overLimit()
+            s = Self.prefix(s, max(0, room))
+        }
+        if kind != .typing { breakUndoCoalescing() }
+        guard shouldChangeText(in: r, replacementString: s) else { return }
+        textStorage?.replaceCharacters(in: r, with: s)
+        didChangeText()
+        let caret = select ?? NSRange(location: r.location + (s as NSString).length, length: 0)
+        setSelectedRange(caret)
+        if kind != .typing { breakUndoCoalescing() }
+        scrollRangeToVisible(caret)
+    }
+
+    /// The first `n` UTF-16 units, not splitting a surrogate pair.
+    static func prefix(_ s: String, _ n: Int) -> String {
+        let ns = s as NSString
+        guard ns.length > n else { return s }
+        var end = n
+        if end > 0, end < ns.length, CFStringIsSurrogateLowCharacter(ns.character(at: end)) { end -= 1 }
+        return ns.substring(to: end)
+    }
+
+    private var doc: NotesDocument? { notes?.document }
+
+    /// Return continues a list, checklist or quote; on an empty item it outdents, then ends the list. In a code block
+    /// the new line keeps the indent (`nReturn`, dc:2041–2060).
+    private func newline() -> Bool {
+        guard !hasMarkedText(), let d = doc else { return false }
+        let sel = selectedRange()
+        let t = string as NSString
+        guard let l = d.line(at: sel.location) else { return false }
+        if sel.length > 0, let b = d.line(at: NSMaxRange(sel)), b.index != l.index { return false }
+        let a = sel.location
+        if l.kind == .code {
+            let line = t.substring(with: NSRange(location: l.start, length: a - l.start))
+            replace(sel, "\n" + line.prefix { $0 == " " || $0 == "\t" }, kind: .structure)
+            return true
+        }
+        guard (l.isListItem || l.kind == .quote) && a >= l.textStart else { return false }
+        let rest = t.substring(with: NSRange(location: l.textStart, length: l.end - l.textStart))
+        if sel.length == 0 && rest.trimmingCharacters(in: .whitespaces).isEmpty {
+            if l.isListItem && l.level > 0 {
+                replace(NSRange(location: l.start, length: 2), "", kind: .structure, select: NSRange(location: a - 2, length: 0))
+            } else {
+                replace(l.range, "", kind: .structure)
+            }
+            return true
+        }
+        let lead = String(repeating: " ", count: l.lead)
+        let pre: String
+        switch l.kind {
+        case .quote: pre = "> "
+        case .ordered: pre = lead + "\(l.number + 1)" + String(UnicodeScalar(UInt8(l.delimiter))) + " "
+        case .task: pre = lead + String(UnicodeScalar(UInt8(l.bullet))) + " [ ] "
+        default: pre = lead + String(UnicodeScalar(UInt8(l.bullet))) + " "
+        }
+        replace(sel, "\n" + pre, kind: .structure)
+        return true
+    }
+
+    /// Backspace at the start of an item's text outdents it, then makes it a plain line; at the start of a heading or
+    /// quote, the `#`s or `>` go (`nBackspace`, dc:2063–2075).
+    private func backspace() -> Bool {
+        guard !hasMarkedText(), let d = doc else { return false }
+        let sel = selectedRange()
+        guard sel.length == 0, sel.location > 0, let l = d.line(at: sel.location), l.prefix > 0, sel.location == l.textStart,
+              l.isListItem || l.kind == .quote || l.kind == .heading1 || l.kind == .heading2 else { return false }
+        if l.isListItem && l.level > 0 {
+            replace(NSRange(location: l.start, length: 2), "", kind: .structure, select: NSRange(location: sel.location - 2, length: 0))
+        } else {
+            replace(NSRange(location: l.start, length: l.prefix), "", kind: .structure, select: NSRange(location: l.start, length: 0))
+        }
+        return true
+    }
+
+    /// Tab and ⇧Tab move the list items in the selection a level (two spaces, two levels at most) (`nIndent`,
+    /// dc:2078–2090). False when there's none to move.
+    private func indent(out: Bool) -> Bool {
+        guard let d = doc else { return false }
+        let sel = selectedRange()
+        let a = sel.location, b = NSMaxRange(sel)
+        let items = d.lines.filter { $0.isListItem && $0.end >= a && $0.start <= b }
+        guard !items.isEmpty else { return false }
+        if out && items.allSatisfy({ $0.level == 0 }) { return false }
+        let t = string as NSString
+        let span = NSRange(location: items[0].start, length: items[items.count - 1].end - items[0].start)
+        var s = t.substring(with: span) as NSString
+        var da = 0, db = 0
+        for l in items.reversed() {
+            let at = l.start - span.location
+            if out {
+                guard l.level > 0 else { continue }
+                s = s.replacingCharacters(in: NSRange(location: at, length: 2), with: "") as NSString
+                if l.start < a { da -= 2 }
+                db -= 2
+            } else {
+                guard l.level < 2 else { continue }
+                s = s.replacingCharacters(in: NSRange(location: at, length: 0), with: "  ") as NSString
+                if l.start <= a { da += 2 }
+                db += 2
+            }
+        }
+        guard s as String != t.substring(with: span) else { return true }
+        let na = max(0, a + da), nb = max(na, b + db)
+        replace(span, s as String, kind: .structure, select: NSRange(location: na, length: nb - na))
+        return true
+    }
+
+    /// ⌘B / ⌘I: wrap the selection or the word at the caret; inside that style already, take it off (`nWrap`,
+    /// dc:2092–2113).
+    private func wrap(bold: Bool) {
+        guard let d = doc, !hasMarkedText() else { return }
+        let mk = bold ? "**" : "_", ml = (mk as NSString).length
+        let sel = selectedRange()
+        let a = sel.location, b = NSMaxRange(sel)
+        let t = string as NSString
+        if let l = d.line(at: a), let tok = d.tokens(l).filter({ $0.kind == (bold ? .bold : .italic) && $0.range.lowerBound <= a && b <= $0.range.upperBound }).last {
+            func map(_ x: Int) -> Int {
+                if x <= tok.range.lowerBound { return x }
+                if x >= tok.range.upperBound { return x - 2 * ml }
+                return min(max(x - ml, tok.range.lowerBound), tok.range.upperBound - 2 * ml)
+            }
+            let inner = t.substring(with: NSRange(location: tok.inner.lowerBound, length: tok.inner.count))
+            let na = map(a), nb = map(b)
+            replace(NSRange(location: tok.range.lowerBound, length: tok.range.count), inner, kind: .structure,
+                    select: NSRange(location: na, length: nb - na))
+            return
+        }
+        if sel.length == 0 {
+            if let w = word(at: a) {
+                replace(w, mk + t.substring(with: w) + mk, kind: .structure, select: NSRange(location: a + ml, length: 0))
+            } else {
+                replace(sel, mk + mk, kind: .structure, select: NSRange(location: a + ml, length: 0))
+            }
+            return
+        }
+        // Spaces at either end stay outside; over several lines, each line's text is wrapped.
+        let seg = t.substring(with: sel).components(separatedBy: "\n").map { x -> String in
+            let lead = x.prefix { $0.isWhitespace }, trail = String(x.reversed().prefix { $0.isWhitespace }.reversed())
+            let core = x.trimmingCharacters(in: .whitespaces)
+            return core.isEmpty ? x : String(lead) + mk + core + mk + trail
+        }.joined(separator: "\n")
+        replace(sel, seg, kind: .structure, select: NSRange(location: a, length: (seg as NSString).length))
+    }
+
+    /// The word around `a`: letters, digits, apostrophes and hyphens (`mdWordAt`, dc:625).
+    private func word(at a: Int) -> NSRange? {
+        let t = string as NSString
+        func isWord(_ i: Int) -> Bool {
+            guard i >= 0, i < t.length, let u = UnicodeScalar(t.character(at: i)) else { return false }
+            return CharacterSet.letters.contains(u) || CharacterSet.decimalDigits.contains(u) || "'’-".unicodeScalars.contains(u)
+        }
+        var s = a, e = a
+        while s > 0 && isWord(s - 1) { s -= 1 }
+        while e < t.length && isWord(e) { e += 1 }
+        return e > s ? NSRange(location: s, length: e - s) : nil
+    }
+
+    // MARK: Accessibility (§9): the text as it reads, and each box as a checkbox
+
+    override func accessibilityValue() -> String? { notes?.readingText() ?? super.accessibilityValue() }
+
+    override func accessibilityChildren() -> [Any]? {
+        (super.accessibilityChildren() ?? []) + (notes?.boxElements(in: self) ?? [])
+    }
+}
+
+/// A checklist box for VoiceOver: a checkbox with its item's text; pressing it toggles the item.
+final class NotesBoxElement: NSAccessibilityElement {
+    var toggle: (() -> Void)?
+    override func accessibilityPerformPress() -> Bool { toggle?(); return true }
 }
 
 // MARK: - SwiftUI
 
-/// The notes area: fills the space it's given (it's the pane's flexible part), reads or edits one task's notes, and
-/// writes one `task.update` per editing session (§7).
+/// The notes area: fills the space it's given (it's the pane's flexible part), shows and edits one task's notes, and
+/// writes one `task.update` per editing session.
 struct NotesField: NSViewRepresentable {
     let store: Store
     let window: WindowState
@@ -379,6 +423,8 @@ struct NotesField: NSViewRepresentable {
     /// Bumped by the view while editing, so SwiftUI measures the text again.
     let layoutTick: Int
     let onLayoutChange: () -> Void
+    /// The text's length while it's being edited (the footer's count), nil at rest.
+    let onLength: (Int?) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -395,8 +441,8 @@ struct NotesField: NSViewRepresentable {
         v.isRichText = false
         v.importsGraphics = false
         v.allowsUndo = true
-        v.isEditable = false
-        v.isSelectable = false
+        v.isEditable = true
+        v.isSelectable = true
         v.isVerticallyResizable = false
         v.isHorizontallyResizable = false
         v.textContainerInset = .zero
@@ -404,20 +450,23 @@ struct NotesField: NSViewRepresentable {
         v.isAutomaticDashSubstitutionEnabled = false
         v.isAutomaticTextReplacementEnabled = false
         v.isAutomaticSpellingCorrectionEnabled = false
+        v.isAutomaticLinkDetectionEnabled = false
         v.isContinuousSpellCheckingEnabled = false
         v.isGrammarCheckingEnabled = false
         v.smartInsertDeleteEnabled = false
+        v.usesFontPanel = false
         v.usesFindBar = false
+        v.displaysLinkToolTips = false
+        v.linkTextAttributes = [:]
         v.focusRingType = .none
         v.setAccessibilityLabel("Notes")
-        v.delegate = context.coordinator
         let c = context.coordinator
         c.parent = self
         c.view = v
-        v.onReadingPress = { [weak c] in c?.startEditing() }
-        v.onCommand = { [weak c] in c?.command($0) }
-        v.onResign = { [weak c] in c?.endEditing() }
-        v.onLeaveWindow = { [weak c] in c?.endEditing() }
+        v.notes = c
+        v.delegate = c
+        storage.delegate = c
+        lm.decorations = c
         refs.notes = c
         c.apply(force: true)
         return v
@@ -442,64 +491,83 @@ struct NotesField: NSViewRepresentable {
     }
 
     @MainActor
-    final class Coordinator: NSObject, NSTextViewDelegate {
+    final class Coordinator: NSObject, NSTextViewDelegate, @preconcurrency NSTextStorageDelegate, NotesDecorations {
         var parent: NotesField!
         weak var view: NotesTextView?
+        let document = NotesDocument()
+        var palette: TK.Palette { parent.palette }
         /// The editing session: whose notes, and what they were.
         private(set) var session: (id: EntityID, original: String)?
-        private var shown: (source: String, dark: Bool)?
+        /// What the view shows at rest: the task, its notes and the theme.
+        private var shown: (id: EntityID, notes: String, dark: Bool)?
+        /// The button is down in the text: the marks wait for it (§4).
+        var dragging = false
+        private(set) var hoveredLink: NSRange?
+        private var hoveredBox: Int?
+        private var boxes: [Int: BoxAnimation] = [:]
+        private var ticker: Timer?
+        private var fades: [(NSRange, TimeInterval)] = []
         private var actions: WindowActions { WindowActions(store: parent.store, window: parent.window) }
 
-        /// Shows the reading view for the current notes (unless they're being edited).
+        private struct BoxAnimation {
+            var hoverFrom: CGFloat = 0, hoverTo: CGFloat = 0, hoverAt: TimeInterval = 0
+            var pressed = false, pressAt: TimeInterval = 0, releaseAt: TimeInterval?
+            var checkAt: TimeInterval?, popAt: TimeInterval?
+        }
+
+        // MARK: Model → view
+
+        /// Shows the task's notes (unless they're being edited), restyled for the theme.
         func apply(force: Bool) {
-            guard let v = view, session == nil else { return }
+            guard let v = view else { return }
             let tk = parent.palette
-            if let lm = v.layoutManager as? NotesLayoutManager {
-                lm.codeFill = tk.fillControl
-                lm.linkColor = tk.accentText
-            }
             v.insertionPointColor = tk.ink
             v.selectedTextAttributes = [.backgroundColor: tk.textSel]
             v.placeholder = NotesStyle.placeholder(tk)
-            guard force || shown?.source != parent.notes || shown?.dark != tk.isDark else { return }
-            shown = (parent.notes, tk.isDark)
-            v.textStorage?.setAttributedString(NotesStyle.reading(parent.notes, tk))
-            v.needsDisplay = true
-            v.window?.invalidateCursorRects(for: v)
-        }
-
-        /// A press on the notes (not a link), or Return / Tab in the title: the raw text, caret at the end.
-        func startEditing() {
-            guard let v = view, let w = v.window, session == nil, !parent.inert else { return }
-            let id = parent.id
-            let raw = parent.store.projection.task(id)?.notes ?? ""
-            let tk = parent.palette
-            session = (id, raw)
-            shown = nil
-            v.reading = false
-            v.isEditable = true
-            v.isSelectable = true
             v.typingAttributes = NotesStyle.base(tk)
-            v.textStorage?.setAttributedString(NSAttributedString(string: raw, attributes: NotesStyle.base(tk)))
+            let themeChanged = shown?.dark != tk.isDark
+            if session != nil {
+                if themeChanged { shown?.dark = tk.isDark; restyleAll() }
+                return
+            }
+            guard force || shown?.id != parent.id || shown?.notes != parent.notes || themeChanged else { return }
+            shown = (parent.id, parent.notes, tk.isDark)
+            if v.string != parent.notes {
+                v.textStorage?.replaceCharacters(in: NSRange(location: 0, length: (v.string as NSString).length), with: parent.notes)
+            }
+            pending = nil
+            restyleAll()
             v.clearUndo()
-            if parent.window.detailEditing != .notes { parent.window.detailEditing = .notes }
-            if parent.window.focus != .detail { parent.window.focus = .detail }
-            w.makeFirstResponder(v)
-            v.setSelectedRange(NSRange(location: (raw as NSString).length, length: 0))
-            v.window?.invalidateCursorRects(for: v)
             v.needsDisplay = true
             parent.onLayoutChange()
         }
 
-        /// Esc, ⌘Return, ⇧Tab or a press elsewhere: one `task.update` if the text changed (§7).
+        // MARK: The session
+
+        /// A press in the notes, or Return / Tab in the title: the caret, and the session begins.
+        func startEditing() {
+            guard let v = view, let w = v.window, !parent.inert else { return }
+            w.makeFirstResponder(v)
+            let end = (v.string as NSString).length
+            v.setSelectedRange(NSRange(location: end, length: 0))
+            v.scrollRangeToVisible(NSRange(location: end, length: 0))
+        }
+
+        func sessionBegan() {
+            guard session == nil, let v = view else { return }
+            session = (parent.id, v.string)
+            v.clearUndo()
+            if parent.window.detailEditing != .notes { parent.window.detailEditing = .notes }
+            if parent.window.focus != .detail { parent.window.focus = .detail }
+            reportLength(v)
+            if !dragging { updateReveal() }
+        }
+
+        /// Esc, ⌘Return, ⇧Tab or a press elsewhere: one `task.update` if the text changed.
         func endEditing() {
             guard let s = session, let v = view else { return }
             session = nil
             let text = v.string
-            v.reading = true
-            v.isEditable = false
-            v.isSelectable = false
-            v.setSelectedRange(NSRange(location: 0, length: 0))
             if parent.window.detailEditing == .notes { parent.window.detailEditing = nil }
             let store = parent.store
             if let t = store.projection.task(s.id), !t.deleted, t.notes != text {
@@ -507,25 +575,470 @@ struct NotesField: NSViewRepresentable {
                 a.undoable("Edit Notes") { store.setNotes(s.id, text, name: "Edit Notes", undoManager: a.undo) }
             }
             // Read what was written, not the model (it may update a moment later).
-            shown = (text, parent.palette.isDark)
-            v.textStorage?.setAttributedString(NotesStyle.reading(text, parent.palette))
-            v.window?.invalidateCursorRects(for: v)
-            v.needsDisplay = true
+            shown = (s.id, text, parent.palette.isDark)
+            v.clearUndo()
+            setReveal(nil)
+            hover(at: nil)
+            parent.onLength(nil)
             parent.onLayoutChange()
         }
 
-        func command(_ c: NotesTextView.Command) {
-            switch c {
-            case .escape, .commandReturn:
-                // Done: keeps the text; the keys go to the list (§7).
-                endEditing()
-                actions.focus(.list)
-            case .backtab:
-                endEditing()
-                parent.refs.focusTitle(.all)
+        /// Esc and ⌘Return: done, the text kept, the keys to the list.
+        func done() {
+            view?.window?.makeFirstResponder(nil)
+            endEditing()
+            actions.focus(.list)
+        }
+
+        /// ⇧Tab outside a list: back to the title.
+        func backToTitle() {
+            view?.window?.makeFirstResponder(nil)
+            endEditing()
+            parent.refs.focusTitle(.all)
+        }
+
+        func overLimit() { parent.window.overlays.showNotice("Notes hold up to 20,000 characters", undo: false) }
+
+        // MARK: Restyling (§9: one line at a time)
+
+        /// The characters edited since the last restyle (in the current string), and whether a fence count may have
+        /// changed. Restyling waits until the edit is done: attributes changed while the storage processes an edit
+        /// widen its edited range, and NSTextView then put the caret at the end of the restyled line.
+        private var pending: NSRange?
+
+        func textStorage(_ ts: NSTextStorage, willProcessEditing mask: NSTextStorageEditActions, range: NSRange, changeInLength delta: Int) {
+            guard mask.contains(.editedCharacters) else { return }
+            if let p = pending {
+                // The old pending range moves with the edit if it's after it.
+                let shifted = p.location >= range.location ? NSRange(location: max(range.location, p.location + delta), length: p.length) : p
+                let lo = min(shifted.location, range.location), hi = min(ts.length, max(NSMaxRange(shifted), NSMaxRange(range)))
+                pending = NSRange(location: lo, length: max(0, hi - lo))
+            } else {
+                pending = range
             }
         }
 
-        func textDidChange(_ notification: Notification) { parent.onLayoutChange() }
+        /// Restyles what the last edits touched (one line per keystroke), then shows the marks near the caret.
+        func restylePending() {
+            guard let range = pending, let v = view, let ts = v.textStorage, !v.hasMarkedText() else { return }
+            pending = nil
+            let old = document.doc
+            document.update(ts.string)
+            let new = document.doc
+            guard let touched = document.lines(touching: NSRange(location: min(range.location, ts.length), length: 0).union(
+                NSRange(location: min(NSMaxRange(range), ts.length), length: 0))) else { return }
+            var from = touched.lowerBound, to = touched.upperBound
+            // Fences are the one rule that isn't local: an edit on or around one restyles to the end.
+            let fences = { (d: Markdown.Document) in d.lines.lazy.filter { $0.kind == .fence }.count }
+            if fences(old) != fences(new) || new.lines[from...to].contains(where: { $0.block >= 0 }) {
+                to = new.lines.count - 1
+            }
+            // Heading space ("none above the first line") and list numbering follow the line before.
+            from = max(0, from - 1)
+            ts.beginEditing()
+            for i in from...to { NotesStyler.style(new.lines[i], document, ts, palette) }
+            ts.endEditing()
+            // Numbers and quote bars further down may change without their lines moving.
+            v.needsDisplay = true
+            if wantReveal != document.reveal { setReveal(wantReveal) }
+        }
+
+        /// The reveal asked for while an edit was pending.
+        private var wantReveal: NSRange?
+
+        private func restyleAll() {
+            guard let ts = view?.textStorage else { return }
+            document.update(ts.string)
+            ts.beginEditing()
+            let t0 = DispatchTime.now().uptimeNanoseconds
+            for l in document.lines { NotesStyler.style(l, document, ts, palette) }
+            let t1 = DispatchTime.now().uptimeNanoseconds
+            ts.endEditing()
+            lastRestyle = (Double(t1 - t0) / 1e6, Double(DispatchTime.now().uptimeNanoseconds - t1) / 1e6)
+            view?.needsDisplay = true
+        }
+
+        /// The last full restyle: the styling loop and the storage's own processing, in ms (for `nbench:`).
+        private(set) var lastRestyle: (loop: Double, process: Double) = (0, 0)
+
+        /// The marks near the selection show; the ones it left are hidden again. Only the lines (and code blocks) the
+        /// old and new selection touch are restyled: O(token), not O(document) (§9).
+        func updateReveal() {
+            guard let v = view, session != nil, !dragging, v.window?.firstResponder === v else { return }
+            setReveal(v.selectedRange())
+        }
+
+        private func setReveal(_ sel: NSRange?) {
+            wantReveal = sel
+            // Mid-edit the lines are stale: the restyle after it applies this.
+            guard pending == nil else { return }
+            guard let ts = view?.textStorage, sel != document.reveal else { return }
+            let old = document.reveal
+            var lines = Set<Int>()
+            var blocks = Set<Int>()
+            func add(_ r: NSRange?) {
+                guard let r, let span = document.lines(touching: r) else { return }
+                for i in span { lines.insert(i) }
+                for (i, b) in document.doc.blocks.enumerated() where r.location <= b.end && NSMaxRange(r) >= b.start { blocks.insert(i) }
+            }
+            add(old)
+            add(sel)
+            for b in blocks {
+                let blk = document.doc.blocks[b]
+                for i in blk.first...blk.last { lines.insert(i) }
+            }
+            guard !lines.isEmpty else { document.reveal = sel; return }
+            // Marks that were hidden in these lines, to fade in the ones that appear.
+            var hiddenBefore: [NSRange] = []
+            for i in lines {
+                let l = document.lines[i]
+                ts.enumerateAttribute(.mdHidden, in: l.range) { v, r, _ in if v != nil { hiddenBefore.append(r) } }
+            }
+            document.reveal = sel
+            ts.beginEditing()
+            for i in lines.sorted() { NotesStyler.style(document.lines[i], document, ts, palette) }
+            ts.endEditing()
+            if !TK.CA.reduce {
+                let now = Date.timeIntervalSinceReferenceDate
+                for r in hiddenBefore {
+                    ts.enumerateAttribute(.mdHidden, in: r) { v, rr, _ in if v == nil { fades.append((rr, now)) } }
+                }
+                if !fades.isEmpty { tick() }
+            }
+        }
+
+        // MARK: Selection: never inside a list's prefix
+
+        func textView(_ textView: NSTextView, willChangeSelectionFromCharacterRange old: NSRange,
+                      toCharacterRange new: NSRange) -> NSRange {
+            guard new.length == 0, let l = document.line(at: new.location), l.isListItem, new.location < l.textStart,
+                  new.location >= l.start else { return new }
+            // Moving left from the item's text goes on to the line before; anything else lands at the text.
+            let keyLeft = NSApp.currentEvent?.type == .keyDown && old.location >= l.textStart && old.length == 0
+            if keyLeft && l.start > 0 { return NSRange(location: l.start - 1, length: 0) }
+            return NSRange(location: l.textStart, length: 0)
+        }
+
+        func textViewDidChangeSelection(_ notification: Notification) {
+            if !dragging { updateReveal() }
+        }
+
+        func textDidChange(_ notification: Notification) {
+            restylePending()
+            guard let v = view else { return }
+            reportLength(v)
+            // SwiftUI measures the notes again only when their height changed, not on every keystroke.
+            let h = v.fittingHeight(width: v.bounds.width)
+            if h != lastHeight {
+                lastHeight = h
+                parent.onLayoutChange()
+            }
+        }
+
+        private var lastHeight: CGFloat = 0
+
+        /// The footer's count shows from 18,000 characters; below that the length isn't reported, so typing doesn't
+        /// redraw the pane.
+        private func reportLength(_ v: NSTextView) {
+            let n = v.string.utf16.count
+            parent.onLength(n >= NotesStyle.nearLength ? n : 0)
+        }
+
+        func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
+            if let url = link as? URL { NSWorkspace.shared.open(url) }
+            return true
+        }
+
+        // MARK: Pointer
+
+        private func containerPoint(_ p: CGPoint) -> CGPoint {
+            guard let v = view else { return p }
+            return CGPoint(x: p.x - v.textContainerOrigin.x, y: p.y - v.textContainerOrigin.y)
+        }
+
+        private var layout: NotesLayoutManager? { view?.layoutManager as? NotesLayoutManager }
+
+        /// The list item whose first line holds `p`.
+        private func listItem(at p: CGPoint) -> (Markdown.Line, CGRect)? {
+            guard let lm = layout, let tc = view?.textContainer, (view?.string as NSString?)?.length ?? 0 > 0 else { return nil }
+            let q = containerPoint(p)
+            let g = lm.glyphIndex(for: q, in: tc)
+            guard let l = document.line(at: lm.characterIndexForGlyph(at: g)), l.isListItem, let f = lm.fragment(l, first: true),
+                  q.y >= f.minY - 2, q.y < f.maxY + 2 else { return nil }
+            return (l, f)
+        }
+
+        /// A checklist box under `p` (its 20×20 hit area): the offset of its character.
+        func box(at p: CGPoint) -> Int? {
+            guard let (l, f) = listItem(at: p), l.kind == .task else { return nil }
+            let q = containerPoint(p)
+            let r = CGRect(x: CGFloat(l.level) * NotesStyle.column + 2 - 4, y: f.minY + 3.5 - 4, width: 20, height: 20)
+            return r.contains(q) ? l.box : nil
+        }
+
+        /// The gutter of a list item (a dot or a number): presses there take nothing.
+        func inGutter(_ p: CGPoint) -> Bool {
+            guard let (l, _) = listItem(at: p) else { return false }
+            return containerPoint(p).x < CGFloat(l.level + 1) * NotesStyle.column - 4
+        }
+
+        /// The link whose text is under `p`.
+        func link(at p: CGPoint) -> URL? { linkRange(at: p)?.1 }
+
+        private func linkRange(at p: CGPoint) -> (NSRange, URL, String)? {
+            guard let lm = layout, let tc = view?.textContainer, let ts = view?.textStorage, ts.length > 0 else { return nil }
+            let q = containerPoint(p)
+            var frac: CGFloat = 0
+            let g = lm.glyphIndex(for: q, in: tc, fractionOfDistanceThroughGlyph: &frac)
+            guard lm.boundingRect(forGlyphRange: NSRange(location: g, length: 1), in: tc).insetBy(dx: 0, dy: -2).contains(q) else { return nil }
+            let ci = lm.characterIndexForGlyph(at: g)
+            var r = NSRange()
+            guard ci < ts.length, let href = ts.attribute(.mdLink, at: ci, effectiveRange: &r) as? String,
+                  ts.attribute(.mdHidden, at: ci, effectiveRange: nil) == nil, let url = NotesStyle.url(href) else { return nil }
+            return (r, url, href)
+        }
+
+        /// Hover: a link's underline comes up to full and its address shows in the tooltip after 600 ms; a box's ring
+        /// goes ink-secondary (md:16–18, md:45).
+        func hover(at p: CGPoint?) {
+            let link = p.flatMap(linkRange(at:))
+            if link?.0 != hoveredLink {
+                let old = hoveredLink
+                hoveredLink = link?.0
+                for r in [old, hoveredLink].compactMap({ $0 }) { redraw(r) }
+                if let (r, _, href) = link, let v = view, let lm = layout, let tc = v.textContainer, let w = v.window {
+                    let g = lm.glyphRange(forCharacterRange: r, actualCharacterRange: nil)
+                    let rect = lm.boundingRect(forGlyphRange: g, in: tc).offsetBy(dx: v.textContainerOrigin.x, dy: v.textContainerOrigin.y)
+                    let inWindow = v.convert(rect, to: nil)
+                    let h = w.contentView?.bounds.height ?? 0
+                    let top = CGRect(x: inWindow.minX, y: h - inWindow.maxY, width: inWindow.width, height: inWindow.height)
+                    parent.window.overlays.hoverTip(NotesStyle.tip(href), for: top, windowWidth: w.contentView?.bounds.width ?? 0)
+                } else {
+                    parent.window.overlays.hideTip()
+                }
+            }
+            let box = p.flatMap(box(at:))
+            if box != hoveredBox {
+                let now = Date.timeIntervalSinceReferenceDate
+                if let b = hoveredBox { setHover(b, 0, now) }
+                hoveredBox = box
+                if let b = box { setHover(b, 1, now) }
+            }
+        }
+
+        private func setHover(_ b: Int, _ to: CGFloat, _ now: TimeInterval) {
+            var a = boxes[b] ?? BoxAnimation()
+            a.hoverFrom = boxState(b).hover
+            a.hoverTo = to
+            a.hoverAt = now
+            boxes[b] = a
+            tick()
+        }
+
+        func pressBox(_ b: Int, down: Bool) {
+            var a = boxes[b] ?? BoxAnimation()
+            let now = Date.timeIntervalSinceReferenceDate
+            if down != a.pressed {
+                a.pressed = down
+                if down { a.pressAt = now; a.releaseAt = nil } else { a.releaseAt = now }
+            }
+            boxes[b] = a
+            tick()
+        }
+
+        /// Clicking a box flips the character between its brackets (§5). In a session it's a step of the notes' undo;
+        /// otherwise it's written to the task as its own step, "Check Item" or "Uncheck Item".
+        func toggleBox(_ at: Int) {
+            guard let v = view, let l = document.line(at: at), l.kind == .task, l.box == at else { return }
+            let t = v.string as NSString
+            guard at < t.length else { return }
+            let checking = t.character(at: at) == 32
+            if checking {
+                var a = boxes[at] ?? BoxAnimation()
+                let now = Date.timeIntervalSinceReferenceDate
+                a.checkAt = now
+                a.popAt = now
+                boxes[at] = a
+            }
+            if session != nil, v.window?.firstResponder === v {
+                let sel = v.selectedRange()
+                v.replace(NSRange(location: at, length: 1), checking ? "x" : " ", kind: .structure, select: sel)
+            } else {
+                let store = parent.store, id = parent.id
+                let notes = t.replacingCharacters(in: NSRange(location: at, length: 1), with: checking ? "x" : " ")
+                let a = actions
+                let name = checking ? "Check Item" : "Uncheck Item"
+                a.undoable(name) { store.setNotes(id, notes, name: name, undoManager: a.undo) }
+            }
+            tick()
+        }
+
+        func boxState(_ b: Int) -> NotesBoxState {
+            guard let a = boxes[b] else { return NotesBoxState() }
+            let now = Date.timeIntervalSinceReferenceDate
+            var s = NotesBoxState()
+            let reduce = TK.CA.reduce
+            // Hover: in on hoverIn (60 ms), out on hoverOut (85 ms).
+            let hd = a.hoverTo > a.hoverFrom ? 0.06 : 0.085
+            let ht = reduce ? 1 : min(1, (now - a.hoverAt) / hd)
+            s.hover = a.hoverFrom + (a.hoverTo - a.hoverFrom) * CGFloat(ease(ht))
+            // Press: down to 0.86 in 80 ms, back on snappy.
+            if !reduce {
+                if a.pressed {
+                    s.scale = 1 - 0.14 * CGFloat(min(1, (now - a.pressAt) / 0.08))
+                } else if let r = a.releaseAt, now - r < 0.3 {
+                    s.scale = 0.86 + 0.14 * CGFloat(snappy((now - r) / 0.3))
+                }
+                if let p = a.popAt, now - p < 0.3 { s.scale *= 0.8 + 0.2 * CGFloat(snappy((now - p) / 0.3)) }
+                // The check draws on over 160 ms after 40 (md:46).
+                if let c = a.checkAt { s.check = CGFloat(min(1, max(0, (now - c - 0.04) / 0.16))) }
+            }
+            return s
+        }
+
+        private func ease(_ t: Double) -> Double { 1 - pow(1 - t, 3) }
+
+        /// `--ease-snappy` (tasks-v2.css:12), sampled.
+        private func snappy(_ t: Double) -> Double {
+            let k: [Double] = [0, 0.0617, 0.1976, 0.3564, 0.5094, 0.6423, 0.7503, 0.8334, 0.8945, 0.9376, 0.9666, 0.9852, 0.9964,
+                               1.0025, 1.0054, 1.0063, 1.006, 1.0052, 1.0042, 1.0033, 1.0024, 1.0017, 1.0011, 1.0007, 1]
+            let x = min(1, max(0, t)) * Double(k.count - 1)
+            let i = min(k.count - 2, Int(x))
+            return k[i] + (k[i + 1] - k[i]) * (x - Double(i))
+        }
+
+        /// Runs while boxes animate or marks fade in, redrawing what moves.
+        private func tick() {
+            let now = Date.timeIntervalSinceReferenceDate
+            for b in boxes.keys { redrawBox(b) }
+            if let ts = view?.textStorage, let lm = layout {
+                // Marks appearing fade in over `icon` (100 ms) (md:21).
+                fades.removeAll { now - $0.1 > 0.1 }
+                lm.removeTemporaryAttribute(.foregroundColor, forCharacterRange: NSRange(location: 0, length: ts.length))
+                for (r, t0) in fades where NSMaxRange(r) <= ts.length {
+                    let k = CGFloat(ease(min(1, (now - t0) / 0.1)))
+                    lm.addTemporaryAttribute(.foregroundColor, value: palette.inkQ.withAlphaComponent(k), forCharacterRange: r)
+                }
+            }
+            // Finished box animations go.
+            boxes = boxes.filter { b, a in
+                a.pressed || hoveredBox == b || a.hoverTo > 0 && now - a.hoverAt < 0.2 || a.hoverTo == 0 && now - a.hoverAt < 0.2
+                    || (a.releaseAt.map { now - $0 < 0.35 } ?? false) || (a.popAt.map { now - $0 < 0.35 } ?? false)
+                    || (a.checkAt.map { now - $0 < 0.25 } ?? false)
+            }
+            let busy = !boxes.isEmpty && boxes.contains { b, a in a.pressed || now - a.hoverAt < 0.1 || (a.releaseAt.map { now - $0 < 0.35 } ?? false)
+                || (a.popAt.map { now - $0 < 0.35 } ?? false) || (a.checkAt.map { now - $0 < 0.25 } ?? false) } || !fades.isEmpty
+            if busy, ticker == nil {
+                ticker = Timer.scheduledTimer(withTimeInterval: 1.0 / 60, repeats: true) { [weak self] _ in
+                    MainActor.assumeIsolated { self?.tick() }
+                }
+            } else if !busy {
+                ticker?.invalidate()
+                ticker = nil
+            }
+        }
+
+        private func redraw(_ r: NSRange) {
+            guard let v = view, let lm = layout, let tc = v.textContainer, NSMaxRange(r) <= (v.string as NSString).length else { return }
+            let g = lm.glyphRange(forCharacterRange: r, actualCharacterRange: nil)
+            let rect = lm.boundingRect(forGlyphRange: g, in: tc).offsetBy(dx: v.textContainerOrigin.x, dy: v.textContainerOrigin.y)
+            v.setNeedsDisplay(rect.insetBy(dx: -2, dy: -4))
+        }
+
+        private func redrawBox(_ b: Int) {
+            guard let v = view, let l = document.line(at: b), l.kind == .task, let f = layout?.fragment(l, first: true) else { return }
+            let x = CGFloat(l.level) * NotesStyle.column
+            v.setNeedsDisplay(CGRect(x: v.textContainerOrigin.x + x - 2, y: v.textContainerOrigin.y + f.minY - 2, width: 20, height: 20))
+        }
+
+        #if DEBUG
+        /// `nbench:` (DebugScript): opening a 20,000-character note and typing 100 characters into it, in ms of app
+        /// work (design/MARKDOWN.md §9). The task's notes are put back after; nothing is written.
+        func benchmark() -> String {
+            guard let v = view, let ts = v.textStorage, let lm = layout, let tc = v.textContainer else { return "no view" }
+            let block = "## Heading\nSome **bold** and _italic_ text with a [link](https://example.com) and `code`.\n- [ ] item one\n- [x] item two\n> a quote\n```\nlet x = 1\n```\n"
+            var note = ""
+            while note.utf16.count < 20_000 { note += block }
+            note = NotesTextView.prefix(note, 19_800)   // room for the 100 typed characters
+            func ms(_ t0: UInt64) -> Double { Double(DispatchTime.now().uptimeNanoseconds - t0) / 1_000_000 }
+            var opens: [Double] = [], scans: [Double] = [], styles: [Double] = [], layouts: [Double] = [], loops: [Double] = []
+            for _ in 0..<5 {
+                ts.replaceCharacters(in: NSRange(location: 0, length: ts.length), with: "")
+                pending = nil
+                let t0 = DispatchTime.now().uptimeNanoseconds
+                ts.replaceCharacters(in: NSRange(location: 0, length: 0), with: note)
+                pending = nil
+                let s0 = DispatchTime.now().uptimeNanoseconds
+                document.update(ts.string)
+                scans.append(ms(s0))
+                let r0 = DispatchTime.now().uptimeNanoseconds
+                restyleAll()
+                styles.append(ms(r0))
+                loops.append(lastRestyle.loop)
+                let l0 = DispatchTime.now().uptimeNanoseconds
+                _ = v.fittingHeight(width: v.bounds.width)
+                layouts.append(ms(l0))
+                opens.append(ms(t0))
+            }
+            v.window?.makeFirstResponder(v)
+            let mid = (note as NSString).length / 2
+            v.setSelectedRange(NSRange(location: mid, length: 0))
+            var keys: [Double] = []
+            let before = ts.length
+            for i in 0..<100 {
+                let t0 = DispatchTime.now().uptimeNanoseconds
+                v.insertText(i % 10 == 9 ? " " : "a", replacementRange: NSRange(location: NSNotFound, length: 0))
+                lm.ensureLayout(forCharacterRange: NSRange(location: v.selectedRange().location, length: 0))
+                keys.append(ms(t0))
+            }
+            _ = tc
+            let typed = ts.length - before
+            let responder = v.window?.firstResponder === v
+            // Put the task's notes back without committing anything.
+            session = nil
+            v.window?.makeFirstResponder(nil)
+            shown = nil
+            apply(force: true)
+            func med(_ a: [Double]) -> Double { a.sorted()[a.count / 2] }
+            let slow = keys.enumerated().sorted { $0.element > $1.element }.prefix(4).map { String(format: "#%d %.2f", $0.offset, $0.element) }.joined(separator: ", ")
+            return "slowest keys: \(slow); " + String(format: "open 20k: median %.2f ms (scan %.3f, style %.2f of which loop %.2f, layout %.2f ms); keystroke: median %.3f ms, max %.3f ms, typed %d, responder %@",
+                          med(opens), med(scans), med(styles), med(loops), med(layouts), med(keys), keys.max() ?? 0, typed,
+                          responder ? "yes" : "no")
+        }
+        #endif
+
+        // MARK: Accessibility
+
+        /// The notes as they read: no marks; dots and numbers as text; code as typed, without its fences.
+        func readingText() -> String {
+            document.lines.compactMap { l -> String? in
+                switch l.kind {
+                case .fence: return nil
+                case .code: return String(utf16CodeUnits: Array(document.units[l.start..<l.end]), count: l.end - l.start)
+                case .blank: return ""
+                case .bullet: return "• " + document.plain(l)
+                case .ordered: return "\(document.numbers[l.index] ?? l.number). " + document.plain(l)
+                default: return document.plain(l)
+                }
+            }.joined(separator: "\n")
+        }
+
+        func boxElements(in v: NotesTextView) -> [Any] {
+            guard let lm = layout else { return [] }
+            return document.lines.filter { $0.kind == .task }.compactMap { l in
+                guard let f = lm.fragment(l, first: true) else { return nil }
+                let e = NotesBoxElement()
+                e.setAccessibilityRole(.checkBox)
+                let text = document.plain(l).trimmingCharacters(in: .whitespaces)
+                e.setAccessibilityLabel(text.isEmpty ? "item" : text)
+                e.setAccessibilityValue(l.checked ? 1 : 0)
+                e.setAccessibilityParent(v)
+                let r = CGRect(x: v.textContainerOrigin.x + CGFloat(l.level) * NotesStyle.column, y: v.textContainerOrigin.y + f.minY, width: 16, height: 19)
+                e.setAccessibilityFrameInParentSpace(r)
+                let box = l.box
+                e.toggle = { [weak self] in self?.toggleBox(box) }
+                return e
+            }
+        }
     }
 }

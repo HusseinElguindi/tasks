@@ -84,6 +84,16 @@ struct TasksCommands: Commands {
                 .keyboardShortcut("n", modifiers: [.command, .shift])
                 .disabled(actions == nil)
         }
+        // Bold and Italic while the notes have the caret (design/MARKDOWN.md §6). There's no Add Link: ⌘K completes.
+        CommandGroup(after: .pasteboard) {
+            Divider()
+            Button("Bold") { NSApp.sendAction(#selector(NotesTextView.notesBold(_:)), to: nil, from: nil) }
+                .keyboardShortcut("b")
+                .disabled(window?.detailEditing != .notes)
+            Button("Italic") { NSApp.sendAction(#selector(NotesTextView.notesItalic(_:)), to: nil, from: nil) }
+                .keyboardShortcut("i")
+                .disabled(window?.detailEditing != .notes)
+        }
         CommandMenu("Task") {
             Button(window?.detailOpen == true ? "Hide Details" : "Show Details") { actions?.toggleDetail() }
                 .keyboardShortcut("d")

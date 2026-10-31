@@ -61,6 +61,8 @@ public enum Markdown {
         public var lines: [Line] = []
         public var blocks: [Block] = []
 
+        public init() {}
+
         /// The line holding `offset` (a line's end counts as on it).
         public func line(at offset: Int) -> Line? {
             guard !lines.isEmpty else { return nil }

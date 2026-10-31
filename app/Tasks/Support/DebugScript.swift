@@ -1,6 +1,7 @@
 #if DEBUG
 import AppKit
 import Foundation
+import TasksCore
 
 /// Debug aid for checking interactions without the screen (it can be locked): `-debugScript "<steps>"` runs
 /// semicolon-separated steps 1.5 s after launch, posting events straight to the window (no HID), then quits.
@@ -15,6 +16,10 @@ import Foundation
 ///     app's own, which windows on System follow; none puts the real one back)   chrome:/path.txt   (appends the
 ///     window's appearance and the traffic lights' frames and states)   sidebar   (Show/Hide Sidebar)
 ///     picker:when|deadline   (opens the date popover for the selection)
+///     type:TEXT   (types each character as a key press; \n and \t as Return and Tab)
+///     mktask:TITLE|NOTES   (a new task with notes, in the open list or Inbox)
+///     ncaret:A[,B]   (the notes take the keys with A..B selected)   nbox:OFFSET   (a click on the checklist box there)
+///     nlog:/path.txt   (appends the notes' text, selection, hidden marks, session and the task's stored notes)
 ///     watch:MS:/path.txt   (for MS ms, checks the traffic lights on every turn of the run loop, before each commit,
 ///     and appends how many turns they were out of place)
 @MainActor
@@ -88,6 +93,110 @@ enum DebugScript {
                     NSApp.appearance = arg == "dark" ? NSAppearance(named: .darkAqua) : arg == "light" ? NSAppearance(named: .aqua) : nil
                 case "picker":
                     if let store = model.store { WindowActions(store: store, window: window).openPicker(arg == "deadline" ? .deadline : .when) }
+                case "type":
+                    for ch in arg.replacingOccurrences(of: "\\n", with: "\n").replacingOccurrences(of: "\\t", with: "\t") {
+                        if ch == "\n" { key(w, code: 36, flags: []) } else if ch == "\t" { key(w, code: 48, flags: []) } else { typeKey(w, String(ch)) }
+                        try? await Task.sleep(for: .milliseconds(20))
+                    }
+                case "ncaret":
+                    let v = arg.split(separator: ",").compactMap { Int($0) }
+                    guard let n = notesView(w), let a = v.first else { continue }
+                    w.makeFirstResponder(n)
+                    n.setSelectedRange(NSRange(location: a, length: (v.count > 1 ? v[1] : a) - a))
+                case "mktask":
+                    // mktask:TITLE|NOTES (\\n for a newline): a task in the open list, or Inbox.
+                    let parts = arg.split(separator: "|", maxSplits: 1).map(String.init)
+                    let notes = parts.count > 1 ? parts[1].replacingOccurrences(of: "\\n", with: "\n") : ""
+                    model.store?.createTask(title: parts[0], notes: notes, in: window.route.listID, when: nil, deadline: nil)
+                case "nbox":
+                    if let n = notesView(w), let at = Int(arg) { n.notes?.toggleBox(at) }
+                case "nbench":
+                    if let n = notesView(w), let c = n.notes {
+                        let line = c.benchmark() + "\n"
+                        try? line.write(toFile: arg, atomically: true, encoding: .utf8)
+                    }
+                case "npaste":
+                    // npaste:url:ADDRESS | npaste:text:TEXT | npaste:plain:TEXT | npaste:rtf — a private pasteboard,
+                    // never the user's clipboard.
+                    guard let n = notesView(w) else { continue }
+                    let kv = arg.split(separator: ":", maxSplits: 1).map(String.init)
+                    let pb = NSPasteboard(name: NSPasteboard.Name("tasks.debug.\(UUID().uuidString)"))
+                    pb.clearContents()
+                    let text = kv.count > 1 ? kv[1].replacingOccurrences(of: "\\n", with: "\n") : ""
+                    if kv[0] == "rtf" {
+                        let a = NSMutableAttributedString()
+                        let body = NSFont.systemFont(ofSize: 12)
+                        a.append(NSAttributedString(string: "Big title\n", attributes: [.font: NSFont.boldSystemFont(ofSize: 24)]))
+                        a.append(NSAttributedString(string: "Some ", attributes: [.font: body]))
+                        a.append(NSAttributedString(string: "bold", attributes: [.font: NSFont.boldSystemFont(ofSize: 12)]))
+                        a.append(NSAttributedString(string: " and a ", attributes: [.font: body]))
+                        a.append(NSAttributedString(string: "link", attributes: [.font: body, .link: URL(string: "https://example.com/x")!]))
+                        a.append(NSAttributedString(string: " and ", attributes: [.font: body]))
+                        a.append(NSAttributedString(string: "mono", attributes: [.font: NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)]))
+                        a.append(NSAttributedString(string: ".\n", attributes: [.font: body]))
+                        let list = NSTextList(markerFormat: .disc, options: 0)
+                        let ps = NSMutableParagraphStyle()
+                        ps.textLists = [list]
+                        for item in ["first", "second"] {
+                            a.append(NSAttributedString(string: "\t•\t" + item + "\n", attributes: [.font: body, .paragraphStyle: ps]))
+                        }
+                        a.append(NSAttributedString(string: "After the list.", attributes: [.font: body]))
+                        if let d = a.rtf(from: NSRange(location: 0, length: a.length), documentAttributes: [:]) { pb.setData(d, forType: .rtf) }
+                        pb.setString(a.string, forType: .string)
+                    } else {
+                        pb.setString(text, forType: .string)
+                    }
+                    n.paste(plain: kv[0] == "plain", from: pb)
+                    pb.releaseGlobally()
+                case "nhover":
+                    // nhover:X,Y in window points from the top left (y as the other steps take it), or none.
+                    guard let n = notesView(w) else { continue }
+                    let xy = arg.split(separator: ",").compactMap { Double($0) }
+                    if xy.count == 2 {
+                        let p = n.convert(NSPoint(x: xy[0], y: w.contentLayoutRect.height - xy[1]), from: nil)
+                        n.notes?.hover(at: p)
+                    } else {
+                        n.notes?.hover(at: nil)
+                    }
+                case "nax":
+                    guard let n = notesView(w) else { continue }
+                    let boxes = (n.accessibilityChildren() ?? []).compactMap { $0 as? NotesBoxElement }
+                        .map { "\($0.accessibilityLabel() ?? "")=\($0.accessibilityValue() as? Int ?? -1)" }
+                    let line = "value=\((n.accessibilityValue() ?? "").debugDescription) boxes=\(boxes)\n"
+                    try? line.write(toFile: arg, atomically: true, encoding: .utf8)
+                case "undo", "redo":
+                    // The first responder's undo (the notes' own while they have the keys, else the window's): a
+                    // background app has no key window for the menu's action to find.
+                    let um = w.firstResponder?.undoManager ?? w.undoManager
+                    if parts[0] == "undo" { um?.undo() } else { um?.redo() }
+                case "nfrag":
+                    // Each notes line's kind, characters and line fragment rects (container coordinates).
+                    guard let n = notesView(w), let lm = n.layoutManager, let tc = n.textContainer else { continue }
+                    lm.ensureLayout(for: tc)
+                    var out = ""
+                    let ns = n.string as NSString
+                    for l in Markdown.parse(n.string).lines {
+                        let r = NSRange(location: l.start, length: max(0, min(ns.length, l.end + 1) - l.start))
+                        let g = lm.glyphRange(forCharacterRange: r, actualCharacterRange: nil)
+                        var rects: [String] = []
+                        if g.length > 0 {
+                            lm.enumerateLineFragments(forGlyphRange: g) { rect, used, _, _, _ in rects.append("\(Int(rect.minY))+\(rect.height) used \(Int(used.minY))+\(used.height)") }
+                        }
+                        out += "\(l.index) \(l.kind) \(ns.substring(with: l.range).prefix(20).debugDescription) \(rects)\n"
+                    }
+                    try? out.write(toFile: arg, atomically: true, encoding: .utf8)
+                case "nlog":
+                    guard let n = notesView(w) else { continue }
+                    let ts = n.textStorage!
+                    var hidden: [String] = []
+                    ts.enumerateAttribute(.mdHidden, in: NSRange(location: 0, length: ts.length)) { v, r, _ in
+                        if v != nil { hidden.append((ts.string as NSString).substring(with: r).replacingOccurrences(of: "\n", with: "⏎")) }
+                    }
+                    let stored = window.selection.first.flatMap { model.store?.projection.task($0)?.notes } ?? "-"
+                    let sel = n.selectedRange()
+                    let line = "notes=\(n.string.debugDescription) sel=\(sel.location),\(sel.length) hidden=\(hidden) editing=\(window.detailEditing.map { "\($0)" } ?? "-") stored=\(stored.debugDescription) responder=\(w.firstResponder === n)\n"
+                    if let h = FileHandle(forWritingAtPath: arg) { h.seekToEndOfFile(); h.write(Data(line.utf8)); h.closeFile() }
+                    else { try? line.write(toFile: arg, atomically: true, encoding: .utf8) }
                 case "sidebar":
                     if let store = model.store { WindowActions(store: store, window: window).toggleSidebar() }
                 case "watch":
@@ -193,6 +302,25 @@ enum DebugScript {
         }
     }
 
+    private static func notesView(_ w: NSWindow) -> NotesTextView? {
+        func find(_ v: NSView) -> NotesTextView? {
+            if let n = v as? NotesTextView { return n }
+            for s in v.subviews { if let n = find(s) { return n } }
+            return nil
+        }
+        return w.contentView.flatMap(find)
+    }
+
+    /// One character as a key press, to the first responder as `key` sends them.
+    private static func typeKey(_ w: NSWindow, _ s: String) {
+        for t in [NSEvent.EventType.keyDown, .keyUp] {
+            guard let e = NSEvent.keyEvent(with: t, location: .zero, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                                           windowNumber: w.windowNumber, context: nil, characters: s, charactersIgnoringModifiers: s,
+                                           isARepeat: false, keyCode: 0) else { continue }
+            if NSApp.isActive { NSApp.sendEvent(e) } else if t == .keyDown { w.firstResponder?.keyDown(with: e) }
+        }
+    }
+
     private static func key(_ w: NSWindow, code: UInt16, flags: NSEvent.ModifierFlags) {
         let chars: String = switch code {
         case 125: String(UnicodeScalar(NSDownArrowFunctionKey)!)
@@ -202,10 +330,13 @@ enum DebugScript {
         case 36: "\r"
         case 49: " "
         case 53: "\u{1b}"
+        case 48: flags.contains(.shift) ? "\u{19}" : "\t"
+        case 51: "\u{7f}"
         case 45: "n"
         case 6: "z"
         case 0: "a"
         case 11: "b"
+        case 34: "i"
         case 2: "d"
         default: ""
         }
@@ -215,7 +346,10 @@ enum DebugScript {
                                         charactersIgnoringModifiers: chars, isARepeat: false, keyCode: code) {
                 // In the background there's no key window to route to: straight to the first responder (menu key
                 // equivalents don't work this way).
-                if NSApp.isActive { NSApp.sendEvent(e) } else if type == .keyDown { w.firstResponder?.keyDown(with: e) }
+                // With ⌘, the window's views get it as a key equivalent first, as AppKit does.
+                if NSApp.isActive { NSApp.sendEvent(e) } else if type == .keyDown, !(flags.contains(.command) && w.performKeyEquivalent(with: e)) {
+                    w.firstResponder?.keyDown(with: e)
+                }
             }
         }
     }

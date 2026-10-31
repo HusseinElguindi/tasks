@@ -281,6 +281,7 @@ final class TaskListView: NSView {
                 }
             } else if let t = p.taskModel(id) {
                 m = RowModel(id: id, title: t.title, untitled: t.title.isEmpty, done: t.isDone, draft: false)
+                m.notes = t.notesSummary
                 if !t.isDone {
                     if let when = t.when, !(inToday && when <= today) {
                         m.chips.append(.init(field: .when, content: .init(text: DateLabel.whenChip(when, today: today), glyph: .calendar)))

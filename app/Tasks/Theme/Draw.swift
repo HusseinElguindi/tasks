@@ -9,7 +9,7 @@ import SwiftUI
 
 enum Glyph: CaseIterable {
     case sun, sidebarLeft, split, plus, chevronRight, chevronLeft, calendar, flag, xmark, trash, lines, archive,
-         checkCircle, upDown, check
+         checkCircle, upDown, check, notes, checklist
 
     /// SVG path data in a 16×16 view box, y down.
     private var svg: [String] {
@@ -29,6 +29,9 @@ enum Glyph: CaseIterable {
         case .checkCircle: return ["circle 8 8 6.2", "M5.3 8.2l1.9 1.9 3.6-4"]
         case .upDown: return ["M5 6.5L8 3.5l3 3M5 9.5l3 3 3-3"]
         case .check: return ["M3.8 8.4l2.7 2.7 5.7-6.2"]
+        // The row's notes hint (design/MARKDOWN.md §7, dc:82).
+        case .notes: return ["M3.5 4.5h9M3.5 8h9M3.5 11.5h5.5"]
+        case .checklist: return ["rect 2.5 2.5 11 11 3", "M5.4 8.2l1.8 1.8 3.4-3.7"]
         }
     }
 
