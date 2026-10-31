@@ -319,21 +319,15 @@ final class TaskListView: NSView {
             if isDraft, let draft {
                 let untitled = draft.title.isEmpty
                 m = RowModel(id: id, title: draft.title, untitled: untitled, done: false, draft: true)
-                if let when = draft.when, !(inToday && when <= today), when != groupDay {
-                    m.chips.append(.init(field: .when, content: .init(text: DateLabel.whenChip(when, today: today), glyph: .calendar)))
-                }
+                if let when = draft.when, !(inToday && when <= today), when != groupDay { m.when = .when(when, today: today) }
             } else if let t = p.taskModel(id) {
                 m = RowModel(id: id, title: t.title, untitled: t.title.isEmpty, done: t.isDone, draft: false)
                 m.notes = t.notesSummary
+                // Done rows, in any view, show no dates and no ring: done is done (§24).
                 if !t.isDone {
-                    if let when = t.when, !(inToday && when <= today), when != groupDay {
-                        m.chips.append(.init(field: .when, content: .init(text: DateLabel.whenChip(when, today: today), glyph: .calendar)))
-                    }
-                    if let dl = t.deadline {
-                        let c = dl == groupDay ? (text: "Due", tone: DateLabel.Tone.neutral) : DateLabel.deadlineChip(dl, today: today)
-                        let tone: ChipLayer.Tone = c.tone == .late ? .late : c.tone == .due ? .due : .neutral
-                        m.chips.append(.init(field: .deadline, content: .init(text: c.text, glyph: .flag, tone: tone)))
-                    }
+                    if let when = t.when, !(inToday && when <= today), when != groupDay { m.when = .when(when, today: today) }
+                    if let dl = t.deadline { m.deadline = .deadline(dl, today: today, groupDay: groupDay) }
+                    if !t.deleted { m.cue = .init(when: t.when, deadline: t.deadline, today: today, inToday: inToday) }
                 }
                 if inToday && L.isDone(id) { m.whereText = actions.listName(t.list) }
                 if state.route.isView, let w = viewWhere(L, id: id, list: t.list) { m.whereText = w.name; m.whereSuffix = w.suffix }
@@ -1123,13 +1117,18 @@ final class TaskListView: NSView {
             if case .label(let k, let part) = t, k == key { v.setHover(true, part: part) } else { v.setHover(false, part: nil) }
         }
         banner.setButtonState(hovered: t == .banner, pressed: false)
-        // Tooltips: the row's › ("Show Details ⌘D") and a Today group's + (the name only), §16.
+        // Tooltips: the row's › ("Show Details ⌘D"), its dates in full words (§24) and a Today group's + (the name
+        // only), §16.
         guard t != old else { return }
         let overlays = state.overlays
         switch t {
         case .row(let id, .open):
             if let v = rows[id] {
                 overlays.hoverTip("Show Details", keys: "⌘D", for: windowRect(v.open.frame, from: v), windowWidth: window?.frame.width ?? 1200)
+            }
+        case .row(let id, .chip(let field)):
+            if let v = rows[id], let f = v.chipFrame(field), let tip = v.chipTip(field), !tip.isEmpty {
+                overlays.hoverTip(tip, for: windowRect(f, from: v), windowWidth: window?.frame.width ?? 1200)
             }
         case .head(let id, .plus):
             if let v = heads[id] {
@@ -1145,7 +1144,8 @@ final class TaskListView: NSView {
             }
         default:
             // Only the tips this list showed: the pointer may have moved onto another control with its own.
-            if case .row(_, .open) = old { overlays.hideTip() } else if case .label(_, part: .plus) = old { overlays.hideTip() }
+            if case .row(_, .open) = old { overlays.hideTip() } else if case .row(_, .chip) = old { overlays.hideTip() }
+            else if case .label(_, part: .plus) = old { overlays.hideTip() }
             else if case .head(_, .plus) = old { overlays.hideTip() }
         }
     }
@@ -1485,8 +1485,9 @@ final class TaskListView: NSView {
         copy.joinBottom = false
         copy.dragSource = false
         copy.renaming = false
-        // The copy's chips are text only (the prototype's drag template, dc:171).
-        copy.chips = copy.chips.map { var c = $0; c.content.glyph = nil; return c }
+        // The copy's dates are text only (the prototype's drag template, dc:171).
+        copy.when?.content.glyph = nil
+        copy.deadline?.content.glyph = nil
         copy.pickerField = nil
         state.dragOverlay?.beginTaskCopy(copy, palette: palette, frame: frame, count: ids.count)
         state.drag = .init(kind: .tasks(ids: ids, group: gid), target: target, mode: mode)

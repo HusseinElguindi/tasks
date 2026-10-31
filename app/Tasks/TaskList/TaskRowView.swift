@@ -7,6 +7,8 @@ struct RowModel: Equatable {
     struct Chip: Equatable {
         var field: Overlays.Picker.Field
         var content: ChipLayer.Content
+        /// The full date and how far it is, for the tooltip and VoiceOver: "Deadline: Sat, Nov 14 · 14 days left".
+        var tip = ""
     }
 
     var id: EntityID
@@ -14,7 +16,12 @@ struct RowModel: Equatable {
     var untitled: Bool
     var done: Bool
     var draft: Bool
-    var chips: [Chip] = []
+    /// The When, after the title and its notes hint, as text (§24 Quiet When).
+    var when: Chip?
+    /// The Deadline: a capsule at the right, in its tone (§24).
+    var deadline: Chip?
+    /// What the checkbox's ring says (§24): overdue, due today, planned for today.
+    var cue = CheckLayer.Cue()
     /// The notes' hint after the title: a glyph, or the checklist's count (design/MARKDOWN.md §7).
     var notes = NotesSummary()
     /// Today's Completed group: the list's name at the right (css:172).
@@ -59,7 +66,8 @@ final class TaskRowView: NSView {
     private let whereLabel = TextLayer()
     private let whereMask = FadeMask()
     private let whereSuffixLabel = TextLayer()
-    private var chipLayers: [ChipLayer] = []
+    private let whenChip = ChipLayer()
+    private let deadlineChip = ChipLayer()
     private var chipFrames: [(Overlays.Picker.Field, CGRect)] = []
     let open = IconButtonLayer(.chevronRight, size: TK.M.openButton, glyphSize: 12)
     private(set) var titleFrame: CGRect = .zero
@@ -91,11 +99,14 @@ final class TaskRowView: NSView {
         layer.addSublayer(strike)
         layer.addSublayer(whereLabel)
         layer.addSublayer(whereSuffixLabel)
+        layer.addSublayer(whenChip)
+        layer.addSublayer(deadlineChip)
         whereLabel.mask = whereMask
         layer.addSublayer(open)
         open.setInstant { open.opacity = 0 }
         open.reveal(false, animated: false)
-        for l in [selection, ring, check, title, hintGlyph, hintCount, strike, whereLabel, whereSuffixLabel, open, whereMask, titleMask] as [CALayer] {
+        for l in [selection, ring, check, title, hintGlyph, hintCount, strike, whereLabel, whereSuffixLabel, open, whereMask, titleMask,
+                  whenChip, deadlineChip] as [CALayer] {
             l.actions = Self.noActions
         }
     }
@@ -150,7 +161,7 @@ final class TaskRowView: NSView {
         // Checkbox at x 10, centered.
         check.position = CGPoint(x: TK.M.rowPadLeft + TK.M.check / 2, y: TK.M.row / 2)
         CATransaction.commit()
-        check.set(on: m.done, placeholder: m.draft, palette: palette, animated: anim)
+        check.set(on: m.done, placeholder: m.draft, cue: m.cue, palette: palette, animated: anim)
         // `set` puts the opacity back each time; a trashed row's box is at 60%.
         if m.trashed { check.setInstant { check.opacity = 0.6 } }
         check.isHidden = m.heading
@@ -165,18 +176,22 @@ final class TaskRowView: NSView {
             open.setPalette(palette)
             right -= TK.M.openButton + TK.M.openGap
         }
-        while chipLayers.count < m.chips.count {
-            let c = ChipLayer()
-            c.actions = Self.noActions
-            c.setScaleDeep(window?.backingScaleFactor ?? 2)
-            layer?.addSublayer(c)
-            chipLayers.append(c)
+        // The Deadline at the right, always shown (§24): a date never truncates. `.chips` keeps its 8pt margin even
+        // when there's none.
+        chipFrames = []
+        if let c = m.deadline {
+            let w = ChipLayer.width(c.content)
+            let f = CGRect(x: right - w, y: (TK.M.row - TK.M.chip) / 2, width: w, height: TK.M.chip)
+            bind(deadlineChip, c, frame: f, m: m, paletteChanged: paletteChanged, same: same)
+            right -= w
         }
-        // Who gives way when the row is short (v2 feedback 16): the title keeps up to `titleKeep` (all of a shorter
-        // one) and its notes hint; the chips keep their size, dropped from the first (When before Deadline) rather
-        // than cut the title below that; the list name after the title keeps up to `whereKeep` and then truncates
-        // with the title's end fade; space beyond the keeps goes to the title first, then to the list name. Nothing
-        // is drawn over the leading content or past the row.
+        deadlineChip.isHidden = m.deadline == nil
+        right -= TK.M.chipsGap
+        // Who gives way when the row is short (v2 feedback 16, §24): the title keeps up to `titleKeep` (all of a
+        // shorter one) and its notes hint; the When after them goes rather than cut the title below that, and the
+        // Deadline never does; the list name after the title keeps up to `whereKeep` and then truncates with the
+        // title's end fade; space beyond the keeps goes to the title first, then to the list name. Nothing is drawn
+        // over the leading content or past the row.
         let titleX = m.heading ? TK.M.rowPadLeft : TK.M.rowPadLeft + TK.M.check + TK.M.titleGap
         let color = (m.done || m.untitled) ? palette.inkTertiary : m.trashed ? palette.inkSecondary : palette.ink
         let text = m.untitled ? "New Task" : m.title
@@ -185,31 +200,12 @@ final class TaskRowView: NSView {
         let hintW = layoutHint(m, palette)
         let hintSpace = hintW > 0 ? hintW + 6 : 0
         let titleNat = ceil(title.textWidth) + 1
-        let leadKeep = min(titleNat, Self.titleKeep) + hintSpace
-        let leadNat = titleNat + hintSpace
-        var shown = Array(m.chips.indices)
-        func chipsWidth(_ ix: [Int]) -> CGFloat {
-            ix.enumerated().reduce(0) { $0 + ChipLayer.width(m.chips[$1.element].content) + ($1.offset > 0 ? TK.M.chipSpacing : 0) }
-        }
-        while !shown.isEmpty, right - chipsWidth(shown) - TK.M.chipsGap - titleX < leadKeep { shown.removeFirst() }
-        let chipsWidth = chipsWidth(shown)
-        var x = right - chipsWidth
-        chipFrames = []
-        for (i, layer) in chipLayers.enumerated() {
-            guard i < m.chips.count, shown.contains(i) else { layer.isHidden = true; continue }
-            let c = m.chips[i]
-            layer.isHidden = false
-            layer.lifted = style == .lifted
-            if layer.content != c.content || paletteChanged || !same { layer.set(c.content, palette: palette) }
-            layer.pickerOpen = m.pickerField == c.field
-            let w = ChipLayer.width(c.content)
-            let f = CGRect(x: x, y: (TK.M.row - TK.M.chip) / 2, width: w, height: TK.M.chip)
-            layer.frame = f
-            chipFrames.append((c.field, f))
-            x += w + TK.M.chipSpacing
-        }
-        // `.chips` keeps its 8pt margin even when empty.
-        right -= chipsWidth + TK.M.chipsGap
+        // The When's glyph sits 6 after the hint (or the title); its capsule's 5pt padding reaches back over the gap.
+        let whenNat = m.when.map { ChipLayer.width($0.content) + 6 - ChipLayer.quietPad } ?? 0
+        let showWhen = whenNat > 0 && right - titleX >= min(titleNat, Self.titleKeep) + hintSpace + whenNat
+        let whenSpace = showWhen ? whenNat : 0
+        let leadKeep = min(titleNat, Self.titleKeep) + hintSpace + whenSpace
+        let leadNat = titleNat + hintSpace + whenSpace
         // The list name (and a month row's date, kept whole), 8 after the title's slot.
         let avail = max(0, right - titleX)
         var whereW: CGFloat = 0
@@ -242,11 +238,12 @@ final class TaskRowView: NSView {
         whereSuffixLabel.isHidden = whereW == 0 || (m.whereSuffix ?? "").isEmpty
         right -= whereW
 
-        // The title: flex 1, nudged up 0.5. With notes, their hint follows the text 6 later and stays whole: the title
-        // shrinks first. Its last 24pt fade out only when it's cut off (css:166–168, md:67–77).
-        // A heading's copy has no checkbox: its name starts at the checkbox's edge, semibold (css:480–481).
+        // The title: flex 1, nudged up 0.5. With notes, their hint follows the text 6 later, then the When 6 after
+        // that; both stay whole: the title shrinks first. Its last 24pt fade out only when it's cut off (css:166–168,
+        // md:67–77, §24). A heading's copy has no checkbox: its name starts at the checkbox's edge, semibold
+        // (css:480–481).
         let slot = max(0, right - titleX)
-        let room = hintW > 0 ? max(0, slot - hintW - 6) : slot
+        let room = max(0, slot - hintSpace - whenSpace)
         let clipped = title.textWidth > room + 0.5
         let titleW = clipped ? room : min(room, ceil(title.textWidth) + 1)
         title.place(x: titleX, lineTop: (TK.M.row - 16) / 2 - 0.5, lineHeight: 16, width: titleW)
@@ -258,6 +255,13 @@ final class TaskRowView: NSView {
         hintCount.place(x: hintX + 15, lineTop: (TK.M.row - 14) / 2, lineHeight: 14, width: hintCount.textWidth + 2)
         hintGlyph.isHidden = hintW == 0 || m.renaming
         hintCount.isHidden = m.notes.total == 0 || hintW == 0 || m.renaming
+        if showWhen, let c = m.when {
+            // The title's end, the hint and its 6, then 6 to the glyph, less the capsule's own padding.
+            let x = (hintX - 6) + hintSpace + 6 - ChipLayer.quietPad
+            bind(whenChip, c, frame: CGRect(x: x, y: (TK.M.row - TK.M.chip) / 2, width: ChipLayer.width(c.content), height: TK.M.chip),
+                 m: m, paletteChanged: paletteChanged, same: same)
+        }
+        whenChip.isHidden = !showWhen || m.renaming
         // The strike is instant; the color takes 200 ms (css:169–171).
         strike.isHidden = !m.done || m.renaming
         strike.backgroundColor = palette.inkQuiet.cgColor
@@ -281,7 +285,8 @@ final class TaskRowView: NSView {
         }
         let notesLabel = !m.notes.hasNotes ? nil : m.notes.total > 0 ? "\(m.notes.checked) of \(m.notes.total) checked" : "Has notes"
         let whereFull = m.whereText.map { $0 + (m.whereSuffix ?? "") }
-        setAccessibilityLabel(([text, notesLabel].compactMap { $0 } + m.chips.map(\.content.text) + [whereFull].compactMap { $0 }).joined(separator: ", "))
+        let dates = [m.when, m.deadline].compactMap { $0.map { $0.tip.isEmpty ? $0.content.text : $0.tip } }
+        setAccessibilityLabel(([text, notesLabel].compactMap { $0 } + dates + [whereFull].compactMap { $0 }).joined(separator: ", "))
         setAccessibilitySelected(m.selected)
     }
 
@@ -301,6 +306,21 @@ final class TaskRowView: NSView {
 
     func chipFrame(_ field: Overlays.Picker.Field) -> CGRect? { chipFrames.first { $0.0 == field }?.1 }
 
+    /// A date's tooltip (§24), while its chip is shown.
+    func chipTip(_ field: Overlays.Picker.Field) -> String? {
+        guard chipFrame(field) != nil else { return nil }
+        return (field == .when ? model?.when : model?.deadline)?.tip
+    }
+
+    /// Shows a date chip in `frame` and records it for hit-testing.
+    private func bind(_ layer: ChipLayer, _ c: RowModel.Chip, frame: CGRect, m: RowModel, paletteChanged: Bool, same: Bool) {
+        layer.lifted = style == .lifted
+        if layer.content != c.content || paletteChanged || !same { layer.set(c.content, palette: palette) }
+        layer.pickerOpen = m.pickerField == c.field
+        layer.frame = frame
+        chipFrames.append((c.field, frame))
+    }
+
     /// The row's hover (the › fades in) and the hovered control.
     func setHover(row: Bool, part: Part?) {
         if rowHovered != row {
@@ -312,17 +332,15 @@ final class TaskRowView: NSView {
         hoveredPart = p
         check.hovered = p == .check
         open.hovered = p == .open
-        for (i, c) in chipLayers.enumerated() where i < chipFrames.count {
-            c.hovered = p == .chip(chipFrames[i].0)
-        }
+        whenChip.hovered = p == .chip(.when)
+        deadlineChip.hovered = p == .chip(.deadline)
     }
 
     func setPressed(_ part: Part?) {
         check.setPressedIfChanged(part == .check)
         open.pressed = part == .open
-        for (i, c) in chipLayers.enumerated() where i < chipFrames.count {
-            c.pressed = part == .chip(chipFrames[i].0)
-        }
+        whenChip.pressed = part == .chip(.when)
+        deadlineChip.pressed = part == .chip(.deadline)
     }
 
     nonisolated(unsafe) static let hintFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)   // .ncount 500 11/14
@@ -381,7 +399,7 @@ final class TaskRowView: NSView {
     override func accessibilityChildren() -> [Any]? {
         guard let m = model, style == .row else { return [] }
         let title = m.untitled ? "New Task" : m.title
-        checkElement.setAccessibilityLabel((m.done ? "Mark not done: " : "Complete: ") + title)
+        checkElement.setAccessibilityLabel((m.done ? "Mark not done: " : "Complete: ") + title + (m.done ? "" : m.cue.words))
         checkElement.setAccessibilityValue(m.done ? 1 : 0)
         checkElement.setAccessibilityFrameInParentSpace(CGRect(x: check.frame.minX, y: bounds.height - check.frame.maxY, width: check.frame.width, height: check.frame.height))
         checkElement.onPress = onCheck

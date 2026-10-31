@@ -298,11 +298,27 @@ final class TileLayer: CALayer {
 /// A 16pt ring; checked, an accent fill with a drawn check. `animate` runs the fill, the stroke drawing in and the
 /// pop (§8); a recycled row rebinding to another task doesn't.
 final class CheckLayer: CALayer {
+    /// What the ring says about an open task (§24, css:495–510): overdue in `danger`, due today in `attention`,
+    /// planned for today (its When is today or earlier, seen outside Today) in `accent-text`. Planned with a
+    /// deadline's ring is a double ring: the deadline's outside, a 1.25pt `accent-text` ring 1.5 inside it.
+    struct Cue: Equatable {
+        enum Deadline: Equatable { case late, due }
+        var deadline: Deadline?
+        var planned = false
+
+        /// Read after the checkbox's label: "Complete: ECE 358 lab report, overdue, planned for today" (`cueWords`).
+        var words: String {
+            (deadline == .late ? ", overdue" : deadline == .due ? ", due today" : "") + (planned ? ", planned for today" : "")
+        }
+    }
+
     private let ring = CAShapeLayer()
+    private let inner = CAShapeLayer()
     private let fill = CALayer()
     private let mark = GlyphLayer(.check, size: TK.M.checkGlyph)
     private(set) var isOn = false
     private(set) var isPlaceholder = false
+    private(set) var cue = Cue()
     private var palette = TK.Palette.dark
     var hovered = false { didSet { if hovered != oldValue { updateRing(animated: true) } } }
 
@@ -318,21 +334,29 @@ final class CheckLayer: CALayer {
         ring.path = CGPath(ellipseIn: bounds.insetBy(dx: inset, dy: inset), transform: nil)
         ring.lineWidth = TK.M.checkRing
         ring.fillColor = nil
+        // The double ring's inner one: inset 3, 1.25 wide (css:503).
+        inner.frame = bounds
+        inner.path = CGPath(ellipseIn: bounds.insetBy(dx: 3 + 0.625, dy: 3 + 0.625), transform: nil)
+        inner.lineWidth = 1.25
+        inner.fillColor = nil
+        inner.opacity = 0
         mark.position = CGPoint(x: s / 2, y: s / 2)
         mark.strokeEnd = 0
         addSublayer(fill)
         addSublayer(ring)
+        addSublayer(inner)
         addSublayer(mark)
     }
 
     override init(layer: Any) { super.init(layer: layer) }
     required init?(coder: NSCoder) { fatalError() }
 
-    func set(on: Bool, placeholder: Bool = false, palette: TK.Palette, animated: Bool) {
+    func set(on: Bool, placeholder: Bool = false, cue: Cue = Cue(), palette: TK.Palette, animated: Bool) {
         self.palette = palette
         let changed = on != isOn
         isOn = on
         isPlaceholder = placeholder
+        self.cue = cue
         mark.color = palette.onAccent
         opacity = placeholder ? 0.7 : 1
         if animated && changed && !TK.CA.reduce {
@@ -356,12 +380,22 @@ final class CheckLayer: CALayer {
     }
 
     private func updateRing(animated: Bool) {
+        // A cue's ring stays on hover rather than greying (§24); checking a task clears it: done is done.
         let color: NSColor
-        if isOn { color = palette.accent } else if isPlaceholder { color = palette.inkQuiet } else { color = hovered ? palette.inkSecondary : palette.lineField }
+        let open = !isOn && !isPlaceholder
+        if isOn { color = palette.accent } else if isPlaceholder { color = palette.inkQuiet }
+        else if open, cue.deadline == .late { color = palette.danger }
+        else if open, cue.deadline == .due { color = palette.attention }
+        else if open, cue.planned { color = palette.accentText }
+        else { color = hovered ? palette.inkSecondary : palette.lineField }
+        let double: Float = open && cue.planned && cue.deadline != nil ? 1 : 0
+        setInstant { inner.strokeColor = palette.accentText.cgColor }
         if animated {
             ring.animate("strokeColor", to: color.cgColor, hovered ? TK.CA.hoverInT : TK.CA.hoverOutT)
+            if inner.opacity != double { inner.animate("opacity", to: double, TK.CA.checkFillT) }
         } else {
             ring.strokeColor = color.cgColor
+            inner.opacity = double
         }
     }
 

@@ -102,7 +102,7 @@ final class DragOverlayView: NSView {
         if c != compact {
             compact = c
             let w = c ? TK.M.dragTagWidth : fullWidth
-            if c { m.chips = [] }
+            if c { m.when = nil; m.deadline = nil }
             row.configure(m, palette: palette, width: w, animated: false)
             row.layer?.shadowPath = CGPath(roundedRect: CGRect(x: 0, y: 0, width: w, height: TK.M.row), cornerWidth: TK.M.rowRadius, cornerHeight: TK.M.rowRadius, transform: nil)
             ring.setInstant { ring.frame = CGRect(x: -0.5, y: -0.5, width: w + 1, height: TK.M.row + 1) }
