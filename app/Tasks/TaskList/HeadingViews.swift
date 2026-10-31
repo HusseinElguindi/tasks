@@ -85,13 +85,13 @@ final class HeadingRowView: NSView {
         let h = TK.M.row
         // Selected: the row's fill (a heading never joins a task's selection block). Renaming: the row's editing look.
         selection.isHidden = !(m.selected || m.renaming)
-        selection.backgroundColor = (m.paneFocused || m.renaming ? palette.sel : palette.selDim).cgColor
+        selection.backgroundColor = (m.paneFocused || m.renaming ? palette.fillRowSelected : palette.fillRowSelectedDim).cgColor
         selection.frame = CGRect(x: 0, y: 0, width: width, height: h)
         ring.isHidden = !m.renaming
-        ring.borderColor = palette.accent.cgColor
+        ring.borderColor = palette.focus.cgColor
         ring.frame = selection.frame
         // The rule hides while selected or renamed.
-        rule.backgroundColor = palette.lineSep.cgColor
+        rule.backgroundColor = palette.lineSeparator.cgColor
         rule.frame = CGRect(x: 10, y: h - 1, width: max(0, width - 20), height: 1)
         rule.isHidden = m.selected || m.renaming
         // + and the chevron: 5 from the right, 2 apart, centered.
@@ -104,9 +104,9 @@ final class HeadingRowView: NSView {
         }
         // The name, then the count; both stop before the buttons.
         let text = m.title.isEmpty ? "New Heading" : m.title
-        name.set(text, font: Self.font, color: m.title.isEmpty ? palette.ink3 : palette.ink)
+        name.set(text, font: Self.font, color: m.title.isEmpty ? palette.inkTertiary : palette.ink)
         let countText = m.collapsed && m.count > 0 ? String(m.count) : ""
-        count.set(countText, font: Self.countFont, color: palette.ink3)
+        count.set(countText, font: Self.countFont, color: palette.inkTertiary)
         let countW = countText.isEmpty ? 0 : TextLayer.width(countText, font: Self.countFont) + 8
         let room = max(0, plus.frame.minX - 8 - TK.M.rowPadLeft - countW)
         let nameW = min(room, ceil(name.textWidth) + 1)
@@ -269,12 +269,12 @@ final class ListTitleView: NSView {
         if let s = c.sub, subW > 0 {
             sub.isHidden = c.renaming
             sub.truncationMode = .end
-            sub.set(s, font: TK.Font.body, color: palette.ink3)
+            sub.set(s, font: TK.Font.body, color: palette.inkTertiary)
             sub.place(x: x + titleW + 9, lineTop: lineTop + 7 + 1, lineHeight: 16, width: subW)
         } else {
             sub.isHidden = true
         }
-        placeholder.set("Notes", font: TK.Font.body, color: palette.inkQ)
+        placeholder.set("Notes", font: TK.Font.body, color: palette.inkQuiet)
         placeholder.place(x: TK.M.rowInset + TK.M.rowPadLeft, lineTop: Self.notesTop, lineHeight: 19, width: 60)
         CATransaction.commit()
     }

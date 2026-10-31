@@ -106,7 +106,6 @@ enum DebugKeyLog {
             if let h = FileHandle(forWritingAtPath: path) { h.seekToEndOfFile(); h.write(Data(line.utf8)); h.closeFile() }
             else { try? line.write(toFile: path, atomically: true, encoding: .utf8) }
         }
-        PaneHoverDebug.log = { append(String(format: "%.3f ", CACurrentMediaTime()) + $0 + "\n") }
         monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .leftMouseDown]) { event in
             let key = NSApp.keyWindow.map { "\(type(of: $0))#\($0.windowNumber)" } ?? "none"
             let responder = NSApp.keyWindow?.firstResponder.map { "\(type(of: $0))" } ?? "none"

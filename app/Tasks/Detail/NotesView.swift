@@ -546,7 +546,7 @@ struct NotesField: NSViewRepresentable {
         /// The editing session: whose notes, and what they were.
         private(set) var session: (target: NotesHost.Target, original: String)?
         /// What the view shows at rest: whose notes, the notes and the theme.
-        private var shown: (target: NotesHost.Target, notes: String, dark: Bool)?
+        private var shown: (target: NotesHost.Target, notes: String, palette: TK.Palette)?
         /// The button is down in the text: the marks wait for it (§4).
         var dragging = false
         private(set) var hoveredLink: NSRange?
@@ -569,16 +569,16 @@ struct NotesField: NSViewRepresentable {
             guard let v = view else { return }
             let tk = palette
             v.insertionPointColor = tk.ink
-            v.selectedTextAttributes = [.backgroundColor: tk.textSel]
+            v.selectedTextAttributes = [.backgroundColor: tk.textSelection]
             refreshPlaceholder()
             v.typingAttributes = NotesStyle.base(tk)
-            let themeChanged = shown?.dark != tk.isDark
+            let themeChanged = shown?.palette != tk
             if session != nil {
-                if themeChanged { shown?.dark = tk.isDark; restyleAll() }
+                if themeChanged { shown?.palette = tk; restyleAll() }
                 return
             }
             guard force || shown?.target != host.target || shown?.notes != host.notes || themeChanged else { return }
-            shown = (host.target, host.notes, tk.isDark)
+            shown = (host.target, host.notes, tk)
             if v.string != host.notes {
                 v.textStorage?.replaceCharacters(in: NSRange(location: 0, length: (v.string as NSString).length), with: host.notes)
             }
@@ -599,7 +599,7 @@ struct NotesField: NSViewRepresentable {
                 ph = NotesStyle.placeholder(tk)
             } else if case .task = host.target, session != nil {
                 let a = NSMutableAttributedString(attributedString: NotesStyle.placeholder(tk))
-                a.addAttribute(.foregroundColor, value: tk.inkQ, range: NSRange(location: 0, length: a.length))
+                a.addAttribute(.foregroundColor, value: tk.inkQuiet, range: NSRange(location: 0, length: a.length))
                 ph = a
             } else {
                 ph = nil
@@ -663,7 +663,7 @@ struct NotesField: NSViewRepresentable {
                 }
             }
             // Read what was written, not the model (it may update a moment later).
-            shown = (s.target, text, palette.isDark)
+            shown = (s.target, text, palette)
             v.clearUndo()
             setReveal(nil)
             hover(at: nil)
@@ -1018,7 +1018,7 @@ struct NotesField: NSViewRepresentable {
                 lm.removeTemporaryAttribute(.foregroundColor, forCharacterRange: NSRange(location: 0, length: ts.length))
                 for (r, t0) in fades where NSMaxRange(r) <= ts.length {
                     let k = CGFloat(ease(min(1, (now - t0) / 0.1)))
-                    lm.addTemporaryAttribute(.foregroundColor, value: palette.inkQ.withAlphaComponent(k), forCharacterRange: r)
+                    lm.addTemporaryAttribute(.foregroundColor, value: palette.inkQuiet.withAlphaComponent(k), forCharacterRange: r)
                 }
             }
             // Finished box animations go.

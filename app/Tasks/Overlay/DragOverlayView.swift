@@ -62,7 +62,7 @@ final class DragOverlayView: NSView {
             guard let rl = row.layer else { return }
             // shadow-lift: a 0.5pt ring plus 0 8 24 (css:58, 75).
             rl.masksToBounds = false
-            rl.shadowColor = palette.liftShadow.cgColor
+            rl.shadowColor = palette.shadowLift.cgColor
             rl.shadowOpacity = 1
             rl.shadowRadius = 12
             rl.shadowOffset = CGSize(width: 0, height: rl.isGeometryFlipped ? 8 : -8)
@@ -70,7 +70,7 @@ final class DragOverlayView: NSView {
             ring.frame = CGRect(origin: .zero, size: frame.size).insetBy(dx: -0.5, dy: -0.5)
             ring.cornerRadius = TK.M.rowRadius + 0.5
             ring.borderWidth = 0.5
-            ring.borderColor = palette.liftRing.cgColor
+            ring.borderColor = palette.shadowLiftRing.cgColor
             if ring.superlayer !== rl { rl.insertSublayer(ring, at: 0) }
             // The count: an accent capsule 7pt past the copy's top-right corner.
             badge.isHidden = count < minBadge

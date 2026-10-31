@@ -63,7 +63,7 @@ struct TooltipView: View {
         if let tip = overlays.tip {
             HStack(spacing: 6) {
                 Text(tip.text).foregroundStyle(tk.ink.swiftUI)
-                if !tip.keys.isEmpty { Text(tip.keys).foregroundStyle(tk.ink2.swiftUI) }
+                if !tip.keys.isEmpty { Text(tip.keys).foregroundStyle(tk.inkSecondary.swiftUI) }
             }
             .font(Font(TK.Font.tooltip))
             .lineLimit(1)
@@ -92,8 +92,8 @@ private struct PopoverSurface: ViewModifier {
         let shape = RoundedRectangle(cornerRadius: radius, style: .circular)
         // The surface alone casts the shadow (its children mustn't).
         content
-            .background(shape.fill(tk.popover.swiftUI).shadow(color: tk.popoverShadow.swiftUI, radius: 16, x: 0, y: 12))
-            .overlay(shape.stroke(tk.popoverRing.swiftUI, lineWidth: 0.5).padding(-0.25))
+            .background(shape.fill(tk.popover.swiftUI).shadow(color: tk.shadowPopover.swiftUI, radius: 16, x: 0, y: 12))
+            .overlay(shape.stroke(tk.shadowPopoverRing.swiftUI, lineWidth: 0.5).padding(-0.25))
     }
 }
 
@@ -120,7 +120,7 @@ struct NoticeView: View {
                         } label: {
                             HStack(spacing: 6) {
                                 Text("Undo")
-                                Text("⌘Z").font(Font(TK.Font.small)).foregroundStyle(tk.ink3.swiftUI)
+                                Text("⌘Z").font(Font(TK.Font.small)).foregroundStyle(tk.inkTertiary.swiftUI)
                             }
                         }
                         .fixedSize()

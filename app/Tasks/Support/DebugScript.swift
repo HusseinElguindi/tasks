@@ -12,7 +12,8 @@ import TasksCore
 ///     hit:X,Y     (prints the view AppKit hit-tests there)   size:W,H   (resizes the window, keeping its top left)
 ///     drag:X1,Y1,X2,Y2[,STEPS]   (press, move in steps 16 ms apart, release)
 ///     down:X,Y   move:X1,Y1,X2,Y2[,STEPS]   up:X,Y   (the same, a step at a time, to hold a drag)
-///     theme:system|dark|light   (Settings ▸ Theme)   sys:dark|light|none   (stands in for the system appearance: the
+///     theme:system|dark|light   (Settings ▸ Theme)   palette:derived|rex   (Rex's palette from its base colours alone,
+///     a change within one appearance, as another theme would be)   sys:dark|light|none   (stands in for the system appearance: the
 ///     app's own, which windows on System follow; none puts the real one back)   chrome:/path.txt   (appends the
 ///     window's appearance and the traffic lights' frames and states)   sidebar   (Show/Hide Sidebar)
 ///     picker:when|deadline   (opens the date popover for the selection)
@@ -91,6 +92,8 @@ enum DebugScript {
                     print("hit \(xy[0]),\(xy[1]) -> \(v.map { "\(type(of: $0))" } ?? "nil")")
                 case "theme":
                     if let t = AppModel.ThemeChoice(rawValue: arg) { model.theme = t }
+                case "palette":
+                    model.debugDerivedTheme = arg == "derived"
                 case "sys":
                     NSApp.appearance = arg == "dark" ? NSAppearance(named: .darkAqua) : arg == "light" ? NSAppearance(named: .aqua) : nil
                 case "act":

@@ -36,10 +36,10 @@ final class SidebarView: FlippedLayerView {
     private var leaveToken = 0
     private var rendered = false
     private var renderedRoute: WindowState.Route?
-    private var renderedDark: Bool?
+    private var renderedPalette: TK.Palette?
     private var renderQueued = false
     private var archiveLabelShown = false
-    private var labelsDark: Bool?
+    private var labelsPalette: TK.Palette?
 
     private var field: InlineField?
     private var fieldID: EntityID?
@@ -271,10 +271,10 @@ final class SidebarView: FlippedLayerView {
             }
         }
         // List switches, theme changes and the first frame never animate.
-        let animated = rendered && renderedRoute == m.route && renderedDark == palette.isDark && !TK.CA.reduce
+        let animated = rendered && renderedRoute == m.route && renderedPalette == palette && !TK.CA.reduce
         rendered = true
         renderedRoute = m.route
-        renderedDark = palette.isDark
+        renderedPalette = palette
         model = m
         if !m.sidebarVisible { setHover(nil, button: nil) }
 
@@ -370,8 +370,8 @@ final class SidebarView: FlippedLayerView {
         }
 
         // Labels: always "Lists"; "Archive" only when something is archived. They appear in place and move with the rows.
-        if labelsDark != palette.isDark {
-            labelsDark = palette.isDark
+        if labelsPalette != palette {
+            labelsPalette = palette
             header.setPalette(palette)
             header.setScaleDeep(scale)
             listsLabel.setPalette(palette)
@@ -423,7 +423,7 @@ final class SidebarView: FlippedLayerView {
             f.font = TK.Font.body
             f.textColor = palette.ink
             f.stringValue = ui.rename?.text ?? ""
-            f.placeholderAttributedString = NSAttributedString(string: "New List", attributes: [.font: TK.Font.body, .foregroundColor: palette.ink3])
+            f.placeholderAttributedString = NSAttributedString(string: "New List", attributes: [.font: TK.Font.body, .foregroundColor: palette.inkTertiary])
             f.cell?.usesSingleLineMode = true
             f.setAccessibilityLabel("List name")
             f.onChange = { [weak self] text in self?.actions.setRenameText(text) }
@@ -447,7 +447,7 @@ final class SidebarView: FlippedLayerView {
             content.scrollToVisible(rowRect(row.y))
             f.focus(.all)
             if let editor = f.currentEditor() as? NSTextView {
-                editor.selectedTextAttributes = [.backgroundColor: palette.textSel]
+                editor.selectedTextAttributes = [.backgroundColor: palette.textSelection]
                 editor.insertionPointColor = palette.ink
             }
             // The field and its editor draw now, into the transaction that hides the name.
@@ -456,7 +456,7 @@ final class SidebarView: FlippedLayerView {
             placeField(f, rowY: row.y)
             if f.textColor != palette.ink {
                 f.textColor = palette.ink
-                f.placeholderAttributedString = NSAttributedString(string: "New List", attributes: [.font: TK.Font.body, .foregroundColor: palette.ink3])
+                f.placeholderAttributedString = NSAttributedString(string: "New List", attributes: [.font: TK.Font.body, .foregroundColor: palette.inkTertiary])
             }
         }
     }

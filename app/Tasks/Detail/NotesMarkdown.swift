@@ -139,7 +139,7 @@ enum NotesStyle {
 
     static func placeholder(_ tk: TK.Palette) -> NSAttributedString {
         var a = base(tk)
-        a[.foregroundColor] = tk.ink3
+        a[.foregroundColor] = tk.inkTertiary
         return NSAttributedString(string: "Notes", attributes: a)
     }
 
@@ -256,9 +256,9 @@ enum NotesStyler {
             para = NotesStyle.paragraph(lineHeight: lh, before: first ? 0 : 4)
         case .bullet, .ordered, .task:
             para = NotesStyle.paragraph(lineHeight: lh, indent: CGFloat(l.level + 1) * NotesStyle.column)
-            if l.kind == .task && l.checked { color = tk.ink3 }
+            if l.kind == .task && l.checked { color = tk.inkTertiary }
         case .quote:
-            color = tk.ink2
+            color = tk.inkSecondary
             para = NotesStyle.paragraph(lineHeight: lh, indent: NotesStyle.column)
         case .fence, .code:
             font = NotesStyle.mono
@@ -268,7 +268,7 @@ enum NotesStyler {
             let after: CGFloat = vis?.upperBound == l.index ? NotesStyle.blockMargin + NotesStyle.blockPadY : 0
             para = NotesStyle.paragraph(lineHeight: lh, indent: NotesStyle.blockPadX, before: before, after: after,
                                         tail: -NotesStyle.blockPadX)
-            if l.kind == .fence { color = tk.inkQ }
+            if l.kind == .fence { color = tk.inkQuiet }
         case .paragraph, .blank:
             para = NotesStyle.paragraph(lineHeight: lh)
         }
@@ -294,7 +294,7 @@ enum NotesStyler {
         // selection is on the line.
         if l.prefix > 0 {
             let pr = NSRange(location: l.start, length: l.prefix)
-            var a: [NSAttributedString.Key: Any] = [.font: NotesStyle.body, .foregroundColor: tk.inkQ, .mdMark: true,
+            var a: [NSAttributedString.Key: Any] = [.font: NotesStyle.body, .foregroundColor: tk.inkQuiet, .mdMark: true,
                                                     .baselineOffset: LineBox.baselineOffset(NotesStyle.body, lineHeight: lh)]
             if l.isListItem || !d.touches(l.start, l.end) { a[.mdHidden] = true }
             ts.addAttributes(a, range: pr)
@@ -310,7 +310,7 @@ enum NotesStyler {
         }
         if !marked {
             if l.kind == .task && l.checked {
-                ts.addAttributes([.strikethroughStyle: NSUnderlineStyle.single.rawValue, .strikethroughColor: tk.inkQ],
+                ts.addAttributes([.strikethroughStyle: NSUnderlineStyle.single.rawValue, .strikethroughColor: tk.inkQuiet],
                                  range: NSRange(location: l.textStart, length: n))
             }
             return
@@ -351,7 +351,7 @@ enum NotesStyler {
                     rf = NotesStyle.font(rf, bold: f & bold != 0, italic: f & ital != 0)
                 }
                 if rf != font { a[.font] = rf }
-                if f & link != 0 { a[.foregroundColor] = l.kind == .task && l.checked ? tk.ink3 : tk.accentText }
+                if f & link != 0 { a[.foregroundColor] = l.kind == .task && l.checked ? tk.inkTertiary : tk.accentText }
                 if !a.isEmpty { ts.addAttributes(a, range: NSRange(location: l.textStart + i, length: j - i)) }
             }
             i = j
@@ -360,7 +360,7 @@ enum NotesStyler {
         for (r, href) in hrefs { ts.addAttribute(.mdLink, value: href, range: NSRange(location: r.lowerBound, length: r.count)) }
         for (r, shown) in marks {
             let monoMark = r.count == 1 && d.units[r.lowerBound] == 96
-            var a: [NSAttributedString.Key: Any] = [.font: monoMark ? NotesStyle.mono : NotesStyle.body, .foregroundColor: tk.inkQ,
+            var a: [NSAttributedString.Key: Any] = [.font: monoMark ? NotesStyle.mono : NotesStyle.body, .foregroundColor: tk.inkQuiet,
                                                     .mdMark: true]
             if !shown { a[.mdHidden] = true }
             let nr = NSRange(location: r.lowerBound, length: r.count)
@@ -381,7 +381,7 @@ enum NotesStyler {
         }
         // A checked item reads like a done task: struck through in ink-quaternary (md:51).
         if l.kind == .task && l.checked {
-            ts.addAttributes([.strikethroughStyle: NSUnderlineStyle.single.rawValue, .strikethroughColor: tk.inkQ],
+            ts.addAttributes([.strikethroughStyle: NSUnderlineStyle.single.rawValue, .strikethroughColor: tk.inkQuiet],
                              range: NSRange(location: l.textStart, length: n))
         }
     }
@@ -506,8 +506,8 @@ final class NotesLayoutManager: NSLayoutManager, NSLayoutManagerDelegate {
         ts.enumerateAttribute(.mdLink, in: chars) { v, r, _ in
             guard v != nil else { return }
             let full = hovered.map { NSIntersectionRange($0, r).length > 0 } ?? false
-            let done = (ts.attribute(.foregroundColor, at: r.location, effectiveRange: nil) as? NSColor) == tk.ink3
-            let c = done ? tk.ink3 : tk.accentText
+            let done = (ts.attribute(.foregroundColor, at: r.location, effectiveRange: nil) as? NSColor) == tk.inkTertiary
+            let c = done ? tk.inkTertiary : tk.accentText
             (full ? c : c.withAlphaComponent(0.4)).setFill()
             spans(of: r) { _, x0, x1, baseline, _, _ in
                 CGRect(x: origin.x + x0, y: origin.y + baseline + 2, width: x1 - x0, height: 1).fill()
@@ -524,17 +524,17 @@ final class NotesLayoutManager: NSLayoutManager, NSLayoutManagerDelegate {
             case .bullet:
                 let r = CGRect(x: x + 5.5, y: y + 7, width: 5, height: 5)
                 if l.level % 2 == 1 {
-                    tk.ink2.setStroke()
+                    tk.inkSecondary.setStroke()
                     let p = NSBezierPath(ovalIn: r.insetBy(dx: 0.625, dy: 0.625))
                     p.lineWidth = 1.25
                     p.stroke()
                 } else {
-                    tk.ink2.setFill()
+                    tk.inkSecondary.setFill()
                     NSBezierPath(ovalIn: r).fill()
                 }
             case .ordered:
                 let text = "\(doc.numbers[l.index] ?? l.number)\(Character(UnicodeScalar(UInt8(l.delimiter))))" as NSString
-                let a: [NSAttributedString.Key: Any] = [.font: NotesStyle.number, .foregroundColor: tk.ink2]
+                let a: [NSAttributedString.Key: Any] = [.font: NotesStyle.number, .foregroundColor: tk.inkSecondary]
                 let w = text.size(withAttributes: a).width
                 let base = LineBox.cssBaseline(NotesStyle.number, lineHeight: NotesStyle.lineHeight)
                 text.draw(at: CGPoint(x: x + 18 - w, y: y + base - NotesStyle.number.ascender), withAttributes: a)
@@ -554,7 +554,7 @@ final class NotesLayoutManager: NSLayoutManager, NSLayoutManagerDelegate {
         if s.scale != 1 { r = r.insetBy(dx: 6 * (1 - s.scale), dy: 6 * (1 - s.scale)) }
         let radius = 3.5 * s.scale
         if l.checked {
-            tk.ink3.setFill()
+            tk.inkTertiary.setFill()
             NSBezierPath(roundedRect: r, xRadius: radius, yRadius: radius).fill()
             guard s.check > 0 else { return }
             let k = r.width / 12
@@ -586,7 +586,7 @@ final class NotesLayoutManager: NSLayoutManager, NSLayoutManagerDelegate {
             tk.onAccent.setStroke()
             ck.stroke()
         } else {
-            let ring = s.hover > 0 ? blend(tk.lineField, tk.ink2, s.hover) : tk.lineField
+            let ring = s.hover > 0 ? blend(tk.lineField, tk.inkSecondary, s.hover) : tk.lineField
             ring.setStroke()
             let path = NSBezierPath(roundedRect: r.insetBy(dx: 0.625, dy: 0.625), xRadius: radius - 0.625, yRadius: radius - 0.625)
             path.lineWidth = 1.25

@@ -60,7 +60,7 @@ struct DetailProps: View {
         VStack(alignment: .leading, spacing: 0) {
             PropRow(glyph: .lines, label: "List") { _ in
                 ListPopup(monogram: list?.monogram ?? "…",
-                          color: list.map { tk.listColor(slot: $0.colorSlot) } ?? tk.ansi[6],
+                          color: list.map { tk.listColor(slot: $0.colorSlot) } ?? tk.list(.ink),
                           name: list.map { _ in actions.listName(first.list) } ?? "Mixed") { anchor in
                     popListMenu(ids: ids, current: items.count == 1 ? first.list : nil, anchor: anchor)
                 }
@@ -92,9 +92,9 @@ private struct PropRow<Value: View>: View {
             // The icon centered in the checkbox's 16pt column, the label 10 after it, where the title's text starts
             // (26); 55 for the label, as before (v2 feedback 6, css:263).
             HStack(spacing: 10) {
-                GlyphView(glyph: glyph, size: 14, color: tk.ink2.swiftUI)
+                GlyphView(glyph: glyph, size: 14, color: tk.inkSecondary.swiftUI)
                     .frame(width: TK.M.check)
-                Text(label).font(Font(TK.Font.body)).foregroundStyle(tk.ink2.swiftUI).frame(height: 16)
+                Text(label).font(Font(TK.Font.body)).foregroundStyle(tk.inkSecondary.swiftUI).frame(height: 16)
             }
             .frame(width: 81, alignment: .leading)
             content(hovered)
@@ -141,7 +141,7 @@ private struct DateRow: View {
                     .padding(.leading, 2)
                     Text(DateLabel.relative(date, today: today))
                         .font(Font(TK.Font.small))
-                        .foregroundStyle(tk.ink3.swiftUI)
+                        .foregroundStyle(tk.inkTertiary.swiftUI)
                         .lineLimit(1)
                         .fixedSize()
                         .frame(height: 16)
@@ -236,7 +236,7 @@ private struct DetailChipStyle: ButtonStyle {
                 .padding(.leading, TK.M.chipLargePad)
             }
             .background(bg.swiftUI, in: Capsule())
-            .overlay { if ghost { Capsule().strokeBorder(tk.lineSep.swiftUI, lineWidth: 1) } }
+            .overlay { if ghost { Capsule().strokeBorder(tk.lineSeparator.swiftUI, lineWidth: 1) } }
             .contentShape(Capsule())
             .animation(pressed ? nil : TK.Motion.icon, value: hovered)
             .animation(pressed ? nil : TK.Motion.icon, value: pressed)
@@ -245,11 +245,11 @@ private struct DetailChipStyle: ButtonStyle {
 
     private func colors(pressed: Bool) -> (NSColor, NSColor) {
         if pickerOpen { return (tk.accentTint, tk.accentText) }
-        if ghost { return hovered ? (tk.hover, tk.ink2) : (.clear, tk.ink3) }
+        if ghost { return hovered ? (tk.hover, tk.inkSecondary) : (.clear, tk.inkTertiary) }
         var bg: NSColor, fg: NSColor
         switch tone {
-        case .neutral: bg = tk.fillControl; fg = tk.ink2
-        case .due: bg = tk.attnTint; fg = tk.attn
+        case .neutral: bg = tk.fillControl; fg = tk.inkSecondary
+        case .due: bg = tk.attentionTint; fg = tk.attention
         case .late: bg = tk.dangerTint; fg = tk.danger
         }
         let b = pressed ? TK.Palette.pressBrightness : hovered ? tk.chipHoverBrightness : 1
@@ -288,7 +288,7 @@ private struct ClearStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .background((hovered ? tk.hover : .clear).swiftUI, in: RoundedRectangle(cornerRadius: 6))
-            .overlay { GlyphView(glyph: .xmark, size: 12, color: (hovered ? tk.ink2 : tk.ink3).swiftUI) }
+            .overlay { GlyphView(glyph: .xmark, size: 12, color: (hovered ? tk.inkSecondary : tk.inkTertiary).swiftUI) }
             .contentShape(Rectangle())
             .animation(TK.Motion.icon, value: hovered)
     }
@@ -312,7 +312,7 @@ private struct ListPopup: View {
             HStack(spacing: 6) {
                 TileView(monogram: monogram, color: color, size: .small)
                 Text(name).font(Font(TK.Font.body)).foregroundStyle(tk.ink.swiftUI).lineLimit(1).frame(height: 16)
-                GlyphView(glyph: .upDown, size: 12, color: tk.ink3.swiftUI)
+                GlyphView(glyph: .upDown, size: 12, color: tk.inkTertiary.swiftUI)
             }
             .padding(.leading, 4)
             .padding(.trailing, 6)

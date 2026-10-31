@@ -54,14 +54,14 @@ enum BrandMark {
         return [(.trail, trail), (.rings, rings), (.bar, bar), (.head, head)]
     }
 
-    /// The mark's colors: the icon's dark layers (gen.py `COLORS['dark']`), and on the light sidebar the light variant
-    /// the final mark was designed with (commit 5568418), since the icon itself is dark only.
-    static func color(_ part: Part, dark: Bool) -> NSColor {
+    /// The mark's colors, the `mark-*` tokens: in dark the icon's own layers (gen.py `COLORS['dark']`), and on the
+    /// light sidebar the light variant the final mark was designed with (commit 5568418), since the icon is dark only.
+    static func color(_ part: Part, _ p: TK.Palette) -> NSColor {
         switch part {
-        case .trail: TK.hex(dark ? 0x6D7072 : 0xA9ACAF)
-        case .rings: TK.hex(dark ? 0xA8ADB1 : 0x626568)
-        case .bar: TK.hex(dark ? 0xE6EDF3 : 0x1F2328)
-        case .head: TK.hex(dark ? 0x2F81F7 : 0x0969DA)
+        case .trail: p.markTrail
+        case .rings: p.markRings
+        case .bar: p.markBar
+        case .head: p.markHead
         }
     }
 }
@@ -77,7 +77,7 @@ final class SidebarHeaderLayer: CALayer {
     private let mark = CALayer()
     private var shapes: [BrandMark.Part: CAShapeLayer] = [:]
     let title = TextLayer()
-    private var dark: Bool?
+    private var palette: TK.Palette?
 
     override init() {
         super.init()
@@ -106,9 +106,9 @@ final class SidebarHeaderLayer: CALayer {
     required init?(coder: NSCoder) { fatalError() }
 
     func setPalette(_ p: TK.Palette) {
-        guard dark != p.isDark else { return }
-        dark = p.isDark
-        for (part, l) in shapes { l.fillColor = BrandMark.color(part, dark: p.isDark).cgColor }
+        guard p != palette else { return }
+        palette = p
+        for (part, l) in shapes { l.fillColor = BrandMark.color(part, p).cgColor }
         let x = Self.markX + Self.markSize + Self.gap
         title.set("Tasks", font: TK.Font.brand, color: p.ink)
         title.place(x: x, lineTop: (SB.headerHeight - 16) / 2, lineHeight: 16, width: bounds.width - x)

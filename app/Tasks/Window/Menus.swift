@@ -225,10 +225,16 @@ enum Menus {
 
     // MARK: Tile images for menu items
 
-    nonisolated(unsafe) private static var tileCache: [String: NSImage] = [:]
+    private struct TileKey: Hashable {
+        let monogram: String
+        let slot: Int
+        let palette: TK.Palette
+    }
+
+    nonisolated(unsafe) private static var tileCache: [TileKey: NSImage] = [:]
 
     static func tileImage(monogram: String, slot: Int, palette: TK.Palette) -> NSImage {
-        let key = "\(monogram)-\(slot)-\(palette.isDark)"
+        let key = TileKey(monogram: monogram, slot: slot, palette: palette)
         if let img = tileCache[key] { return img }
         let size = TileLayer.dimensions(.small)
         let color = palette.listColor(slot: slot)

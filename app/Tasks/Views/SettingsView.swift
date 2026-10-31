@@ -5,7 +5,7 @@ import TasksCore
 /// Settings (⌘,): the sync server and token (Keychain), appearance, how tasks are edited, and the data folder.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.pane) private var pane
+    @Environment(\.tk) private var tk
     @State private var token = ""
 
     var body: some View {
@@ -81,7 +81,7 @@ struct SettingsView: View {
         }
         .padding(20)
         .frame(width: 600)
-        .background(pane.ground)
+        .background(tk.ground.swiftUI)
     }
 
     private func saveToken() {

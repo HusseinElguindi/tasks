@@ -135,16 +135,16 @@ final class TaskRowView: NSView {
             selection.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner, .layerMinXMaxYCorner, .layerMaxXMaxYCorner]
         } else {
             selection.isHidden = !m.selected
-            selection.backgroundColor = (m.paneFocused ? palette.sel : palette.selDim).cgColor
+            selection.backgroundColor = (m.paneFocused ? palette.fillRowSelected : palette.fillRowSelectedDim).cgColor
             selection.frame = CGRect(x: 0, y: 0, width: width, height: TK.M.row + (m.joinBottom ? 2 : 0))
             var corners: CACornerMask = []
             if !m.joinTop { corners.formUnion([.layerMinXMinYCorner, .layerMaxXMinYCorner]) }
             if !m.joinBottom { corners.formUnion([.layerMinXMaxYCorner, .layerMaxXMaxYCorner]) }
             selection.maskedCorners = corners
         }
-        // Renaming: the selected fill plus a 1.5pt inset accent ring (§7).
+        // Renaming: the selected fill plus a 1.5pt inset focus ring (§7).
         ring.isHidden = !m.renaming
-        ring.borderColor = palette.accent.cgColor
+        ring.borderColor = palette.focus.cgColor
         ring.frame = CGRect(x: 0, y: 0, width: width, height: TK.M.row)
 
         // Checkbox at x 10, centered.
@@ -178,7 +178,7 @@ final class TaskRowView: NSView {
         // with the title's end fade; space beyond the keeps goes to the title first, then to the list name. Nothing
         // is drawn over the leading content or past the row.
         let titleX = m.heading ? TK.M.rowPadLeft : TK.M.rowPadLeft + TK.M.check + TK.M.titleGap
-        let color = (m.done || m.untitled) ? palette.ink3 : m.trashed ? palette.ink2 : palette.ink
+        let color = (m.done || m.untitled) ? palette.inkTertiary : m.trashed ? palette.inkSecondary : palette.ink
         let text = m.untitled ? "New Task" : m.title
         title.set(text, font: m.heading ? HeadingRowView.font : TK.Font.body,
                   color: same ? (title.foregroundColor.flatMap(NSColor.init(cgColor:)) ?? color) : color)
@@ -214,9 +214,9 @@ final class TaskRowView: NSView {
         let avail = max(0, right - titleX)
         var whereW: CGFloat = 0
         if let w = m.whereText {
-            whereLabel.set(w, font: TK.Font.small, color: palette.ink3)
+            whereLabel.set(w, font: TK.Font.small, color: palette.inkTertiary)
             let suffix = m.whereSuffix ?? ""
-            whereSuffixLabel.set(suffix, font: TK.Font.small, color: palette.ink3)
+            whereSuffixLabel.set(suffix, font: TK.Font.small, color: palette.inkTertiary)
             let suffixW = suffix.isEmpty ? 0 : TextLayer.width(suffix, font: TK.Font.small)
             let nameNat = TextLayer.width(w, font: TK.Font.small)
             let whereNat = 8 + nameNat + suffixW
@@ -260,7 +260,7 @@ final class TaskRowView: NSView {
         hintCount.isHidden = m.notes.total == 0 || hintW == 0 || m.renaming
         // The strike is instant; the color takes 200 ms (css:169–171).
         strike.isHidden = !m.done || m.renaming
-        strike.backgroundColor = palette.inkQ.cgColor
+        strike.backgroundColor = palette.inkQuiet.cgColor
         let baseline = (TK.M.row - 16) / 2 - 0.5 + (16 - (TK.Font.body.ascender - TK.Font.body.descender)) / 2 + TK.Font.body.ascender
         strike.frame = CGRect(x: titleX, y: (baseline - 4.0).rounded(), width: min(title.textWidth, titleW), height: 1)
         CATransaction.commit()
@@ -341,7 +341,7 @@ final class TaskRowView: NSView {
         guard m.notes.hasNotes, !m.untitled || !m.draft else { return 0 }
         if m.notes.total > 0 {
             let quiet = m.done || m.notes.checked == m.notes.total
-            let c = quiet ? p.inkQ : p.ink3
+            let c = quiet ? p.inkQuiet : p.inkTertiary
             if hintGlyph.glyph != .checklist { hintGlyph.set(.checklist, size: 11) }
             hintGlyph.color = c
             let text = "\(m.notes.checked)/\(m.notes.total)"
@@ -349,7 +349,7 @@ final class TaskRowView: NSView {
             return 11 + 4 + TextLayer.width(text, font: Self.hintFont)
         }
         if hintGlyph.glyph != .notes { hintGlyph.set(.notes, size: 11) }
-        hintGlyph.color = p.inkQ
+        hintGlyph.color = p.inkQuiet
         return 14
     }
 
@@ -500,7 +500,7 @@ final class GroupLabelView: NSView {
             let colors = labelColors
             // Selected (Today's Completed): the row's fill, in the row's 30pt shape (§5).
             selection.isHidden = !selected
-            selection.backgroundColor = (paneFocused ? palette.sel : palette.selDim).cgColor
+            selection.backgroundColor = (paneFocused ? palette.fillRowSelected : palette.fillRowSelectedDim).cgColor
             selection.frame = CGRect(x: 0, y: 1, width: width, height: TK.M.row)
             label.set(name, font: TK.Font.label, color: colors.name)
             let full = TextLayer.width(name, font: TK.Font.label)
@@ -522,7 +522,7 @@ final class GroupLabelView: NSView {
                 sub.isHidden = true
             }
             count.isHidden = countText.isEmpty
-            count.set(countText, font: HeadingRowView.countFont, color: palette.ink3)
+            count.set(countText, font: HeadingRowView.countFont, color: palette.inkTertiary)
             count.place(x: 12 + nameW + 8, lineTop: 10, lineHeight: 14, width: countW + 2)
             plus.isHidden = !hasPlus
             chevron.isHidden = !hasChevron
@@ -569,7 +569,7 @@ final class GroupLabelView: NSView {
     /// in Upcoming would land on.
     private var labelColors: (name: NSColor, sub: NSColor) {
         if drop { return (palette.accentText, palette.accentText) }
-        return (quiet ? palette.inkQ : palette.ink3, palette.inkQ)
+        return (quiet ? palette.inkQuiet : palette.inkTertiary, palette.inkQuiet)
     }
 
     /// The drop day lights in on `hover-in`, out on `hover-out` (css:421–422).
@@ -649,7 +649,7 @@ final class CompletedRowView: NSView {
     @discardableResult
     func configure(count n: Int, open: Bool, palette: TK.Palette, animated: Bool) -> CGFloat {
         self.palette = palette
-        let color = hovered ? palette.ink : palette.ink2
+        let color = hovered ? palette.ink : palette.inkSecondary
         let countText = "\(n)"
         layer?.setInstant {
             chevron.color = color
@@ -657,7 +657,7 @@ final class CompletedRowView: NSView {
             label.set("Completed", font: TK.Font.bodyMedium, color: color)
             let lw = TextLayer.width("Completed", font: TK.Font.bodyMedium)
             label.place(x: 12 + 12 + 6, lineTop: 7, lineHeight: 16, width: lw + 2)
-            count.set(countText, font: TK.Font.count, color: palette.ink3)
+            count.set(countText, font: TK.Font.count, color: palette.inkTertiary)
             count.place(x: 30 + lw + 6, lineTop: 7, lineHeight: 16, width: TextLayer.width(countText, font: TK.Font.count) + 2)
         }
         if open != self.open {
@@ -676,7 +676,7 @@ final class CompletedRowView: NSView {
     func setHover(_ on: Bool) {
         guard on != hovered else { return }
         hovered = on
-        let color = on ? palette.ink : palette.ink2
+        let color = on ? palette.ink : palette.inkSecondary
         let t = on ? TK.CA.hoverInT : TK.CA.hoverOutT
         chevron.animate("strokeColor", to: color.cgColor, t)
         label.animate("foregroundColor", to: color.cgColor, t)
@@ -729,7 +729,7 @@ final class EmptyStateView: NSView {
             case .today:
                 glyph.isHidden = false
                 glyph.set(.sun, size: 22)
-                glyph.color = palette.inkQ
+                glyph.color = palette.inkQuiet
             case .allDone:
                 glyph.isHidden = false
                 glyph.set(.checkCircle, size: 22)
@@ -740,7 +740,7 @@ final class EmptyStateView: NSView {
                 glyph.isHidden = false
                 let g: Glyph = kind == .upcoming ? .calendar : kind == .undated ? .layers : kind == .completed ? .checkCircle : .trash
                 glyph.set(g, size: 22)
-                glyph.color = palette.inkQ
+                glyph.color = palette.inkQuiet
             }
             if !glyph.isHidden {
                 glyph.frame = CGRect(x: (width - 22) / 2, y: 0, width: 22, height: 22)
@@ -752,10 +752,10 @@ final class EmptyStateView: NSView {
         para.alignment = .center
         para.minimumLineHeight = 16
         para.maximumLineHeight = 16
-        let body = NSAttributedString(string: e2, attributes: [.font: TK.Font.small, .foregroundColor: palette.ink3, .paragraphStyle: para])
+        let body = NSAttributedString(string: e2, attributes: [.font: TK.Font.small, .foregroundColor: palette.inkTertiary, .paragraphStyle: para])
         let h = ceil(body.boundingRect(with: CGSize(width: tw, height: 200), options: [.usesLineFragmentOrigin]).height)
         layer?.setInstant {
-            title.set(e1, font: TK.Font.bodyMedium, color: palette.ink2)
+            title.set(e1, font: TK.Font.bodyMedium, color: palette.inkSecondary)
             title.place(x: 24, lineTop: y, lineHeight: 16, width: max(0, width - 48))
             text.string = body
             text.isHidden = e2.isEmpty
@@ -815,7 +815,7 @@ final class BannerView: NSView {
         para.minimumLineHeight = 16
         para.maximumLineHeight = 16
         let s = NSMutableAttributedString(string: "Archived \(archivedOn)", attributes: [.font: TK.Font.body, .foregroundColor: palette.ink, .paragraphStyle: para])
-        s.append(NSAttributedString(string: " · Not in Today or Move to. Everything still edits.", attributes: [.font: TK.Font.small, .foregroundColor: palette.ink2, .paragraphStyle: para]))
+        s.append(NSAttributedString(string: " · Not in Today or Move to. Everything still edits.", attributes: [.font: TK.Font.small, .foregroundColor: palette.inkSecondary, .paragraphStyle: para]))
         let th = ceil(s.boundingRect(with: CGSize(width: textW, height: 400), options: [.usesLineFragmentOrigin]).height)
         let h = max(24, th) + 18
         layer?.setInstant {
@@ -823,7 +823,7 @@ final class BannerView: NSView {
             text.frame = CGRect(x: textX, y: (h - th) / 2, width: textW, height: th + 2)
             bg.frame = CGRect(x: 0, y: 0, width: width, height: h)
             bg.backgroundColor = palette.fillControl.cgColor
-            icon.color = palette.ink2
+            icon.color = palette.inkSecondary
             icon.position = CGPoint(x: 12 + 7, y: h / 2)
             button.frame = CGRect(x: width - 10 - bw, y: (h - 24) / 2, width: bw, height: 24)
             buttonLabel.set("Unarchive", font: TK.Font.body, color: palette.accentText)

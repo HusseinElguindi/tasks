@@ -909,7 +909,7 @@ final class TaskListView: NSView {
         }
         f.textColor = palette.ink
         f.layer?.backgroundColor = palette.fillControl.cgColor
-        f.layer?.borderColor = palette.accent.cgColor
+        f.layer?.borderColor = palette.focus.cgColor
         let x = titleView.titleX - 6
         let w = min(360, max(120, titleView.bounds.width - x - TK.M.rowInset - TK.M.rowPadRight))
         f.frame = CGRect(x: x, y: 4, width: w, height: 30)

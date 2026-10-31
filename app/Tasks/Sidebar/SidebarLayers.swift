@@ -72,14 +72,14 @@ final class SidebarRowLayer: CALayer {
         edgeInner.borderColor = p.edgeInner.cgColor
         edgeOuter.borderColor = p.edgeOuter.cgColor
         ring.borderWidth = r.drop ? 2 : r.editing ? 1.5 : 0
-        ring.borderColor = p.accent.cgColor
+        ring.borderColor = p.focus.cgColor
 
         title.isHidden = r.editing
         let tc = titleColor
         title.set(r.name, font: TK.Font.body, color: first || !animated ? tc : NSColor(cgColor: title.foregroundColor ?? tc.cgColor) ?? tc)
         if animated && !first { setTitleColor(tc) }
 
-        let cc: NSColor = r.drop ? p.accentText : r.hint ? p.ink2 : r.current ? p.ink2 : p.ink3
+        let cc: NSColor = r.drop ? p.accentText : r.hint ? p.inkSecondary : r.current ? p.inkSecondary : p.inkTertiary
         count.set(r.count, font: r.hint ? Self.hintFont : TK.Font.count, color: cc)
         placeAcross()
     }
@@ -107,12 +107,12 @@ final class SidebarRowLayer: CALayer {
     /// css:107–117: rest `ink-secondary`, hovered or current `ink`; archived `ink-tertiary` (`ink` hovered or current);
     /// a drop target `accent-text`; being renamed `ink`.
     private var titleColor: NSColor {
-        guard let r = row else { return palette.ink2 }
+        guard let r = row else { return palette.inkSecondary }
         let p = palette
         if r.editing { return p.ink }
         if r.drop { return p.accentText }
         if hovered || r.current { return p.ink }
-        return r.archived ? p.ink3 : p.ink2
+        return r.archived ? p.inkTertiary : p.inkSecondary
     }
 
     private func setTitleColor(_ c: NSColor) {
@@ -161,7 +161,7 @@ final class SidebarLabelLayer: CALayer {
     required init?(coder: NSCoder) { fatalError() }
 
     func setPalette(_ p: TK.Palette) {
-        text.set(titleText, font: TK.Font.label, color: p.ink3)
+        text.set(titleText, font: TK.Font.label, color: p.inkTertiary)
         text.place(x: SB.labelTextX, lineTop: SB.labelTextTop, lineHeight: 14, width: rowWidth - SB.labelTextX)
         text.masksToBounds = true
         button.setPalette(p)
@@ -196,7 +196,7 @@ final class SidebarLiftLayer: CALayer {
         bounds = CGRect(x: 0, y: 0, width: rowWidth, height: SB.rowHeight)
         cornerRadius = SB.radius
         backgroundColor = p.fillStrong.cgColor
-        shadowColor = p.liftShadow.cgColor
+        shadowColor = p.shadowLift.cgColor
         shadowOpacity = 1
         shadowOffset = CGSize(width: 0, height: 8)
         shadowRadius = 12
@@ -205,7 +205,7 @@ final class SidebarLiftLayer: CALayer {
         ring.frame = bounds.insetBy(dx: -0.5, dy: -0.5)
         ring.cornerRadius = SB.radius + 0.5
         ring.borderWidth = 0.5
-        ring.borderColor = p.liftRing.cgColor
+        ring.borderColor = p.shadowLiftRing.cgColor
         addSublayer(ring)
         tile.set(monogram: monogram, color: p.listColor(slot: slot), palette: p)
         tile.position = CGPoint(x: SB.tileX + tile.bounds.width / 2, y: SB.rowHeight / 2)

@@ -48,11 +48,11 @@ extension WindowState.Route {
     /// Its colour: magenta, cyan, green; the Trash has none of its own (`ink-secondary`, css:414).
     func glyphColor(_ p: TK.Palette) -> NSColor {
         switch self {
-        case .today: p.ansiYellow
-        case .upcoming: p.ansi[1]   // magenta
-        case .undated: p.ansi[3]    // cyan
-        case .completed: p.ansi[2]  // green
-        default: p.ink2
+        case .today: p.list(.yellow)
+        case .upcoming: p.list(.magenta)
+        case .undated: p.list(.cyan)
+        case .completed: p.list(.green)
+        default: p.inkSecondary
         }
     }
 

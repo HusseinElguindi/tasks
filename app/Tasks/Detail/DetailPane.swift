@@ -93,13 +93,13 @@ struct DetailPane: View {
                 Text(heads.count > 1 ? "\(heads.count) headings selected"
                      : heads.first.map { $0.title.isEmpty ? "New Heading" : $0.title } ?? "No task selected")
                     .font(Font(TK.Font.bodyMedium))
-                    .foregroundStyle(tk.ink2.swiftUI)
+                    .foregroundStyle(tk.inkSecondary.swiftUI)
                     .lineLimit(1)
                     .frame(height: 16)
                 Text(heads.count == 1 ? headingLine(heads[0]) : heads.count > 1 ? "Headings have no notes or dates here."
                      : "Select a task to see its notes and dates.")
                     .font(Font(TK.Font.small))
-                    .foregroundStyle(tk.ink3.swiftUI)
+                    .foregroundStyle(tk.inkTertiary.swiftUI)
                     .multilineTextAlignment(.center)
                     .lineSpacing(16 - NSLayoutManager().defaultLineHeight(for: TK.Font.small))
                     .frame(maxWidth: 280, minHeight: 16)
@@ -256,10 +256,10 @@ private struct DetailHeader: View {
         let inert = items.count == 1 && items[0].isDraft && items[0].title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         HStack(spacing: 8) {
             if let first {
-                TileView(monogram: list?.monogram ?? "…", color: list.map { tk.listColor(slot: $0.colorSlot) } ?? tk.ansi[6], size: .small)
+                TileView(monogram: list?.monogram ?? "…", color: list.map { tk.listColor(slot: $0.colorSlot) } ?? tk.list(.ink), size: .small)
                 Text(list != nil ? actions.listName(first.list) : "Several lists")
                     .font(Font(TK.Font.body))
-                    .foregroundStyle(tk.ink2.swiftUI)
+                    .foregroundStyle(tk.inkSecondary.swiftUI)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .frame(height: 16)
@@ -325,7 +325,7 @@ private struct SingleDetail: View {
                     .dimmed(inert)
                     .allowsHitTesting(!readOnly)
                 Rectangle()
-                    .fill(tk.lineSep.swiftUI)
+                    .fill(tk.lineSeparator.swiftUI)
                     .frame(height: 1)
                     .padding(.top, 10)
                     .dimmed(inert)
@@ -337,7 +337,7 @@ private struct SingleDetail: View {
                     .allowsHitTesting(!readOnly)
                 Text(meta)
                     .font(Font(TK.Font.caption))
-                    .foregroundStyle(tk.ink3.swiftUI)
+                    .foregroundStyle(tk.inkTertiary.swiftUI)
                     .lineLimit(1)
                     .frame(height: 14)
                     .padding(.top, 14)

@@ -119,7 +119,7 @@ final class TitleFieldView: NSView {
         }
         field.textColor = palette.ink
         if themeChanged || field.placeholderAttributedString == nil {
-            field.placeholderAttributedString = NSAttributedString(string: "New Task", attributes: attributes(palette.ink3))
+            field.placeholderAttributedString = NSAttributedString(string: "New Task", attributes: attributes(palette.inkTertiary))
         }
         if !field.isEditing, themeChanged || field.stringValue != text || !isStyled {
             field.attributedStringValue = NSAttributedString(string: text, attributes: attributes(palette.ink))
@@ -152,7 +152,7 @@ final class TitleFieldView: NSView {
         guard let editor = field.currentEditor() as? NSTextView else { return }
         let a = attributes(palette.ink, editor: true)
         editor.insertionPointColor = palette.ink
-        editor.selectedTextAttributes = [.backgroundColor: palette.textSel]
+        editor.selectedTextAttributes = [.backgroundColor: palette.textSelection]
         editor.defaultParagraphStyle = a[.paragraphStyle] as? NSParagraphStyle
         if let storage = editor.textStorage, storage.length > 0,
            storage.attribute(.baselineOffset, at: 0, effectiveRange: nil) as? CGFloat != a[.baselineOffset] as? CGFloat

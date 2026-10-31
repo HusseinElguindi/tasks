@@ -357,7 +357,7 @@ final class CheckLayer: CALayer {
 
     private func updateRing(animated: Bool) {
         let color: NSColor
-        if isOn { color = palette.accent } else if isPlaceholder { color = palette.inkQ } else { color = hovered ? palette.ink2 : palette.lineField }
+        if isOn { color = palette.accent } else if isPlaceholder { color = palette.inkQuiet } else { color = hovered ? palette.inkSecondary : palette.lineField }
         if animated {
             ring.animate("strokeColor", to: color.cgColor, hovered ? TK.CA.hoverInT : TK.CA.hoverOutT)
         } else {
@@ -437,7 +437,7 @@ final class ChipLayer: CALayer {
             icon.isHidden = true
         }
         // `font: 500 11px/14px` (large: 12px with the same 14px line), centered in the capsule.
-        label.set(c.text, font: font, color: palette.ink2)
+        label.set(c.text, font: font, color: palette.inkSecondary)
         label.place(x: x, lineTop: (h - 14) / 2, lineHeight: 14, width: TextLayer.width(c.text, font: font) + 2)
         restyle(animated: false)
     }
@@ -446,16 +446,16 @@ final class ChipLayer: CALayer {
         var bg: NSColor
         var fg: NSColor
         switch content.tone {
-        case .neutral: bg = palette.fillControl; fg = palette.ink2
-        case .due: bg = palette.attnTint; fg = palette.attn
+        case .neutral: bg = palette.fillControl; fg = palette.inkSecondary
+        case .due: bg = palette.attentionTint; fg = palette.attention
         case .late: bg = palette.dangerTint; fg = palette.danger
         }
         if lifted && content.tone == .neutral { bg = palette.liftChip }
         var ring: NSColor? = nil
         if content.ghost {
             bg = hovered ? palette.hover : .clear
-            fg = hovered ? palette.ink2 : palette.ink3
-            ring = palette.lineSep
+            fg = hovered ? palette.inkSecondary : palette.inkTertiary
+            ring = palette.lineSeparator
         }
         if pickerOpen {
             bg = palette.accentTint
@@ -493,8 +493,8 @@ final class ChipLayer: CALayer {
 final class IconButtonLayer: CALayer {
     let glyph: GlyphLayer
     private var palette = TK.Palette.dark
-    var restColor: KeyPath<TK.Palette, NSColor> = \.ink3
-    var hoverColor: KeyPath<TK.Palette, NSColor> = \.ink2
+    var restColor: KeyPath<TK.Palette, NSColor> = \.inkTertiary
+    var hoverColor: KeyPath<TK.Palette, NSColor> = \.inkSecondary
     var pressColor: KeyPath<TK.Palette, NSColor>? = nil
     var hovered = false { didSet { if hovered != oldValue { restyle(animated: true) } } }
     var pressed = false { didSet { if pressed != oldValue { restyle(animated: !pressed) } } }

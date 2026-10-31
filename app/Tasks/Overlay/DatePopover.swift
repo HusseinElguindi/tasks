@@ -246,7 +246,7 @@ private struct DatePopover: View {
 
     private var field: some View {
         HStack(spacing: 0) {
-            GlyphView(glyph: .calendar, size: 14, color: tk.ink3.swiftUI)
+            GlyphView(glyph: .calendar, size: 14, color: tk.inkTertiary.swiftUI)
             DateFieldView(placeholder: model.placeholder, ref: fieldRef,
                           onText: { model.typed($0) }, onKey: { key($0) })
                 .padding(.leading, 7)
@@ -305,7 +305,7 @@ private struct DatePopover: View {
                 ForEach(0..<7, id: \.self) { i in
                     Text(Metrics.letters[(first - 1 + i) % 7])
                         .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(tk.ink3.swiftUI)
+                        .foregroundStyle(tk.inkTertiary.swiftUI)
                         .frame(width: Metrics.cell, height: 20)
                         .offset(y: 0.5)
                 }
@@ -331,15 +331,15 @@ private struct DatePopover: View {
 
     private var footer: some View {
         VStack(spacing: 0) {
-            Rectangle().fill(tk.lineSep.swiftUI).frame(height: 1)
+            Rectangle().fill(tk.lineSeparator.swiftUI).frame(height: 1)
             HStack(spacing: 8) {
                 Text(model.preview)
                     .font(.system(size: 12))
-                    .foregroundStyle((model.none ? tk.ink3 : tk.ink).swiftUI)
+                    .foregroundStyle((model.none ? tk.inkTertiary : tk.ink).swiftUI)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text("↩")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(tk.ink3.swiftUI)
+                    .foregroundStyle(tk.inkTertiary.swiftUI)
                     .accessibilityHidden(true)
             }
             .frame(minHeight: 16)
@@ -366,10 +366,10 @@ private struct Surface: View {
         let shape = RoundedRectangle(cornerRadius: 12, style: .circular)
         ZStack {
             shape.fill(tk.popover.swiftUI)
-            shape.stroke(tk.popoverRing.swiftUI, lineWidth: 0.5).padding(-0.25)
+            shape.stroke(tk.shadowPopoverRing.swiftUI, lineWidth: 0.5).padding(-0.25)
         }
         .compositingGroup()
-        .shadow(color: tk.popoverShadow.swiftUI, radius: 16, x: 0, y: 12)
+        .shadow(color: tk.shadowPopover.swiftUI, radius: 16, x: 0, y: 12)
     }
 }
 
@@ -387,7 +387,7 @@ private struct QuickPick: View {
     var body: some View {
         let b = hovered ? tk.buttonHoverBrightness : 1
         let bg = (hot ? tk.accentTint : hovered ? tk.fillTrack : tk.fillControl).brightness(b)
-        let fg = (hot ? tk.accentText : clear ? tk.ink2 : tk.ink).brightness(b)
+        let fg = (hot ? tk.accentText : clear ? tk.inkSecondary : tk.ink).brightness(b)
         Text(label)
             .font(.system(size: 12))
             .foregroundStyle(fg.swiftUI)
@@ -418,7 +418,7 @@ private struct MonthArrow: View {
     @State private var hovered = false
 
     var body: some View {
-        GlyphView(glyph: glyph, size: 12, color: (hovered ? tk.ink : tk.ink2).swiftUI)
+        GlyphView(glyph: glyph, size: 12, color: (hovered ? tk.ink : tk.inkSecondary).swiftUI)
             .frame(width: 22, height: 22)
             .background {
                 RoundedRectangle(cornerRadius: 6, style: .circular)
@@ -454,7 +454,7 @@ private struct DayCell: View {
     var body: some View {
         let state = isHot ? 2 : hovered ? 1 : 0
         let fill: NSColor = state == 2 ? tk.accent : state == 1 ? tk.hover : .clear
-        let ink: NSColor = isHot ? tk.onAccent : isToday ? tk.accentText : out ? tk.inkQ : tk.ink
+        let ink: NSColor = isHot ? tk.onAccent : isToday ? tk.accentText : out ? tk.inkQuiet : tk.ink
         Text(String(date.day))
             .font(.system(size: 12, weight: isHot || isToday ? .semibold : .regular).monospacedDigit())
             .foregroundStyle(ink.swiftUI)
@@ -463,11 +463,11 @@ private struct DayCell: View {
                 Capsule(style: .circular).fill(fill.swiftUI).animation(TK.Motion.icon, value: state)
             }
             .overlay {
-                if isCur && !isHot { Capsule(style: .circular).strokeBorder(tk.accent.swiftUI, lineWidth: 1.5) }
+                if isCur && !isHot { Capsule(style: .circular).strokeBorder(tk.focus.swiftUI, lineWidth: 1.5) }
             }
             .overlay(alignment: .bottom) {
                 if isOther {
-                    Circle().fill(tk.attn.swiftUI).frame(width: 4, height: 4).padding(.bottom, 3)
+                    Circle().fill(tk.attention.swiftUI).frame(width: 4, height: 4).padding(.bottom, 3)
                 }
             }
             .contentShape(Capsule(style: .circular))
@@ -559,11 +559,11 @@ private final class DateTypingField: NSTextField, NSTextFieldDelegate {
         placeholder = text
         textColor = p.ink
         // The placeholder draws a pixel above the typed text; lowered to sit where the prototype's does.
-        placeholderAttributedString = NSAttributedString(string: text, attributes: [.foregroundColor: p.ink3, .font: NSFont.systemFont(ofSize: 13),
+        placeholderAttributedString = NSAttributedString(string: text, attributes: [.foregroundColor: p.inkTertiary, .font: NSFont.systemFont(ofSize: 13),
                                                                                      .baselineOffset: -0.25])
         if let editor = (cell as? DateFieldCell)?.editor {
             editor.insertionPointColor = p.ink
-            editor.selectedTextAttributes = [.backgroundColor: p.textSel]
+            editor.selectedTextAttributes = [.backgroundColor: p.textSelection]
         }
     }
 

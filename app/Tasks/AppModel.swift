@@ -42,15 +42,39 @@ final class AppModel {
     private(set) var hasToken: Bool
 
     var theme: ThemeChoice {
-        didSet { UserDefaults.standard.set(theme.rawValue, forKey: Keys.theme) }
+        didSet {
+            UserDefaults.standard.set(theme.rawValue, forKey: Keys.theme)
+            updatePalette()
+        }
     }
 
     /// Whether the system appearance is dark, for Theme ▸ System: the app's effective appearance, watched. Reading
     /// SwiftUI's `colorScheme` instead kept the last explicit choice after switching back to System (v2 feedback 9).
-    private(set) var systemDark = AppModel.isDark(NSApplication.shared.effectiveAppearance)
+    private(set) var systemDark = AppModel.isDark(NSApplication.shared.effectiveAppearance) {
+        didSet { updatePalette() }
+    }
 
     /// Dark or Light, after resolving System.
     var dark: Bool { theme == .dark || (theme == .system && systemDark) }
+
+    /// Every colour token for the theme (Rex, the only one) in the current appearance (v2 feedback 17). Built when
+    /// the appearance changes, never per frame; `ThemedRoot` hands it to every view.
+    private(set) var palette = TK.Palette.dark
+
+    private func updatePalette() {
+        var p = dark ? TK.Palette.dark : TK.Palette.light
+        #if DEBUG
+        if debugDerivedTheme { p = TK.Palette(theme: .rexDerived, dark: dark) }
+        #endif
+        if p != palette { palette = p }
+    }
+
+    #if DEBUG
+    /// Debug: `-debugTheme derived`, or the script's `palette:derived|rex`, draws Rex from its base colours alone.
+    var debugDerivedTheme = UserDefaults.standard.string(forKey: "debugTheme") == "derived" {
+        didSet { updatePalette() }
+    }
+    #endif
 
     var interfaceStyle: PaneInterfaceStyle {
         didSet { UserDefaults.standard.set(interfaceStyle == .glass ? "glass" : "classic", forKey: Keys.interfaceStyle) }
@@ -100,6 +124,7 @@ final class AppModel {
                 if self?.systemDark != dark { self?.systemDark = dark }
             }
         }
+        updatePalette()
         Task { await load() }
     }
 

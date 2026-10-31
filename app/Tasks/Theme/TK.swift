@@ -10,88 +10,92 @@ enum TK {}
 // MARK: - Colors
 
 extension TK {
-    /// Every color, for one appearance. AppKit views read the `NSColor`s; SwiftUI views the `Color`s.
-    struct Palette: Equatable, @unchecked Sendable {
+    /// Every colour token for one theme and appearance (THEMES.md §1.1, by its names; the comment on each gives the
+    /// prototype's CSS variable). Built once per appearance and kept (`AppModel.palette`), so drawing reads stored
+    /// `NSColor`s and nothing reads a theme per frame. AppKit views read the `NSColor`s; SwiftUI views `.swiftUI`.
+    struct Palette: Hashable, @unchecked Sendable {
         let isDark: Bool
+        // Surfaces
         let ground, base, dim, popover, lift: NSColor                 // --ground --base --dim --popover --lift
-        let linePane, linePaneDim, lineSep, lineField: NSColor        // --line-pane --line-pane-dim --line-sep --line-field
-        var ink, ink2, ink3, inkQ: NSColor                            // --ink --ink-2 --ink-3 --ink-q
-        let sel, selDim: NSColor                                      // --sel --sel-dim
+        /// Settings' grouped sections (Pane's card; no CSS variable).
+        let card: NSColor
+        // Ink
+        private(set) var ink: NSColor                                 // --ink
+        let inkSecondary, inkTertiary, inkQuiet: NSColor              // --ink-2 --ink-3 --ink-q
+        // Lines and edges
+        let linePane, linePaneDim, lineSeparator, lineField: NSColor  // --line-pane --line-pane-dim --line-sep --line-field
+        let edgeOuter, edgeInner: NSColor                             // --edge-outer --edge-inner: the current sidebar row
+        // Fills
+        let fillRowSelected, fillRowSelectedDim: NSColor              // --sel --sel-dim
         let fillControl, fillTrack, fillStrong: NSColor              // --fill-control --fill-track --fill-strong
-        let edgeOuter, edgeInner: NSColor                             // --edge-outer --edge-inner
         let hover, press: NSColor                                     // --hover --press
+        // Accent, focus and state
         let accent, accentText, accentTint, onAccent: NSColor         // --accent --accent-text --accent-tint --on-accent
-        let danger, dangerTint, attn, attnTint: NSColor               // --danger --danger-tint --attn --attn-tint
-        let textSel: NSColor                                          // --text-sel
-        let tileFill, tileRing: NSColor                               // .tile (css:124–125)
-        let liftChip: NSColor                                         // .lifted .chip (css:246–247)
-        /// The seven ANSI slots in the prototype's hand-out order (`COLORS`, dc:414): blue, magenta, green, cyan,
-        /// yellow, red, ink. A list's slot comes from its id (`ListModel.colorSlot`).
-        let ansi: [NSColor]
-        let ansiYellow: NSColor
-        /// Shadows: a 0.5pt ring plus a blur (css:57–58, 74–75).
-        let popoverRing, popoverShadow: NSColor
-        let liftRing, liftShadow: NSColor
+        /// Editing rings and drop rings (--focus).
+        let focus: NSColor
+        let textSelection: NSColor                                    // --text-sel
+        let danger, dangerTint, attention, attentionTint: NSColor     // --danger --danger-tint --attn --attn-tint
+        // Lists, tiles, drag and the brand mark
+        let tileFill, tileRing: NSColor                               // --tile-fill --tile-ring (css:124–125)
+        let liftChip: NSColor                                         // --lift-chip: a chip on the dragged copy
+        let markHead, markBar, markRings, markTrail: NSColor          // --mark-*: the sidebar's brand mark
+        // Shadows: a 0.5pt ring plus a blur (css:57–58, 74–75)
+        let shadowPopoverRing, shadowPopover: NSColor                 // --shadow-popover
+        let shadowLiftRing, shadowLift: NSColor                       // --shadow-lift
+        /// The seven list slots in the prototype's hand-out order (`COLORS`, dc:414). A list's slot comes from its id
+        /// (`ListModel.colorSlot`); the four views' glyphs use them too.
+        private let lists: [NSColor]                                  // --ansi-blue … --ansi-red, --ansi-ink
 
-        static func == (a: Palette, b: Palette) -> Bool { a.isDark == b.isDark }
+        enum ListSlot: Int { case blue, magenta, green, cyan, yellow, red, ink }
+
+        /// The token values, by `Token.rawValue`: what equality compares, so any change of colour redraws (rows skip
+        /// work while their palette is equal). Comparing the appearance alone would miss a theme change.
+        private var values: [RGBA]
+
+        static func == (a: Palette, b: Palette) -> Bool { a.isDark == b.isDark && a.values == b.values }
+        func hash(into h: inout Hasher) { h.combine(values) }
+
+        init(theme: Theme, dark: Bool) {
+            let v = theme.tokens(dark: dark)
+            func c(_ t: Token) -> NSColor { v[t.rawValue].ns }
+            isDark = dark
+            values = v
+            ground = c(.ground); base = c(.base); dim = c(.dim); popover = c(.popover); lift = c(.lift); card = c(.card)
+            ink = c(.ink); inkSecondary = c(.inkSecondary); inkTertiary = c(.inkTertiary); inkQuiet = c(.inkQuiet)
+            linePane = c(.linePane); linePaneDim = c(.linePaneDim); lineSeparator = c(.lineSeparator); lineField = c(.lineField)
+            edgeOuter = c(.edgeOuter); edgeInner = c(.edgeInner)
+            fillRowSelected = c(.fillRowSelected); fillRowSelectedDim = c(.fillRowSelectedDim)
+            fillControl = c(.fillControl); fillTrack = c(.fillTrack); fillStrong = c(.fillStrong)
+            hover = c(.hover); press = c(.press)
+            accent = c(.accent); accentText = c(.accentText); accentTint = c(.accentTint); onAccent = c(.onAccent)
+            focus = c(.focus); textSelection = c(.textSelection)
+            danger = c(.danger); dangerTint = c(.dangerTint); attention = c(.attention); attentionTint = c(.attentionTint)
+            tileFill = c(.tileFill); tileRing = c(.tileRing); liftChip = c(.liftChip)
+            markHead = c(.markHead); markBar = c(.markBar); markRings = c(.markRings); markTrail = c(.markTrail)
+            shadowPopoverRing = c(.shadowPopoverRing); shadowPopover = c(.shadowPopover)
+            shadowLiftRing = c(.shadowLiftRing); shadowLift = c(.shadowLift)
+            lists = [c(.listBlue), c(.listMagenta), c(.listGreen), c(.listCyan), c(.listYellow), c(.listRed), c(.listInk)]
+        }
 
         /// Text in the list pane, a list's notes and a heading's (§23): a step quieter, its body in `ink-secondary`.
         var quieter: Palette {
             var p = self
-            p.ink = ink2
+            p.ink = inkSecondary
+            p.values[Token.ink.rawValue] = values[Token.inkSecondary.rawValue]
             return p
         }
 
-        static let dark = Palette(
-            isDark: true,
-            ground: hex(0x181818), base: hex(0x1C1C1C), dim: hex(0x181818), popover: hex(0x262626), lift: hex(0x2C2C2C),
-            linePane: hex(0x323334), linePaneDim: hex(0x282929), lineSep: hex(0x363738), lineField: hex(0x696B6E),
-            ink: hex(0xE6EDF3), ink2: hex(0xA8ADB1), ink3: hex(0x7F8386), inkQ: hex(0x6D7072),
-            sel: hex(0x333333), selDim: hex(0x292929),
-            fillControl: hex(0x2D2E2E), fillTrack: hex(0x303132), fillStrong: hex(0x444444),
-            edgeOuter: hex(0x5E5E5E), edgeInner: hex(0x535353),
-            hover: .white.withAlphaComponent(0.07), press: .white.withAlphaComponent(0.12),
-            accent: hex(0x2F81F7), accentText: hex(0x5799F6), accentTint: hex(0x1E2938), onAccent: .white,
-            danger: hex(0xFF7B72), dangerTint: hex(0x3C2928), attn: hex(0xD29922), attnTint: hex(0x352E1D),
-            textSel: hex(0x2F81F7).withAlphaComponent(0.45),
-            tileFill: hex(0x444444), tileRing: .white.withAlphaComponent(0.10),
-            liftChip: hex(0x3A3A3A),
-            ansi: [hex(0x58A6FF), hex(0xBC8CFF), hex(0x3FB950), hex(0x39C5CF), hex(0xD29922), hex(0xFF7B72), hex(0xE6EDF3)],
-            ansiYellow: hex(0xD29922),
-            popoverRing: .white.withAlphaComponent(0.14), popoverShadow: .black.withAlphaComponent(0.5),
-            liftRing: .white.withAlphaComponent(0.14), liftShadow: .black.withAlphaComponent(0.5))
+        static let dark = Palette(theme: .rex, dark: true)
+        static let light = Palette(theme: .rex, dark: false)
 
-        static let light = Palette(
-            isDark: false,
-            ground: hex(0xF5F5F5), base: hex(0xFFFFFF), dim: hex(0xFAFAFA), popover: hex(0xFFFFFF), lift: hex(0xFFFFFF),
-            linePane: hex(0xD4D5D6), linePaneDim: hex(0xEBEBEC), lineSep: hex(0xE7E8E8), lineField: hex(0x848689),
-            ink: hex(0x1F2328), ink2: hex(0x626568), ink3: hex(0x6C6F72), inkQ: hex(0x888A8D),
-            sel: hex(0xE6E6E8), selDim: hex(0xEFEFF0),
-            fillControl: hex(0xEDEDEE), fillTrack: hex(0xE9E9EA), fillStrong: hex(0xE0E0E1),
-            edgeOuter: hex(0xCFCFD0), edgeInner: hex(0xD6D6D7),
-            hover: hex(0x1F2328).withAlphaComponent(0.06), press: hex(0x1F2328).withAlphaComponent(0.11),
-            accent: hex(0x0969DA), accentText: hex(0x0969DA), accentTint: hex(0xE6F0FB), onAccent: .white,
-            danger: hex(0xCF222E), dangerTint: hex(0xFBEBEC), attn: hex(0x9A6700), attnTint: hex(0xFAF7F2),
-            textSel: hex(0x0969DA).withAlphaComponent(0.25),
-            tileFill: hex(0xE3E3E4), tileRing: hex(0x1F2328).withAlphaComponent(0.10),
-            liftChip: hex(0xE9E9EA),
-            ansi: [hex(0x0969DA), hex(0x8250DF), hex(0x116329), hex(0x1B7C83), hex(0x9A6700), hex(0xCF222E), hex(0x1F2328)],
-            ansiYellow: hex(0x9A6700),
-            popoverRing: hex(0x1F2328).withAlphaComponent(0.16), popoverShadow: hex(0x1F2328).withAlphaComponent(0.16),
-            liftRing: hex(0x1F2328).withAlphaComponent(0.14), liftShadow: hex(0x1F2328).withAlphaComponent(0.18))
-
-        func listColor(slot: Int) -> NSColor { ansi[((slot % 7) + 7) % 7] }
+        func list(_ slot: ListSlot) -> NSColor { lists[slot.rawValue] }
+        func listColor(slot: Int) -> NSColor { lists[((slot % 7) + 7) % 7] }
 
         /// Brightness filters (css:208–210, 293–295): hover 1.18 / 0.96 (chips), 1.12 / 0.97 (capsule buttons and
-        /// quick picks), press 0.86.
+        /// quick picks), press 0.86. Fixed factors, not colours: no theme changes them (THEMES.md §2.2).
         var chipHoverBrightness: CGFloat { isDark ? 1.18 : 0.96 }
         var buttonHoverBrightness: CGFloat { isDark ? 1.12 : 0.97 }
         static let pressBrightness: CGFloat = 0.86
-    }
-
-    static func hex(_ v: UInt32) -> NSColor {
-        NSColor(srgbRed: CGFloat((v >> 16) & 0xFF) / 255, green: CGFloat((v >> 8) & 0xFF) / 255,
-                blue: CGFloat(v & 0xFF) / 255, alpha: 1)
     }
 }
 

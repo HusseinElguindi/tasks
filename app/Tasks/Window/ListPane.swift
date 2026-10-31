@@ -50,27 +50,27 @@ struct ListPaneHeader: View {
                 Text(list.name.isEmpty ? "New List" : list.name)
                     .layoutPriority(1)
                     .font(Font(TK.Font.bodyMedium))
-                    .foregroundStyle((lit ? tk.ink : tk.ink2).swiftUI)
+                    .foregroundStyle((lit ? tk.ink : tk.inkSecondary).swiftUI)
                     .lineLimit(1)
                 if list.isArchived {
-                    Text("Archived").font(Font(TK.Font.body)).foregroundStyle(tk.ink2.swiftUI).lineLimit(1)
+                    Text("Archived").font(Font(TK.Font.body)).foregroundStyle(tk.inkSecondary.swiftUI).lineLimit(1)
                 }
             } else if window.route.isView {
                 // A view's header is Today's: its glyph in its colour, its name, no subtitle (§22).
                 GlyphView(glyph: window.route.glyph ?? .sun, size: 14, color: window.route.glyphColor(tk).swiftUI)
                 Text(window.route.viewName ?? "")
                     .font(Font(TK.Font.bodyMedium))
-                    .foregroundStyle((lit ? tk.ink : tk.ink2).swiftUI)
+                    .foregroundStyle((lit ? tk.ink : tk.inkSecondary).swiftUI)
                     .lineLimit(1)
             } else {
-                GlyphView(glyph: .sun, size: 14, color: tk.ansiYellow.swiftUI)
+                GlyphView(glyph: .sun, size: 14, color: tk.list(.yellow).swiftUI)
                 Text("Today")
                     .layoutPriority(1)
                     .font(Font(TK.Font.bodyMedium))
-                    .foregroundStyle((lit ? tk.ink : tk.ink2).swiftUI)
+                    .foregroundStyle((lit ? tk.ink : tk.inkSecondary).swiftUI)
                 Text(DateLabel.long(p.dayModel.day.date, today: p.dayModel.day.date))
                     .font(Font(TK.Font.body))
-                    .foregroundStyle(tk.ink2.swiftUI)
+                    .foregroundStyle(tk.inkSecondary.swiftUI)
                     .lineLimit(1)
             }
             }
@@ -185,7 +185,7 @@ private struct HeaderIconStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         let pressed = configuration.isPressed
-        let color = pressed ? tk.ink : hovered ? tk.ink2 : on ? tk.ink2 : tk.inkQ
+        let color = pressed ? tk.ink : hovered ? tk.inkSecondary : on ? tk.inkSecondary : tk.inkQuiet
         let fill = pressed ? tk.press : hovered ? tk.hover : .clear
         configuration.label
             .background(fill.swiftUI, in: RoundedRectangle(cornerRadius: TK.M.headerButtonRadius))

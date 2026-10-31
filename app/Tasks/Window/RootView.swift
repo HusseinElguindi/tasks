@@ -20,6 +20,7 @@ struct RootView: View {
                         DemoData.applyDebugRoute(store, window)
                         DebugSnapshot.runIfRequested()
                         DebugSettingsSnapshot.runIfRequested(model)
+                        DebugThemeCheck.runIfRequested()
                         DebugAutomation.runIfRequested(store)
                         DebugTiming.runIfRequested(store, window)
                         DebugKeyLog.installIfRequested()
@@ -107,7 +108,7 @@ struct ToolbarToggle: View {
 
     var body: some View {
         Button { actions.toggleSidebar() } label: {
-            GlyphView(glyph: .sidebarLeft, size: 16, color: (hovered ? tk.ink : tk.ink2).swiftUI)
+            GlyphView(glyph: .sidebarLeft, size: 16, color: (hovered ? tk.ink : tk.inkSecondary).swiftUI)
                 .frame(width: 28, height: 28)
                 .contentShape(Circle())
         }
