@@ -60,8 +60,36 @@ struct TaskLayout {
     /// The views' labels (Today's are list names, from `labels` alone).
     var labelInfo: [EntityID: LabelInfo] = [:]
 
+    // Headings and the title block (design/INTERACTIONS-v2.md §23).
+    /// The title block's top (under an archived list's banner) and height: the large title, and a list's notes.
+    var headY: CGFloat = 0
+    var titleHeight: CGFloat = 0
+    /// Heading rows (a new one being named included). A heading's slot is its air, its row and its notes; `yList`
+    /// holds its row's top, like a task's.
+    var headingIDs: Set<EntityID> = []
+    var slotH: [EntityID: CGFloat] = [:]
+    /// A heading's notes height under its row (0 when it shows none), at its row's top + 32.
+    var noteH: [EntityID: CGFloat] = [:]
+    /// Tasks folded under a collapsed heading: not laid out, kept so they can fold into it and unfold from it.
+    var folded: [EntityID: EntityID] = [:]
+
     static let doneGroup = "\u{1}done"
     static let pitch = TK.M.pitch
+    /// A heading's air above its row (`HEAD_AIR`, dc:445).
+    static let headAir: CGFloat = 8
+
+    func isHeading(_ id: EntityID) -> Bool { headingIDs.contains(id) }
+    /// A row's slot: 32, or a heading's air, row and notes.
+    func slotHeight(_ id: EntityID) -> CGFloat { slotH[id] ?? Self.pitch }
+    /// Where a row's shape sits in its slot: 0, or a heading's air.
+    func rowOffset(_ id: EntityID) -> CGFloat { headingIDs.contains(id) ? Self.headAir : 0 }
+
+    /// The title block: 4 above the 30pt title line, then a list's notes 4 below it, then 12 to the rows (css:439–445).
+    static func titleBlockHeight(notes: CGFloat?) -> CGFloat {
+        4 + 30 + (notes.map { 4 + max(19, $0) } ?? 0) + 12
+    }
+    /// An archived list's banner sits above the title block.
+    static let bannerBlock: CGFloat = 60
 
     func y(_ id: EntityID) -> CGFloat? { index[id].map { yList[$0] } }
     func contains(_ id: EntityID) -> Bool { index[id] != nil }
@@ -98,6 +126,13 @@ struct TaskLayout {
     struct Inputs: Equatable {
         var route: WindowState.Route
         var lists: [[EntityID]]
+        /// A list's headings (§23): which are collapsed, which show notes and how tall, the list's notes' height, and a
+        /// new heading being named.
+        var collapsed: Set<EntityID> = []
+        var noteHeights: [EntityID: CGFloat] = [:]
+        var titleNotes: CGFloat?
+        var newHeading: EntityID?
+        var newHeadingBefore: EntityID?
         var archived: Bool
         var completedOpen: Bool
         var pins: [EntityID: WindowState.Pin]
@@ -116,7 +151,7 @@ struct TaskLayout {
         var completedOpen = false
         switch window.route {
         case .list(let id):
-            lists = [p.openTasks(in: id).ids, p.completedTasks(in: id).ids]
+            lists = [p.openTasks(in: id).ids, p.completedTasks(in: id).ids, p.headings(in: id).ids]
             archived = p.list(id)?.archivedAt != nil
             completedOpen = window.completedOpen.contains(id)
         case .today:
@@ -130,8 +165,24 @@ struct TaskLayout {
         // The draft's title doesn't move rows.
         var draft = window.draft
         if let title = draft?.title { draft?.title = title.isEmpty ? "" : "x" }
-        let inputs = Inputs(route: window.route, lists: lists, archived: archived, completedOpen: completedOpen,
+        var inputs = Inputs(route: window.route, lists: lists, archived: archived, completedOpen: completedOpen,
                             pins: window.pins, draft: draft, drag: window.drag, day: p.day.date, view: view)
+        if case .list(let id) = window.route {
+            let heads = lists[2]
+            if !heads.isEmpty {
+                inputs.collapsed = window.collapsed.intersection(heads)
+                for h in heads {
+                    // A heading shows its notes when it has some, or while they're being edited (§23).
+                    let shown = window.paneNotes == .task(h) || !(p.taskModel(h)?.notes.isEmpty ?? true)
+                    if shown, !inputs.collapsed.contains(h) { inputs.noteHeights[h] = window.noteHeights[h] ?? 19 }
+                }
+            }
+            inputs.titleNotes = window.noteHeights[TaskLayout.listNotesKey(id)] ?? 19
+            if let r = window.rename, let n = r.newHeading, n.list == id {
+                inputs.newHeading = r.id
+                inputs.newHeadingBefore = n.before
+            }
+        }
         if let cached = window.layoutCache, cached.inputs == inputs { return cached.layout }
         let layout = build(store: store, window: window, inputs: inputs)
         window.layoutCache = (inputs, layout)
@@ -146,20 +197,55 @@ struct TaskLayout {
         case .upcoming, .undated, .completed, .trash:
             return buildView(store: store, inputs: inputs)
         case .list(let listID):
-            var L = TaskLayout(key: listID, top: inputs.archived ? TK.M.rowTopArchived : TK.M.rowTop)
+            var L = TaskLayout(key: listID, top: 0)
+            L.headY = inputs.archived ? bannerBlock : 0
+            L.titleHeight = titleBlockHeight(notes: inputs.titleNotes)
+            L.top = L.headY + L.titleHeight
             var open = inputs.lists[0]
             var done = inputs.lists[1]
+            let heads = Set(inputs.lists[2])
             if !pins.isEmpty {
                 (open, done) = applyPins(pins, open: open, done: done, store: store) { $0.list == listID }
             }
+            if let h = inputs.newHeading {
+                if let b = inputs.newHeadingBefore, let i = open.firstIndex(of: b) { open.insert(h, at: i) } else { open.append(h) }
+            }
             if let draft, draft.list == listID {
-                open.append(draft.id)
+                switch draft.anchor {
+                case .after(let a)?: if let i = open.firstIndex(of: a) { open.insert(draft.id, at: i + 1) } else { open.append(draft.id) }
+                case .before(let b)?: if let i = open.firstIndex(of: b) { open.insert(draft.id, at: i) } else { open.append(draft.id) }
+                default: open.append(draft.id)
+                }
                 L.draftID = draft.id
             }
             L.reserve(open.count + (inputs.completedOpen ? done.count : 0))
             var y = L.top
-            L.groups.append(Group(listID: listID, top: y, ids: open))
-            for id in open { L.place(id, y, group: 0); y += pitch }
+            var ids: [EntityID] = []
+            ids.reserveCapacity(open.count)
+            // Rows in the list's order: a heading's slot is its air, its row and its notes; a collapsed heading's tasks
+            // aren't laid out, down to the next heading (dc:3468–3488).
+            var fold: EntityID?
+            for id in open {
+                if heads.contains(id) || id == inputs.newHeading {
+                    fold = inputs.collapsed.contains(id) ? id : nil
+                    let nh = inputs.noteHeights[id].map { $0 + 6 } ?? 0
+                    L.headingIDs.insert(id)
+                    L.noteH[id] = nh
+                    L.slotH[id] = headAir + pitch + nh
+                    L.place(id, y + headAir, group: 0)
+                    ids.append(id)
+                    y += headAir + pitch + nh
+                    continue
+                }
+                if let f = fold, id != draft?.id {
+                    L.folded[id] = f
+                    continue
+                }
+                L.place(id, y, group: 0)
+                ids.append(id)
+                y += pitch
+            }
+            L.groups.append(Group(listID: listID, top: L.top, ids: ids))
             L.landingY = y
             y += pitch
             L.doneCount = done.count
@@ -176,7 +262,9 @@ struct TaskLayout {
             return L
 
         case .today:
-            var L = TaskLayout(key: "today", top: TK.M.rowTop)
+            // The title line, without notes (§23).
+            var L = TaskLayout(key: "today", top: titleBlockHeight(notes: nil))
+            L.titleHeight = L.top
             var y = L.top
             let today = p.day.date
             let active = inputs.lists[0]
@@ -286,6 +374,23 @@ struct TaskLayout {
         ids.insert(id, at: i)
     }
 
+    static func listNotesKey(_ id: EntityID) -> String { "list:" + id }
+
+    /// Where a gap at each target would start among `others` (the group's rows without the dragged ones): rows have
+    /// different heights once there are headings (`slotTops`, dc:3457).
+    func slotTops(_ g: Group, others: [EntityID]) -> [CGFloat] {
+        var out = [g.top]
+        var y = g.top
+        for id in others { y += slotHeight(id); out.append(y) }
+        return out
+    }
+
+    /// The dragged rows' gap: their slots, a heading's without its notes (they fold into the copy, dc:965).
+    func gapHeight(_ dragged: [EntityID]) -> CGFloat {
+        if let h = dragged.first, isHeading(h) { return Self.headAir + Self.pitch }
+        return dragged.reduce(0) { $0 + slotHeight($1) }
+    }
+
     /// The rows of the dragged group part to open a gap at the target; over the sidebar the group closes up and
     /// everything below it moves up, because the rows are leaving (dc:655–676).
     mutating func applyDrag(_ drag: WindowState.Drag?) {
@@ -296,23 +401,32 @@ struct TaskLayout {
         let g = groups[gi]
         let draggedSet = Set(dragged)
         let others = g.ids.filter { !draggedSet.contains($0) }
-        let k = CGFloat(dragged.count)
         let gap = !drag.sidebar
         let target = drag.sidebar ? others.count : min(max(drag.target, 0), others.count)
+        let gapH = gapHeight(dragged.filter { index[$0] != nil })
+        var y = g.top
         for (i, id) in others.enumerated() {
-            if let r = index[id] { yList[r] = g.top + (CGFloat(i) + (gap && i >= target ? k : 0)) * Self.pitch }
+            if gap && i == target { y += gapH }
+            if let r = index[id] { yList[r] = y + rowOffset(id) }
+            y += slotHeight(id)
         }
         if drag.sidebar {
-            let shift = k * Self.pitch
-            let end = g.top + CGFloat(g.ids.count) * Self.pitch
+            let shift = gapH
+            let end = g.top + g.ids.reduce(0) { $0 + slotHeight($1) }
             for r in yList.indices where yList[r] >= end && groupIndex[r] != gi { yList[r] -= shift }
             for (lid, y) in labels where y >= end { labels[lid] = y - shift }
             if let gy = landingY { landingY = gy - shift }
             if let cy = completedY { completedY = cy - shift }
         }
         if gap {
-            for (i, id) in dragged.enumerated() {
-                if let r = index[id] { yList[r] = g.top + (CGFloat(target) + CGFloat(i)) * Self.pitch }
+            // The dragged rows wait in the gap (they're hidden: the copy stands for them). A heading's tasks sit at its
+            // row, folded into the copy.
+            let tops = slotTops(g, others: others)
+            var dy = tops[target]
+            for id in dragged {
+                guard let r = index[id] else { continue }
+                yList[r] = dy + rowOffset(id)
+                if !isHeading(dragged[0]) { dy += slotHeight(id) }
             }
         }
         // Keep the rows sorted by y for hit-testing.

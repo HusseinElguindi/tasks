@@ -36,6 +36,25 @@ final class TaskListView: NSView {
     private let banner = BannerView()
     private var renameField: InlineField?
     private var renamingID: EntityID?
+    // Headings, the title block and the list pane's notes (§23).
+    private var heads: [EntityID: HeadingRowView] = [:]
+    private var headsLeaving: [EntityID: (view: HeadingRowView, until: CFTimeInterval)] = [:]
+    let titleView = ListTitleView()
+    private var titleField: InlineField?
+    private var titleFieldID: EntityID?
+    /// The notes editors in the list pane: the list's (in the title block) and each heading's with notes.
+    final class PaneEditor {
+        let view: NotesTextView
+        let editor: NotesField.Coordinator
+        var measured: (text: String, width: CGFloat, height: CGFloat)?
+        /// Shown under its heading in the last render (for the fold and unfold).
+        var shown = false
+        init(view: NotesTextView, editor: NotesField.Coordinator) {
+            self.view = view
+            self.editor = editor
+        }
+    }
+    private(set) var paneEditors: [NotesHost.Target: PaneEditor] = [:]
 
     private var renderScheduled = false
     private var paletteChanged = true
@@ -47,6 +66,8 @@ final class TaskListView: NSView {
     // Pointer
     private enum Target: Equatable {
         case row(EntityID, TaskRowView.Part)
+        /// A heading's row: its + and chevron are parts of their own, asked first (§23).
+        case head(EntityID, HeadingRowView.Part)
         case label(EntityID, plus: Bool)
         case completed
         case banner
@@ -78,6 +99,9 @@ final class TaskListView: NSView {
         doc.addSubview(completedRow)
         doc.addSubview(empty)
         doc.addSubview(banner)
+        doc.addSubview(titleView)
+        titleView.onDoubleClickTitle = { [weak self] in self?.actions.startTitleRename() }
+        titleView.onHover = { [weak self] _ in self?.updateTitlePlaceholder(animated: true) }
         scroll.contentView.postsBoundsChangedNotifications = true
         NotificationCenter.default.addObserver(self, selector: #selector(scrolled), name: NSView.boundsDidChangeNotification, object: scroll.contentView)
         setAccessibilityElement(true)
@@ -122,6 +146,7 @@ final class TaskListView: NSView {
     }
 
     @objc private func scrolled() {
+        updateTitleScrolled()
         render(animated: false, scrolling: true)
         updateHoverFromMouse()
         if let d = drag { updateDrag(windowPoint: d.lastPoint) }
@@ -180,12 +205,20 @@ final class TaskListView: NSView {
         #endif
         guard window != nil else { return }
         let p = store.projection
+        // The list pane's notes are measured before the layout, which leaves room for them (§23).
+        syncPaneEditors()
         let L = TaskLayout.make(store: store, window: state)
         Self.phase()
         let now = CACurrentMediaTime()
         let sameView = prevKey == L.key
         let animate = allowAnimation && sameView && !firstRender && !paletteChanged && !TK.CA.reduce
-        if !sameView { leaving.values.forEach { recycle($0.view) }; leaving = [:]; labelsLeaving.values.forEach { $0.view.removeFromSuperview() }; labelsLeaving = [:] }
+        if !sameView {
+            leaving.values.forEach { recycle($0.view) }; leaving = [:]
+            labelsLeaving.values.forEach { $0.view.removeFromSuperview() }; labelsLeaving = [:]
+            headsLeaving.values.forEach { $0.view.removeFromSuperview() }; headsLeaving = [:]
+            for (_, v) in heads { v.removeFromSuperview() }
+            heads = [:]
+        }
         let width = scroll.contentView.bounds.width
         let rowW = max(0, width - 2 * TK.M.rowInset)
         let visibleH = scroll.contentView.bounds.height
@@ -200,7 +233,7 @@ final class TaskListView: NSView {
         // Alone in the window the pane shows no focus: selected rows keep the focused fill (v2 feedback 3).
         let paneFocused = state.focus == .list || !detailOpen
         let selection = state.selection
-        let rename = state.rename?.kind == .task ? state.rename : nil
+        let rename = state.rename.flatMap { $0.kind == .task || $0.kind == .heading ? $0 : nil }
         let picker = state.overlays.picker
         let dragIDs: Set<EntityID> = {
             if let d = state.drag, d.phase != .done, case .tasks(let ids, _) = d.kind { return Set(ids) }
@@ -228,6 +261,8 @@ final class TaskListView: NSView {
                 if let cy = L.completedY, let t = p.task(id), !t.deleted, t.completedAt != nil, t.list == state.route.listID {
                     to = cy
                 }
+                // Folding: up under its heading's row, on `layout`, as it fades (§23 Collapsing).
+                if let h = L.folded[id], let hy = L.y(h) { to = hy }
                 leaving[id] = (v, now + TK.Timer.motionWindow)
                 v.setHover(row: false, part: nil)
                 move(v, toY: to, animate: true)
@@ -260,8 +295,10 @@ final class TaskListView: NSView {
         // Selected rows join into one block when adjacent (css:182–186).
         let selectedYs: Set<CGFloat> = Set(selection.compactMap { id in dragIDs.contains(id) ? nil : L.y(id) })
 
+        var headNeeded: [EntityID] = []
         for id in needed {
             guard let y = L.y(id) else { continue }
+            if L.isHeading(id) { headNeeded.append(id); continue }
             var isNew = false
             let v: TaskRowView
             if let existing = rows[id] {
@@ -319,7 +356,16 @@ final class TaskListView: NSView {
             }
             // Position: new views start where the task was (and spring to its new place) or fade in; others spring.
             if isNew {
-                if animate, let oldY = prevLayout?.y(id), oldY != y {
+                if animate, let h = prevLayout?.folded[id], let hy = L.y(h) ?? prevLayout?.y(h) {
+                    // Expanding: from under the heading's row to its place on `layout`, with the rows below on the same
+                    // curve, fading in (ease-in, so faint while it still overlaps the heading). Never faded in where it
+                    // ends up while its neighbours move (§23 "Bugs the prototype had").
+                    place(v, y: hy, width: rowW)
+                    move(v, toY: y, animate: true)
+                    v.layer?.removeAnimation(forKey: "opacity")
+                    v.layer?.add(TK.CA.basic("opacity", TK.CA.unfoldT, from: 0, to: 1), forKey: "enter")
+                    keepUntil[id] = now + 0.45
+                } else if animate, let oldY = prevLayout?.y(id), oldY != y {
                     place(v, y: oldY, width: rowW)
                     move(v, toY: y, animate: true)
                 } else {
@@ -345,6 +391,10 @@ final class TaskListView: NSView {
             }
         }
 
+        renderHeadings(L, needed: headNeeded, rowW: rowW, animate: animate, now: now, selection: selection,
+                       paneFocused: paneFocused, rename: rename, dragIDs: dragIDs)
+        renderTitle(L, width: width)
+        renderPaneEditors(L, width: width, animate: animate, now: now, dragIDs: dragIDs)
         Self.phase()
         renderLabels(L, rowW: rowW, animate: animate, now: now)
         renderExtras(L, width: width, rowW: rowW, contentH: contentH, animate: animate)
@@ -365,7 +415,7 @@ final class TaskListView: NSView {
         prevCompletedY = L.completedY
         paletteChanged = false
         firstRender = false
-        if !leaving.isEmpty || !labelsLeaving.isEmpty || !keepUntil.isEmpty { scheduleCleanup() }
+        if !leaving.isEmpty || !labelsLeaving.isEmpty || !keepUntil.isEmpty || !headsLeaving.isEmpty { scheduleCleanup() }
         if let id = pendingScroll, L.contains(id) {
             pendingScroll = nil
             ensureVisible(id, in: L)
@@ -530,10 +580,332 @@ final class TaskListView: NSView {
         }
     }
 
+    // MARK: - Headings, the title block and the list pane's notes (§23)
+
+    /// Heading rows: one view per heading on screen, moving with the rows; a deleted one fades where it was.
+    private func renderHeadings(_ L: TaskLayout, needed: [EntityID], rowW: CGFloat, animate: Bool, now: CFTimeInterval,
+                                selection: Set<EntityID>, paneFocused: Bool, rename: WindowState.Rename?,
+                                dragIDs: Set<EntityID>) {
+        let p = store.projection
+        let neededSet = Set(needed)
+        for (id, v) in heads where !neededSet.contains(id) {
+            heads[id] = nil
+            if animate, !L.contains(id), prevLayout?.contains(id) == true, headsLeaving[id] == nil {
+                headsLeaving[id] = (v, now + TK.Timer.motionWindow)
+                v.setHover(row: false, part: nil)
+                v.layer?.animate("opacity", to: 0, TK.CA.fadeOutT)
+            } else {
+                v.removeFromSuperview()
+            }
+        }
+        for (id, l) in headsLeaving where now >= l.until || L.contains(id) {
+            headsLeaving[id] = nil
+            l.view.removeFromSuperview()
+        }
+        guard !needed.isEmpty else { return }
+        // A collapsed heading's count: its open tasks, folded under it.
+        var folded: [EntityID: Int] = [:]
+        for (_, h) in L.folded { folded[h, default: 0] += 1 }
+        for id in needed {
+            guard let y = L.y(id) else { continue }
+            var isNew = false
+            let v: HeadingRowView
+            if let existing = heads[id] { v = existing } else {
+                v = HeadingRowView()
+                v.layer?.setScaleDeep(window?.backingScaleFactor ?? 2)
+                // Above the task rows: rows folding and unfolding pass under it.
+                doc.addSubview(v)
+                heads[id] = v
+                isNew = true
+            }
+            let renaming = rename?.id == id
+            let title = renaming && rename?.newHeading != nil ? "" : (p.taskModel(id)?.title ?? "")
+            let m = HeadingModel(id: id, title: title, collapsed: state.collapsed.contains(id), count: folded[id] ?? 0,
+                                 selected: selection.contains(id) && !dragIDs.contains(id), paneFocused: paneFocused,
+                                 renaming: renaming, dragSource: dragIDs.contains(id))
+            if v.model != m || paletteChanged || isNew || v.frame.width != rowW {
+                v.configure(m, palette: palette, width: rowW, animated: !isNew && animate)
+            }
+            if isNew {
+                if animate, let oldY = prevLayout?.y(id), oldY != y {
+                    place(v, y: oldY, width: rowW)
+                    move(v, toY: y, animate: true)
+                } else {
+                    place(v, y: y, width: rowW)
+                    if animate && prevLayout?.contains(id) != true {
+                        v.layer?.add(TK.CA.basic("opacity", TK.CA.fadeInT, from: 0, to: 1), forKey: "enter")
+                    }
+                }
+            } else if v.frame.minY != y {
+                move(v, toY: y, animate: animate)
+            } else if v.frame.width != rowW {
+                place(v, y: y, width: rowW)
+            }
+            if id == landing, let layer = v.layer {
+                for key in layer.animationKeys() ?? [] where key == "opacity" || key.hasPrefix("move-") { layer.removeAnimation(forKey: key) }
+                layer.opacity = 1
+            }
+        }
+    }
+
+    /// The width of the list pane's notes: from the checkbox's edge to 20 from the right.
+    private var paneNotesWidth: CGFloat {
+        max(40, scroll.contentView.bounds.width - 2 * (TK.M.rowInset + TK.M.rowPadLeft))
+    }
+
+    /// Makes (or updates) the list's and its headings' notes editors and measures them, before the layout: a heading
+    /// shows notes when it has some or while they're being edited.
+    private func syncPaneEditors() {
+        let p = store.projection
+        var keep: Set<NotesHost.Target> = []
+        let width = paneNotesWidth
+        if case .list(let lid) = state.route, let l = p.listModel(lid) {
+            let t = NotesHost.Target.list(lid)
+            keep.insert(t)
+            let e = paneEditor(t, notes: l.notes, parent: titleView)
+            state.noteHeights[TaskLayout.listNotesKey(lid)] = measure(e, width: width)
+            for h in p.headings(in: lid).ids {
+                guard let m = p.taskModel(h) else { continue }
+                let target = NotesHost.Target.task(h)
+                guard !m.notes.isEmpty || state.paneNotes == target || paneEditors[target]?.editor.session != nil else { continue }
+                keep.insert(target)
+                let e = paneEditor(target, notes: m.notes, parent: doc)
+                state.noteHeights[h] = measure(e, width: width)
+            }
+        }
+        for (t, e) in paneEditors where !keep.contains(t) && e.editor.session == nil {
+            e.view.removeFromSuperview()
+            paneEditors[t] = nil
+        }
+    }
+
+    private func paneEditor(_ target: NotesHost.Target, notes: String, parent: NSView) -> PaneEditor {
+        let host = paneHost(target, notes: notes)
+        if let e = paneEditors[target] {
+            e.editor.host = host
+            e.editor.apply(force: false)
+            return e
+        }
+        let c = NotesField.Coordinator()
+        let v = NotesField.makeEditor(c, host: host)
+        v.setAccessibilityLabel(target == state.route.listID.map { .list($0) } ? "List notes" : "Heading notes")
+        parent.addSubview(v)
+        let e = PaneEditor(view: v, editor: c)
+        paneEditors[target] = e
+        return e
+    }
+
+    private func paneHost(_ target: NotesHost.Target, notes: String) -> NotesHost {
+        let a = actions
+        return NotesHost(store: store, window: state, target: target, notes: notes, inert: state.route == .trash,
+                         palette: palette, inDetail: false,
+                         onLayoutChange: { [weak self] in self?.paneNotesChanged(target) },
+                         backToTitle: {
+                             switch target {
+                             case .list: a.startTitleRename()
+                             case .task(let h): a.startHeadingRename(h)
+                             }
+                         })
+    }
+
+    private func measure(_ e: PaneEditor, width: CGFloat) -> CGFloat {
+        let text = e.view.string
+        if let m = e.measured, m.text == text, m.width == width { return m.height }
+        let h = e.view.fittingHeight(width: width)
+        e.measured = (text, width, h)
+        return h
+    }
+
+    /// While typing: a new height lays the rows out again.
+    private func paneNotesChanged(_ target: NotesHost.Target) {
+        guard let e = paneEditors[target] else { return }
+        let key: EntityID = switch target {
+        case .list(let id): TaskLayout.listNotesKey(id)
+        case .task(let id): id
+        }
+        let h = measure(e, width: paneNotesWidth)
+        if state.noteHeights[key] != h {
+            state.noteHeights[key] = h
+            setNeedsRender()
+        }
+        updateTitlePlaceholder(animated: true)
+    }
+
+    /// Add Notes, Edit Notes, Tab from a rename, or a click: the caret in the list's or a heading's notes.
+    func startPaneNotes(_ target: NotesHost.Target) {
+        if case .task = target { state.paneNotes = target }
+        render(animated: true)
+        guard let e = paneEditors[target] else {
+            if state.paneNotes == target { state.paneNotes = nil }
+            return
+        }
+        e.editor.startEditing()
+        if case .task(let h) = target { ensureVisible(h, in: currentLayout ?? TaskLayout.make(store: store, window: state)) }
+    }
+
+    /// The editors' places: the list's in the title block, each heading's 2 below its row's shape, moving with it.
+    /// Collapsing folds a heading's notes up under its row as they fade; expanding unfolds them from there.
+    private func renderPaneEditors(_ L: TaskLayout, width: CGFloat, animate: Bool, now: CFTimeInterval, dragIDs: Set<EntityID>) {
+        let w = paneNotesWidth
+        for (target, e) in paneEditors {
+            switch target {
+            case .list:
+                let h = max(19, state.noteHeights[TaskLayout.listNotesKey(state.route.listID ?? "")] ?? 19)
+                let f = CGRect(x: TK.M.rowInset + TK.M.rowPadLeft, y: ListTitleView.notesTop, width: w, height: h)
+                if e.view.frame != f { e.view.frame = f }
+                e.view.isHidden = false
+            case .task(let hid):
+                let nh = L.noteH[hid] ?? 0
+                let show = nh > 0 && L.y(hid) != nil && !dragIDs.contains(hid)
+                let layer = e.view.layer
+                if show, let hy = L.y(hid) {
+                    e.view.inert = state.route == .trash
+                    let y = hy + TK.M.pitch
+                    let f = CGRect(x: TK.M.rowInset + TK.M.rowPadLeft, y: y, width: w, height: max(19, nh - 6))
+                    if !e.shown {
+                        // Unfolding (or first shown): from under the heading's row, fading in.
+                        e.view.isHidden = false
+                        e.view.frame = f
+                        if animate {
+                            let a = TK.CA.spring("transform.translation.y", TK.CA.layout, from: hy - y, to: 0)
+                            a.isAdditive = true
+                            layer?.add(a, forKey: "move-\(CACurrentMediaTime())")
+                            layer?.removeAnimation(forKey: "opacity")
+                            layer?.setInstant { layer?.opacity = 1 }
+                            layer?.add(TK.CA.basic("opacity", TK.CA.unfoldT, from: 0, to: 1), forKey: "enter")
+                        } else {
+                            layer?.setInstant { layer?.opacity = 1 }
+                        }
+                    } else {
+                        if e.view.frame.size != f.size { e.view.frame.size = f.size }
+                        move(e.view, toY: y, animate: animate)
+                    }
+                    e.shown = true
+                } else if e.shown {
+                    e.shown = false
+                    // Folding (or dragged): it passes over the heading's row on its way out, and never takes a press.
+                    e.view.inert = true
+                    if animate, let hy = L.y(hid), !dragIDs.contains(hid) {
+                        // Folding: up under the heading's row as it fades out.
+                        move(e.view, toY: hy, animate: true)
+                        layer?.animate("opacity", to: 0, TK.CA.fadeOutT)
+                    } else {
+                        e.view.isHidden = true
+                    }
+                } else if layer?.opacity == 0 || !animate {
+                    e.view.isHidden = true
+                }
+            }
+        }
+    }
+
+    /// The title block: the large title, and a list's notes under it (their editor is its subview).
+    private func renderTitle(_ L: TaskLayout, width: CGFloat) {
+        let p = store.projection
+        let today = p.day.date
+        var c: ListTitleView.Content
+        let renaming = state.rename?.kind == .title
+        switch state.route {
+        case .list(let id):
+            let m = p.listModel(id)
+            let name = m?.name ?? ""
+            c = .init(mark: .tile(monogram: m?.monogram ?? "·", slot: m?.colorSlot ?? ListModel.slot(for: id)),
+                      title: name.isEmpty ? "New List" : name, sub: m?.isArchived == true ? "Archived" : nil, renaming: renaming)
+        case .today:
+            c = .init(mark: .view(.today), title: "Today", sub: DateLabel.long(today, today: today))
+        default:
+            c = .init(mark: .view(state.route), title: state.route.viewName ?? "", sub: nil)
+        }
+        let f = CGRect(x: 0, y: L.headY, width: width, height: max(L.titleHeight, 46))
+        if titleView.frame != f { titleView.frame = f }
+        titleView.configure(c, palette: palette, width: width)
+        updateTitleField(renaming ? state.rename : nil)
+        updateTitlePlaceholder(animated: false)
+        updateTitleScrolled()
+    }
+
+    /// "Notes" over an empty list's notes: while the pointer is over the title block, while it's renamed, or with the
+    /// caret in them.
+    private func updateTitlePlaceholder(animated: Bool) {
+        guard case .list(let lid) = state.route, let e = paneEditors[.list(lid)] else {
+            titleView.showPlaceholder(false, animated: false)
+            return
+        }
+        let empty = e.view.string.isEmpty
+        let on = empty && (titleView.hovered || state.rename?.kind == .title || e.editor.session != nil)
+        titleView.showPlaceholder(on, animated: animated)
+    }
+
+    /// The band's tile and title show once the large title has scrolled 24pt (§23 On scroll).
+    private func updateTitleScrolled() {
+        let s = scroll.contentView.bounds.minY >= 24
+        if state.titleScrolled != s { state.titleScrolled = s }
+    }
+
+    /// The list's title renames in place: 20/26, 30 tall, radius 6, `fill-control`, a 1.5pt `accent` ring (css:443).
+    private func updateTitleField(_ rename: WindowState.Rename?) {
+        guard let rename else {
+            if let f = titleField {
+                titleField = nil
+                titleFieldID = nil
+                let wasEditing = f.isEditing
+                f.onEnd = nil
+                f.removeFromSuperview()
+                if wasEditing { takeKeys() }
+            }
+            return
+        }
+        let f: InlineField
+        if let existing = titleField, titleFieldID == rename.id {
+            f = existing
+        } else {
+            titleField?.onEnd = nil
+            titleField?.removeFromSuperview()
+            f = InlineField(frame: .zero)
+            f.font = ListTitleView.font
+            f.placeholderString = "New List"
+            f.stringValue = rename.text
+            f.wantsLayer = true
+            f.layer?.cornerRadius = 6
+            f.layer?.borderWidth = 1.5
+            let a = actions
+            f.onChange = { a.setRenameText($0) }
+            f.onKey = { [weak self] key in
+                switch key {
+                case .returnKey, .commandReturn, .backtab:
+                    a.commitRename()
+                    self?.takeKeys()
+                case .tab:
+                    // Tab goes on to the list's notes.
+                    a.commitRename()
+                    a.editListNotes()
+                case .escape:
+                    a.cancelRename()
+                    self?.takeKeys()
+                }
+                return true
+            }
+            f.onEnd = { _ in if a.window.rename?.kind == .title { a.commitRename() } }
+            titleView.addSubview(f)
+            titleField = f
+            titleFieldID = rename.id
+            DispatchQueue.main.async { f.focus(.all) }
+        }
+        f.textColor = palette.ink
+        f.layer?.backgroundColor = palette.fillControl.cgColor
+        f.layer?.borderColor = palette.accent.cgColor
+        let x = titleView.titleX - 6
+        let w = min(360, max(120, titleView.bounds.width - x - TK.M.rowInset - TK.M.rowPadRight))
+        f.frame = CGRect(x: x, y: 4, width: w, height: 30)
+        f.displayIfNeeded()
+    }
+
     // MARK: - Rename in place (§7)
 
     private func updateRenameField(_ rename: WindowState.Rename?, layout L: TaskLayout) {
-        guard let rename, let row = rows[rename.id], L.contains(rename.id) else {
+        let isHeading = rename?.kind == .heading
+        let rowView: NSView? = rename.flatMap { r in isHeading ? heads[r.id] : rows[r.id] }
+        guard let rename, let row = rowView, L.contains(rename.id) else {
             if let f = renameField {
                 renameField = nil
                 renamingID = nil
@@ -551,13 +923,20 @@ final class TaskListView: NSView {
             renameField?.onEnd = nil
             renameField?.removeFromSuperview()
             f = InlineField(frame: .zero)
-            f.font = TK.Font.body
-            f.placeholderString = "New Task"
+            f.font = isHeading ? HeadingRowView.font : TK.Font.body
+            f.placeholderString = isHeading ? "New Heading" : "New Task"
             f.stringValue = rename.text
             let a = actions
+            let kind = rename.kind
+            let id = rename.id
             f.onChange = { a.setRenameText($0) }
             f.onKey = { [weak self] key in
                 switch key {
+                case .tab where kind == .heading:
+                    // A heading's Tab writes it and goes on to its notes (§23).
+                    let named = !(a.window.rename?.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+                    a.commitRename()
+                    if named || a.isHeading(id) { a.editHeadingNotes(id) } else { self?.takeKeys() }
                 case .returnKey, .tab, .backtab, .commandReturn:
                     a.commitRename()
                     self?.takeKeys()
@@ -567,7 +946,7 @@ final class TaskListView: NSView {
                 }
                 return true
             }
-            f.onEnd = { _ in if a.window.rename?.kind == .task { a.commitRename() } }
+            f.onEnd = { _ in if a.window.rename?.kind == kind, a.window.rename?.id == id { a.commitRename() } }
             doc.addSubview(f)
             renameField = f
             renamingID = rename.id
@@ -582,7 +961,7 @@ final class TaskListView: NSView {
         f.textColor = palette.ink
         // The field replaces the title in place: same font, origin and color (NSTextField draws its text 2pt in). Its
         // text lands on the title's pixels (measured frame by frame across the swap, v2 feedback 5).
-        let t = row.titleFrame
+        let t = (row as? TaskRowView)?.titleFrame ?? (row as? HeadingRowView)?.nameFrame ?? .zero
         f.frame = CGRect(x: row.frame.minX + t.minX - 2, y: row.frame.minY + t.minY, width: t.width + 4, height: 17)
         // Drawn now, into the transaction that hides the title, not in the window's next display pass.
         f.displayIfNeeded()
@@ -665,6 +1044,10 @@ final class TaskListView: NSView {
         }
         let inRows = p.x >= TK.M.rowInset && p.x < TK.M.rowInset + rowW
         if inRows, let id = L.row(at: p.y) {
+            if L.isHeading(id) {
+                let part = heads[id].map { $0.part(at: CGPoint(x: p.x - $0.frame.minX, y: p.y - $0.frame.minY)) } ?? .body
+                return .head(id, part)
+            }
             if let v = rows[id] {
                 return .row(id, v.part(at: CGPoint(x: p.x - v.frame.minX, y: p.y - v.frame.minY)))
             }
@@ -714,6 +1097,10 @@ final class TaskListView: NSView {
         var part: TaskRowView.Part?
         if case .row(let id, let pt) = t { hoveredRow = id; part = pt }
         for (id, v) in rows { v.setHover(row: id == hoveredRow, part: id == hoveredRow ? part : nil) }
+        var hoveredHead: EntityID?
+        var headPart: HeadingRowView.Part?
+        if case .head(let id, let pt) = t { hoveredHead = id; headPart = pt }
+        for (id, v) in heads { v.setHover(row: id == hoveredHead, part: id == hoveredHead ? headPart : nil) }
         completedRow.setHover(t == .completed)
         for (key, v) in labels {
             if case .label(let k, let plus) = t, k == key { v.setHover(true, overPlus: plus) } else { v.setHover(false, overPlus: false) }
@@ -727,6 +1114,12 @@ final class TaskListView: NSView {
             if let v = rows[id] {
                 overlays.hoverTip("Show Details", keys: "⌘D", for: windowRect(v.open.frame, from: v), windowWidth: window?.frame.width ?? 1200)
             }
+        case .head(let id, .plus):
+            if let v = heads[id] {
+                let name = store.projection.task(id)?.title ?? ""
+                overlays.hoverTip("New Task in " + (name.isEmpty ? "this heading" : name), for: windowRect(v.plus.frame, from: v),
+                                  windowWidth: window?.frame.width ?? 1200)
+            }
         case .label(let key, plus: true):
             if let v = labels[key] {
                 let info = currentLayout?.labelInfo[key]
@@ -736,6 +1129,7 @@ final class TaskListView: NSView {
         default:
             // Only the tips this list showed: the pointer may have moved onto another control with its own.
             if case .row(_, .open) = old { overlays.hideTip() } else if case .label(_, plus: true) = old { overlays.hideTip() }
+            else if case .head(_, .plus) = old { overlays.hideTip() }
         }
     }
 
@@ -760,10 +1154,25 @@ final class TaskListView: NSView {
         }
         press = (t, p, event)
         switch t {
+        case .head(let id, let part):
+            switch part {
+            case .body:
+                // A click selects the heading, never toggles it (§23); a double-click renames it in place.
+                pendingCollapse = nil
+                if event.clickCount == 2 {
+                    let local = heads[id].map { CGPoint(x: p.x - $0.frame.minX, y: p.y - $0.frame.minY) }
+                    let caret = local.flatMap { headingCaret(id, at: $0) }
+                    a.startHeadingRename(id, caret: caret.map { .at($0) } ?? .all)
+                    press = nil
+                    return
+                }
+                selectOnPress(id, event: event)
+            case .plus, .chevron:
+                heads[id]?.setPressed(part)
+            }
         case .row(let id, let part):
             switch part {
             case .body:
-                let flags = event.modifierFlags
                 pendingCollapse = nil
                 if event.clickCount == 2 {
                     if let task = store.projection.task(id), task.completedAt == nil || task.deleted, id != state.draft?.id {
@@ -774,21 +1183,7 @@ final class TaskListView: NSView {
                     press = nil
                     return
                 }
-                let order = currentLayout?.order ?? []
-                if flags.contains(.command) {
-                    var sel = state.selection
-                    if sel.contains(id) { sel.remove(id) } else { sel.insert(id) }
-                    state.selection = sel
-                    state.anchor = id
-                } else if flags.contains(.shift), let anchor = state.anchor, let ai = order.firstIndex(of: anchor), let bi = order.firstIndex(of: id) {
-                    state.selection = Set(order[min(ai, bi)...max(ai, bi)])
-                } else if state.selection.contains(id) && state.selection.count > 1 {
-                    // A multi-selection waits for mouse-up, so it can be dragged.
-                    pendingCollapse = id
-                } else {
-                    a.select([id])
-                }
-                state.cursor = id
+                selectOnPress(id, event: event)
             case .check, .chip, .open:
                 rows[id]?.setPressed(part)
             }
@@ -817,6 +1212,34 @@ final class TaskListView: NSView {
         }
     }
 
+    /// Mouse-down selection (§5): ⌘ toggles, ⇧ extends from the anchor, a press in a multi-selection waits for
+    /// mouse-up so it can be dragged.
+    private func selectOnPress(_ id: EntityID, event: NSEvent) {
+        let flags = event.modifierFlags
+        let order = currentLayout?.order ?? []
+        if flags.contains(.command) {
+            var sel = state.selection
+            if sel.contains(id) { sel.remove(id) } else { sel.insert(id) }
+            state.selection = sel
+            state.anchor = id
+        } else if flags.contains(.shift), let anchor = state.anchor, let ai = order.firstIndex(of: anchor), let bi = order.firstIndex(of: id) {
+            state.selection = Set(order[min(ai, bi)...max(ai, bi)])
+        } else if state.selection.contains(id) && state.selection.count > 1 {
+            pendingCollapse = id
+        } else {
+            actions.select([id])
+        }
+        state.cursor = id
+    }
+
+    /// The caret index under a point on a heading's name (a double-click puts the caret there).
+    private func headingCaret(_ id: EntityID, at p: CGPoint) -> Int? {
+        guard let v = heads[id], v.nameFrame.contains(p), let title = store.projection.task(id)?.title else { return nil }
+        let line = CTLineCreateWithAttributedString(NSAttributedString(string: title, attributes: [.font: HeadingRowView.font]))
+        let i = CTLineGetStringIndexForPosition(line, CGPoint(x: p.x - v.nameFrame.minX, y: 0))
+        return i == kCFNotFound ? nil : i
+    }
+
     func pointerDragged(_ event: NSEvent) {
         if let d = drag {
             _ = d
@@ -826,8 +1249,10 @@ final class TaskListView: NSView {
         guard let pr = press else { return }
         let p = doc.convert(event.locationInWindow, from: nil)
         switch pr.target {
-        case .row(let id, .body):
+        case .row(let id, .body), .head(let id, .body):
             if hypot(p.x - pr.point.x, p.y - pr.point.y) >= TK.M.dragSlop { beginDrag(id, event: pr.event, now: event) }
+        case .head(let id, let part):
+            heads[id]?.setPressed(target(at: p) == pr.target ? part : nil)
         case .row(let id, let part):
             rows[id]?.setPressed(target(at: p) == pr.target ? part : nil)
         case .label(let key, plus: true):
@@ -850,6 +1275,15 @@ final class TaskListView: NSView {
         let inside = target(at: p) == pr.target
         let a = actions
         switch pr.target {
+        case .head(let id, let part):
+            heads[id]?.setPressed(nil)
+            guard inside else { break }
+            switch part {
+            case .body: if pendingCollapse == id { a.select([id]) }
+            // The heading's + adds at the end of its section, expanding it first; the chevron folds or unfolds it.
+            case .plus: if let list = store.projection.task(id)?.list { a.newTask(in: list, under: id) }
+            case .chevron: a.toggleCollapse([id])
+            }
         case .row(let id, let part):
             rows[id]?.setPressed(nil)
             guard inside else { break }
@@ -893,6 +1327,16 @@ final class TaskListView: NSView {
 
     func pointerRightDown(_ event: NSEvent) {
         let p = doc.convert(event.locationInWindow, from: nil)
+        if case .head(let id, _) = target(at: p), store.projection.task(id) != nil {
+            let a = actions
+            a.endEdits()
+            state.overlays.hideTip()
+            if !state.selection.contains(id) { a.select([id]) }
+            a.focus(.list)
+            let ids = a.targetIDs.filter(a.isHeading)
+            NSMenu.popUpContextMenu(Menus.heading(ids.isEmpty ? [id] : ids, actions: a), with: event, for: doc)
+            return
+        }
         guard case .row(let id, _) = target(at: p), id != state.draft?.id else { return }
         let a = actions
         a.endEdits()
@@ -941,7 +1385,9 @@ final class TaskListView: NSView {
             if ids.count == 1 { a.editTask(ids[0], caret: .all) } else if ids.isEmpty { a.moveSelection(.by(1), extend: false) }
             return true
         case 49 where !cmd: // Space
-            a.toggleComplete()
+            // On headings, collapse or expand: a heading has nothing to complete (§23).
+            let ids = a.targetIDs
+            if !ids.isEmpty, ids.allSatisfy(a.isHeading) { a.toggleCollapse(ids) } else { a.toggleComplete() }
             return true
         case 53: // Esc
             if state.overlays.picker != nil { a.closePicker() } else if state.detailOpen { a.closeDetail() } else if !state.selection.isEmpty { state.selection = [] }
@@ -975,6 +1421,7 @@ final class TaskListView: NSView {
     }
 
     private func beginDrag(_ id: EntityID, event: NSEvent, now: NSEvent) {
+        if let L = currentLayout, L.isHeading(id) { beginHeadingDrag(id, event: event, now: now, in: L); return }
         guard let L = currentLayout, let gid = L.group(id), gid != TaskLayout.doneGroup, id != state.draft?.id,
               let g = L.groups.first(where: { $0.listID == gid }), let v = rows[id], let model = v.model else {
             press = nil
@@ -983,7 +1430,8 @@ final class TaskListView: NSView {
         // Upcoming's rows go onto any day; in Completed and Trash only the sidebar takes them (§22). The selected rows of
         // the grabbed row's group travel, in every view (dc:1208).
         let mode: WindowState.Drag.Mode = state.route == .upcoming ? .days : state.route.noAdd ? .sidebarOnly : .group
-        var ids = state.selection.contains(id) ? L.order.filter { state.selection.contains($0) && L.group($0) == gid && $0 != state.draft?.id } : [id]
+        // Selected headings don't travel with tasks (a heading drags its own section).
+        var ids = state.selection.contains(id) ? L.order.filter { state.selection.contains($0) && L.group($0) == gid && $0 != state.draft?.id && !L.isHeading($0) } : [id]
         if !ids.contains(id) { ids = [id] }
         let firstIdx = g.ids.firstIndex(of: ids[0]) ?? 0
         let target = g.ids[..<firstIdx].filter { !ids.contains($0) }.count
@@ -1012,6 +1460,39 @@ final class TaskListView: NSView {
         updateDrag(windowPoint: windowPoint(now))
     }
 
+    /// A heading drags its section (§23): after the slop it lifts, its notes and tasks fold into the copy (the heading's
+    /// row, its open tasks' count in the badge), and the gap is the heading's own row (dc:1517–1520, dc:965).
+    private func beginHeadingDrag(_ id: EntityID, event: NSEvent, now: NSEvent, in L: TaskLayout) {
+        guard let gid = L.group(id), let g = L.groups.first(where: { $0.listID == gid }), let v = heads[id],
+              store.projection.task(id) != nil else {
+            press = nil
+            return
+        }
+        let p = store.projection
+        let section = p.section(of: id)
+        let ids = [id] + section.dropFirst().filter { L.contains($0) }
+        let others = g.ids.filter { !ids.contains($0) }
+        let target = g.ids[..<(g.ids.firstIndex(of: id) ?? 0)].filter { !ids.contains($0) }.count
+        _ = others
+        let a = actions
+        a.endEdits()
+        state.overlays.hideTip()
+        state.overlays.picker = nil
+        setHover(nil)
+        v.setPressed(nil)
+        let frame = windowRect(v.bounds, from: v)
+        let start = windowPoint(event)
+        drag = DragSession(ids: ids, group: gid, offset: CGPoint(x: start.x - frame.minX, y: start.y - frame.minY),
+                           startFrame: frame, origTarget: target, lastPoint: start, mode: .group)
+        pendingCollapse = nil
+        let open = section.dropFirst().filter { p.task($0)?.completedAt == nil }.count
+        var copy = RowModel(id: id, title: p.task(id)?.title ?? "", untitled: false, done: false, draft: false)
+        copy.heading = true
+        state.dragOverlay?.beginTaskCopy(copy, palette: palette, frame: frame, count: open, minBadge: 1)
+        state.drag = .init(kind: .tasks(ids: ids, group: gid), target: target, mode: .group)
+        updateDrag(windowPoint: windowPoint(now))
+    }
+
     private func updateDrag(windowPoint p: CGPoint) {
         // A view's drag can empty the group it started in (a month whose only task moves): only §14's needs it.
         guard var d = drag, let L = currentLayout else { return }
@@ -1020,7 +1501,9 @@ final class TaskListView: NSView {
         d.lastPoint = p
         drag = d
         var over: WindowState.Drag.Over?
-        let sidebar = state.sidebarVisible && p.x < (state.sidebarView?.bounds.width ?? TK.M.sidebar) - 4
+        // A heading doesn't drop on the sidebar: moving a section to another list is left out (§23).
+        let headingDrag = d.ids.first.map(L.isHeading) ?? false
+        let sidebar = !headingDrag && state.sidebarVisible && p.x < (state.sidebarView?.bounds.width ?? TK.M.sidebar) - 4
         if sidebar {
             over = state.sidebarView?.dropTarget(at: p, dragged: d.ids)
         }
@@ -1037,13 +1520,18 @@ final class TaskListView: NSView {
             copyOrigin = CGPoint(x: p.x - d.offset.x, y: p.y - d.offset.y)
         } else if !sidebar, let g {
             // The copy stays inside its group: it stops 6pt past the first and last slot (dc:1196–1203).
-            let others = g.ids.filter { !d.ids.contains($0) }.count
+            // Rows have different heights once there are headings: the target is the nearest slot top. A heading's
+            // section lands only before another heading or at the end (dc:3444, dc:3457–3463).
+            let others = g.ids.filter { !d.ids.contains($0) }
             let docTop = doc.convert(CGPoint(x: 0, y: 0), to: nil)
             let winH = window?.contentView?.bounds.height ?? 0
             let docOriginY = winH - docTop.y    // window y of the doc's top
-            let top = docOriginY + g.top
-            let y = min(max(p.y - d.offset.y, top - 6), top + CGFloat(others) * TK.M.pitch + 6)
-            target = min(max(Int(((y - top) / TK.M.pitch).rounded()), 0), others)
+            let tops = L.slotTops(g, others: others)
+            let off = d.ids.first.map(L.rowOffset) ?? 0
+            let y = min(max(p.y - d.offset.y, docOriginY + tops[0] + off - 6), docOriginY + tops[tops.count - 1] + off + 6)
+            let cy = y - docOriginY - off
+            let allowed = headingDrag ? tops.indices.filter { $0 == others.count || L.isHeading(others[$0]) } : Array(tops.indices)
+            target = allowed.min { abs(tops[$0] - cy) < abs(tops[$1] - cy) } ?? target
             copyOrigin = CGPoint(x: p.x - d.offset.x, y: y)
         } else {
             // Over the sidebar the copy becomes a compact tag at the pointer, so the target stays readable. It stays one
@@ -1128,14 +1616,24 @@ final class TaskListView: NSView {
             state.drag = nil
             return
         }
-        let slotDoc = CGRect(x: TK.M.rowInset, y: g.top + CGFloat(current.target) * TK.M.pitch, width: 10, height: TK.M.row)
+        let others = g.ids.filter { !d.ids.contains($0) }
+        let tops = L.slotTops(g, others: others)
+        let headingDrag = d.ids.first.map(L.isHeading) ?? false
+        let slotY = tops[min(max(current.target, 0), tops.count - 1)] + (d.ids.first.map(L.rowOffset) ?? 0)
+        let slotDoc = CGRect(x: TK.M.rowInset, y: slotY, width: 10, height: TK.M.row)
         let slot = windowRect(slotDoc, from: doc)
         state.drag?.phase = .fly
         overlay?.flyCopy(to: CGPoint(x: d.startFrame.minX, y: slot.minY), shrink: false)
         let contiguous = d.ids.enumerated().allSatisfy { i, id in g.ids.firstIndex(of: id) == (g.ids.firstIndex(of: d.ids[0]) ?? 0) + i }
         DispatchQueue.main.asyncAfter(deadline: .now() + TK.Timer.fly) { [weak self] in
             guard let self else { return }
-            if !(contiguous && current.target == d.origTarget) { a.reorder(group: d.group, ids: d.ids, target: current.target) }
+            if headingDrag {
+                // The heading and every task in its section, completed ones included; where it started, nothing.
+                if current.target != d.origTarget {
+                    let t = min(max(current.target, 0), others.count)
+                    a.moveSection(d.ids[0], to: t < others.count ? .before(others[t]) : .bottom)
+                }
+            } else if !(contiguous && current.target == d.origTarget) { a.reorder(group: d.group, ids: d.ids, target: current.target) }
             self.state.drag?.phase = .done
             self.land(on: d.ids.first, overlay)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) { [weak self] in self?.state.drag = nil }
@@ -1200,6 +1698,38 @@ final class TaskListView: NSView {
         overlay?.settleCopy()
     }
 
+    #if DEBUG
+    /// Debug: hover at a window point (top-left origin), as the tracking area would.
+    func debugScroll(_ y: CGFloat) {
+        scroll.contentView.scroll(to: CGPoint(x: 0, y: y))
+        scroll.reflectScrolledClipView(scroll.contentView)
+    }
+
+    /// Points are from the top of the content layout rect, as the script's `click:` takes them.
+    func debugHover(_ p: CGPoint?) {
+        guard let p, let w = window else { pointerExited(); return }
+        let inWin = NSPoint(x: p.x, y: w.contentLayoutRect.height - p.y)
+        pointerMoved(at: doc.convert(inWin, from: nil))
+    }
+
+    /// Debug: a heading's row, + and chevron centers, and its notes, in window points (top-left origin); and the glyph
+    /// sizes and opacities of the + and the chevron.
+    func debugWhere(_ id: EntityID) -> String? {
+        guard let v = heads[id] else { return "not on screen" }
+        func c(_ r: CGRect, in view: NSView) -> String {
+            let w = view.convert(r, to: nil)
+            return "\(Int(w.midX)),\(Int((window?.contentLayoutRect.height ?? 0) - w.midY))"
+        }
+        let notes = paneEditors[.task(id)].map { e in e.view.isHidden ? "hidden" : c(e.view.bounds, in: e.view) } ?? "-"
+        let chev = v.chevron, plus = v.plus
+        return "row=\(c(v.bounds, in: v)) plus=\(c(plus.frame, in: v)) chevron=\(c(chev.frame, in: v)) notes=\(notes)"
+            + " chevronGlyph=\(Int(chev.glyph.bounds.width))x\(Int(chev.glyph.bounds.height)) chevronButton=\(Int(chev.bounds.width))"
+            + " plusOpacity=\(String(format: "%.2f", plus.presentation()?.opacity ?? plus.opacity))"
+            + " chevronOpacity=\(String(format: "%.2f", chev.presentation()?.opacity ?? chev.opacity))"
+            + " rotation=\(String(format: "%.2f", (chev.glyph.presentation() ?? chev.glyph).value(forKeyPath: "transform.rotation.z") as? CGFloat ?? 0))"
+    }
+    #endif
+
     // MARK: - Accessibility
 
     private func updateAccessibility(_ L: TaskLayout) {
@@ -1212,12 +1742,16 @@ final class TaskListView: NSView {
 
     override func accessibilityChildren() -> [Any]? {
         guard let L = currentLayout else { return [] }
-        return L.order.compactMap { rows[$0] }
+        return L.order.compactMap { (rows[$0] as NSView?) ?? heads[$0] }
     }
 
     override func accessibilitySelectedChildren() -> [Any]? {
         guard let L = currentLayout else { return [] }
-        return L.order.compactMap { rows[$0] }.filter { $0.model?.selected == true }
+        return L.order.compactMap { id -> NSView? in
+            if let r = rows[id] { return r.model?.selected == true ? r : nil }
+            if let h = heads[id] { return h.model?.selected == true ? h : nil }
+            return nil
+        }
     }
 }
 

@@ -183,10 +183,10 @@ struct WindowActions {
         window.taskList?.scrollToVisible(id)
     }
 
-    /// ⌘A: every open task in the view.
+    /// ⌘A: every open task in the view, never headings (§23).
     func selectAll() {
         let L = layout
-        let ids = L.order.filter { !L.isDone($0) && $0 != window.draft?.id }
+        let ids = L.order.filter { !L.isDone($0) && $0 != window.draft?.id && p.task($0).map { !$0.isHeading } == true }
         window.selection = Set(ids)
         window.anchor = ids.first
         window.cursor = ids.last
@@ -275,7 +275,8 @@ struct WindowActions {
 
     // MARK: - Adding: a new task opens in the detail pane (§6, dc:837–872)
 
-    func newTask(in listID: EntityID? = nil, day: CalendarDate? = nil) {
+    /// `under`: a heading's +, which adds at the end of its section (§23).
+    func newTask(in listID: EntityID? = nil, day: CalendarDate? = nil, under: EntityID? = nil) {
         // Completed and Trash add in the default list (§22).
         if window.route.noAdd { addInDefault(); return }
         if untitledDraft, let d = window.draft {
@@ -297,8 +298,10 @@ struct WindowActions {
             return
         }
         let id = store.newID()
+        let anchor = window.route.listID == list ? newTaskAnchor(in: list, under: under) : nil
         let draft = WindowState.Draft(id: id, list: list, title: "", when: newTaskWhen(day: day),
-                                      createdAt: nowMs, prevSelection: window.selection, prevPaneOpen: window.detailOpen)
+                                      createdAt: nowMs, prevSelection: window.selection, prevPaneOpen: window.detailOpen,
+                                      anchor: anchor)
         overlays.picker = nil
         window.draft = draft
         select([id])
@@ -321,7 +324,7 @@ struct WindowActions {
         guard !title.isEmpty else { dropDraft(); return }
         window.draft = nil
         undoable("New Task", selection: d.prevSelection) {
-            store.createTask(id: d.id, title: title, in: d.list, when: d.when, undoManager: undo) != nil
+            store.createTask(id: d.id, title: title, in: d.list, at: d.anchor ?? .bottom, when: d.when, undoManager: undo) != nil
         }
     }
 
@@ -352,6 +355,8 @@ struct WindowActions {
             openDetail()
             return
         }
+        // Headings always rename in place: Settings ▸ Edit tasks is about tasks (§23).
+        if isHeading(id) { startHeadingRename(id, caret: caret); return }
         guard AppModel.TaskEditing.current == .detail else { startRename(id, caret: caret); return }
         guard let t = p.task(id), !t.deleted else { return }
         endEdits()
@@ -401,21 +406,50 @@ struct WindowActions {
             } else if !name.isEmpty, p.list(r.id)?.name != name {
                 undoable("Rename List") { store.rename(list: r.id, to: name, undoManager: undo) }
             }
+        case .title:
+            // The list's large title (§23): as its sidebar row renames.
+            let name = r.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !name.isEmpty, p.list(r.id)?.name != name {
+                undoable("Rename List") { store.rename(list: r.id, to: name, undoManager: undo) }
+            }
+        case .heading:
+            // A new heading is written now, with its name; without one it leaves nothing. An empty name keeps the old
+            // one (§23, dc:2987).
+            let name = r.text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let n = r.newHeading {
+                guard !name.isEmpty else { dropNewHeading(); return }
+                undoable("New Heading", selection: []) {
+                    store.createHeading(id: r.id, title: name, in: n.list, at: n.before.map { .before($0) } ?? .bottom,
+                                        undoManager: undo) != nil
+                }
+                select([r.id])
+            } else if !name.isEmpty, p.task(r.id)?.title != name {
+                undoable("Rename Heading") { store.setTitle(r.id, name, name: "Rename Heading", undoManager: undo) }
+            }
         }
     }
 
-    /// Esc: the old text comes back; a new list is never created.
+    /// Esc on a new heading, or no name: no op, no undo step, and nothing selected.
+    private func dropNewHeading() {
+        window.selection = []
+        window.anchor = nil
+        window.cursor = nil
+    }
+
+    /// Esc: the old text comes back; a new list or heading is never created.
     func cancelRename() {
         guard let r = window.rename else { return }
         window.rename = nil
-        focus(r.kind == .task ? .list : .sidebar)
+        if r.newHeading != nil { dropNewHeading() }
+        focus(r.kind == .list ? .sidebar : .list)
     }
 
     // MARK: - Completing (§8, dc:883–899)
 
     func toggleComplete(_ ids: [EntityID]? = nil) {
         guard window.route != .trash else { return }
-        let ids = (ids ?? targetIDs).filter { p.task($0) != nil }
+        // A heading has nothing to complete (§23).
+        let ids = (ids ?? targetIDs).filter { p.task($0).map { !$0.isHeading } == true }
         let tasks = ids.compactMap(p.task)
         guard !tasks.isEmpty else { return }
         let completing = tasks.contains { $0.completedAt == nil }
@@ -457,13 +491,17 @@ struct WindowActions {
         let ids = (ids ?? targetIDs).filter { p.task($0).map { !$0.deleted } == true }
         guard !ids.isEmpty else { return }
         let next = nextSelection(afterRemoving: ids)
-        let name = ids.count > 1 ? "Delete \(ids.count) Tasks" : "Delete"
+        // A heading deletes alone: its tasks stay, under the heading above it (§23).
+        let heads = ids.filter(isHeading).count
+        let name = ids.count > 1 ? (heads > 0 ? "Delete \(ids.count) Items" : "Delete \(ids.count) Tasks") : heads > 0 ? "Delete Heading" : "Delete"
         let title = p.task(ids[0])?.title ?? ""
         endEdits()
         guard undoable(name, { store.delete(ids, name: name, undoManager: undo) }) else { return }
         select(next)
         overlays.picker = nil
-        overlays.showNotice(ids.count > 1 ? "Deleted \(ids.count) tasks" : "Deleted \(quote(title))", undo: true)
+        let notice = ids.count > 1 ? (heads > 0 ? "Deleted \(ids.count) items" : "Deleted \(ids.count) tasks")
+            : heads > 0 ? "Deleted heading \(quote(title))" : "Deleted \(quote(title))"
+        overlays.showNotice(notice, undo: true)
         if window.detailOpen && next.isEmpty { closeDetail() }
     }
 
@@ -475,7 +513,7 @@ struct WindowActions {
             window.draft?.list = list
             return
         }
-        let ids = (ids ?? targetIDs).filter { p.task($0).map { $0.list != list } == true }
+        let ids = (ids ?? targetIDs).filter { p.task($0).map { $0.list != list && !$0.isHeading } == true }
         guard !ids.isEmpty else { return }
         let leaves = window.route.listID != nil
         let next = leaves ? nextSelection(afterRemoving: ids) : Array(window.selection)
@@ -492,14 +530,20 @@ struct WindowActions {
     func reorder(group: EntityID, ids: [EntityID], target: Int) {
         let L = layout
         guard let g = L.groups.first(where: { $0.listID == group }) else { return }
-        let moving = ids.filter { p.task($0)?.completedAt == nil && $0 != window.draft?.id }
+        let moving = ids.filter { p.task($0).map { $0.completedAt == nil && !$0.isHeading } == true && $0 != window.draft?.id }
         guard !moving.isEmpty else { return }
         let open = Set(p.openTasks(in: group).ids)
         let others = g.ids.filter { !ids.contains($0) }
         let t = min(max(target, 0), others.count)
         let anchor: Ordering.Anchor
         if let prev = others[..<t].last(where: open.contains) {
-            anchor = .after(prev)
+            // Right under a collapsed heading: the end of its section, where it stays folded (§23).
+            if window.collapsed.contains(prev), isHeading(prev),
+               let last = p.section(of: prev).dropFirst().last(where: { open.contains($0) && !moving.contains($0) }) {
+                anchor = .after(last)
+            } else {
+                anchor = .after(prev)
+            }
         } else if let next = others[t...].first(where: open.contains) {
             anchor = .before(next)
         } else {
@@ -512,6 +556,8 @@ struct WindowActions {
     /// ⌥⌘↑ ⌥⌘↓ (dc:962–975).
     func moveSelectionBy(_ delta: Int) {
         if viewMoveBy(delta) { return }
+        // A heading moves with its section, past the previous or next one (§23).
+        if let h = targetIDs.first(where: isHeading) { moveSectionBy(h, delta); return }
         let L = layout
         let ids = targetIDs.filter { L.group($0) != nil && !L.isDone($0) }
         guard let first = ids.first, let gid = L.group(first), let g = L.groups.first(where: { $0.listID == gid }) else { return }
@@ -529,7 +575,7 @@ struct WindowActions {
 
     func setDate(_ ids: [EntityID]? = nil, _ field: Overlays.Picker.Field, _ date: CalendarDate?) {
         guard window.route != .trash else { return }
-        let ids = (ids ?? targetIDs).filter { p.task($0) != nil }
+        let ids = (ids ?? targetIDs).filter { p.task($0).map { !$0.isHeading } == true }
         guard !ids.isEmpty else { return }
         let name = field == .when ? (date == nil ? "Remove When" : "Set When") : (date == nil ? "Remove Deadline" : "Set Deadline")
         // Today's rule, and Upcoming's and Undated's (§22).
@@ -556,7 +602,7 @@ struct WindowActions {
     /// Opens the date popover for `ids` under `anchor` (window coordinates), or from the keyboard under the detail
     /// pane's chip when it's focused and shows these tasks, else the row's chip, else the row's right end (dc:1128–1138).
     func openPicker(_ field: Overlays.Picker.Field, ids: [EntityID]? = nil, anchor: CGRect? = nil) {
-        let ids = ids ?? targetIDs
+        let ids = (ids ?? targetIDs).filter { !isHeading($0) }
         guard !ids.isEmpty else { return }
         endEdits()
         var rect = anchor

@@ -31,6 +31,8 @@ struct RowModel: Equatable {
     /// In the Trash (§22, css:425–428): the title in `ink-secondary` (a done one keeps its struck `ink-tertiary`), the
     /// checkbox at 60%, and the checkbox and chips deaf to the pointer.
     var trashed = false
+    /// A heading's drag copy (§23, css:479–481): no checkbox, its name semibold at the checkbox's edge.
+    var heading = false
 }
 
 /// A task row (css:159–188): a 30pt shape, 10 in from the pane's sides, radius 8. Checkbox at 10, the title 10 after
@@ -143,6 +145,7 @@ final class TaskRowView: NSView {
         check.set(on: m.done, placeholder: m.draft, palette: palette, animated: anim)
         // `set` puts the opacity back each time; a trashed row's box is at 60%.
         if m.trashed { check.setInstant { check.opacity = 0.6 } }
+        check.isHidden = m.heading
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -194,11 +197,13 @@ final class TaskRowView: NSView {
 
         // The title: flex 1, nudged up 0.5. With notes, their hint follows the text 6 later and stays whole: the title
         // shrinks first. Its last 24pt fade out only when it's cut off (css:166–168, md:67–77).
-        let titleX = TK.M.rowPadLeft + TK.M.check + TK.M.titleGap
+        // A heading's copy has no checkbox: its name starts at the checkbox's edge, semibold (css:480–481).
+        let titleX = m.heading ? TK.M.rowPadLeft : TK.M.rowPadLeft + TK.M.check + TK.M.titleGap
         let slot = max(0, right - titleX)
         let color = (m.done || m.untitled) ? palette.ink3 : m.trashed ? palette.ink2 : palette.ink
         let text = m.untitled ? "New Task" : m.title
-        title.set(text, font: TK.Font.body, color: same ? (title.foregroundColor.flatMap(NSColor.init(cgColor:)) ?? color) : color)
+        title.set(text, font: m.heading ? HeadingRowView.font : TK.Font.body,
+                  color: same ? (title.foregroundColor.flatMap(NSColor.init(cgColor:)) ?? color) : color)
         let hintW = layoutHint(m, palette)
         let room = hintW > 0 ? max(0, slot - hintW - 6) : slot
         let clipped = title.textWidth > room + 0.5

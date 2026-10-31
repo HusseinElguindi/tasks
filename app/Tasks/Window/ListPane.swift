@@ -41,6 +41,10 @@ struct ListPaneHeader: View {
         let listID = window.route.listID
         let list = listID.flatMap { p.listModel($0) }
         HStack(spacing: 8) {
+            // The band's own tile and title stay hidden while the large title is in view, and fade in (150 ms
+            // ease-out) once the list has scrolled 24pt (§23 On scroll); double-clicking the title then renames the
+            // list at the top.
+            HStack(spacing: 8) {
             if let list {
                 TileView(monogram: list.monogram, color: tk.listColor(slot: list.colorSlot), size: .small)
                 Text(list.name.isEmpty ? "New List" : list.name)
@@ -67,6 +71,12 @@ struct ListPaneHeader: View {
                     .foregroundStyle(tk.ink2.swiftUI)
                     .lineLimit(1)
             }
+            }
+            .opacity(window.titleScrolled ? 1 : 0)
+            .animation(.easeOut(duration: 0.15), value: window.titleScrolled)
+            .allowsHitTesting(window.titleScrolled)
+            .contentShape(Rectangle())
+            .onTapGesture(count: 2) { if listID != nil { actions.startTitleRename() } }
             Spacer(minLength: 0)
             HStack(spacing: 2) {
                 // Completed and Trash have no + (§22).

@@ -44,12 +44,14 @@ final class WindowState {
         /// The selection and whether the detail pane was open before ⌘N, put back if the draft is dropped.
         var prevSelection: Set<EntityID>
         var prevPaneOpen: Bool
+        /// In a list with headings, the end of a section (§23); nil is the bottom of the list.
+        var anchor: Ordering.Anchor? = nil
     }
 
-    /// An inline rename in a task row or a sidebar row (§7). The field owns the text; `text` follows it so a list's
-    /// tile letter can follow the typing (dc:2000).
+    /// An inline rename in a task row or a sidebar row (§7), a heading's row or the list's large title (§23). The field
+    /// owns the text; `text` follows it so a list's tile letter can follow the typing (dc:2000).
     struct Rename: Equatable {
-        enum Kind: Equatable { case task, list }
+        enum Kind: Equatable { case task, list, heading, title }
         enum Caret: Equatable { case all, end, at(Int) }
         var kind: Kind
         var id: EntityID
@@ -58,6 +60,13 @@ final class WindowState {
         /// A new list that isn't created yet (§12 Create).
         var isNewList = false
         var colorSlot = 0
+        /// A new heading that isn't created yet (§23 Adding a heading): its row shows in `list` above `before` (the
+        /// bottom when nil) until Return writes it; Esc or no name leaves nothing.
+        var newHeading: NewHeading?
+        struct NewHeading: Equatable {
+            var list: EntityID
+            var before: EntityID?
+        }
     }
 
     /// What the rows need to know about a drag in progress: which rows travel, and where the gap opens. The copy's
@@ -108,6 +117,16 @@ final class WindowState {
     /// down, and the others end the edit first (§17).
     var detailEditing: DetailField?
     enum DetailField: Equatable { case title, notes }
+    /// A list's or a heading's notes being edited in the list pane (§23): text-editing menu commands work there too.
+    var paneNotes: NotesHost.Target?
+    /// The list has scrolled 24pt: the band's own tile and title fade in (§23 On scroll).
+    var titleScrolled = false
+    /// Collapsed headings (§23): local to the Mac like a window's size, kept in UserDefaults by heading id, never synced.
+    /// A new heading starts open.
+    var collapsed: Set<EntityID> = Set(UserDefaults.standard.stringArray(forKey: WindowState.collapsedKey) ?? []) {
+        didSet { if collapsed != oldValue { UserDefaults.standard.set(collapsed.sorted(), forKey: Self.collapsedKey) } }
+    }
+    static let collapsedKey = "collapsedHeadings"
     /// Holding ⌘ for 450 ms shows ⌘1–⌘9 in the sidebar.
     var cmdHints = false
     var drag: Drag?
@@ -134,6 +153,9 @@ final class WindowState {
     @ObservationIgnored var settleTimer: Timer?
     /// The last task layout and what it was built from (TaskLayout.make reuses it while they're unchanged).
     @ObservationIgnored var layoutCache: (inputs: TaskLayout.Inputs, layout: TaskLayout)?
+    /// The list pane's notes heights as last measured (§23): a heading's by its id, a list's by
+    /// `TaskLayout.listNotesKey`. The list view measures its editors before each layout.
+    @ObservationIgnored var noteHeights: [EntityID: CGFloat] = [:]
     @ObservationIgnored var typeBuffer = ""
     @ObservationIgnored var typeAt: TimeInterval = 0
     /// The detail pane asks for the caret in its title (a new task, ⇧Tab from the notes, editing a task from the list):

@@ -424,6 +424,25 @@ final class NotesBoxElement: NSAccessibilityElement {
 
 // MARK: - SwiftUI
 
+/// Where a notes editor lives and what it edits: a task's notes in the detail pane, or a list's or a heading's in the
+/// list pane (design/INTERACTIONS-v2.md §23), where they're a step quieter (`ink-secondary`).
+struct NotesHost {
+    enum Target: Hashable { case task(EntityID), list(EntityID) }
+    var store: Store
+    var window: WindowState
+    var target: Target
+    var notes: String
+    var inert = false
+    var palette: TK.Palette
+    /// In the detail pane: a session sets `detailEditing` and the pane's focus. In the list pane it sets `paneNotes`.
+    var inDetail = true
+    var onLayoutChange: () -> Void = {}
+    /// The text's length while it's being edited (the footer's count), nil at rest.
+    var onLength: (Int?) -> Void = { _ in }
+    /// ⇧Tab outside a list item: back to the title the notes belong to.
+    var backToTitle: () -> Void = {}
+}
+
 /// The notes area: fills the space it's given (it's the pane's flexible part), shows and edits one task's notes, and
 /// writes one `task.update` per editing session.
 struct NotesField: NSViewRepresentable {
@@ -442,7 +461,21 @@ struct NotesField: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
+    private var host: NotesHost {
+        NotesHost(store: store, window: window, target: .task(id), notes: notes, inert: inert, palette: palette,
+                  inDetail: true, onLayoutChange: onLayoutChange, onLength: onLength,
+                  backToTitle: { [refs] in refs.focusTitle(.all) })
+    }
+
     func makeNSView(context: Context) -> NotesTextView {
+        let c = context.coordinator
+        let v = Self.makeEditor(c, host: host)
+        refs.notes = c
+        return v
+    }
+
+    /// The text view and its TextKit 1 stack, wired to `c`, showing `host`'s notes.
+    static func makeEditor(_ c: Coordinator, host: NotesHost) -> NotesTextView {
         let storage = NSTextStorage()
         let lm = NotesLayoutManager()
         storage.addLayoutManager(lm)
@@ -474,21 +507,20 @@ struct NotesField: NSViewRepresentable {
         v.linkTextAttributes = [:]
         v.focusRingType = .none
         v.setAccessibilityLabel("Notes")
-        let c = context.coordinator
-        c.parent = self
+        c.host = host
         c.view = v
         v.notes = c
         v.delegate = c
         storage.delegate = c
         lm.decorations = c
-        refs.notes = c
+        v.inert = host.inert
         c.apply(force: true)
         return v
     }
 
     func updateNSView(_ v: NotesTextView, context: Context) {
         let c = context.coordinator
-        c.parent = self
+        c.host = host
         refs.notes = c
         v.inert = inert
         c.apply(force: false)
@@ -506,14 +538,15 @@ struct NotesField: NSViewRepresentable {
 
     @MainActor
     final class Coordinator: NSObject, NSTextViewDelegate, @preconcurrency NSTextStorageDelegate, NotesDecorations {
-        var parent: NotesField!
+        var host: NotesHost!
         weak var view: NotesTextView?
         let document = NotesDocument()
-        var palette: TK.Palette { parent.palette }
+        /// In the list pane the notes are a step quieter: `ink-secondary` where the detail pane has `ink` (§23).
+        var palette: TK.Palette { host.inDetail ? host.palette : host.palette.quieter }
         /// The editing session: whose notes, and what they were.
-        private(set) var session: (id: EntityID, original: String)?
-        /// What the view shows at rest: the task, its notes and the theme.
-        private var shown: (id: EntityID, notes: String, dark: Bool)?
+        private(set) var session: (target: NotesHost.Target, original: String)?
+        /// What the view shows at rest: whose notes, the notes and the theme.
+        private var shown: (target: NotesHost.Target, notes: String, dark: Bool)?
         /// The button is down in the text: the marks wait for it (§4).
         var dragging = false
         private(set) var hoveredLink: NSRange?
@@ -521,7 +554,7 @@ struct NotesField: NSViewRepresentable {
         private var boxes: [Int: BoxAnimation] = [:]
         private var ticker: Timer?
         private var fades: [(NSRange, TimeInterval)] = []
-        private var actions: WindowActions { WindowActions(store: parent.store, window: parent.window) }
+        private var actions: WindowActions { WindowActions(store: host.store, window: host.window) }
 
         private struct BoxAnimation {
             var hoverFrom: CGFloat = 0, hoverTo: CGFloat = 0, hoverAt: TimeInterval = 0
@@ -534,7 +567,7 @@ struct NotesField: NSViewRepresentable {
         /// Shows the task's notes (unless they're being edited), restyled for the theme.
         func apply(force: Bool) {
             guard let v = view else { return }
-            let tk = parent.palette
+            let tk = palette
             v.insertionPointColor = tk.ink
             v.selectedTextAttributes = [.backgroundColor: tk.textSel]
             v.placeholder = NotesStyle.placeholder(tk)
@@ -544,23 +577,23 @@ struct NotesField: NSViewRepresentable {
                 if themeChanged { shown?.dark = tk.isDark; restyleAll() }
                 return
             }
-            guard force || shown?.id != parent.id || shown?.notes != parent.notes || themeChanged else { return }
-            shown = (parent.id, parent.notes, tk.isDark)
-            if v.string != parent.notes {
-                v.textStorage?.replaceCharacters(in: NSRange(location: 0, length: (v.string as NSString).length), with: parent.notes)
+            guard force || shown?.target != host.target || shown?.notes != host.notes || themeChanged else { return }
+            shown = (host.target, host.notes, tk.isDark)
+            if v.string != host.notes {
+                v.textStorage?.replaceCharacters(in: NSRange(location: 0, length: (v.string as NSString).length), with: host.notes)
             }
             pending = nil
             restyleAll()
             v.clearUndo()
             v.needsDisplay = true
-            parent.onLayoutChange()
+            host.onLayoutChange()
         }
 
         // MARK: The session
 
         /// A press in the notes, or Return / Tab in the title: the caret, and the session begins.
         func startEditing() {
-            guard let v = view, let w = v.window, !parent.inert else { return }
+            guard let v = view, let w = v.window, !host.inert else { return }
             w.makeFirstResponder(v)
             let end = (v.string as NSString).length
             v.setSelectedRange(NSRange(location: end, length: 0))
@@ -569,10 +602,16 @@ struct NotesField: NSViewRepresentable {
 
         func sessionBegan() {
             guard session == nil, let v = view else { return }
-            session = (parent.id, v.string)
+            session = (host.target, v.string)
             v.clearUndo()
-            if parent.window.detailEditing != .notes { parent.window.detailEditing = .notes }
-            if parent.window.focus != .detail { parent.window.focus = .detail }
+            let w = host.window
+            if host.inDetail {
+                if w.detailEditing != .notes { w.detailEditing = .notes }
+                if w.focus != .detail { w.focus = .detail }
+            } else {
+                if w.paneNotes != host.target { w.paneNotes = host.target }
+                if w.focus != .list { w.focus = .list }
+            }
             reportLength(v)
             if !dragging { updateReveal() }
         }
@@ -582,19 +621,31 @@ struct NotesField: NSViewRepresentable {
             guard let s = session, let v = view else { return }
             session = nil
             let text = v.string
-            if parent.window.detailEditing == .notes { parent.window.detailEditing = nil }
-            let store = parent.store
-            if let t = store.projection.task(s.id), !t.deleted, t.notes != text {
-                let a = actions
-                a.undoable("Edit Notes") { store.setNotes(s.id, text, name: "Edit Notes", undoManager: a.undo) }
+            let w = host.window
+            if host.inDetail {
+                if w.detailEditing == .notes { w.detailEditing = nil }
+            } else if w.paneNotes == s.target {
+                w.paneNotes = nil
+            }
+            let store = host.store
+            let a = actions
+            switch s.target {
+            case .task(let id):
+                if let t = store.projection.task(id), !t.deleted, t.notes != text {
+                    a.undoable("Edit Notes") { store.setNotes(id, text, name: "Edit Notes", undoManager: a.undo) }
+                }
+            case .list(let id):
+                if let l = store.projection.list(id), l.notes != text {
+                    a.undoable("Edit List Notes") { store.setNotes(list: id, text, name: "Edit List Notes", undoManager: a.undo) }
+                }
             }
             // Read what was written, not the model (it may update a moment later).
-            shown = (s.id, text, parent.palette.isDark)
+            shown = (s.target, text, palette.isDark)
             v.clearUndo()
             setReveal(nil)
             hover(at: nil)
-            parent.onLength(nil)
-            parent.onLayoutChange()
+            host.onLength(nil)
+            host.onLayoutChange()
         }
 
         /// Esc and ⌘Return: done, the text kept, the keys to the list.
@@ -608,10 +659,10 @@ struct NotesField: NSViewRepresentable {
         func backToTitle() {
             view?.window?.makeFirstResponder(nil)
             endEditing()
-            parent.refs.focusTitle(.all)
+            host.backToTitle()
         }
 
-        func overLimit() { parent.window.overlays.showNotice("Notes hold up to 20,000 characters", undo: false) }
+        func overLimit() { host.window.overlays.showNotice("Notes hold up to 20,000 characters", undo: false) }
 
         // MARK: Restyling (§9: one line at a time)
 
@@ -755,7 +806,7 @@ struct NotesField: NSViewRepresentable {
             let h = v.fittingHeight(width: v.bounds.width)
             if h != lastHeight {
                 lastHeight = h
-                parent.onLayoutChange()
+                host.onLayoutChange()
             }
         }
 
@@ -765,7 +816,7 @@ struct NotesField: NSViewRepresentable {
         /// redraw the pane.
         private func reportLength(_ v: NSTextView) {
             let n = v.string.utf16.count
-            parent.onLength(n >= NotesStyle.nearLength ? n : 0)
+            host.onLength(n >= NotesStyle.nearLength ? n : 0)
         }
 
         func textView(_ textView: NSTextView, clickedOnLink link: Any, at charIndex: Int) -> Bool {
@@ -836,9 +887,9 @@ struct NotesField: NSViewRepresentable {
                     let inWindow = v.convert(rect, to: nil)
                     let h = w.contentView?.bounds.height ?? 0
                     let top = CGRect(x: inWindow.minX, y: h - inWindow.maxY, width: inWindow.width, height: inWindow.height)
-                    parent.window.overlays.hoverTip(NotesStyle.tip(href), for: top, windowWidth: w.contentView?.bounds.width ?? 0)
+                    host.window.overlays.hoverTip(NotesStyle.tip(href), for: top, windowWidth: w.contentView?.bounds.width ?? 0)
                 } else {
-                    parent.window.overlays.hideTip()
+                    host.window.overlays.hideTip()
                 }
             }
             let box = p.flatMap(box(at:))
@@ -888,11 +939,14 @@ struct NotesField: NSViewRepresentable {
                 let sel = v.selectedRange()
                 v.replace(NSRange(location: at, length: 1), checking ? "x" : " ", kind: .structure, select: sel)
             } else {
-                let store = parent.store, id = parent.id
+                let store = host.store
                 let notes = t.replacingCharacters(in: NSRange(location: at, length: 1), with: checking ? "x" : " ")
                 let a = actions
                 let name = checking ? "Check Item" : "Uncheck Item"
-                a.undoable(name) { store.setNotes(id, notes, name: name, undoManager: a.undo) }
+                switch host.target {
+                case .task(let id): a.undoable(name) { store.setNotes(id, notes, name: name, undoManager: a.undo) }
+                case .list(let id): a.undoable(name) { store.setNotes(list: id, notes, name: name, undoManager: a.undo) }
+                }
             }
             tick()
         }

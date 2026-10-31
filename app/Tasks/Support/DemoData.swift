@@ -23,6 +23,10 @@ enum DemoData {
         func doneAt(_ k: Int) -> Int { k == 0 ? max(startOfToday + 60_000, now - 20 * 60_000) : startOfToday - k * dayMs + 15 * 3_600_000 }
         let inbox = store.defaultListID
         let school = store.createList(name: "School")
+        // The example list for headings (§23, dc:463, dc:530–543): a course with notes, headings with and without
+        // notes, and a task before the first heading.
+        let phys = store.createList(name: "PHYS 122")
+        store.setNotes(list: phys, "Waves, electricity and magnetism. Lectures **Mon, Wed, Fri 9:30** in STC 0010; labs Tuesdays in PHY 2009.\nMidterm Nov 6, final in December. [Course page](https://example.com/phys122)")
         let tasksApp = store.createList(name: "Tasks app")
         let home = store.createList(name: "Home")
         let errands = store.createList(name: "Errands")
@@ -39,6 +43,23 @@ enum DemoData {
                 store.perform([Op(id: store.newID(), at: doneAt(del) - 3_600_000, type: .taskUpdate, target: id, set: Patch(deleted: true))])
             }
         }
+        func heading(_ list: EntityID, _ title: String, notes: String = "") {
+            store.createHeading(title: title, notes: notes, in: list)
+        }
+        t(phys, "Buy safety glasses for the lab", when: 0)
+        heading(phys, "Lectures", notes: "Slides go up the night before. The weekly quiz comes from the **worked examples**.")
+        t(phys, "Read chapter 15 · oscillations", when: 0)
+        t(phys, "Redo the worked examples from lecture 9")
+        t(phys, "Watch the recording on standing waves", when: 2)
+        heading(phys, "Labs", notes: "Reports due Fridays 11:59 pm on Crowdmark, one PDF per pair. Partner: Priya.")
+        t(phys, "Lab 2 report · projectile motion", done: 5)
+        t(phys, "Lab 3 report · pendulum", when: 0, deadline: 1)
+        t(phys, "Lab 4 pre-lab · RC circuits", deadline: 5)
+        t(phys, "Book a make-up lab bench")
+        heading(phys, "Exam prep")
+        t(phys, "Make the midterm formula sheet", when: 3)
+        t(phys, "Past midterms 2024 and 2025, timed", when: 4)
+        t(phys, "Ask about problem 7 at office hours")
         t(school, "ECE 358 lab report", when: -3, deadline: -2)
         t(school, "Email TA about midterm regrade", when: 0)
         t(school, "Review CS 489 lectures 10–14", when: 0, deadline: 3, notes: "## Before Tuesday\nSlides 10–14 plus the two **retrieval** readings.\n\n- [x] Lecture 10 · tokenization\n- [x] Lecture 11 · embeddings\n- [ ] Lecture 12 · _attention_, redo the derivation\n- [ ] Lecture 13 · retrieval\n- [ ] Lecture 14 · evaluation\n\n> The midterm leans on 12 and 13.\n\n[Lecture 12 recording](https://example.com/cs489/l12) · bring `q3.py` to tutorial")

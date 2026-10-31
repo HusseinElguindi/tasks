@@ -41,7 +41,8 @@ final class DragOverlayView: NSView {
         layer?.setScaleDeep(window?.backingScaleFactor ?? 2)
     }
 
-    func beginTaskCopy(_ m: RowModel, palette: TK.Palette, frame: CGRect, count: Int) {
+    /// `minBadge`: the count shows from this many (a task drag's from 2; a heading's open tasks from 1).
+    func beginTaskCopy(_ m: RowModel, palette: TK.Palette, frame: CGRect, count: Int, minBadge: Int = 2) {
         self.palette = palette
         model = m
         generation += 1
@@ -72,8 +73,8 @@ final class DragOverlayView: NSView {
             ring.borderColor = palette.liftRing.cgColor
             if ring.superlayer !== rl { rl.insertSublayer(ring, at: 0) }
             // The count: an accent capsule 7pt past the copy's top-right corner.
-            badge.isHidden = count < 2
-            if count > 1 {
+            badge.isHidden = count < minBadge
+            if count >= minBadge {
                 let text = "\(count)"
                 badgeText.set(text, font: TK.Font.label, color: palette.onAccent)
                 let tw = TextLayer.width(text, font: TK.Font.label)

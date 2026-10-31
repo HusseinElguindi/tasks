@@ -63,6 +63,41 @@ enum DebugViews {
             }
             append("menu \(a.routeName(w.route)): " + titles(Menus.task(a.targetIDs, actions: a)), to: rest)
         case "rows": append(rows(w, store: store), to: rest)
+        case "sync": store.requestSync(force: true)
+        case "newheading": a.newHeading()
+        case "titlerename": a.startTitleRename()
+        case "headingnotes": if let id = task(rest) { a.editHeadingNotes(id) }
+        case "selectall": a.selectAll()
+        case "scroll": w.taskList?.debugScroll(CGFloat(Double(rest) ?? 0))
+        case "lastop":
+            // The newest pending op's JSON, and how many are pending.
+            let last = store.projection.pending.last.map { String(decoding: $0.json, as: UTF8.self) } ?? "-"
+            append("lastop pending=\(store.projection.pending.count) \(last)", to: rest)
+        case "state":
+            append("state route=\(a.routeName(w.route)) sel=\(w.selection.compactMap { p.task($0)?.title }.sorted()) titleScrolled=\(w.titleScrolled) paneNotes=\(w.paneNotes.map { "\($0)" } ?? "-") rename=\(w.rename.map { "\($0.kind):\($0.text)" } ?? "-") notice=\(w.overlays.notice.map { "'\($0.text)'" } ?? "-") list=\(w.route.listID.flatMap { p.list($0) }.map { "\($0.name)|\($0.notes.debugDescription)" } ?? "-")", to: rest)
+        // §23: hover the list at a window point (top-left), log a heading's parts in window points, run a heading's
+        // context-menu item by its title.
+        case "hover":
+            let v = rest.split(separator: ",").compactMap { Double($0) }
+            if v.count == 2 { w.taskList?.debugHover(CGPoint(x: v[0], y: v[1])) } else { w.taskList?.debugHover(nil) }
+        case "where":
+            let t = rest.split(separator: ":", maxSplits: 1).map(String.init)
+            if t.count == 2, let id = task(t[0]), let s = w.taskList?.debugWhere(id) { append("where \(t[0]): " + s, to: t[1]) }
+        case "headmenu":
+            let t = rest.split(separator: ":", maxSplits: 1).map(String.init)
+            if t.count == 2, let id = task(t[0]) {
+                let m = Menus.heading([id], actions: a)
+                if let item = m.items.first(where: { $0.title == t[1] }), let action = item.action {
+                    NSApp.sendAction(action, to: item.target, from: item)
+                } else {
+                    print("headmenu: no item \(t[1]) in \(m.items.map(\.title))")
+                }
+            }
+        case "headmenulog":
+            let t = rest.split(separator: ":", maxSplits: 1).map(String.init)
+            if t.count == 2, let id = task(t[0]) {
+                append("headmenu \(t[0]): " + Menus.heading([id], actions: a).items.map { $0.isSeparatorItem ? "--" : ($0.isEnabled ? $0.title : "(\($0.title))") }.joined(separator: ", "), to: t[1])
+            }
         case "trace":
             let t = rest.split(separator: ":", maxSplits: 1).map(String.init)
             if t.count == 2, let ms = Int(t[0]) { trace(w, store: store, ms: ms, path: t[1]) }
@@ -85,6 +120,7 @@ enum DebugViews {
         var items: [(CGFloat, String)] = L.order.map { id in
             let t = p.task(id)
             let flags = (t?.completedAt != nil ? " done" : "") + (t?.deleted == true ? " deleted" : "")
+                + (L.isHeading(id) ? " #heading" + (w.collapsed.contains(id) ? " collapsed" : "") + ((L.noteH[id] ?? 0) > 0 ? " notes=\(Int(L.noteH[id]!))" : "") : "")
             return (L.yList[L.index[id]!], "  \(Int(L.yList[L.index[id]!])) \(t?.title ?? (id == w.draft?.id ? "<draft>" : id))\(flags) when=\(t?.when?.string ?? "-") dl=\(t?.deadline?.string ?? "-") list=\(t.map { a.listName($0.list) } ?? "-")")
         }
         for (key, y) in L.labels {
@@ -112,6 +148,10 @@ enum DebugViews {
                     let op = l?.opacity ?? 1
                     if let r = v as? TaskRowView, let m = r.model {
                         parts.append("\(p.task(m.id)?.title ?? "draft")@\(Int(y.rounded()))\(op < 0.99 ? "/\(String(format: "%.2f", op))" : "")")
+                    } else if let h = v as? HeadingRowView, let m = h.model {
+                        parts.append("#\(p.task(m.id)?.title ?? "new")@\(Int(y.rounded()))\(op < 0.99 ? "/\(String(format: "%.2f", op))" : "")")
+                    } else if v is NotesTextView {
+                        parts.append("notes@\(Int(y.rounded()))\(op < 0.99 ? "/\(String(format: "%.2f", op))" : "")")
                     } else if let g = v as? GroupLabelView {
                         parts.append("[\(g.key)]@\(Int(y.rounded()))\(g.debugLit ? "*" : "")")
                     }

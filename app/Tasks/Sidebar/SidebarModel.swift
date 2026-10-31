@@ -157,7 +157,8 @@ struct SidebarModel {
                 row.count = h
                 row.hint = true
             } else if !archived {
-                row.count = countText(p.openTasks(in: id).count)
+                // Headings aren't counted (§23).
+                row.count = countText(p.openTaskCount(in: id))
             }
             return row
         }

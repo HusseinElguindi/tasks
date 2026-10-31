@@ -47,9 +47,23 @@ struct DetailPane: View {
         let p = store.projection
         let trash = window.route == .trash
         return window.selection.sorted().compactMap { id -> DetailItem? in
-            guard id != window.draft?.id, let m = p.taskModel(id), m.deleted == trash else { return nil }
+            // Headings aren't tasks: they have no details of their own (§23).
+            guard id != window.draft?.id, let m = p.taskModel(id), m.deleted == trash, !m.isHeading else { return nil }
             return DetailItem(m)
         }
+    }
+
+    /// The selected headings, when nothing else is selected.
+    private var selectedHeadings: [TaskModel] {
+        let p = store.projection
+        return window.selection.sorted().compactMap { p.taskModel($0) }.filter { $0.isHeading && !$0.deleted }
+    }
+
+    /// "A heading with 3 open tasks under it." (dc:141, dc:3649–3657).
+    private func headingLine(_ h: TaskModel) -> String {
+        let p = store.projection
+        let n = p.section(of: h.id).dropFirst().filter { p.task($0)?.completedAt == nil }.count
+        return n == 0 ? "A heading with no open tasks under it." : "A heading with \(n) open task\(n == 1 ? "" : "s") under it."
     }
 
     @ViewBuilder
@@ -73,13 +87,17 @@ struct DetailPane: View {
             .padding(.horizontal, 18)
             .frame(width: size.width, height: size.height, alignment: .topLeading)
         } else {
-            // 40% down the body (dc:126, css:298–301).
+            // 40% down the body (dc:126, css:298–301). With only headings selected, the heading (§23).
+            let heads = selectedHeadings
             VStack(spacing: 6) {
-                Text("No task selected")
+                Text(heads.count > 1 ? "\(heads.count) headings selected"
+                     : heads.first.map { $0.title.isEmpty ? "New Heading" : $0.title } ?? "No task selected")
                     .font(Font(TK.Font.bodyMedium))
                     .foregroundStyle(tk.ink2.swiftUI)
+                    .lineLimit(1)
                     .frame(height: 16)
-                Text("Select a task to see its notes and dates.")
+                Text(heads.count == 1 ? headingLine(heads[0]) : heads.count > 1 ? "Headings have no notes or dates here."
+                     : "Select a task to see its notes and dates.")
                     .font(Font(TK.Font.small))
                     .foregroundStyle(tk.ink3.swiftUI)
                     .multilineTextAlignment(.center)

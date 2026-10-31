@@ -123,7 +123,8 @@ struct ViewItems: Equatable {
             let activeSet = Set(active)
             var items: [(id: EntityID, stamp: Int)] = []
             for id in p.allTaskIDs {
-                guard let t = p.task(id), t.deleted, activeSet.contains(t.list) else { continue }
+                // A heading isn't listed in Trash: it's only a name, and ⌘Z brings it back (§23).
+                guard let t = p.task(id), t.deleted, !t.isHeading, activeSet.contains(t.list) else { continue }
                 items.append((id, deletedAt(t)))
             }
             items.sort { $0.stamp != $1.stamp ? $0.stamp > $1.stamp : $0.id < $1.id }
@@ -163,7 +164,8 @@ final class ViewDates {
         withObservationTracking {
             for (rank, l) in p.activeLists.ids.enumerated() {
                 for id in p.openTasks(in: l).ids {
-                    if let m = p.taskModel(id) { out.append(Entry(id: id, rank: rank, order: m.order, when: m.when, deadline: m.deadline)) }
+                    // Headings stay in their list (§23): Upcoming and Undated never show one.
+                    if let m = p.taskModel(id), !m.isHeading { out.append(Entry(id: id, rank: rank, order: m.order, when: m.when, deadline: m.deadline)) }
                 }
             }
         } onChange: { [weak self, weak window] in
@@ -206,7 +208,9 @@ extension TaskLayout {
         case .completed: "completed"
         default: "trash"
         }
-        var L = TaskLayout(key: key, top: TK.M.rowTop)
+        // The title line, without notes (§23).
+        var L = TaskLayout(key: key, top: TaskLayout.titleBlockHeight(notes: nil))
+        L.titleHeight = L.top
         let v = inputs.view ?? ViewItems()
         L.reserve(v.ids.count + 1)
         var y = L.top

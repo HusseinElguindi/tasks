@@ -47,6 +47,10 @@ enum Menus {
                 items.append(Item("Show in \(a.listName(t.list))") { a.go(.list(t.list), select: [t.id]) })
             }
         }
+        if a.window.route.listID != nil {
+            // §23: above the first selected row, which becomes the heading's first task.
+            items.append(Item("New Heading Above", key: "n", modifiers: [.command, .option]) { a.newHeading() })
+        }
         items.append(.separator())
         items.append(Item(anyOpen ? (one ? "Complete" : "Complete \(n) Tasks") : "Mark as Not Done", key: "k") { a.toggleComplete(ids) })
         let today = a.today
@@ -74,6 +78,36 @@ enum Menus {
         items.append(move)
         items.append(.separator())
         items.append(Item(one ? "Delete" : "Delete \(n) Tasks", key: "\u{8}") { a.delete(ids) })
+        return menu(items)
+    }
+
+    /// A heading (§23, dc:3554–3575): Rename, its notes, New Task in it, Collapse or Expand, Move Up and Down, Delete.
+    static func heading(_ ids: [EntityID], actions a: WindowActions) -> NSMenu {
+        let p = a.p
+        let heads = ids.compactMap(p.task).filter(\.isHeading)
+        guard let h = heads.first else { return menu([]) }
+        let one = heads.count == 1
+        let name = h.title.isEmpty ? "this heading" : h.title
+        var items: [NSMenuItem] = []
+        if one {
+            items.append(Item("Rename", key: returnKey, modifiers: []) { a.startHeadingRename(h.id) })
+            items.append(Item(h.notes.isEmpty ? "Add Notes" : "Edit Notes") { a.editHeadingNotes(h.id) })
+            items.append(Item("New Task in \(name)") { a.newTask(in: h.list, under: h.id) })
+            items.append(.separator())
+        }
+        let collapse = !heads.allSatisfy { a.window.collapsed.contains($0.id) }
+        items.append(Item(collapse ? "Collapse" : "Expand", key: " ", modifiers: []) { a.toggleCollapse(heads.map(\.id), to: collapse) })
+        if one {
+            let order = p.headings(in: h.list).ids
+            let i = order.firstIndex(of: h.id) ?? 0
+            items.append(.separator())
+            items.append(Item("Move Up", key: String(UnicodeScalar(NSUpArrowFunctionKey)!), modifiers: [.command, .option],
+                              enabled: i > 0) { a.moveSectionBy(h.id, -1) })
+            items.append(Item("Move Down", key: String(UnicodeScalar(NSDownArrowFunctionKey)!), modifiers: [.command, .option],
+                              enabled: i + 1 < order.count) { a.moveSectionBy(h.id, 1) })
+        }
+        items.append(.separator())
+        items.append(Item(one ? "Delete Heading" : "Delete \(heads.count) Headings", key: "\u{8}") { a.delete(heads.map(\.id)) })
         return menu(items)
     }
 

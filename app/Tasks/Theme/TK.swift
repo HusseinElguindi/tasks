@@ -15,7 +15,7 @@ extension TK {
         let isDark: Bool
         let ground, base, dim, popover, lift: NSColor                 // --ground --base --dim --popover --lift
         let linePane, linePaneDim, lineSep, lineField: NSColor        // --line-pane --line-pane-dim --line-sep --line-field
-        let ink, ink2, ink3, inkQ: NSColor                            // --ink --ink-2 --ink-3 --ink-q
+        var ink, ink2, ink3, inkQ: NSColor                            // --ink --ink-2 --ink-3 --ink-q
         let sel, selDim: NSColor                                      // --sel --sel-dim
         let fillControl, fillTrack, fillStrong: NSColor              // --fill-control --fill-track --fill-strong
         let edgeOuter, edgeInner: NSColor                             // --edge-outer --edge-inner
@@ -34,6 +34,13 @@ extension TK {
         let liftRing, liftShadow: NSColor
 
         static func == (a: Palette, b: Palette) -> Bool { a.isDark == b.isDark }
+
+        /// Text in the list pane, a list's notes and a heading's (§23): a step quieter, its body in `ink-secondary`.
+        var quieter: Palette {
+            var p = self
+            p.ink = ink2
+            return p
+        }
 
         static let dark = Palette(
             isDark: true,
@@ -253,6 +260,8 @@ extension TK {
         static let focusT = Timing(duration: 0.06, curve: decel)
         static let fadeInT = Timing(duration: 0.18, curve: easeOut)
         static let fadeOutT = Timing(duration: 0.15, curve: easeOut)
+        /// Rows and notes unfolding from under an expanded heading: faint while they still overlap it (css:476).
+        static let unfoldT = Timing(duration: 0.22, curve: easeIn)
         static let colorT = Timing(duration: 0.2, curve: easeOut)     // a done title's color (css:169)
         static let checkFillT = Timing(duration: 0.16, curve: easeOut)
         static let pressT = Timing(duration: 0.08, curve: easeOut)    // the checkbox press (css:195)
