@@ -689,6 +689,12 @@ enum DebugPicker {
     private static var recStart: CFTimeInterval = 0
     private static var scrollCost: [Double] = []
 
+    /// The calendar's own share of opening: making it, and its first update (`first`), which styles its days.
+    private static var built: [Double] = [0, 0]
+    static func calendarBuilt(ms: Double, first: Bool) {
+        if first { if built[1] == 0 { built[1] = ms } } else { built = [ms, 0] }
+    }
+
     /// Every move of the calendar, from its bounds-change handler (`ms`: that handler's own time).
     static func calendarMoved(_ v: WeekCalendarView, ms: Double) {
         guard let path = recording else { return }
@@ -843,7 +849,7 @@ enum DebugPicker {
                         cv.layoutSubtreeIfNeeded()
                         cv.displayIfNeeded()
                     }
-                    out.append(String(format: "%.3f", (CACurrentMediaTime() - t0) * 1000))
+                    out.append(String(format: "%.3f\t%.3f\t%.3f", (CACurrentMediaTime() - t0) * 1000, built[0], built[1]))
                     try? await Task.sleep(for: .milliseconds(400))
                 }
                 try? out.joined(separator: "\n").write(toFile: b[2], atomically: true, encoding: .utf8)

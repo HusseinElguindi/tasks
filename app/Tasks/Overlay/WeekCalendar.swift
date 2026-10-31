@@ -99,13 +99,23 @@ struct WeekCalendar: NSViewRepresentable {
     let onHeader: (CalendarHeader) -> Void
 
     func makeNSView(context: Context) -> WeekCalendarView {
-        WeekCalendarView(today: marks.today, opening: opening)
+        #if DEBUG
+        let t0 = CACurrentMediaTime()
+        defer { DebugPicker.calendarBuilt(ms: (CACurrentMediaTime() - t0) * 1000, first: false) }
+        #endif
+        return WeekCalendarView(today: marks.today, opening: opening)
     }
 
     func updateNSView(_ v: WeekCalendarView, context: Context) {
         v.onPick = onPick
         v.onHeader = onHeader
+        #if DEBUG
+        let t0 = CACurrentMediaTime()
         v.update(marks: marks, palette: context.environment.tk)
+        DebugPicker.calendarBuilt(ms: (CACurrentMediaTime() - t0) * 1000, first: true)
+        #else
+        v.update(marks: marks, palette: context.environment.tk)
+        #endif
         if let reveal, reveal.seq != v.revealSeq {
             v.revealSeq = reveal.seq
             // After this update, as the prototype's setTimeout: the request may come from typing mid-update.
