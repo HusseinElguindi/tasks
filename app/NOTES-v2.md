@@ -376,6 +376,48 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
       rest; the title block's fades in, and a heading's shows only with the caret in it).
     - Not checked: the menus as drawn (their titles were logged), and tooltips on screen.
 
+17. **One set of semantic colour tokens (themes tabled).** design/THEMES.md §1, §2.1–2.4 and §6, with one theme.
+    - `TK.Theme` (`Theme/Theme.swift`) is a theme's inputs per appearance: base, ink, accent, and optionally ground,
+      the six list hues, danger, attention and pins. `rules(dark:)` is §2.4 as one table per appearance, in the
+      order tokens are derived; `tokens(dark:)` applies the pins, then the rules. `TK.Theme.rex` is the only theme
+      and pins every measured value its rules don't give exactly, so nothing looks different.
+    - `TK.Palette(theme:dark:)` holds every token as an `NSColor`, by the THEMES names: `inkSecondary`,
+      `inkTertiary`, `inkQuiet` (were `ink2`, `ink3`, `inkQ`), `lineSeparator`, `fillRowSelected(Dim)` (`sel`),
+      `attention(Tint)` (`attn`), `textSelection`, `shadowPopover(Ring)`, `shadowLift(Ring)`, and the list slots by
+      name (`list(.yellow)`). New: `focus`, which the editing and drop rings now read (a row's, a heading's and the
+      large title's rename, a sidebar row's rename and drop, the date popover's keyboard day); `markHead`, `markBar`,
+      `markRings`, `markTrail` for the sidebar's brand mark (literals before); and `card`, Settings' sections, which
+      THEMES.md doesn't list. Pure white and black stay AppKit's own `NSColor.white` and `.black`: sRGB white at
+      10% composites a level apart from it on the dark tiles.
+    - Equality compares the token values, not Dark or Light (`TK.swift`), so rows that skip work while their
+      palette is equal redraw on any change of colour. `AppModel.palette` is built when the appearance changes and
+      `ThemedRoot` hands it to every view. The sidebar's render and label checks, its brand mark, the notes editor's
+      restyle and the menus' tile images were keyed on Dark or Light; they now key on the palette.
+    - `PaneColors` is gone. Settings' four Pane components (section, row, divider, button style) read `\.tk`; the
+      v1 SwiftUI Pane components nothing used any more (checkbox, chip, list mark, menu item, popover surface,
+      segmented control, ghost and sidebar-row button styles, row menu, pane chrome, search field, tile, shadows, and
+      `PaneTheme`'s own derivation) are deleted, and with them the literal hover and shadow colours THEMES.md §1.3
+      lists. design/PaneTheme.swift stays as the upstream reference.
+    - Not built, tabled with themes: the contrast check (§2.5), `contrast: "high"`, theme files, the picker and the
+      sample themes; `fill-thumb` (nothing draws it). §1.3's `.system(size:)` fonts are left: type, not colour.
+    - Checked: in-app renders of Today, PHYS 122 (headings and notes), the detail pane with notes, the date popover,
+      Upcoming and Trash, in Dark and Light, Classic and Glass, against `main` on the same data: pixel-identical
+      (two `main` runs agree exactly first). Settings is 1 level of 255 off in three tokens (light `ink-secondary`
+      and `line-separator`, dark `accent-tint`): Pane derived them as fractions of a level that rounded up, and they
+      are now Rex's measured values like everywhere else.
+    - Redraw: a switch between Dark and Light mid-run draws exactly what a launch in that appearance draws. Within
+      one appearance, as a theme switch would be, the script step `palette:derived` (Rex from its base colours
+      alone, no pins) draws exactly what a launch with `-debugTheme derived` draws, and switching back to Rex
+      gives the baseline exactly, on all six screens in both appearances.
+    - `-debugThemeCheck`: Rex's base, ink and accent alone derive within 4.3 levels of every pin (dark
+      `edge-outer`), except dark's `hover`, `press`, `tile-ring` and shadow rings, which Rex draws white rather
+      than in its ink.
+    - §9, optimized builds of `main` and the branch side by side: list switches 1.9–3.9 ms of work and 5.7–10 ms to
+      first rows on both (`switch-bench.sh`'s run, twice each); in the 2,000-task list a selection change renders in
+      0.91 ms median (`main` 0.83), a check in 0.89 (0.86) and a Dark/Light switch in 1.35 (1.39).
+    - Not checked: hover and press looks, the drag's lifted copy, menus, notices and tooltips as drawn (their sites
+      were only renamed).
+
 ## Markdown notes (design/MARKDOWN.md)
 
 Built to the spec and the prototype (`design/prototype-markdown/`); §11 of the spec lists where the build differs.

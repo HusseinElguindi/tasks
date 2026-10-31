@@ -1,6 +1,14 @@
 # Themes
 
-**Status: proposed** (`docs/TASK-design-themes.md`). Nothing here is in `app/` yet.
+**Status: tabled: tokens adopted in the app; picker, files and samples deferred** (`docs/TASK-design-themes.md`,
+v2 feedback 17). The app draws from one palette with the §1 tokens, filled from one theme, Rex, by the §2.4 rules
+with Rex's measured values pinned (`app/Tasks/Theme/Theme.swift`, `TK.swift`), as §6 steps 1–6 describe; nothing
+looks different. Not built: the contrast check (§2.5), `contrast: "high"`, the theme file (§3), the picker (§4) and
+the sample themes (§5). Where the app differs from §1: it adds `card` (Settings' grouped sections, Pane's card: dark
+base → ink 1.5%, light = base) and has no `fill-thumb` (nothing draws one); Rex pins dark `hover`, `press`,
+`tile-ring` and both shadows' rings as white, which it measures, rather than its ink; `focus` is read by the
+editing rings (a row's, a heading's and the large title's rename, a sidebar row's rename) and the drop ring on a
+sidebar row, and the date popover's keyboard day. PaneColors is gone: Settings reads the same tokens.
 
 **Canvas:** https://claude.ai/artifact/Hq16S8JLKGyQqTsbKzNukG (private until shared from its Share menu). Its prototype
 is `design/prototype-themes/`, a copy of `design/prototype-v2/` at commit 16e9625 with a theme switcher. Press Play on
