@@ -108,7 +108,16 @@ final class WindowState {
     /// 4); `PaneGeometry` fits them to the window.
     var sidebarWidth = PaneWidth.sidebar.stored
     var detailWidth = PaneWidth.detail.stored
-    var completedOpen: Set<EntityID> = []
+    /// Lists whose "› Completed" row is open. Local like a heading's collapse, and kept across launches (v2 feedback 15).
+    var completedOpen: Set<EntityID> = Set(UserDefaults.standard.stringArray(forKey: WindowState.completedOpenKey) ?? []) {
+        didSet { if completedOpen != oldValue { UserDefaults.standard.set(completedOpen.sorted(), forKey: Self.completedOpenKey) } }
+    }
+    static let completedOpenKey = "completedOpenLists"
+    /// Today's Completed group is collapsed (v2 feedback 15): local, kept across launches, never synced.
+    var todayDoneCollapsed: Bool = UserDefaults.standard.bool(forKey: WindowState.todayDoneCollapsedKey) {
+        didSet { if todayDoneCollapsed != oldValue { UserDefaults.standard.set(todayDoneCollapsed, forKey: Self.todayDoneCollapsedKey) } }
+    }
+    static let todayDoneCollapsedKey = "todayCompletedCollapsed"
     var archiveOpen = false
     var pins: [EntityID: Pin] = [:]
     var draft: Draft?

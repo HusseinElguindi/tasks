@@ -30,6 +30,8 @@ final class TaskListView: NSView {
     private var keepUntil: [EntityID: CFTimeInterval] = [:]
     private var labels: [EntityID: GroupLabelView] = [:]
     private var labelsLeaving: [EntityID: (view: GroupLabelView, until: CFTimeInterval)] = [:]
+    /// Today's Completed label's fold state as last drawn (to raise it over rows that fold and unfold).
+    private var lastDoneCollapsed: Bool?
     private let completedRow = CompletedRowView()
     private var completedWidth: CGFloat = 0
     private let empty = EmptyStateView()
@@ -68,7 +70,8 @@ final class TaskListView: NSView {
         case row(EntityID, TaskRowView.Part)
         /// A heading's row: its + and chevron are parts of their own, asked first (§23).
         case head(EntityID, HeadingRowView.Part)
-        case label(EntityID, plus: Bool)
+        /// A group label: Today's lists, the views' days, and Today's Completed with its chevron (v2 feedback 15).
+        case label(EntityID, part: GroupLabelView.Part)
         case completed
         case banner
         case empty
@@ -261,8 +264,9 @@ final class TaskListView: NSView {
                 if let cy = L.completedY, let t = p.task(id), !t.deleted, t.completedAt != nil, t.list == state.route.listID {
                     to = cy
                 }
-                // Folding: up under its heading's row, on `layout`, as it fades (§23 Collapsing).
-                if let h = L.folded[id], let hy = L.y(h) { to = hy }
+                // Folding: up under its heading's row (or Today's Completed label, or a list's Completed row), on
+                // `layout`, as it fades (§23 Collapsing, v2 feedback 15).
+                if let h = L.folded[id], let hy = L.foldY(h) { to = hy }
                 leaving[id] = (v, now + TK.Timer.motionWindow)
                 v.setHover(row: false, part: nil)
                 move(v, toY: to, animate: true)
@@ -356,7 +360,7 @@ final class TaskListView: NSView {
             }
             // Position: new views start where the task was (and spring to its new place) or fade in; others spring.
             if isNew {
-                if animate, let h = prevLayout?.folded[id], let hy = L.y(h) ?? prevLayout?.y(h) {
+                if animate, let h = prevLayout?.folded[id], let hy = L.foldY(h) ?? prevLayout?.foldY(h) {
                     // Expanding: from under the heading's row to its place on `layout`, with the rows below on the same
                     // curve, fading in (ease-in, so faint while it still overlaps the heading). Never faded in where it
                     // ends up while its neighbours move (§23 "Bugs the prototype had").
@@ -506,7 +510,18 @@ final class TaskListView: NSView {
                 isNew = true
             }
             _ = p
-            v.configure(key: key, name: name, plus: info?.plus ?? !isDone, palette: palette, width: rowW, sub: info?.sub, quiet: info?.quiet ?? false)
+            // Today's Completed folds (v2 feedback 15): its chevron, its count while collapsed, and its fill when it's
+            // selected (Space folds it).
+            let folds = isDone && state.route == .today
+            v.configure(key: key, name: name, plus: info?.plus ?? !isDone, palette: palette, width: rowW, sub: info?.sub,
+                        quiet: info?.quiet ?? false, chevron: folds, collapsed: folds && state.todayDoneCollapsed,
+                        count: L.doneCount, selected: folds && state.selection.contains(key),
+                        paneFocused: state.focus == .list || !state.detailOpen, animated: animate && !isNew)
+            if folds, !isNew, v.collapsed != lastDoneCollapsed {
+                // Rows folding into it and unfolding from it pass under it: it goes above the rows.
+                doc.addSubview(v, positioned: .below, relativeTo: completedRow)
+            }
+            if folds { lastDoneCollapsed = v.collapsed }
             v.setDrop(key == dropDay, animated: animate)
             if isNew {
                 if animate, let old = prevLabels[key], old != y {
@@ -1059,8 +1074,9 @@ final class TaskListView: NSView {
         }
         if inRows {
             for (key, y) in L.labels where p.y >= y && p.y < y + TK.M.pitch {
-                let plus = labels[key].map { $0.plusContains(CGPoint(x: p.x - $0.frame.minX, y: p.y - $0.frame.minY)) } ?? false
-                return .label(key, plus: plus)
+                // The + and the chevron first, whatever their fade (§23 "Bugs the prototype had").
+                let part = labels[key].map { $0.part(at: CGPoint(x: p.x - $0.frame.minX, y: p.y - $0.frame.minY)) } ?? .body
+                return .label(key, part: part)
             }
         }
         return .empty
@@ -1103,7 +1119,7 @@ final class TaskListView: NSView {
         for (id, v) in heads { v.setHover(row: id == hoveredHead, part: id == hoveredHead ? headPart : nil) }
         completedRow.setHover(t == .completed)
         for (key, v) in labels {
-            if case .label(let k, let plus) = t, k == key { v.setHover(true, overPlus: plus) } else { v.setHover(false, overPlus: false) }
+            if case .label(let k, let part) = t, k == key { v.setHover(true, part: part) } else { v.setHover(false, part: nil) }
         }
         banner.setButtonState(hovered: t == .banner, pressed: false)
         // Tooltips: the row's › ("Show Details ⌘D") and a Today group's + (the name only), §16.
@@ -1120,7 +1136,7 @@ final class TaskListView: NSView {
                 overlays.hoverTip("New Task in " + (name.isEmpty ? "this heading" : name), for: windowRect(v.plus.frame, from: v),
                                   windowWidth: window?.frame.width ?? 1200)
             }
-        case .label(let key, plus: true):
+        case .label(let key, part: .plus):
             if let v = labels[key] {
                 let info = currentLayout?.labelInfo[key]
                 let tip = info?.day != nil ? "New Task for \(info!.name)" : "New Task in \(actions.listName(info?.list ?? key))"
@@ -1128,7 +1144,7 @@ final class TaskListView: NSView {
             }
         default:
             // Only the tips this list showed: the pointer may have moved onto another control with its own.
-            if case .row(_, .open) = old { overlays.hideTip() } else if case .label(_, plus: true) = old { overlays.hideTip() }
+            if case .row(_, .open) = old { overlays.hideTip() } else if case .label(_, part: .plus) = old { overlays.hideTip() }
             else if case .head(_, .plus) = old { overlays.hideTip() }
         }
     }
@@ -1145,7 +1161,7 @@ final class TaskListView: NSView {
         // An untitled new task keeps its caret when the press lands on an add control: a Today group's + (dc:1316).
         let keepsCaret: Bool = {
             if !untitled { return false }
-            if case .label(_, plus: true) = t { return true }
+            if case .label(_, part: .plus) = t { return true }
             return false
         }()
         if !keepsCaret {
@@ -1187,8 +1203,8 @@ final class TaskListView: NSView {
             case .check, .chip, .open:
                 rows[id]?.setPressed(part)
             }
-        case .label(let key, plus: true):
-            labels[key]?.plus.pressed = true
+        case .label(let key, part: let part) where part != .body:
+            labels[key]?.setPressed(part)
         case .banner:
             banner.setButtonState(hovered: true, pressed: true)
         case .empty:
@@ -1201,11 +1217,15 @@ final class TaskListView: NSView {
             } else if !editing, !state.selection.isEmpty {
                 state.selection = []
             }
-        case .label(let key, plus: false):
+        case .label(let key, part: _):
             // Double-clicking a day's label in Upcoming adds a task for that day (dc:2354).
             if event.clickCount == 2, state.route == .upcoming, let day = currentLayout?.labelInfo[key]?.day {
                 press = nil
                 a.newTask(day: day)
+            } else if key == TaskLayout.doneGroup, state.route == .today {
+                // Today's Completed label selects like a heading's row, so Space can fold it (v2 feedback 15).
+                press = nil
+                a.select([key])
             }
         case .completed:
             break
@@ -1255,8 +1275,8 @@ final class TaskListView: NSView {
             heads[id]?.setPressed(target(at: p) == pr.target ? part : nil)
         case .row(let id, let part):
             rows[id]?.setPressed(target(at: p) == pr.target ? part : nil)
-        case .label(let key, plus: true):
-            labels[key]?.plus.pressed = target(at: p) == pr.target
+        case .label(let key, part: let part) where part != .body:
+            labels[key]?.setPressed(target(at: p) == pr.target ? part : nil)
         case .banner:
             banner.setButtonState(hovered: target(at: p) == .banner, pressed: target(at: p) == .banner)
         default: break
@@ -1303,8 +1323,8 @@ final class TaskListView: NSView {
                 a.focus(.list)
                 a.openDetail()
             }
-        case .label(let key, plus: true):
-            labels[key]?.plus.pressed = false
+        case .label(let key, part: .plus):
+            labels[key]?.setPressed(nil)
             if inside {
                 if let info = currentLayout?.labelInfo[key] {
                     if let day = info.day { a.newTask(day: day) } else { a.newTask(in: info.list ?? key) }
@@ -1312,6 +1332,10 @@ final class TaskListView: NSView {
                     a.newTask(in: key)
                 }
             }
+        case .label(let key, part: .chevron):
+            // Today's Completed folds or unfolds (v2 feedback 15).
+            labels[key]?.setPressed(nil)
+            if inside { a.toggleTodayDone() }
         case .completed:
             if inside, case .list(let id) = state.route {
                 if state.completedOpen.contains(id) { state.completedOpen.remove(id) } else { state.completedOpen.insert(id) }
@@ -1385,9 +1409,11 @@ final class TaskListView: NSView {
             if ids.count == 1 { a.editTask(ids[0], caret: .all) } else if ids.isEmpty { a.moveSelection(.by(1), extend: false) }
             return true
         case 49 where !cmd: // Space
-            // On headings, collapse or expand: a heading has nothing to complete (§23).
+            // On headings, collapse or expand: a heading has nothing to complete (§23). Today's Completed label, when
+            // it's what's selected, the same (v2 feedback 15).
             let ids = a.targetIDs
-            if !ids.isEmpty, ids.allSatisfy(a.isHeading) { a.toggleCollapse(ids) } else { a.toggleComplete() }
+            if state.route == .today, state.selection == [TaskLayout.doneGroup] { a.toggleTodayDone() }
+            else if !ids.isEmpty, ids.allSatisfy(a.isHeading) { a.toggleCollapse(ids) } else { a.toggleComplete() }
             return true
         case 53: // Esc
             if state.overlays.picker != nil { a.closePicker() } else if state.detailOpen { a.closeDetail() } else if !state.selection.isEmpty { state.selection = [] }
@@ -1727,6 +1753,29 @@ final class TaskListView: NSView {
             + " plusOpacity=\(String(format: "%.2f", plus.presentation()?.opacity ?? plus.opacity))"
             + " chevronOpacity=\(String(format: "%.2f", chev.presentation()?.opacity ?? chev.opacity))"
             + " rotation=\(String(format: "%.2f", (chev.glyph.presentation() ?? chev.glyph).value(forKeyPath: "transform.rotation.z") as? CGFloat ?? 0))"
+    }
+
+    /// Debug: Today's Completed label (its body and chevron centers, the chevron's glyph size, opacity and rotation),
+    /// or a list's Completed row; and the done rows laid out (v2 feedback 15).
+    func debugDoneWhere() -> String {
+        func c(_ r: CGRect, in view: NSView) -> String {
+            let w = view.convert(r, to: nil)
+            return "\(Int(w.midX)),\(Int((window?.contentLayoutRect.height ?? 0) - w.midY))"
+        }
+        let L = currentLayout
+        let doneRows = L.map { l in l.order.filter { l.isDone($0) }.count } ?? 0
+        if let v = labels[TaskLayout.doneGroup] {
+            let chev = v.chevron
+            return "label=\(c(v.bounds, in: v)) chevron=\(c(chev.frame, in: v)) chevronGlyph=\(Int(chev.glyph.bounds.width))x\(Int(chev.glyph.bounds.height))"
+                + " chevronButton=\(Int(chev.bounds.width)) chevronOpacity=\(String(format: "%.2f", chev.presentation()?.opacity ?? chev.opacity))"
+                + " rotation=\(String(format: "%.2f", (chev.glyph.presentation() ?? chev.glyph).value(forKeyPath: "transform.rotation.z") as? CGFloat ?? 0))"
+                + " doneRows=\(doneRows) folded=\(L?.folded.values.filter { $0 == TaskLayout.doneGroup }.count ?? 0)"
+                + " labelAboveRows=\(doc.subviews.firstIndex(of: v).map { li in doc.subviews.enumerated().allSatisfy { !($0.element is TaskRowView) || $0.element.isHidden || $0.offset < li } } ?? false)"
+        }
+        if !completedRow.isHidden {
+            return "completedRow=\(c(completedRow.bounds, in: completedRow)) doneRows=\(doneRows) folded=\(L?.folded.values.filter { $0 == TaskLayout.completedRowKey }.count ?? 0)"
+        }
+        return "no Completed label"
     }
     #endif
 

@@ -91,6 +91,24 @@ extension WindowActions {
         if window.collapsed.contains(id) { toggleCollapse([id], to: false) }
     }
 
+    /// Today's Completed folds as a heading does (v2 feedback 15): its chevron, or Space with its label selected.
+    /// Selected done rows that fold away leave the selection; if nothing's left, the label takes it.
+    func toggleTodayDone(to: Bool? = nil) {
+        let collapse = to ?? !window.todayDoneCollapsed
+        guard collapse != window.todayDoneCollapsed else { return }
+        if collapse {
+            let done = Set(p.todayDone.ids)
+            if !window.selection.isDisjoint(with: done) {
+                var sel = window.selection.subtracting(done)
+                if sel.isEmpty { sel = [TaskLayout.doneGroup] }
+                window.selection = sel
+                window.anchor = sel.first
+                window.cursor = sel.first
+            }
+        }
+        window.todayDoneCollapsed = collapse
+    }
+
     // MARK: Moving a section
 
     /// ⌥⌘↑ ⌥⌘↓ on a heading, or Move Up and Move Down in its menu: past the previous or next section, never above the

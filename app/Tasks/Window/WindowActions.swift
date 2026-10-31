@@ -155,6 +155,16 @@ struct WindowActions {
     func moveSelection(_ step: Step, extend: Bool) {
         let order = layout.order
         guard !order.isEmpty else { return }
+        // From Today's Completed label (v2 feedback 15): ↓ to its first row, ↑ to the row above it.
+        if window.selection == [TaskLayout.doneGroup], case .by(let d) = step, let ly = layout.labels[TaskLayout.doneGroup] {
+            let L = layout
+            let next = d > 0 ? order.first { (L.y($0) ?? 0) > ly } : order.last { (L.y($0) ?? 0) < ly }
+            if let next {
+                select([next])
+                window.taskList?.scrollToVisible(next)
+            }
+            return
+        }
         let sel = window.selection
         let index: (EntityID) -> Int = { order.firstIndex(of: $0) ?? -1 }
         var cur: EntityID?
