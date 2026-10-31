@@ -28,10 +28,13 @@ and the light ones. The code is the block at the end of the component, after the
 
 **Proposed (§24, `docs/TASK-design-dates.md`): When and Deadline at a glance.** Its canvas is
 https://claude.ai/artifact/2wUF9Dz2JEt8Xp2pBDahy2 (private until shared), laid out by `canvas-dates.json`. The prototype carries it
-behind the strip's Dates (Pills, Quiet When, Text) and Overdue cue (Off, Checkbox, Edge) switches; their defaults are
-the recommendations, and a board sets them with `v-dates` and `v-cue`. Its boards: `When-Deadline` (the prototype on
-the School list), `Chips-*` (each variant in Today and in a list, and light), `Cue-*`, `Upcoming-Dates`, `Narrow-*`
-(long names at narrow widths, from `demo="narrow"`), `Detail-Dates` and `Popover-*` (from `demo="pickwhen|pickdl"`).
+behind the strip's Dates (Pills, Quiet When, Text), Wording (Absolute, Relative under two weeks, Compact with "2d ago"
+or "−2d") and Overdue cue (Off, Checkbox, Edge) switches; their defaults are the recommendations, and a board sets them
+with `v-dates`, `v-words` and `v-cue`. Its boards: `When-Deadline` (the prototype on the School list), `Chips-*` (each
+variant in Today and in a list, and light), `Cue-*`, `Upcoming-Dates`, `Narrow-*` (long names at narrow widths, from
+`demo="narrow"`), `Detail-Dates` and `Popover-*` (from `demo="pickwhen|pickdl"`); these hold the wording at Absolute.
+Section 3's are `Wording-Compare` (every distance in each wording, a static board generated from the prototype's own
+functions), `Words-*`, and `Tip-*` (a date's tooltip held open, from `demo="tipwhen|tipdl"`).
 The code is the block at the very end of the component; the CSS is the block at the end of `tasks-v2.css`. Until the
 user picks, §11 describes the app.
 

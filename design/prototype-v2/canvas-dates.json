@@ -26,7 +26,7 @@
       "h": 764,
       "radius": 12,
       "is_interactive": true,
-      "title": "Prototype · the School list; the strip switches Dates and the Overdue cue (defaults: Quiet When, Off)"
+      "title": "Prototype · the School list; the strip switches Dates, Wording and the Overdue cue (defaults: Quiet When, Compact, Off)"
     },
     "Main.dc.html": {
       "x": 1260,
@@ -189,6 +189,114 @@
       "radius": 12,
       "is_interactive": true,
       "title": "When popover · light"
+    },
+    "Wording-Compare.dc.html": {
+      "x": 0,
+      "y": 7440,
+      "w": 1180,
+      "h": 764,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Every distance in each wording: the quiet When, then the Deadline capsule, and the tooltip"
+    },
+    "Wording-Compare-Light.dc.html": {
+      "x": 1260,
+      "y": 7440,
+      "w": 1180,
+      "h": 764,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "The same · light"
+    },
+    "Words-Abs-List.dc.html": {
+      "x": 0,
+      "y": 8540,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Absolute (now): a weekday within the week, then the date"
+    },
+    "Words-Rel-List.dc.html": {
+      "x": 1080,
+      "y": 8540,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Relative under two weeks, then the date"
+    },
+    "Words-Cmp-List.dc.html": {
+      "x": 2160,
+      "y": 8540,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Compact at any distance; overdue “2d ago” (recommended)"
+    },
+    "Words-Cmpm-List.dc.html": {
+      "x": 3240,
+      "y": 8540,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Compact; overdue “−2d”"
+    },
+    "Words-Cmp-Today.dc.html": {
+      "x": 0,
+      "y": 9580,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Compact in Today: the deadlines are a countdown"
+    },
+    "Words-Cmp-Upcoming.dc.html": {
+      "x": 1080,
+      "y": 9580,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Compact in Upcoming: it still counts from today, not from the day's group"
+    },
+    "Tip-When-Cmp.dc.html": {
+      "x": 2160,
+      "y": 9580,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "The tooltip gives back the weekday and date: “When: Mon, Nov 2 · in 2 days”"
+    },
+    "Tip-Deadline-Cmp.dc.html": {
+      "x": 3240,
+      "y": 9580,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "… and for a deadline: “Deadline: Tue, Nov 3 · in 3 days”"
+    },
+    "Words-Cmp-List-Light.dc.html": {
+      "x": 0,
+      "y": 10620,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Compact, a list · light"
+    },
+    "Words-Cmp-Today-Light.dc.html": {
+      "x": 1080,
+      "y": 10620,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Compact, Today · light"
     }
   },
   "order": [
@@ -210,7 +318,19 @@
     "Popover-Deadline.dc.html",
     "Chips-Quiet-Today-Light.dc.html",
     "Chips-Quiet-List-Light.dc.html",
-    "Popover-When-Light.dc.html"
+    "Popover-When-Light.dc.html",
+    "Wording-Compare.dc.html",
+    "Wording-Compare-Light.dc.html",
+    "Words-Abs-List.dc.html",
+    "Words-Rel-List.dc.html",
+    "Words-Cmp-List.dc.html",
+    "Words-Cmpm-List.dc.html",
+    "Words-Cmp-Today.dc.html",
+    "Words-Cmp-Upcoming.dc.html",
+    "Tip-When-Cmp.dc.html",
+    "Tip-Deadline-Cmp.dc.html",
+    "Words-Cmp-List-Light.dc.html",
+    "Words-Cmp-Today-Light.dc.html"
   ],
   "noteOrder": [
     "title",
@@ -224,7 +344,10 @@
     "t_views",
     "n_views",
     "t_detail",
-    "t_light"
+    "t_light",
+    "t_words",
+    "n_words",
+    "n_words2"
   ],
   "notes": {
     "title": {
@@ -239,7 +362,7 @@
       "y": 0,
       "w": 480,
       "size": 24,
-      "text": "How to try it\n\n• Press Play, then click inside once so it has the keys.\n• The strip's Dates and Overdue cue switch the open choices.\n• Hover a date for its full date and distance; click it for the popover.\n• Narrow the detail pane or the window: the list name gives way, then the When; a deadline always stays."
+      "text": "How to try it\n\n• Press Play, then click inside once so it has the keys.\n• The strip's Dates, Wording and Overdue cue switch the open choices. Sections 1 and 2 hold the wording at Absolute; section 3 compares the wordings.\n• Hover a date for its full date and distance; click it for the popover.\n• Narrow the detail pane or the window: the list name gives way, then the When; a deadline always stays."
     },
     "n_weak": {
       "x": 2520,
@@ -260,7 +383,7 @@
       "y": 1200,
       "w": 480,
       "size": 24,
-      "text": "Every variant: a deadline always says “Due”; overdue is red, due today amber, due tomorrow an amber flag; the tooltip has the full date and distance.\n\nB: a capsule then always means something is due. The plan (When) sits back as quiet text."
+      "text": "Every variant: a deadline says “Due” (in words; Compact lets the flag say it); overdue is red, due today amber, due tomorrow an amber flag; the tooltip has the full date and distance.\n\nB: a capsule then always means something is due. The plan (When) sits back as quiet text."
     },
     "t_list": {
       "kind": "title1",
@@ -310,6 +433,27 @@
       "y": 6100,
       "maxW": 3160,
       "text": "Light"
+    },
+    "t_words": {
+      "kind": "title1",
+      "x": 0,
+      "y": 7140,
+      "maxW": 4240,
+      "text": "3 · Wording: absolute, relative under two weeks, or compact"
+    },
+    "n_words": {
+      "x": -560,
+      "y": 7440,
+      "w": 480,
+      "size": 24,
+      "text": "Compact is recommended: every date is its distance from today, at any range. 2d, 13d, 3w, 2mo, 1y; overdue “2d ago”.\n\n• Urgency is the number, so it's comparable down the column and across a row (“2d · 3d”: planned a day before it's due).\n• It's the narrowest, so a When drops less often at narrow widths.\n• What it gives up, the weekday and the date, is in the tooltip and the detail pane.\n• “2d ago” over “−2d”: it reads as words, and a minus sign at 11pt is easy to miss or read as a dash. The red capsule already says late.\n\nIn compact, a deadline needn't say “Due”: the flag and the capsule say it. Today stays a word, never “0d”."
+    },
+    "n_words2": {
+      "x": -560,
+      "y": 9580,
+      "w": 480,
+      "size": 24,
+      "text": "Costs to weigh\n\n• Tomorrow is “1d”, not a word.\n• A plan this week loses its weekday (“Fri” becomes “6d”).\n• Far dates are coarse (“2mo”).\n• Upcoming already groups by day, and “3d” under Monday counts from today, not Monday. The tooltip settles it."
     }
   }
 }

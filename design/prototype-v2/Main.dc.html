@@ -268,7 +268,7 @@ body{margin:0}
 </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"select":{"editor":null,"default":""},"detail":{"editor":null,"default":"closed"},"pick":{"editor":null,"default":"none"},"caret":{"editor":null,"default":""},"vDates":{"editor":null,"default":"quiet"},"vCue":{"editor":null,"default":"off"},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"select":{"editor":null,"default":""},"detail":{"editor":null,"default":"closed"},"pick":{"editor":null,"default":"none"},"caret":{"editor":null,"default":""},"vDates":{"editor":null,"default":"quiet"},"vWords":{"editor":null,"default":"cmp"},"vCue":{"editor":null,"default":"off"},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
 // ---------- Calendar dates: "YYYY-MM-DD" strings, never instants (SPEC §2). ----------
 const DAY_MS = 86400000;
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -298,27 +298,40 @@ function relText(s, today) {
   if (n === 0) return 'today';
   if (n === 1) return 'tomorrow';
   if (n === -1) return 'yesterday';
-  if (n > 0) return n < 14 ? 'in ' + n + ' days' : n < 60 ? 'in ' + Math.round(n / 7) + ' weeks' : 'in ' + Math.round(n / 30) + ' months';
+  if (n > 0) return n < 14 ? 'in ' + n + ' days' : n < 60 ? 'in ' + Math.round(n / 7) + ' weeks' : n < 365 ? 'in ' + Math.round(n / 30) + ' months' : Math.round(n / 365) === 1 ? 'in a year' : 'in ' + Math.round(n / 365) + ' years';
   return -n < 14 ? -n + ' days ago' : Math.round(-n / 7) + ' weeks ago';
 }
 function localDayOfMs(ms) { return ymdOf(new Date(ms)); }
 
 // How the row chips read.
-function whenChipText(s, today) {
+// Compact distance, at any range (§24 wording "Compact"): 3d, 13d, 2w, 8w, 2mo, 1y.
+function cmpDist(n) { return n < 14 ? n + 'd' : n < 60 ? Math.round(n / 7) + 'w' : n < 365 ? Math.round(n / 30) + 'mo' : Math.round(n / 365) + 'y'; }
+// Relative words up to two weeks out (§24 wording "Relative"): in 3 days, 2 days.
+function relDays(n) { return n === 1 ? '1 day' : n + ' days'; }
+function relLate(n) { return n < 14 ? relDays(n) : Math.round(n / 7) + ' weeks'; }
+// How the row chips read. words is §24's wording: abs (a weekday within the week, then the date), rel (relative
+// under two weeks, then the date), cmp / cmpm (compact distance always; overdue as "2d ago" / "−2d").
+function whenChipText(s, today, words) {
   const n = diffDays(today, s);
   if (n <= 0) return 'Today';
+  if (words === 'cmp' || words === 'cmpm') return cmpDist(n);
   if (n === 1) return 'Tomorrow';
-  if (n < 7) return WD[weekdayIdx(s)];
+  if (words === 'rel' && n < 14) return 'In ' + n + ' days';
+  if (words !== 'rel' && n < 7) return WD[weekdayIdx(s)];
   return mdy(s, today);
 }
-// A deadline always says "Due" (§24), and its tone is its urgency: late (past), due (today), soon (tomorrow), or none.
-function deadlineChip(s, today) {
-  const n = diffDays(today, s);
-  if (n < 0) return { text: 'Overdue · ' + -n + 'd', tone: 'late' };
-  if (n === 0) return { text: 'Due today', tone: 'due' };
-  if (n === 1) return { text: 'Due tomorrow', tone: 'soon' };   // soon: only the flag is tinted
-  if (n < 7) return { text: 'Due ' + WD[weekdayIdx(s)], tone: '' };
-  return { text: 'Due ' + mdy(s, today), tone: '' };
+// A deadline always says "Due" in words (§24; the compact wording lets the flag and capsule say it), and its tone is
+// its urgency: late (past), due (today), soon (tomorrow), or none.
+function deadlineChip(s, today, words) {
+  const n = diffDays(today, s), cmp = words === 'cmp' || words === 'cmpm';
+  const tone = n < 0 ? 'late' : n === 0 ? 'due' : n === 1 ? 'soon' : '';   // soon: only the flag is tinted
+  if (cmp) return { text: n < 0 ? (words === 'cmpm' ? '\u2212' + cmpDist(-n) : cmpDist(-n) + ' ago') : n === 0 ? 'Today' : cmpDist(n), tone };
+  if (n < 0) return { text: words === 'rel' ? 'Overdue · ' + relLate(-n) : 'Overdue · ' + -n + 'd', tone };
+  if (n === 0) return { text: 'Due today', tone };
+  if (n === 1) return { text: 'Due tomorrow', tone };
+  if (words === 'rel' && n < 14) return { text: 'Due in ' + n + ' days', tone };
+  if (words !== 'rel' && n < 7) return { text: 'Due ' + WD[weekdayIdx(s)], tone };
+  return { text: 'Due ' + mdy(s, today), tone };
 }
 // The relative words beside a deadline: how late, or how long until it's due.
 function dueRelText(s, today) {
@@ -459,13 +472,14 @@ const VIEW_EMPTY = {
 // Headings, a list's notes and its title (INTERACTIONS-v2 §23).
 const HEAD_AIR = 8;   // a heading's air above its row
 // When and Deadline (proposed, INTERACTIONS-v2 §24): the open choices, with the recommendation as the default. The
-// strip switches them; a board sets them with v-dates and v-cue.
-const DATE_DEFAULTS = { dates: 'quiet', cue: 'off' };
+// strip switches them; a board sets them with v-dates, v-words and v-cue.
+const DATE_DEFAULTS = { dates: 'quiet', words: 'cmp', cue: 'off' };
 const DATE_OPTS = {
   dates: [['pills', 'Pills'], ['quiet', 'Quiet When'], ['text', 'Text']],
+  words: [['abs', 'Absolute'], ['rel', 'Relative < 2 wk'], ['cmp', 'Compact · 2d ago'], ['cmpm', 'Compact · \u22122d']],
   cue: [['off', 'Off'], ['check', 'Checkbox'], ['edge', 'Edge']],
 };
-const DATE_LABEL = { dates: 'Dates', cue: 'Overdue cue' };
+const DATE_LABEL = { dates: 'Dates', words: 'Wording', cue: 'Overdue cue' };
 
 let UID = 0;
 function uid(p) { UID += 1; return p + UID.toString(36) + Math.random().toString(36).slice(2, 6); }
@@ -845,7 +859,7 @@ class Component extends DCLogic {
     if (this.props.select) setTimeout(() => this.demoSelect(), 250);
     if (/^(notes|long|hover)$/.test(this.props.demo || '')) setTimeout(() => this.demoNotes(this.props.demo), 200);
     if (/^(scroll|newhead|collapse|dragsec)$/.test(this.props.demo || '')) setTimeout(() => this.demoSec(this.props.demo), 250);   // §23's boards
-    if (/^(narrow|pickwhen|pickdl)$/.test(this.props.demo || '')) setTimeout(() => this.demoDates(this.props.demo), 250);   // §24's boards
+    if (/^(narrow|pickwhen|pickdl|tipwhen|tipdl)$/.test(this.props.demo || '')) setTimeout(() => this.demoDates(this.props.demo), 250);   // §24's boards
     this.markClippedTitles();
     this.measureBlocks();
     document.addEventListener('selectionchange', this.onDocSel);
@@ -2600,9 +2614,11 @@ class Component extends DCLogic {
     const el = e.currentTarget, text = el.dataset.tip, keys = el.dataset.keys || '';
     if (!text || this.state.drag || this.state.menu) return;
     clearTimeout(this.tipTimer);
-    const show = () => { if (!el.isConnected) return; const r = this.rectIn(el); const { w } = this.winSize(); this.lastTipAt = Date.now(); this.setState({ tip: { text, keys, x: clamp(r.left + r.width / 2 - 60, 6, w - 160), y: r.bottom + 6 } }); };
+    const show = () => { if (!el.isConnected) return; const r = this.rectIn(el); this.lastTipAt = Date.now(); this.setState({ tip: { text, keys, x: this.tipX(r, text + keys), y: r.bottom + 6 } }); };
     if (Date.now() - (this.lastTipAt || 0) < TIP_WARM_MS) show(); else this.tipTimer = setTimeout(show, TIP_DELAY);
   };
+  // A tooltip centres under its control and stays inside the window; a date's tooltip is wider than a button's.
+  tipX(r, text) { const { w } = this.winSize(), tw = Math.min(360, text.length * 6.2 + 24); return clamp(r.left + r.width / 2 - tw / 2, 6, w - tw - 6); }
   tipOut = () => { clearTimeout(this.tipTimer); if (this.state.tip) { this.lastTipAt = Date.now(); this.setState({ tip: null }); } };
 
   // Prototype strip
@@ -2732,8 +2748,8 @@ class Component extends DCLogic {
       const chips = [], gday = this.groupDay(L, t.id);   // in Upcoming, a day group's own date isn't repeated on its rows
       if (!done) {
         const opened = (f) => (pickerFor && pickerFor.has(t.id) && s.picker.field === f ? ' open-picker' : '');
-        if (t.when && !(inToday && t.when <= T) && t.when !== gday) chips.push({ field: 'when', cal: true, flag: false, text: whenChipText(t.when, T), cls: 'chip when' + opened('when'), tip: dateTip('when', t.when, T) });
-        if (t.deadline) { const dc = deadlineChip(t.deadline, T); chips.push({ field: 'deadline', cal: false, flag: true, text: t.deadline === gday ? 'Due' : dc.text, cls: 'chip dl ' + dc.tone + opened('deadline'), tip: dateTip('deadline', t.deadline, T) }); }
+        if (t.when && !(inToday && t.when <= T) && t.when !== gday) chips.push({ field: 'when', cal: true, flag: false, text: whenChipText(t.when, T, this.dv('words')), cls: 'chip when' + opened('when'), tip: dateTip('when', t.when, T) });
+        if (t.deadline) { const dc = deadlineChip(t.deadline, T, this.dv('words')); chips.push({ field: 'deadline', cal: false, flag: true, text: t.deadline === gday ? 'Due' : dc.text, cls: 'chip dl ' + dc.tone + opened('deadline'), tip: dateTip('deadline', t.deadline, T) }); }
         if (t.deadline && t.deadline < T) cls += ' overdue';   // the row-level cue (§24), when one is on
       }
       const where = this.whereText(L, t, inToday);
@@ -2934,7 +2950,7 @@ class Component extends DCLogic {
     };
 
     return {
-      rootCls: 'tk ' + s.theme + ' dv-' + this.dv('dates') + ' cue-' + this.dv('cue') + (s.noAnim ? ' no-anim' : '') + (s.detail === 'open' || s.detail === 'opening' ? ' detail-open' : '') + (s.resize ? ' resizing' : '') + (Date.now() - (this.springbackAt || 0) < DETAIL_CLOSE_MS ? ' springback' : ''),
+      rootCls: 'tk ' + s.theme + ' dv-' + this.dv('dates') + ' dw-' + this.dv('words') + ' cue-' + this.dv('cue') + (s.noAnim ? ' no-anim' : '') + (s.detail === 'open' || s.detail === 'opening' ? ' detail-open' : '') + (s.resize ? ' resizing' : '') + (Date.now() - (this.springbackAt || 0) < DETAIL_CLOSE_MS ? ' springback' : ''),
       rootStyle: 'width: ' + w + 'px; height: ' + (h + (stageOn ? 44 : 0)) + 'px',
       winStyle: 'height: ' + h + 'px',
       rootRef: this.rootRef, winRef: this.winRef, listScrollRef: this.listScrollRef, sbScrollRef: this.sbScrollRef, liftRef: this.liftRef,
@@ -3370,7 +3386,7 @@ class Component extends DCLogic {
   // heading. It has a title and notes, and never a date or a check. A list's notes are a `notes` field on the list,
   // in the same Markdown editor as a task's.
   isHead(t) { return !!t && t.kind === 'heading'; }
-  // §24's open choices: the strip's, else the board's v-dates and v-cue, else the recommendation.
+  // §24's open choices: the strip's, else the board's v-dates, v-words and v-cue, else the recommendation.
   dv(k) { const o = this.state.dv && this.state.dv[k]; return o || this.props['v' + k[0].toUpperCase() + k.slice(1)] || DATE_DEFAULTS[k]; }
   onlyTasks(ids) { return ids.filter((id) => { const t = this.task(id); return t && !this.isHead(t); }); }
   // A list's order: headings and open tasks, and the completed tasks too when asked (they keep their keys).
@@ -3724,6 +3740,11 @@ class Component extends DCLogic {
     }
     const t = find('Submit MSE 333');
     if (!t) return;
+    if (kind === 'tipwhen' || kind === 'tipdl') {   // a chip's tooltip, held open
+      const el = this.rootRef.current && this.rootRef.current.querySelector('.lp .chip[data-id="' + t.id + '"][data-field="' + (kind === 'tipwhen' ? 'when' : 'deadline') + '"]');
+      if (el) { const r = this.rectIn(el); this.setState({ tip: { text: el.dataset.tip, keys: '', x: this.tipX(r, el.dataset.tip), y: r.bottom + 6 } }); }
+      return;
+    }
     const field = kind === 'pickwhen' ? 'when' : 'deadline', text = kind === 'pickwhen' ? 'fri' : 'sun';
     this.select([t.id]);
     setTimeout(() => { this.openPickerForRows(field, [t.id]); const p = this.state.picker; const hot = parseDate(text, this.today); if (p) this.setState({ picker: { ...p, demo: true, text, hot, month: hot.slice(0, 7) } }); }, 30);

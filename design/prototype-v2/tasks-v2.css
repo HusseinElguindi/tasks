@@ -484,6 +484,7 @@
 /* Urgency is the deadline's tone, in every variant: late (past) danger, due (today) attention, soon (tomorrow) an
    attention flag on the neutral look, later neutral. */
 .tk .chip .ct { white-space: nowrap; }
+.tk.dw-cmp .chip .ct, .tk.dw-cmpm .chip .ct { font-variant-numeric: tabular-nums; }   /* compact wording: the numbers line up down the column */
 .tk .chip.soon .i { color: var(--attn); }   /* soon: only the flag is tinted, so today stays the one amber capsule */
 .tk .chip.open-picker .i { color: inherit; }
 /* A · Pills: both dates are capsules (as before, with the tones above). */
