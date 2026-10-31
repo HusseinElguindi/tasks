@@ -675,7 +675,7 @@ rule are unchanged.
     3 days left"); the detail pane with the double ring, "3 days ago · still in Today" and "2 days overdue"; both
     popovers with their glyph, the other date's dot and "· after the deadline" / "· before the When".
   - Beside the detail pane every When shows; with the list pane at its 220pt minimum the Whens drop and every
-    Deadline stays.
+    Deadline stays. In Upcoming with `-demoLongNames`, a long list name fades before the Deadline, which stays whole.
   - TasksCore 158 tests and the CLI's 34 pass; `Scripts/completion-check.sh` passes.
   - §9, optimized builds of 9509276 (before) and this side by side: list switches 1.9–3.9 ms of work, 5.4–10.7 ms to
     first rows on both; in the 2,000-task list a selection change renders in 0.96 ms (0.90 before), a check in 1.34
@@ -683,5 +683,4 @@ rule are unchanged.
 - **Debug steps:** `act:day:+N` (the day turns over), `act:dates:/path` (each row's dates and ring as shown),
   `chiphover:<title>:when|deadline`.
 - **Not checked:** the real midnight notification (the turnover was driven through the same `setDay`), hover and
-  press looks frame by frame, VoiceOver itself (the labels were read back, not heard), long list names beside the
-  dates (the demo's long names need a fresh data folder; v2 feedback 16's checks cover the list name's rule).
+  press looks frame by frame, and VoiceOver itself (the labels were read back, not heard).
