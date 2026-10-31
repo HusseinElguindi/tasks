@@ -336,6 +336,21 @@ struct WindowActions {
         if window.focus == .detail { focus(.list) }
     }
 
+    // MARK: - Editing a task: Settings ▸ Edit tasks (v2 feedback 8, §7)
+
+    /// Double-click, Return and Rename in the menu. "Open in detail pane" (the default) shows the task there with the
+    /// caret at the end of its title, and only focuses the title if the pane already shows it; "Rename in the list"
+    /// renames it in its row with `caret`.
+    func editTask(_ id: EntityID, caret: WindowState.Rename.Caret = .all) {
+        guard AppModel.TaskEditing.current == .detail else { startRename(id, caret: caret); return }
+        guard let t = p.task(id), !t.deleted else { return }
+        endEdits()
+        select([id])
+        if window.focus != .detail { window.focus = .detail }
+        openDetail()
+        window.titleFocusRequest = .init(selection: .end, id: id)
+    }
+
     // MARK: - Renaming in place (§7, dc:760–809)
 
     func startRename(_ id: EntityID, caret: WindowState.Rename.Caret = .all) {

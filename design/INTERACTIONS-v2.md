@@ -18,9 +18,12 @@ Status: **final, 2026-10-30.** The user reviewed the prototype and made the four
 - Item 7: dragging a task from one sidebar list to another is continuous. Each row takes half the 2pt gap on either
   side, so the target passes straight from row to row. Anywhere over the sidebar the copy stays a tag and the group
   stays closed up, so a row that takes no drop never snaps the copy back into the list. A drop there cancels, and a
-  list's count changes colour in the same frame as its row (§14).
+  list's count changes color in the same frame as its row (§14).
+- Item 8: Settings ▸ Edit tasks picks what double-click and Return do to a task: open it in the detail pane with the
+  caret in its title (the default), or rename it in its row as before (§7 Edit tasks; §2, §4, §5, §15, §17 and §21 say
+  so). Lists in the sidebar rename in place either way. In the prototype the strip's "Edit tasks" stands in for Settings.
 
-The prototype source matches all six (item 5's rename part is the app's drawing; the browser has no equivalent).
+The prototype source matches all seven (item 5's rename part is the app's drawing; the browser has no equivalent).
 
 **The prototype is the reference implementation:** https://claude.ai/artifact/QetdV1H57SC6kLXtNzJRXM (press Play on the
 main board, then click inside it once so it has the keys). Its source is in `design/prototype-v2/`, and this spec cites
@@ -69,8 +72,9 @@ add and a date pick.
 
 ## 2. Principles
 
-1. **One gesture, one meaning.** Click selects. Double-click or Return renames. Drag moves. Right-click opens the menu.
-   Escape cancels or finishes. ⌘Z undoes. This holds for tasks and lists alike.
+1. **One gesture, one meaning.** Click selects. Double-click or Return edits the title (a task's in the detail pane or
+   in its row, as Settings ▸ Edit tasks says, §7). Drag moves. Right-click opens the menu. Escape cancels or finishes.
+   ⌘Z undoes. This holds for tasks and lists alike.
 2. **Hover only reveals, and only where something can be clicked.** Task rows never change on hover except that their
    trailing › fades in. Navigation rows (the sidebar) brighten their title, as Rex does. Controls (checkbox, chips,
    icon buttons) answer when the pointer is on *them*.
@@ -264,6 +268,7 @@ while the list pane's right edge moves on the same curve; closing runs it backwa
 | ⌘D, the header's split button, a row's › | Show the detail pane (⌘D and the button toggle; the button is `ink-secondary` while it's open) |
 | Esc with nothing else to cancel, the pane's × | Hide it |
 | Adding a task (§6) | Show it with the new task |
+| Double-click or Return on a task with Edit tasks on "Open in detail pane" (§7) | Show it with that task, the caret in its title |
 | Selection changes while it's open | It shows the new selection at once (no animation) |
 | Several tasks selected | "3 tasks selected" (15/20 semibold), the List, When and Deadline rows that apply to all, "Mixed" where they differ |
 | Nothing selected | "No task selected" / "Select a task to see its notes and dates.", 40% down |
@@ -344,7 +349,7 @@ falls between two (no hover flicker) `css:187`.
 | Page Up, Page Down | Scroll the list a page (its height less one row); the selection stays, as in NSTableView `dc:1411` |
 | ⌘A | All open tasks in the view |
 | Letters and digits | Type-to-select: the first title starting with what was typed within the last second `dc:1450–1462` |
-| Return | Rename the selected task (one selected); with nothing selected, select the first row |
+| Return | Edit the selected task (one selected) as Settings ▸ Edit tasks says: in the detail pane, or renamed in its row (§7); with nothing selected, select the first row |
 | ← | Focus the sidebar |
 | Tab / ⇧Tab | Next pane: list → details (when open) → sidebar → list. ⇧Tab: list → sidebar, details → list |
 | Esc | Close the date popover, else hide the detail pane, else clear the selection |
@@ -443,7 +448,24 @@ typed afterwards are their own step ("Edit Notes"). Drafts never enter the undo 
 
 ## 7. Editing
 
-### Task titles in rows, and list names
+### Edit tasks (Settings)
+
+Settings (⌘,) ▸ Behavior ▸ **Edit tasks**, a pop-up with two choices, decides what these do to a task (v2 feedback 8):
+double-clicking its row, Return on it (one task selected, with the list or the detail pane focused) and Rename in its
+context menu. It's kept with the other settings in UserDefaults (`taskEditing`: `detail` or `inline`), never in the sync
+log, and applies at once. The row's description says what the choice does. Source: `dc:2145–2164` (the prototype's
+strip stands in for Settings).
+
+| Choice | Result |
+|---|---|
+| **Open in detail pane** (the default) | The task is selected and shown in the detail pane (which opens as it does for ›), the pane takes focus and the caret goes to the end of its title (§7 The detail title). If the pane already shows that task, only the title takes the caret. Nothing edits in the list |
+| **Rename in the list** | The title is renamed in place in its row (below) |
+
+The same in both: the › and ⌘D show the details without the caret; ⌘N, + and a double-click on empty space add a task
+(§6); lists in the sidebar rename in place; a double-click on a completed task only selects it (Return and › still
+work).
+
+### Task titles in rows ("Rename in the list"), and list names
 
 | Trigger | Caret |
 |---|---|
@@ -804,7 +826,7 @@ draws disabled items at 40%.
 
 ```
 Show Details            ⌘D        (one task)
-Rename                  ↩         (one task)
+Rename                  ↩         (one task; as Return, §7 Edit tasks)
 Show in School                    (one task, in Today)
 ────────
 Complete                ⌘K        ("Complete 3 Tasks"; "Mark as Not Done" when all are done)
@@ -875,7 +897,7 @@ over 100 ms; they go at once on a press or when the pointer leaves, and never du
 | Page Up, Page Down | Scroll the list a page |
 | Letters | Type-to-select (tasks or lists, by focus) |
 | ← → Tab ⇧Tab | Move between sidebar, list and details |
-| Return | Rename the selected task or list |
+| Return | Edit the selected task (§7 Edit tasks) or rename the selected list |
 | Space, ⌘K | Complete or uncomplete |
 | ⌘D | Show or hide details |
 | ⌘S / ⇧⌘D | When… / Deadline… |
@@ -1048,8 +1070,9 @@ Found by an audit of the spec against the prototype; each is what the prototype 
   vanishing (`css:118`).
 - **Keys**: ↑ / ↓ with several rows selected go below the last or above the first of them
   (`dc:706–720`). Scrolling a row into view starts within 4pt of an edge and jumps (no
-  animation). With the detail pane focused but not editing, arrows, letters and Return act on the list and move focus
-  there. With the sidebar focused, Space, ⌘K and ⌘T still act on the selected tasks. Sidebar type-select tries lists
+  animation). With the detail pane focused but not editing, arrows and letters act on the list and move focus there;
+  Return edits the selected task (§7 Edit tasks: its title in the pane, or renamed in its row with the list focused).
+  With the sidebar focused, Space, ⌘K and ⌘T still act on the selected tasks. Sidebar type-select tries lists
   before Today, so "t" goes to "Tasks app" (`dc:1450–1462`).
 - **Renaming a task** keeps the text as typed (not trimmed) and may leave it empty; an empty title shows "New Task" in
   `ink-tertiary` (`css:169`).

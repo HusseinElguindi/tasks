@@ -184,6 +184,24 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
      and out again, a drop on no target, a drop on Home (moved) and Esc (back in its slot). The prototype had the
      same dead band and got the same fix, checked in Chrome.
 
+8. **Settings ▸ Edit tasks.** A pop-up in a new "Behavior" section (Rex's settings have a behavior page whose rows are
+   a title and a one-line description, as this one is): "Open in detail pane", the default, or "Rename in the list".
+   It's kept in the app's defaults as `taskEditing` (`detail` or `inline`); `-taskEditing inline` on the launch line
+   overrides it without saving. Double-click on a task's row, Return (list or detail pane focused) and Rename in the
+   task's menu all go through `WindowActions.editTask`: by default it selects the task, shows the detail pane, focuses
+   it and puts the caret at the end of the title; with the pane already on that task only the title takes the caret.
+   A title focus request now names its task, so one made as the selection changes waits for that task's title instead
+   of landing in the one leaving. The same in both: › and ⌘D (no caret), ⌘N, + and a double-click on empty space,
+   renaming sidebar lists, and a double-click on a completed task only selecting it (as before; Return still edits
+   it). Checked on the scratch instance with `-debugScript` in both modes: double-click, Return from the list and from
+   the detail pane's key sink, the pane already on that task, the pane on another task (double-click and Return),
+   typing into the title and committing (Return on to the notes, Esc back to the list); unchanged: a double-click on
+   empty space, `-debugAdd` (⌘N's action), double-click and Return on a sidebar list, the ›, a completed row. Settings
+   rendered in both modes with `-snapshotSettings`. Not checked: Rename in the context menu (a modal menu the script
+   can't drive), ⌘N itself (menu key equivalents don't reach a background app), clicking the pop-up, and the
+   prototype in Chrome (its runtime isn't in the repo; the script parses). The prototype's strip has the same choice,
+   kept in `localStorage`.
+
 ## Notes for whoever drives the UI next
 
 - Scratch tools (not committed) are in the session scratchpad's `tools/`: `ui` (window-relative HID input that only

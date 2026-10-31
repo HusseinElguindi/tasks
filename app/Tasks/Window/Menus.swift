@@ -41,7 +41,7 @@ enum Menus {
         var items: [NSMenuItem] = []
         if one, let t = tasks.first {
             items.append(Item("Show Details", key: "d") { a.select([t.id]); a.openDetail() })
-            items.append(Item("Rename", key: returnKey, modifiers: []) { a.startRename(t.id, caret: .all) })
+            items.append(Item("Rename", key: returnKey, modifiers: []) { a.editTask(t.id, caret: .all) })
             if a.window.route == .today {
                 items.append(Item("Show in \(a.listName(t.list))") { a.go(.list(t.list), select: [t.id]) })
             }

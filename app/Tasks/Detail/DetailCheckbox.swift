@@ -129,21 +129,23 @@ final class DetailRefs {
     /// The header's × in window coordinates (top-left origin): the one press that doesn't keep an untitled new task's
     /// caret (§6 The pointer while adding).
     var closeFrame: CGRect = .zero
-    private var pending: (selection: WindowState.TitleFocus.Selection, at: TimeInterval)?
+    private var pending: (selection: WindowState.TitleFocus.Selection, id: EntityID?, at: TimeInterval)?
 
-    func focusTitle(_ selection: WindowState.TitleFocus.Selection) {
-        if let t = title, t.window != nil {
+    /// With `id`, only that task's title takes the caret: until it's on screen the request waits.
+    func focusTitle(_ selection: WindowState.TitleFocus.Selection, of id: EntityID? = nil) {
+        if let t = title, t.window != nil, id == nil || t.taskID == id {
             pending = nil
             t.takeCaret(selection)
         } else {
-            pending = (selection, Date.timeIntervalSinceReferenceDate)
+            pending = (selection, id, Date.timeIntervalSinceReferenceDate)
         }
     }
 
-    /// The title arrived on screen (a new task opening the pane): it takes a request made just before.
+    /// The title arrived on screen (a new task opening the pane, another task selected): it takes a request made just
+    /// before, if it's for this task.
     func titleAttached(_ t: TitleFieldView) {
         title = t
-        guard let p = pending else { return }
+        guard let p = pending, p.id == nil || p.id == t.taskID else { return }
         pending = nil
         guard Date.timeIntervalSinceReferenceDate - p.at < 1 else { return }
         DispatchQueue.main.async { [weak t] in t?.takeCaret(p.selection) }

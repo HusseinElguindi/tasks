@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 import TasksCore
 
-/// Settings (⌘,): the sync server and token (Keychain), appearance, and the data folder.
+/// Settings (⌘,): the sync server and token (Keychain), appearance, how tasks are edited, and the data folder.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.pane) private var pane
@@ -54,6 +54,20 @@ struct SettingsView: View {
                     .labelsHidden()
                     .pickerStyle(.segmented)
                     .frame(width: 160)
+                }
+            }
+            PaneSection("Behavior") {
+                // v2 feedback 8 (INTERACTIONS-v2 §7): the › button, ⌘N and the sidebar's list renames are the same in both.
+                PaneRow("Edit tasks", description: model.taskEditing == .detail
+                        ? "Double-click or Return opens a task in the detail pane."
+                        : "Double-click or Return renames a task in its row.") {
+                    Picker("Edit tasks", selection: $model.taskEditing) {
+                        Text("Open in detail pane").tag(AppModel.TaskEditing.detail)
+                        Text("Rename in the list").tag(AppModel.TaskEditing.inline)
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .fixedSize()
                 }
             }
             PaneSection("Data") {
