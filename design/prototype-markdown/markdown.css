@@ -1,6 +1,6 @@
 /* Tasks · Markdown notes (design/MARKDOWN.md). Loaded after tasks-v2.css; only new rules live here.
    The notes are one editable view of their Markdown source: the text is the source, styling is laid over it, and
-   the marks (** _ ` # > ```) are kept in the text and shown or hidden per the Notes choice on the strip. */
+   the marks (** _ ` # > ```) are kept in the text and shown only around the caret. */
 
 /* ---------- The editor: 13/19, the same place reading or editing ---------- */
 .tk .mded { position: relative; flex: 1; min-height: 120px; font: 13px/19px var(--font); color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4;
@@ -16,17 +16,11 @@
 .tk .mded .s-a { color: var(--accent-text); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px;
   text-decoration-color: color-mix(in srgb, var(--accent-text) 40%, transparent); cursor: pointer; transition: text-decoration-color var(--hover-out); }
 .tk .mded .s-a:hover, .tk .mded .s-a.hov { text-decoration-color: var(--accent-text); transition: text-decoration-color var(--hover-in); }
-/* ⌘-click variant: a link is text until ⌘ is held. */
-.tk .mded.links-cmd .s-a { cursor: text; }
-.tk .mded.links-cmd .s-a:hover { text-decoration-color: color-mix(in srgb, var(--accent-text) 40%, transparent); }
-.tk.meta .mded.links-cmd .s-a { cursor: pointer; }
-.tk.meta .mded.links-cmd .s-a:hover, .tk .mded.links-cmd .s-a.hov { text-decoration-color: var(--accent-text); }
 /* Marks: ink-quaternary, regular, fading in over `icon` when they appear at the caret. Hidden ones keep their text in
    the DOM (display: none) so offsets map 1:1. */
 .tk .mded .mk { color: var(--ink-q); font-weight: 400; font-style: normal; text-decoration: none; animation: tk-fade-in 100ms cubic-bezier(0, 0, 0.2, 1) both; }
 .tk .mded .mk.m-c { font: 12px/16px var(--mono); }
 .tk .mded .mk.hid { display: none; }
-.tk .mded.md-faint .mk { animation: none; }
 
 /* ---------- Headings: two levels. # is 14/20 semibold, ## and deeper 13/19 semibold; a little air above. ---------- */
 .tk .ml.h1 { font-size: 14px; line-height: 20px; font-weight: 600; min-height: 20px; }
@@ -40,8 +34,8 @@
 .tk .ml .dec.dot.l1::before { background: transparent; box-shadow: inset 0 0 0 1.25px var(--ink-2); }
 .tk .ml .dec.num { width: 22px; margin-left: -4px; text-align: right; font-variant-numeric: tabular-nums; }
 
-/* Checklist boxes. Square (default): 12pt, radius 3.5, the task checkbox's ring at 1.25; checked fills ink-tertiary,
-   so the task's own blue box stays the one strong mark. Round: a 14pt copy of the task checkbox. */
+/* Checklist boxes: 12pt squares, radius 3.5, the task checkbox's ring at 1.25; checked fills ink-tertiary, so the
+   task's own round blue box stays the one strong mark. */
 .tk .ml .nbox { position: absolute; top: 3.5px; width: 12px; height: 12px; margin-left: 2px; padding: 0; border-radius: 3.5px; box-shadow: inset 0 0 0 1.25px var(--line-field); color: transparent;
   display: grid; place-items: center; user-select: none; -webkit-user-select: none;
   transition: box-shadow var(--hover-out), background-color 160ms ease-out, transform var(--dur-snappy) var(--ease-snappy); }
@@ -53,10 +47,6 @@
 .tk .ml .nbox.on { background: var(--ink-3); box-shadow: inset 0 0 0 1.25px var(--ink-3); color: var(--on-accent); }
 .tk .ml .nbox.on .ck path { stroke-dashoffset: 0; }
 .tk .ml .nbox.pop { animation: tk-pop var(--dur-snappy) var(--ease-snappy); }
-.tk .chk-round .ml .nbox { top: 2.5px; width: 14px; height: 14px; margin-left: 1px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--line-field); }
-.tk .chk-round .ml .nbox:hover { box-shadow: inset 0 0 0 1.5px var(--ink-2); }
-.tk .chk-round .ml .nbox.on { background: var(--accent); box-shadow: inset 0 0 0 1.5px var(--accent); }
-.tk .chk-round .ml .nbox .ck { width: 10px; height: 10px; }
 /* A checked item reads like a completed task: ink-tertiary, struck through in ink-quaternary. */
 .tk .ml.done { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-q); transition: color 200ms ease-out; }
 .tk .ml.done .s-a { color: var(--ink-3); }
@@ -74,21 +64,17 @@
 .tk .ml.cb.fence { color: var(--ink-q); }
 .tk .ml.cb.fence.gone { display: none; }
 
-/* ---------- Raw while editing (variant C): every line plain, as typed ---------- */
-.tk .mded.raw .ml { padding: 0 !important; margin: 0 !important; background: none !important; font: inherit !important; color: var(--ink) !important; text-decoration: none !important; }
-.tk .mded.raw .ml::after { display: none; }
-
-/* ---------- Rows: the notes hint (Rows on the strip) ---------- */
-.tk .row .nex { color: var(--ink-3); margin-left: 8px; }
-.tk .row.done .nex { display: none; }
-.tk .nglyph { width: 14px; height: 18px; display: grid; place-items: center; color: var(--ink-q); }
-.tk .ncount { height: 18px; display: inline-flex; align-items: center; gap: 4px; color: var(--ink-3); font: 500 11px/14px var(--font); font-variant-numeric: tabular-nums; }
+/* ---------- Rows: the notes hint, right after the title ----------
+   The title and its hint share the title's slot (.ttw, 10 after the checkbox); the chips stay at the right. The title
+   shrinks first and fades its last 24pt only when it's cut off (data-clip, set by markClippedTitles), so the hint is
+   always 6 after the visible text. */
+.tk .row .ttw { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; margin-left: 10px; }
+.tk .row .ttw .tt { flex: 0 1 auto; margin-left: 0; -webkit-mask-image: none; mask-image: none; }
+.tk .row .ttw .tt[data-clip] { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent); }
+.tk .nglyph { flex: none; width: 14px; height: 18px; display: grid; place-items: center; color: var(--ink-q); }
+.tk .ncount { flex: none; height: 18px; display: inline-flex; align-items: center; gap: 4px; color: var(--ink-3); font: 500 11px/14px var(--font); font-variant-numeric: tabular-nums; }
 .tk .ncount.all { color: var(--ink-q); }
-
-/* ---------- The link popover (⌘K): the date popover's field and footer, 300 wide ---------- */
-.tk .linkpop { width: 300px; }
-.tk .linkpop .pvt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
-.tk .linkpop .btn { height: 20px; padding: 0 9px; font-size: 11px; }
+.tk .row.done .nglyph, .tk .row.done .ncount { color: var(--ink-q); }
 
 /* Long notes: the notes take their full height (never shrink to the pane), so the footer follows the last line and
    the whole body scrolls as one, title and dates included. */

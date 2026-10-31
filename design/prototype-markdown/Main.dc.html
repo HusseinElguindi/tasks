@@ -79,11 +79,9 @@ body{margin:0}
 <div class="{{r.cls}}" style="{{r.style}}" data-id="{{r.id}}" onPointerDown="{{onRowDown}}" onPointerMove="{{onRowMove}}" onPointerUp="{{onRowUp}}" onPointerCancel="{{onRowUp}}" onDoubleClick="{{onRowDbl}}" onContextMenu="{{onRowCtx}}">
 <button class="{{r.checkCls}}" type="button" data-id="{{r.id}}" aria-label="{{r.checkLabel}}" onPointerDown="{{stopPD}}" onClick="{{onCheck}}"><svg class="ck" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.8 8.4l2.7 2.7 5.7-6.2"></path></svg></button>
 <sc-if value="{{r.editing}}"><input class="ri" data-id="{{r.id}}" value="{{r.editText}}" placeholder="New Task" spellCheck="false" autoFocus="{{r.autoFocus}}" aria-label="Task title" onChange="{{onEditChange}}" onKeyDown="{{onEditKey}}" onBlur="{{onEditBlur}}" onFocus="{{onEditFocus}}" onPointerDown="{{stopPD}}"></sc-if>
-<sc-if value="{{r.notEditing}}"><span class="{{r.titleCls}}">{{r.title}}<sc-if value="{{r.nEx}}"><span class="nex">{{r.nEx}}</span></sc-if></span></sc-if>
+<sc-if value="{{r.notEditing}}"><span class="ttw"><span class="{{r.titleCls}}">{{r.title}}</span><sc-if value="{{r.nGlyph}}"><span class="nglyph" role="img" aria-label="Has notes"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M3.5 8h9M3.5 11.5h5.5"></path></svg></span></sc-if><sc-if value="{{r.nCount}}"><span class="{{r.nCountCls}}" role="img" aria-label="{{r.nCountLabel}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="3"></rect><path d="M5.4 8.2l1.8 1.8 3.4-3.7"></path></svg>{{r.nCountText}}</span></sc-if></span></sc-if>
 <sc-if value="{{r.hasWhere}}"><span class="where">{{r.where}}</span></sc-if>
 <span class="chips">
-<sc-if value="{{r.nGlyph}}"><span class="nglyph" role="img" aria-label="Has notes"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M3.5 8h9M3.5 11.5h5.5"></path></svg></span></sc-if>
-<sc-if value="{{r.nCount}}"><span class="{{r.nCountCls}}" role="img" aria-label="{{r.nCountLabel}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="3"></rect><path d="M5.4 8.2l1.8 1.8 3.4-3.7"></path></svg>{{r.nCountText}}</span></sc-if>
 <sc-for list="{{r.chips}}" as="c" hint-placeholder-count="0">
 <button class="{{c.cls}}" type="button" data-id="{{r.id}}" data-field="{{c.field}}" onPointerDown="{{stopPD}}" onClick="{{onChip}}"><sc-if value="{{c.cal}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg></sc-if><sc-if value="{{c.flag}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 14V2.5M4 3h7.5L10 5.75 11.5 8.5H4"></path></svg></sc-if>{{c.text}}</button>
 </sc-for>
@@ -210,20 +208,14 @@ body{margin:0}
 </div>
 </sc-if>
 
-<sc-if value="{{lk.show}}">
-<div class="picker linkpop" style="{{lk.style}}" role="dialog" aria-label="Link" onMouseDown="{{onLinkPopDown}}">
-<label class="pf"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.8 9.2a2.6 2.6 0 0 0 3.7 0l2-2a2.6 2.6 0 0 0-3.7-3.7l-.8.8M9.2 6.8a2.6 2.6 0 0 0-3.7 0l-2 2a2.6 2.6 0 0 0 3.7 3.7l.8-.8"></path></svg><input value="{{lk.url}}" placeholder="Paste or type a link" aria-label="Link" spellCheck="false" autoFocus="{{lk.autoFocus}}" ref="{{linkInputRef}}" onChange="{{onLinkText}}" onKeyDown="{{onLinkKey}}"></label>
-<div class="pv"><span class="{{lk.labelCls}}">{{lk.label}}</span><sc-if value="{{lk.existing}}"><button class="btn" type="button" onClick="{{onLinkRemove}}">Remove Link</button></sc-if><span class="kbd">↩</span></div>
-</div>
-</sc-if>
-
 <sc-if value="{{tip.show}}"><div class="tip" style="{{tip.style}}" role="tooltip">{{tip.text}}<sc-if value="{{tip.hasKeys}}"><span class="tk2">{{tip.keys}}</span></sc-if></div></sc-if>
 </div>
 
 <sc-if value="{{stage.show}}">
 <div class="stage" aria-label="Prototype controls">
 <span class="sl">Prototype</span>
-<span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Notes</span><span class="seg"><sc-for list="{{stage.md}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Checklists</span><span class="seg"><sc-for list="{{stage.chk}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Rows</span><span class="seg"><sc-for list="{{stage.rows}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Links</span><span class="seg"><sc-for list="{{stage.links}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
+<span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Edit tasks</span><span class="seg"><sc-for list="{{stage.editTasks}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
+<span class="sn">The browser keeps ⌘N, ⌘T and ⌘1–9, so ⌥N, ⌥T and ⌃1–9 also work here.</span>
 <span style="flex: 1;"></span>
 <button class="lnk" type="button" data-k="reset" data-v="1" onClick="{{onStage}}">Reset</button>
 <button class="lnk" type="button" data-k="keys" data-v="1" data-keys-toggle="1" onClick="{{onStage}}">Keys ?</button>
@@ -244,10 +236,9 @@ body{margin:0}
 <div class="kr"><span class="kk">⌘⌫</span><span>Delete (Undo in the notice, or ⌘Z)</span></div>
 <div class="kh">Notes</div>
 <div class="kr"><span class="kk">⌘B · ⌘I</span><span>Bold, italic: the selection, or the word at the caret. Again to remove.</span></div>
-<div class="kr"><span class="kk">⌘K</span><span>Link the selection, or edit the link at the caret</span></div>
 <div class="kr"><span class="kk">↩ · ⇧↩</span><span>Next list item (Return on an empty one ends the list) · a plain line break</span></div>
 <div class="kr"><span class="kk">Tab · ⇧Tab</span><span>Indent or outdent a list item</span></div>
-<div class="kr"><span class="kk">⌥⇧⌘V</span><span>Paste as plain text (rich text pastes as Markdown)</span></div>
+<div class="kr"><span class="kk">⌥⇧⌘V</span><span>Paste as plain text (rich text pastes as Markdown; a link pasted over text links it)</span></div>
 <div class="kr"><span class="kk">Esc · ⌘↩</span><span>Done; the notes keep what's typed</span></div>
 <div class="kh">Moving around</div>
 <div class="kr"><span class="kk">↑ ↓ · ⇧ · ⌘-click</span><span>Select, extend, add to the selection</span></div>
@@ -261,7 +252,7 @@ body{margin:0}
 </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"pick":{"editor":null,"default":"Review CS 489"},"caret":{"editor":null,"default":""},"md":{"editor":"enum","options":["reveal","faint","raw"],"default":"reveal"},"chk":{"editor":"enum","options":["square","round"],"default":"square"},"rows":{"editor":"enum","options":["glyph","excerpt","none"],"default":"glyph"},"links":{"editor":"enum","options":["click","cmd"],"default":"click"},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"pick":{"editor":null,"default":"Review CS 489"},"caret":{"editor":null,"default":""},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
 // ---------- Calendar dates: "YYYY-MM-DD" strings, never instants (SPEC §2). ----------
 const DAY_MS = 86400000;
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -731,15 +722,14 @@ class Component extends DCLogic {
       pins: {}, pops: {},
       cmdHints: false, keysOpen: false,
       noAnim: true,
-      // Markdown notes: the strip's choices (props set a board's), the link popover, a checklist box's pop.
-      md: props.md || 'reveal', chk: props.chk || 'square', rows: props.rows || 'glyph', links: props.links || 'click',
-      linkPop: null, boxPop: null, hoverLink: null, meta: false,
+      // Markdown notes: a checklist box's pop; a board's hovered link.
+      boxPop: null, hoverLink: null,
     };
     const pickName = props.pick ?? 'Review CS 489';   // the Main board opens on the note with every kind of Markdown
     const pick = pickName && pickName !== 'none' ? seed.tasks.find((t) => t.title.startsWith(pickName)) : null;
     if (pick) { this.state.sel = [pick.id]; this.state.anchor = pick.id; this.state.detail = 'open'; this.state.focus = 'detail'; }
     this.undoStack = []; this.redoStack = [];
-    this.rootRef = { current: null }; this.linkInputRef = { current: null }; this.winRef = { current: null };
+    this.rootRef = { current: null }; this.winRef = { current: null };
     this.listScrollRef = { current: null }; this.sbScrollRef = { current: null }; this.liftRef = { current: null };
     this.prev = null; this.leaving = new Map(); this.entering = new Map();
     this.typeBuf = ''; this.typeAt = 0;
@@ -759,12 +749,13 @@ class Component extends DCLogic {
     setTimeout(() => this.setState({ noAnim: false }), 60);
     if (this.props.demo === 'picker') setTimeout(() => this.demoPicker(), 250);
     if (this.props.demo === 'add') setTimeout(() => this.demoAdd(), 250);
-    if (/^(notes|linkpop|long|hover)$/.test(this.props.demo || '')) setTimeout(() => this.demoNotes(this.props.demo), 200);
+    if (/^(notes|long|hover)$/.test(this.props.demo || '')) setTimeout(() => this.demoNotes(this.props.demo), 200);
+    this.markClippedTitles();
     document.addEventListener('selectionchange', this.onDocSel);
     document.addEventListener('mouseup', this.onDocUp);
   }
   // Boards that start part-way through: the caret in the notes (demo notes: at props.caret, a piece of the text, and
-  // its | marks the spot), the link popover open, a long note scrolled, a link hovered.
+  // its | marks the spot), a long note scrolled, a link hovered.
   demoNotes(kind) {
     const id = this.detailTaskId(), t = this.task(id);
     if (!t) return;
@@ -782,16 +773,16 @@ class Component extends DCLogic {
       const link = ps.find((p) => p.href && p.a <= at && at <= p.a + p.s.length) || ps.find((p) => p.href);
       if (!link) return;
       this.setState({ hoverLink: link.a });
-      setTimeout(() => { const el = this.notesEl && this.notesEl.querySelector('[data-a="' + link.a + '"]'); if (el) { const r = this.rectIn(el); const { w } = this.winSize(); this.setState({ tip: { text: link.href.replace(/^https?:\/\/(www\.)?/, ''), keys: this.state.links === 'cmd' ? '⌘-click to open' : '', x: clamp(r.left + r.width / 2 - 60, 6, w - 160), y: r.bottom + 6 } }); } }, 60);
+      setTimeout(() => { const el = this.notesEl && this.notesEl.querySelector('[data-a="' + link.a + '"]'); if (el) { const r = this.rectIn(el); const { w } = this.winSize(); this.setState({ tip: { text: link.href.replace(/^https?:\/\/(www\.)?/, ''), keys: '', x: clamp(r.left + r.width / 2 - 60, 6, w - 160), y: r.bottom + 6 } }); } }, 60);
       return;
     }
     this.setState({ edit: { kind: 'notes', id, text: t.notes, orig: t.notes, sel: [at, at], demo: true }, focus: 'detail' });
     this.nUndo = []; this.nRedo = [];
-    if (kind === 'linkpop') setTimeout(() => this.nLinkPop(true), 60);
   }
   componentWillUnmount() { document.removeEventListener('selectionchange', this.onDocSel); document.removeEventListener('mouseup', this.onDocUp); clearTimeout(this.boxPopTimer); for (const k of ['settleTimer', 'noticeTimer', 'tipTimer', 'cmdTimer', 'cleanTimer', 'detailTimer', 'animTimer', 'scrollTimer']) clearTimeout(this[k]); }
   componentDidUpdate() {
     this.nAfterRender();
+    this.markClippedTitles();
     if (this.scrollToId) { const id = this.scrollToId; this.scrollToId = null; this.ensureVisible(id); }
     if (this.wantTitle) {
       // A new task's title takes the keys once the detail pane is on screen (autoFocus would miss a pane that was already open).
@@ -1578,7 +1569,6 @@ class Component extends DCLogic {
     if (s.keysOpen && !(t.closest && (t.closest('.keys') || t.closest('[data-keys-toggle]')))) this.setState({ keysOpen: false });
     if (s.menu && !(t.closest && t.closest('.menu'))) { this.setState({ menu: null }); this.swallow = true; e.stopPropagation(); return; }
     if (s.picker && !(t.closest && t.closest('.picker'))) { this.setState({ picker: null }); this.swallow = true; e.stopPropagation(); this.focusRoot(); return; }
-    if (s.linkPop && !(t.closest && t.closest('.linkpop'))) { this.setState({ linkPop: null }); if (!(t.closest && t.closest('.mded'))) { this.nFocusWant = false; this.endEdit(); } }
     if (s.tip) this.setState({ tip: null });
     clearTimeout(this.tipTimer);
     // An edit whose field doesn't have focus (a demo row, or focus lost elsewhere) ends on the next press outside it.
@@ -1588,7 +1578,6 @@ class Component extends DCLogic {
   onRootContextMenu = (e) => { e.preventDefault(); };
 
   onKeyUp = (e) => {
-    if (e.key === 'Meta' && this.state.meta) this.setState({ meta: false });
     if (e.key === 'Meta' || e.key === 'Control') { clearTimeout(this.cmdTimer); if (this.state.cmdHints) this.setState({ cmdHints: false }); }
   };
 
@@ -1596,7 +1585,6 @@ class Component extends DCLogic {
     const s = this.state, k = e.key, meta = e.metaKey, ctrl = e.ctrlKey, alt = e.altKey, shift = e.shiftKey;
     const code = e.code || '';
     let inText = isTextTarget(e.target);
-    if (k === 'Meta' && !s.meta) this.setState({ meta: true });
     if (k === 'Meta') { clearTimeout(this.cmdTimer); if (!e.repeat) this.cmdTimer = setTimeout(() => this.setState({ cmdHints: true }), HINT_HOLD_MS); return; }
     if (s.cmdHints || this.cmdTimer) { clearTimeout(this.cmdTimer); this.cmdTimer = null; if (s.cmdHints) this.setState({ cmdHints: false }); }
 
@@ -1887,25 +1875,36 @@ class Component extends DCLogic {
     if ((e.metaKey || e.ctrlKey) && (k === 'z' || k === 'Z')) e.stopPropagation();
   };
   onDTitleBlur = () => { const ed = this.state.edit; if (ed && ed.kind === 'dtitle') this.commitEdit(); };
-  // A row's hint of its notes (Rows on the strip): glyph shows a notes glyph, or the checklist's count when there is
-  // one; excerpt shows the first line after the title. Summaries are cached per notes string (the app keeps them on
-  // the task model, computed when the notes change).
-  rowNotes(t, done) {
-    const r = { nGlyph: false, nCount: false, nEx: '' };
-    if (!t.notes || this.state.rows === 'none') return r;
+  // A row's hint of its notes, right after its title: a notes glyph, or the checklist's count when there is one.
+  // Summaries are cached per notes string (the app keeps them on the task model, computed when the notes change).
+  rowNotes(t) {
+    const r = { nGlyph: false, nCount: false };
+    if (!t.notes) return r;
     if (!this.sumCache) this.sumCache = new Map();
     let m = this.sumCache.get(t.notes);
     if (!m) { m = mdSummary(t.notes); this.sumCache.set(t.notes, m); }
     if (!m.has) return r;
-    if (this.state.rows === 'excerpt') { r.nEx = done ? '' : m.first; return r; }
     if (m.total) { r.nCount = true; r.nCountText = m.done + '/' + m.total; r.nCountCls = 'ncount' + (m.done === m.total ? ' all' : ''); r.nCountLabel = m.done + ' of ' + m.total + ' checked'; }
     else r.nGlyph = true;
     return r;
   }
+  // A title fades its last 24pt only when it's cut off, so the hint can sit right after a title that fits. The
+  // runtime writes the rows a frame after componentDidUpdate, hence the frame's wait. (SwiftUI: measure the title, or
+  // use ViewThatFits, and apply the mask only when it's truncated.)
+  markClippedTitles() {
+    cancelAnimationFrame(this.clipRaf);
+    this.clipRaf = requestAnimationFrame(() => {
+      const root = this.rootRef.current;
+      if (!root) return;
+      for (const el of root.querySelectorAll('.row .ttw .tt')) {
+        const clip = el.scrollWidth > el.clientWidth + 0.5;
+        if (clip !== el.hasAttribute('data-clip')) { if (clip) el.setAttribute('data-clip', ''); else el.removeAttribute('data-clip'); }
+      }
+    });
+  }
   // ---------- Notes: the Markdown editor (design/MARKDOWN.md) ----------
   // One view of the source, always editable in place. Focusing it starts an editing session; every key edits the
   // source string; the session commits once, as today (one "Edit Notes" op).
-  mdMode() { return this.state.md || 'reveal'; }
   mdLines(text) { if (!this.mdCache || this.mdCache.text !== text) this.mdCache = { text, lines: mdParseLines(text) }; return this.mdCache.lines; }
   startNotes = (sel) => {
     const id = this.detailTaskId();
@@ -2112,7 +2111,7 @@ class Component extends DCLogic {
     s = out + seg + t.slice(b);
     if (s.length <= MD_MAX) this.nSet(s, a, a + seg.length, 'fmt');
   }
-  // ⌘K: a small popover for the link's address, under the selection.
+  // A source range's rectangle in window coordinates (keeping the caret in view).
   nRect(a, b) {
     const el = this.notesEl;
     if (!el || !this.winRef.current) return null;
@@ -2123,45 +2122,6 @@ class Component extends DCLogic {
     const w = this.winRef.current.getBoundingClientRect();
     return { left: rc.left - w.left, right: rc.right - w.left, top: rc.top - w.top, bottom: rc.bottom - w.top };
   }
-  nLinkPop(demo) {
-    const ed = this.nState();
-    if (!ed) return;
-    const [a, b] = demo ? [Math.min(...ed.sel), Math.max(...ed.sel)] : this.nSel(), t = ed.text;
-    const L = mdLineAt(this.mdLines(t), a);
-    const tok = L ? mdLineTokens(L).find((k) => (k.kind === 'a' || k.kind === 'url') && k.ta <= a && b <= k.tb) : null;
-    const pop = tok
-      ? { a: tok.ta, b: tok.tb, kind: tok.kind, text: t.slice(tok.ia, tok.ib), url: tok.href, existing: tok.kind === 'a' }
-      : { a, b, kind: 'new', text: t.slice(a, b), url: MD_URL.test(t.slice(a, b).trim()) ? t.slice(a, b).trim() : '', existing: false };
-    const r = this.nRect(pop.a, pop.b) || { left: 200, bottom: 200, top: 180 };
-    const { w, h } = this.winSize();
-    const x = clamp(r.left - 12, 8, w - 308), below = r.bottom + 6;
-    pop.x = x; pop.y = below + 84 > h - 8 ? r.top - 90 : below; pop.demo = !!demo;
-    this.setState({ linkPop: pop });
-  }
-  nLinkClose(apply, urlOverride) {
-    const p = urlOverride != null ? { ...this.state.linkPop, url: urlOverride } : this.state.linkPop, ed = this.nState();
-    this.setState({ linkPop: null });
-    if (!ed) return;
-    this.nFocusWant = true;
-    if (!apply) { this.forceUpdate(); return; }
-    const t = ed.text, url = mdNormalizeUrl(p.url);
-    const safeUrl = url.replace(/[()\s]/g, encodeURIComponent);
-    let ins;
-    if (p.kind === 'a') ins = url ? '[' + p.text + '](' + safeUrl + ')' : p.text;
-    else if (p.kind === 'url') ins = url || p.text;
-    else if (p.b > p.a) ins = url ? '[' + p.text.replace(/[[\]]/g, '') + '](' + safeUrl + ')' : p.text;
-    else ins = !url ? '' : /^https?:/.test(url) ? url : '[' + url + '](' + safeUrl + ')';
-    const s = t.slice(0, p.a) + ins + t.slice(p.b);
-    if (s.length <= MD_MAX) this.nSet(s, p.a + ins.length, null, 'link');
-  }
-  onLinkText = (e) => { const p = this.state.linkPop; if (p) this.setState({ linkPop: { ...p, url: e.target.value, demo: false } }); };
-  onLinkKey = (e) => {
-    e.stopPropagation();
-    if (e.key === 'Enter') { e.preventDefault(); this.nLinkClose(true); }
-    else if (e.key === 'Escape') { e.preventDefault(); this.nLinkClose(false); }
-  };
-  onLinkRemove = () => { if (this.state.linkPop) this.nLinkClose(true, ''); };
-  onLinkPopDown = (e) => { e.stopPropagation(); };
   onNotesFocus = () => {
     if (this.nRestoring) return;
     const ed = this.state.edit, id = this.detailTaskId();
@@ -2169,19 +2129,17 @@ class Component extends DCLogic {
     this.startNotes(null);
   };
   onNotesBlur = () => {
-    if (this.state.linkPop) return;   // the link popover has the keys; the session goes on
     const ed = this.nState();
     if (ed) this.commitEdit();
   };
   onNotesMouseDown = (e) => {
     const a = e.target.closest && e.target.closest('a.s-a');
-    if (a && (this.state.links !== 'cmd' || e.metaKey || e.ctrlKey)) { e.preventDefault(); return; }   // a link opens on click
+    if (a) { e.preventDefault(); return; }   // a link opens on click and never takes the caret
     if (e.target.closest && e.target.closest('.dec, .nbox')) { e.preventDefault(); return; }   // bullets and boxes never take the caret
     if (e.button === 0) this.nMouseDown = true;
   };
   onNoteLinkClick = (e) => {
     e.preventDefault();
-    if (this.state.links === 'cmd' && !(e.metaKey || e.ctrlKey)) return;   // ⌘-click opens; a plain click placed the caret
     e.stopPropagation();
     this.tipOut();
     this.showNotice('Opens ' + e.currentTarget.getAttribute('href'), false);
@@ -2241,7 +2199,8 @@ class Component extends DCLogic {
     this.commit(t.notes[at] === ' ' ? 'Check Item' : 'Uncheck Item', { tasks: this.state.tasks.map((x) => (x.id === t.id ? { ...x, notes: flip(x.notes) } : x)), boxPop: at });
   };
   // Notes. Esc and ⌘Return are done and keep the text, handing the keys back to the list. Tab and ⇧Tab move list items;
-  // elsewhere Tab is a tab character and ⇧Tab goes back to the title. ⌘B, ⌘I, ⌘K and ⌘Z belong to the notes here.
+  // elsewhere Tab is a tab character and ⇧Tab goes back to the title. ⌘B, ⌘I and ⌘Z belong to the notes here; ⌘K still
+  // completes the task (the root's menu-command rule ends the session first).
   onNotesKey = (e) => {
     const k = e.key, cmd = e.metaKey || e.ctrlKey, letter = (e.code || '').startsWith('Key') ? e.code.slice(3).toLowerCase() : k.toLowerCase();
     if (!this.nState()) return;
@@ -2254,7 +2213,6 @@ class Component extends DCLogic {
     }
     if (cmd && e.altKey && e.shiftKey && letter === 'v') { this.nPlainPaste = true; e.stopPropagation(); return; }
     if (cmd && !e.altKey && !e.shiftKey && (letter === 'b' || letter === 'i')) { e.preventDefault(); e.stopPropagation(); this.nWrap(letter); return; }
-    if (cmd && !e.altKey && !e.shiftKey && letter === 'k') { e.preventDefault(); e.stopPropagation(); this.nLinkPop(); return; }
     if (cmd && letter === 'z') { e.preventDefault(); e.stopPropagation(); this.nUndoStep(e.shiftKey); return; }
   };
   // After each render: give the notes the keys if asked, put the caret back on the same source offsets, keep it in view.
@@ -2273,7 +2231,7 @@ class Component extends DCLogic {
     step(0);
   }
   nRestore(el, ed) {
-    if (this.nFocusWant && !this.state.linkPop) {
+    if (this.nFocusWant) {
       this.nFocusWant = false;
       if (document.activeElement !== el) { this.nRestoring = true; el.focus({ preventScroll: true }); this.nRestoring = false; }
     }
@@ -2294,32 +2252,31 @@ class Component extends DCLogic {
       }
     }
   }
-  // The view of the source. reveal: marks show only around the caret; faint: always, faint; raw: plain text while editing.
+  // The view of the source: rendered, with the marks shown only around the caret (the token it touches, its line's
+  // # or >, the fences of its code block).
   mdView(text, o) {
-    const lines = this.mdLines(text), mode = o.mode;
+    const lines = this.mdLines(text);
     const sel = o.focused && o.sel ? [Math.min(...o.sel), Math.max(...o.sel)] : null;
     const touch = (a, b) => !!sel && sel[0] <= b && sel[1] >= a;
-    const faint = mode === 'faint', rv = (a, b) => faint || touch(a, b);
-    const raw = mode === 'raw' && o.focused;
+    const rv = touch;
     const out = [], run = [];
     lines.forEach((L, idx) => {
       const v = { a: L.a, b: L.b, cs: L.a, cls: 'ml', style: '', dot: false, num: false, box: false, ps: [] };
       out.push(v);
-      if (raw) { if (L.s) v.ps.push({ a: L.a, s: L.s, cls: '', plain: true }); return; }
       const toks = [];
       const inline = (from) => mdInline(L.s.slice(from), L.a + from, rv, v.ps, toks, '');
       const prefix = (show) => { v.ps.push({ a: L.a, s: L.s.slice(0, L.pre), cls: 'mk' + (show ? '' : ' hid') }); v.cs = show ? L.a : L.a + L.pre; };
       if (!MD_LISTY[L.kind]) run.length = 0;
       if (L.kind === 'blank') return;
       if (L.kind === 'p') { inline(0); return; }
-      if (L.kind === 'h1' || L.kind === 'h2') { v.cls += ' ' + L.kind; prefix(faint || touch(L.a, L.b)); inline(L.pre); return; }
+      if (L.kind === 'h1' || L.kind === 'h2') { v.cls += ' ' + L.kind; prefix(touch(L.a, L.b)); inline(L.pre); return; }
       if (L.kind === 'quote') {
         const up = lines[idx - 1], dn = lines[idx + 1];
         v.cls += ' q' + (up && up.kind === 'quote' ? '' : ' q-first') + (dn && dn.kind === 'quote' ? '' : ' q-last');
-        prefix(faint || touch(L.a, L.b)); inline(L.pre); return;
+        prefix(touch(L.a, L.b)); inline(L.pre); return;
       }
       if (L.kind === 'code' || L.kind === 'fence') {
-        const B = L.blk, show = faint || touch(B.a, B.b);
+        const B = L.blk, show = touch(B.a, B.b);
         const vis = (X) => X && X.blk === B && (X.kind === 'code' || show);
         if (L.kind === 'fence' && !show) { v.cls += ' cb fence gone'; v.ps.push({ a: L.a, s: L.s, cls: 'mk hid', plain: true }); return; }
         v.cls += ' cb' + (L.kind === 'fence' ? ' fence' : '') + (vis(lines[idx - 1]) ? '' : ' cb-first') + (vis(lines[idx + 1]) ? '' : ' cb-last');
@@ -2347,7 +2304,7 @@ class Component extends DCLogic {
       if (p.href) {
         p.cls += (this.state.hoverLink === p.a ? ' hov' : '');
         p.tip = p.href.replace(/^https?:\/\/(www\.)?/, '').replace(/^mailto:/, '');
-        p.tipKeys = this.state.links === 'cmd' ? '⌘-click to open' : '';
+        p.tipKeys = '';
       }
     }
     return out;
@@ -2480,7 +2437,6 @@ class Component extends DCLogic {
   onStage = (e) => {
     const k = e.currentTarget.dataset.k, v = e.currentTarget.dataset.v;
     if (k === 'theme') this.instant({ theme: v }); else if (k === 'editTasks') this.setEditTasks(v);
-    else if (k === 'md' || k === 'chk' || k === 'rows' || k === 'links') { if (k === 'md') this.endEdit(); this.setState({ [k]: v, hoverLink: null }); }
     else if (k === 'reset') { const seed = makeSeed(this.today); this.undoStack = []; this.redoStack = []; this.instant({ lists: seed.lists, tasks: seed.tasks, sel: [], edit: null, picker: null, menu: null, pins: {}, route: this.routeFromProp(this.props.start, seed.lists), detail: 'closed', notice: null, sbVisible: true }); }
     else if (k === 'keys') this.setState({ keysOpen: !this.state.keysOpen });
     this.focusRoot();
@@ -2583,7 +2539,7 @@ class Component extends DCLogic {
         checkCls: 'check' + (done ? ' on' : '') + (s.pops[t.id] ? ' pop' : '') + (t.draft ? ' new' : ''),
         checkLabel: (done ? 'Mark not done: ' : 'Complete: ') + (t.title || 'New Task'),
         chips, where, hasWhere: !!where,
-        ...this.rowNotes(t, done),
+        ...this.rowNotes(t),
       };
     });
 
@@ -2659,10 +2615,10 @@ class Component extends DCLogic {
       dpo.titleValue = dEd ? ed.text : one.title;
       dpo.checkCls = 'check' + (one.completedAt != null ? ' on' : '') + (s.pops[one.id] ? ' pop' : '') + (one.draft ? ' new' : '') + (inert ? ' inert' : '');
       const nEd = ed && ed.kind === 'notes' && ed.id === one.id;
-      const ntext = nEd ? ed.text : one.notes, mode = this.mdMode();
+      const ntext = nEd ? ed.text : one.notes;
       dpo.nt = {
-        lines: this.mdView(ntext, { mode, focused: !!nEd, sel: nEd ? ed.sel : null }),
-        cls: 'mded md-' + mode + ' chk-' + s.chk + ' links-' + s.links + (ntext ? '' : ' empty') + (nEd ? ' editing' : '') + (nEd && mode === 'raw' ? ' raw' : ''),
+        lines: this.mdView(ntext, { focused: !!nEd, sel: nEd ? ed.sel : null }),
+        cls: 'mded' + (ntext ? '' : ' empty') + (nEd ? ' editing' : ''),
         ce: inert ? 'false' : 'true', rev: nEd ? ed.rev || 0 : -1,
       };
       dpo.meta = 'Created ' + md(ymdOf(new Date(one.createdAt))) + (one.completedAt ? ' · Completed ' + md(ymdOf(new Date(one.completedAt))) : '') + (ntext.length >= MD_NEAR ? ' · ' + ntext.length.toLocaleString('en-US') + ' / 20,000' : '');
@@ -2754,25 +2710,17 @@ class Component extends DCLogic {
       };
     }
 
-    const lkp = s.linkPop;
-    const lkv = lkp ? {
-      show: true, style: 'left: ' + lkp.x + 'px; top: ' + lkp.y + 'px', url: lkp.url, autoFocus: !lkp.demo, existing: lkp.existing,
-      label: lkp.kind === 'new' && !lkp.text ? 'Inserts the link at the caret' : (lkp.existing || lkp.kind === 'url' ? 'Edits ' : 'Links ') + '“' + (lkp.text.length > 30 ? lkp.text.slice(0, 29) + '…' : lkp.text) + '”',
-      labelCls: 'pvt',
-    } : { show: false };
     const notice = s.notice ? { show: true, cls: 'notice' + (s.notice.out ? ' out' : ''), text: s.notice.text, undo: s.notice.undo } : { show: false };
     const tipv = s.tip ? { show: true, style: 'left: ' + s.tip.x + 'px; top: ' + s.tip.y + 'px', text: s.tip.text, keys: s.tip.keys, hasKeys: !!s.tip.keys } : { show: false };
 
     const seg = (k, opts) => opts.map(([v, label]) => ({ k, v, label, cls: s[k] === v ? 'on' : '' }));
     const stage = { show: stageOn,
       theme: seg('theme', [['dark', 'Dark'], ['light', 'Light']]),
-      md: seg('md', [['reveal', 'Live'], ['faint', 'Faint marks'], ['raw', 'Raw while editing']]), chk: seg('chk', [['square', 'Square'], ['round', 'Round']]),
-      rows: seg('rows', [['glyph', 'Glyph'], ['excerpt', 'Excerpt'], ['none', 'None']]), links: seg('links', [['click', 'Click'], ['cmd', '⌘-click']]),
       editTasks: [['detail', 'Open in detail pane'], ['list', 'Rename in the list']].map(([v, label]) => ({ k: 'editTasks', v, label, cls: this.editTasksMode() === v ? 'on' : '' })),
     };
 
     return {
-      rootCls: 'tk ' + s.theme + (s.meta ? ' meta' : '') + (s.noAnim ? ' no-anim' : '') + (s.detail === 'open' || s.detail === 'opening' ? ' detail-open' : '') + (s.resize ? ' resizing' : '') + (Date.now() - (this.springbackAt || 0) < DETAIL_CLOSE_MS ? ' springback' : ''),
+      rootCls: 'tk ' + s.theme + (s.noAnim ? ' no-anim' : '') + (s.detail === 'open' || s.detail === 'opening' ? ' detail-open' : '') + (s.resize ? ' resizing' : '') + (Date.now() - (this.springbackAt || 0) < DETAIL_CLOSE_MS ? ' springback' : ''),
       rootStyle: 'width: ' + w + 'px; height: ' + (h + (stageOn ? 44 : 0)) + 'px',
       winStyle: 'height: ' + h + 'px',
       rootRef: this.rootRef, winRef: this.winRef, listScrollRef: this.listScrollRef, sbScrollRef: this.sbScrollRef, liftRef: this.liftRef,
@@ -2787,7 +2735,6 @@ class Component extends DCLogic {
       onDetailDown: this.onDetailDown, onDTitleFocus: this.onDTitleFocus, onDTitleChange: this.onDTitleChange, onDTitleKey: this.onDTitleKey, onDTitleBlur: this.onDTitleBlur,
       onNotesKey: this.onNotesKey, onNotesBlur: this.onNotesBlur, onNotesFocus: this.onNotesFocus, notesRefCb: this.notesRefCb, onNotesPaste: this.onNotesPaste, onNotesCopy: this.onNotesCopy, onNotesCut: this.onNotesCut,
       onNotesMouseDown: this.onNotesMouseDown, onNotesNoDrag: this.onNotesNoDrag, onBoxClick: this.onBoxClick, onNoteLinkClick: this.onNoteLinkClick,
-      lk: lkv, linkInputRef: this.linkInputRef, onLinkText: this.onLinkText, onLinkKey: this.onLinkKey, onLinkRemove: this.onLinkRemove, onLinkPopDown: this.onLinkPopDown,
       onDCheck: this.onDCheck, onDChip: this.onDChip, onDClear: this.onDClear, onDList: this.onDList, onDDelete: this.onDDelete, onDClose: this.onDClose, onLinkClick: this.onLinkClick,
       onSidebarDown: this.onSidebarDown, onSidebarCtx: this.onSidebarCtx, onSbRowDown: this.onSbRowDown, onSbRowMove: this.onSbRowMove, onSbRowUp: this.onSbRowUp, onSbRowDbl: this.onSbRowDbl, onSbRowCtx: this.onSbRowCtx,
       onArchiveLabel: this.onArchiveLabel, onNewListBtn: this.onNewListBtn, onNewTaskBtn: this.onNewTaskBtn, onToggleDetail: this.onToggleDetail, onToggleSidebar: this.onToggleSidebar, onUnarchive: this.onUnarchive,
