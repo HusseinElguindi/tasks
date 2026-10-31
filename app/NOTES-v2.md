@@ -328,6 +328,30 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
     - Not checked: the real key events (the menu's key equivalent from the keyboard, with the app active), and the
       Settings window's server URL field (SwiftUI's own field and undo; typing there writes the shared dev defaults).
 
+15. **Today's Completed folds.** Its label (`GroupLabelView`) gets a heading's chevron: a 22pt `IconButtonLayer` with
+    a 12pt glyph that only rotates, revealed on hover and kept while collapsed, the count after the name while
+    collapsed. Collapsed, the layout leaves the done rows out and records them in `folded` under the label's key, so
+    they fold into it and unfold from it exactly as a heading's tasks do (the label is raised above the rows when it
+    folds). The list's hit test asks the label for its part first, so a press on the chevron (or a list label's +)
+    never does anything else. Space: a click on the label selects it like a heading's row (its fill) and Space folds
+    it; Space on selected done tasks still marks them not done, so it isn't taken over. Collapsing with done tasks
+    selected moves the selection to the label; ↓ and ↑ from the label go to its first task and the row above.
+    `WindowState.todayDoneCollapsed` and, for consistency, a list's Completed row being open (`completedOpen`, which
+    now folds its tasks into the row the same way) are kept in UserDefaults across launches. No other view has a
+    Completed group. Long names in any group label (a list's in Today, a day's date) now stop before the buttons
+    with the title's 24pt end fade instead of running under them.
+    - Checked in-process (`act:donewhere`, `act:trace`): the chevron is 12×12 in its 22pt button on the first render
+      (hidden, pointing down), on the first hover (shown), and after a relaunch while collapsed (shown, pointing
+      right); the chevron collapses and expands it (a click through the list's mouse path); a click on the label then
+      Space collapses and expands it; Space on a done task unchecks it; collapsing with a done task selected leaves
+      the label selected; ↑ from the label selects "Return library books"; it stays collapsed across two relaunches,
+      and a list's opened Completed row stays open. Frame by frame, expanding starts all five done rows at the
+      label's y (406) and spreads them to 438–566 on the `layout` spring as they fade in; collapsing raises them into
+      it as they fade out in 150 ms; the label stays above them (`labelAboveRows`). At the 620pt minimum window, a
+      65-character list name in Today's label ends in the fade short of its +.
+    - Not checked: hover and press looks frame by frame, real pointer and keys with the app active, and VoiceOver on
+      the label (it sets "Completed, collapsed, N" as its accessibility label, unheard).
+
 ## Markdown notes (design/MARKDOWN.md)
 
 Built to the spec and the prototype (`design/prototype-markdown/`); §11 of the spec lists where the build differs.

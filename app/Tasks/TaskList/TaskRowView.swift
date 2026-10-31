@@ -376,18 +376,32 @@ extension CheckLayer {
 // MARK: - Today's group labels (css:131–139, 233–237)
 
 /// A list's name as a group label in a 32pt slot; its + (New Task in School) is revealed on hover. Today's
-/// "Completed" label has no button.
+/// "Completed" label folds instead (v2 feedback 15): a 12pt chevron in a 22pt button, revealed on hover and kept while
+/// collapsed, the done count 8 after the name when collapsed, and the row's fill when it's selected (Space folds it).
+/// The name and a day's date never run under the buttons: cut off, their last 24pt fade out, as a title's do.
 final class GroupLabelView: NSView {
+    enum Part: Equatable { case body, plus, chevron }
+
     private let label = TextLayer()
+    private let labelMask = FadeMask()
     /// A day's date after its name (§22): 400 `ink-quiet`, 6 after the name.
     private let sub = TextLayer()
+    private let subMask = FadeMask()
+    private let count = TextLayer()
+    private let selection = CALayer()
     private var palette = TK.Palette.dark
     private var quiet = false
     private var drop = false
     let plus = IconButtonLayer(.plus, size: 22, glyphSize: 12)
+    /// A 12pt glyph from the first frame in both states: only its rotation changes (as a heading's, §23).
+    let chevron = IconButtonLayer(.chevronRight, size: 22, glyphSize: 12)
     private(set) var key: EntityID = ""
     private(set) var hasPlus = true
+    private(set) var hasChevron = false
+    private(set) var collapsed = false
+    private var chevronDown: Bool?
     private var hovered = false
+    private var hoveredPart: Part?
 
     override var isFlipped: Bool { true }
 
@@ -395,12 +409,16 @@ final class GroupLabelView: NSView {
         super.init(frame: .zero)
         wantsLayer = true
         layerContentsRedrawPolicy = .never
-        layer?.addSublayer(label)
-        layer?.addSublayer(sub)
-        layer?.addSublayer(plus)
-        label.actions = TaskRowView.noActions
-        sub.actions = TaskRowView.noActions
+        selection.cornerRadius = TK.M.rowRadius
+        selection.isHidden = true
+        label.mask = labelMask
+        sub.mask = subMask
+        for l in [selection, label, sub, count, plus, chevron] as [CALayer] {
+            l.actions = TaskRowView.noActions
+            layer?.addSublayer(l)
+        }
         plus.reveal(false, animated: false)
+        chevron.reveal(false, animated: false)
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -410,36 +428,87 @@ final class GroupLabelView: NSView {
         layer?.setScaleDeep(window?.backingScaleFactor ?? 2)
     }
 
+    /// `chevron`: Today's Completed, which folds (`collapsed` shows `count` after the name). `selected`: its fill.
     func configure(key: EntityID, name: String, plus hasPlus: Bool, palette: TK.Palette, width: CGFloat,
-                   sub subText: String? = nil, quiet: Bool = false) {
+                   sub subText: String? = nil, quiet: Bool = false, chevron hasChevron: Bool = false,
+                   collapsed: Bool = false, count n: Int = 0, selected: Bool = false, paneFocused: Bool = true,
+                   animated: Bool = false) {
+        let paletteChanged = palette != self.palette || self.key.isEmpty
         self.key = key
         self.hasPlus = hasPlus
+        self.hasChevron = hasChevron
         self.palette = palette
         self.quiet = quiet
-        let room = max(0, width - 12 - (hasPlus ? 32 : 0))
+        let isCollapsed = hasChevron && collapsed
+        let revealChanged = isCollapsed != self.collapsed
+        self.collapsed = isCollapsed
+        // The buttons' slot: 22 and 5 from the edge, plus 5 before them; with both, the + 2 before the chevron.
+        let buttons: CGFloat = (hasPlus || hasChevron ? 32 : 0) + (hasPlus && hasChevron ? 24 : 0)
+        let countText = isCollapsed && n > 0 ? String(n) : ""
+        let countW = countText.isEmpty ? 0 : TextLayer.width(countText, font: HeadingRowView.countFont) + 8
+        let room = max(0, width - 12 - buttons - countW)
         layer?.setInstant {
             let colors = labelColors
+            // Selected (Today's Completed): the row's fill, in the row's 30pt shape (§5).
+            selection.isHidden = !selected
+            selection.backgroundColor = (paneFocused ? palette.sel : palette.selDim).cgColor
+            selection.frame = CGRect(x: 0, y: 1, width: width, height: TK.M.row)
             label.set(name, font: TK.Font.label, color: colors.name)
+            let full = TextLayer.width(name, font: TK.Font.label)
             // The name takes at most 70% when a date follows it (css:417).
-            let nameW = subText == nil ? room : min(TextLayer.width(name, font: TK.Font.label), room * 0.7)
+            let nameRoom = subText == nil ? room : min(full, room * 0.7)
+            let nameW = min(nameRoom, ceil(full) + 1)
             // 1pt of room past the text, so the clip never takes a glyph's overhang.
             label.place(x: 12, lineTop: 10, lineHeight: 14, width: nameW + 1)
-            label.masksToBounds = true
+            labelMask.update(width: nameW + 1, height: label.bounds.height, fade: full > nameRoom + 0.5 ? TK.M.titleFade : 0)
             if let subText, !subText.isEmpty {
                 sub.isHidden = false
                 sub.set(subText, font: Self.subFont, color: colors.sub)
-                sub.place(x: 12 + nameW + 6, lineTop: 10, lineHeight: 14, width: max(0, room - nameW - 6))
-                sub.masksToBounds = true
+                let subRoom = max(0, room - nameW - 6)
+                let subFull = TextLayer.width(subText, font: Self.subFont)
+                let subW = min(subRoom, ceil(subFull) + 1)
+                sub.place(x: 12 + nameW + 6, lineTop: 10, lineHeight: 14, width: subW + 1)
+                subMask.update(width: subW + 1, height: sub.bounds.height, fade: subFull > subRoom + 0.5 ? TK.M.titleFade : 0)
             } else {
                 sub.isHidden = true
             }
+            count.isHidden = countText.isEmpty
+            count.set(countText, font: HeadingRowView.countFont, color: palette.ink3)
+            count.place(x: 12 + nameW + 8, lineTop: 10, lineHeight: 14, width: countW + 2)
             plus.isHidden = !hasPlus
-            plus.setPalette(palette)
-            plus.position = CGPoint(x: width - 5 - 11, y: 6 + 11)
+            chevron.isHidden = !hasChevron
+            if paletteChanged {
+                plus.setPalette(palette)
+                chevron.setPalette(palette)
+            }
+            chevron.position = CGPoint(x: width - 5 - 11, y: 6 + 11)
+            plus.position = CGPoint(x: width - 5 - 11 - (hasChevron ? 24 : 0), y: 6 + 11)
         }
+        // The chevron points down when open and right when collapsed, turning in 200 ms ease-out.
+        if hasChevron {
+            let down = !isCollapsed
+            if chevronDown != down {
+                let angle = down ? CGFloat.pi / 2 : 0
+                if chevronDown != nil, animated, !TK.CA.reduce {
+                    chevron.glyph.animate("transform.rotation.z", to: angle, TK.CA.chevronT)
+                } else {
+                    chevron.glyph.setInstant { chevron.glyph.setValue(angle, forKeyPath: "transform.rotation.z") }
+                }
+                chevronDown = down
+            }
+            setAccessibilityLabel(name + (isCollapsed ? ", collapsed, \(n)" : ""))
+        }
+        if revealChanged { updateReveal(animated: animated) }
     }
 
     func plusContains(_ p: CGPoint) -> Bool { hasPlus && plus.frame.contains(p) }
+
+    /// The part under a point: the buttons first, whatever their fade, so a press there never selects the label.
+    func part(at p: CGPoint) -> Part {
+        if hasChevron, chevron.frame.contains(p) { return .chevron }
+        if hasPlus, plus.frame.contains(p) { return .plus }
+        return .body
+    }
 
     nonisolated(unsafe) static let subFont = NSFont.systemFont(ofSize: 11, weight: .regular)
 
@@ -471,12 +540,27 @@ final class GroupLabelView: NSView {
         }
     }
 
-    func setHover(_ on: Bool, overPlus: Bool) {
+    func setHover(_ on: Bool, part: Part?) {
         if on != hovered {
             hovered = on
-            plus.reveal(on)
+            updateReveal(animated: true)
         }
-        plus.hovered = on && overPlus
+        let p = on ? part : nil
+        guard p != hoveredPart else { return }
+        hoveredPart = p
+        plus.hovered = p == .plus
+        chevron.hovered = p == .chevron
+    }
+
+    func setPressed(_ part: Part?) {
+        plus.pressed = part == .plus
+        chevron.pressed = part == .chevron
+    }
+
+    /// Hover fades the buttons in on `hoverIn` and out on `hoverOut`; a collapsed label keeps its chevron.
+    private func updateReveal(animated: Bool) {
+        plus.reveal(hovered && hasPlus, animated: animated)
+        chevron.reveal(hasChevron && (hovered || collapsed), animated: animated)
     }
 }
 

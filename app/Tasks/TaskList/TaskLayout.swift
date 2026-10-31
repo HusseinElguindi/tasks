@@ -74,6 +74,15 @@ struct TaskLayout {
     var folded: [EntityID: EntityID] = [:]
 
     static let doneGroup = "\u{1}done"
+    /// A list's "› Completed" row, as what its closed tasks fold into.
+    static let completedRowKey = "\u{1}crow"
+
+    /// Where a folded row goes and comes from: its heading's row, Today's Completed label, or a list's Completed row.
+    func foldY(_ key: EntityID) -> CGFloat? {
+        if let y = y(key) { return y }
+        if let y = labels[key] { return y }
+        return key == Self.completedRowKey ? completedY : nil
+    }
     static let pitch = TK.M.pitch
     /// A heading's air above its row (`HEAD_AIR`, dc:445).
     static let headAir: CGFloat = 8
@@ -158,6 +167,8 @@ struct TaskLayout {
             let active = p.activeLists.ids
             lists = [active, p.todayDone.ids]
             for l in active { lists.append(p.todayTasks(in: l).ids) }
+            // Today's Completed group folds like a heading (v2 feedback 15).
+            completedOpen = !window.todayDoneCollapsed
         case .upcoming, .undated, .completed, .trash:
             break
         }
@@ -254,6 +265,9 @@ struct TaskLayout {
                 y = L.completedY! + pitch
                 if inputs.completedOpen {
                     for id in done { L.place(id, y, group: -1); y += pitch }
+                } else {
+                    // Closed, they fold into the Completed row and unfold from it (v2 feedback 15).
+                    for id in done { L.folded[id] = completedRowKey }
                 }
             }
             if open.isEmpty && done.isEmpty { L.empty = .list }
@@ -314,7 +328,12 @@ struct TaskLayout {
                 L.labels[doneGroup] = y + (anyOpen ? 8 : 0)
                 L.labelOrder.append(doneGroup)
                 y += pitch + (anyOpen ? 8 : 0)
-                for id in done { L.place(id, y, group: -1); y += pitch }
+                if inputs.completedOpen {
+                    for id in done { L.place(id, y, group: -1); y += pitch }
+                } else {
+                    // Collapsed: the rows fold into the label, as a heading's do (v2 feedback 15).
+                    for id in done { L.folded[id] = doneGroup }
+                }
             }
             L.doneCount = done.count
             L.height = y + 24

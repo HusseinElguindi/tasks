@@ -83,6 +83,12 @@ enum DebugViews {
         case "where":
             let t = rest.split(separator: ":", maxSplits: 1).map(String.init)
             if t.count == 2, let id = task(t[0]), let s = w.taskList?.debugWhere(id) { append("where \(t[0]): " + s, to: t[1]) }
+        // v2 feedback 15: Today's Completed label (or a list's Completed row): where it is, its chevron and fold state.
+        case "donewhere":
+            if let s = w.taskList?.debugDoneWhere() {
+                append("donewhere: " + s + " collapsed=\(w.todayDoneCollapsed) completedOpen=\(w.completedOpen.count) sel=\(w.selection.map { $0 == TaskLayout.doneGroup ? "<Completed>" : (p.task($0)?.title ?? $0) }.sorted())", to: rest)
+            }
+        case "donetoggle": a.toggleTodayDone()
         case "headmenu":
             let t = rest.split(separator: ":", maxSplits: 1).map(String.init)
             if t.count == 2, let id = task(t[0]) {
