@@ -249,3 +249,32 @@ Themes themselves are tabled: no picker, no theme files and no sample themes. Do
 Commit, rebuild Release and report back.
 
 **Status (Mac agent, Oct 31):** done, on main in f3cd34f (app) with the notes and THEMES.md's tabled mark; see app/NOTES-v2.md, feedback 17.
+
+## 18. Completing a task registers a hidden "Mark Not Done", so undo is wrong
+
+The user's words: "I marked a job as complete. Then pressed undo and it said 'undo mark not done' (and there was nothing visual except for the toast), then i pressed undo again and it said 'mark undo complete'."
+
+**Evidence from the user's real log** (`~/Library/Application Support/Tasks/log.jsonl`; the coordinator read it, read-only):
+
+```
+seq 381  at …247288  task.update b4e5410f…  set {completedAt: 1793476247288}   ← the click: Complete
+seq 382  at …247819  task.update b4e5410f…  set {completedAt: null}            ← 531 ms later: Mark Not Done, unasked
+```
+
+So a single completion click produced Complete and then, about 0.5 s later, an un-complete.
+- The row kept looking checked, which suggests the view state and the model disagreed.
+- The first ⌘Z then undid the hidden "Mark Not Done" (re-completing, so nothing changed on screen), and the second undid the Complete.
+- Which view and setting the user was in isn't known. They were completing several tasks in a row; 9d05659f also toggled several times right after.
+
+**Find the cause.** Suspects:
+- the 1.5 s settle logic (§ checked tasks move after 1.5 s), or the Today Completed group or the collapse code from item 15, re-toggling or re-applying the checkbox;
+- a second click or mouse-up being handled as a toggle;
+- double-click handling (the "Edit tasks" setting);
+- the check animation's pop calling the action twice;
+- a row rebinding mid-animation and firing the toggle again.
+
+**Reproduce it** on the scratch instance in the list views, Today, Upcoming and Undated, with single clicks, quick successive clicks on different rows, and Space. Assert exactly one op per completion. Add a regression test or a debug check.
+
+The undo names should also stay honest: one Complete, one undo entry.
+
+Commit, rebuild Release and report back.
