@@ -286,3 +286,19 @@ The user decided that rows in Trash show no When and no Deadline: no text, no ba
 - Update §24 (or §22's Trash rules) and the prototype.
 
 Commit, rebuild Release and report back.
+
+## 20. Due dates flicker when switching lists
+
+The user's words: "when you go from one list to another, the due dates have a flicker. is that an animation or a flicker or what?"
+
+- **Find out what it is,** frame by frame. Record a list switch at 60–120 fps (or use in-app per-frame renders) and step through it.
+- **Likely suspects** from the §24 work:
+  - the Deadline badge or quiet When drawing for a frame before layout settles, or at the old row's width;
+  - an implicit `CALayer` animation on the badge's frame, contents or colour (a missing `disableActions`);
+  - the narrow-width rule dropping a When on the first pass and re-adding it;
+  - the tabular-digit text layer re-rendering;
+  - the checkbox rings' colour fading in;
+  - rows being reused with stale date layers.
+- **The rule:** a list switch is instant, as it was before §24. Nothing on a row animates or appears a frame late. If something was meant to animate there, say what and why; the user didn't ask for it.
+
+Fix the cause, check frames before and after, keep the list-switch benchmark within budget, then commit, rebuild Release and report back. Do this before §27 (it can go to a worktree subagent alongside §26).
