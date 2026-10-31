@@ -44,17 +44,17 @@ body{margin:0}
 <button class="tbtn" type="button" aria-label="{{sbTip}}" data-tip="{{sbTip}}" data-keys="⌃⌘S" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onToggleSidebar}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="2"></rect><line x1="6" y1="3" x2="6" y2="13"></line></svg></button>
 
 <section class="{{lp.cls}}" style="{{lp.style}}" aria-label="{{lp.title}}" onPointerDown="{{onListPaneDown}}">
-<header class="ph" style="{{lp.headStyle}}">
-<sc-if value="{{lp.isToday}}"><span class="c-yellow"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6"></circle><path d="M8 1.9v1.3M8 12.8v1.3M1.9 8h1.3M12.8 8h1.3M3.7 3.7l.9.9M11.4 11.4l.9.9M3.7 12.3l.9-.9M11.4 4.6l.9-.9"></path></svg></span></sc-if><sc-if value="{{lp.isUp}}"><span class="c-magenta"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg></span></sc-if><sc-if value="{{lp.isUnd}}"><span class="c-cyan"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l5.5 2.75L8 8 2.5 5.25z"></path><path d="M2.5 8l5.5 2.75L13.5 8M2.5 10.75l5.5 2.75 5.5-2.75"></path></svg></span></sc-if><sc-if value="{{lp.isDone}}"><span class="c-green"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"></circle><path d="M5.3 8.2l1.9 1.9 3.6-4"></path></svg></span></sc-if><sc-if value="{{lp.isTrash}}"><span class="c-mute"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9"></path></svg></span></sc-if>
+<header class="{{lp.phCls}}" style="{{lp.headStyle}}">
+<span class="{{lp.idCls}}"><sc-if value="{{lp.isToday}}"><span class="c-yellow"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6"></circle><path d="M8 1.9v1.3M8 12.8v1.3M1.9 8h1.3M12.8 8h1.3M3.7 3.7l.9.9M11.4 11.4l.9.9M3.7 12.3l.9-.9M11.4 4.6l.9-.9"></path></svg></span></sc-if><sc-if value="{{lp.isUp}}"><span class="c-magenta"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg></span></sc-if><sc-if value="{{lp.isUnd}}"><span class="c-cyan"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l5.5 2.75L8 8 2.5 5.25z"></path><path d="M2.5 8l5.5 2.75L13.5 8M2.5 10.75l5.5 2.75 5.5-2.75"></path></svg></span></sc-if><sc-if value="{{lp.isDone}}"><span class="c-green"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"></circle><path d="M5.3 8.2l1.9 1.9 3.6-4"></path></svg></span></sc-if><sc-if value="{{lp.isTrash}}"><span class="c-mute"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9"></path></svg></span></sc-if>
 <sc-if value="{{lp.isList}}"><span class="{{lp.tileCls}}">{{lp.mono}}</span></sc-if>
-<span class="pt">{{lp.title}}</span>
-<span class="ps">{{lp.sub}}</span>
+<sc-if value="{{lp.notRenaming}}"><span class="pt" onDoubleClick="{{onTitleDbl}}">{{lp.title}}</span></sc-if><sc-if value="{{lp.renaming}}"><input class="ri pti" data-key="{{lp.key}}" value="{{lp.editText}}" placeholder="New List" spellCheck="false" autoFocus="{{true}}" aria-label="List name" onChange="{{onEditChange}}" onKeyDown="{{onEditKey}}" onBlur="{{onEditBlur}}" onFocus="{{onEditFocus}}" onPointerDown="{{stopPD}}"></sc-if>
+<span class="ps">{{lp.sub}}</span></span>
 <span class="acts">
 <button class="{{lp.addCls}}" type="button" data-add="1" aria-label="{{lp.newTip}}" data-tip="{{lp.newTip}}" data-keys="⌘N" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onNewTaskBtn}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"></path></svg></button>
 <button class="{{lp.detailBtnCls}}" type="button" aria-label="{{lp.detailTip}}" data-tip="{{lp.detailTip}}" data-keys="⌘D" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onToggleDetail}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="2"></rect><line x1="10" y1="3" x2="10" y2="13"></line></svg></button>
 </span>
 </header>
-<div class="pcs" ref="{{listScrollRef}}" onPointerDown="{{onScrollAreaDown}}" onDoubleClick="{{onScrollAreaDbl}}">
+<div class="pcs" ref="{{listScrollRef}}" onPointerDown="{{onScrollAreaDown}}" onDoubleClick="{{onScrollAreaDbl}}" onScroll="{{onListScroll}}">
 <div class="pcc" style="{{lp.contentStyle}}">
 <sc-if value="{{lp.banner}}">
 <div class="banner" style="position: absolute; left: 0; right: 0; top: 0;">
@@ -68,6 +68,23 @@ body{margin:0}
      hover "New Task" row: a single click never adds.
      These lines stand in for the removed markup so the
      spec's dc: citations keep their line numbers. -->
+<!-- §23 (proposed): the top of the list pane, the large title and the list's notes; then headings and their notes. -->
+<sc-if value="{{lh.show}}">
+<div class="{{lh.cls}}" style="{{lh.style}}" data-mh="{{lh.mk}}">
+<sc-if value="{{lh.big}}"><div class="lht"><sc-if value="{{lp.isToday}}"><span class="c-yellow"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6"></circle><path d="M8 1.9v1.3M8 12.8v1.3M1.9 8h1.3M12.8 8h1.3M3.7 3.7l.9.9M11.4 11.4l.9.9M3.7 12.3l.9-.9M11.4 4.6l.9-.9"></path></svg></span></sc-if><sc-if value="{{lp.isUp}}"><span class="c-magenta"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg></span></sc-if><sc-if value="{{lp.isUnd}}"><span class="c-cyan"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l5.5 2.75L8 8 2.5 5.25z"></path><path d="M2.5 8l5.5 2.75L13.5 8M2.5 10.75l5.5 2.75 5.5-2.75"></path></svg></span></sc-if><sc-if value="{{lp.isDone}}"><span class="c-green"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"></circle><path d="M5.3 8.2l1.9 1.9 3.6-4"></path></svg></span></sc-if><sc-if value="{{lp.isTrash}}"><span class="c-mute"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9"></path></svg></span></sc-if><sc-if value="{{lp.isList}}"><span class="{{lh.tileCls}}">{{lp.mono}}</span></sc-if><sc-if value="{{lh.notRenaming}}"><span class="lhn" onDoubleClick="{{onTitleDbl}}">{{lp.title}}</span></sc-if><sc-if value="{{lh.renaming}}"><input class="ri lti" data-key="{{lh.key}}" value="{{lh.editText}}" placeholder="New List" spellCheck="false" autoFocus="{{true}}" aria-label="List name" onChange="{{onEditChange}}" onKeyDown="{{onEditKey}}" onBlur="{{onEditBlur}}" onFocus="{{onEditFocus}}" onPointerDown="{{stopPD}}"></sc-if><span class="lhs">{{lp.sub}}</span></div></sc-if>
+<sc-if value="{{lh.hasNotes}}"><div class="lhd" onPointerDown="{{stopPD}}"><div class="{{lh.nt.cls}}" ref="{{notesRefCb}}" contentEditable="{{lh.nt.ce}}" data-rev="{{lh.nt.rev}}" data-nk="{{lh.nt.nk}}" data-nid="{{lh.nt.id}}" data-of="list" aria-label="List notes" data-ph="Notes" suppressContentEditableWarning="{{true}}" spellCheck="false" role="textbox" aria-multiline="true" onFocus="{{onNotesFocus}}" onBlur="{{onNotesBlur}}" onKeyDown="{{onNotesKey}}" onPaste="{{onNotesPaste}}" onCopy="{{onNotesCopy}}" onCut="{{onNotesCut}}" onMouseDown="{{onNotesMouseDown}}" onDragStart="{{onNotesNoDrag}}" onDrop="{{onNotesNoDrag}}"><sc-for list="{{lh.nt.lines}}" as="l" hint-placeholder-count="0"><div class="{{l.cls}}" style="{{l.style}}" data-ls="{{l.a}}" data-le="{{l.b}}" data-cs="{{l.cs}}"><sc-if value="{{l.dot}}"><span class="{{l.decCls}}" contentEditable="false" style="{{l.decStyle}}"></span></sc-if><sc-if value="{{l.num}}"><span class="dec num" contentEditable="false" style="{{l.decStyle}}">{{l.numText}}</span></sc-if><sc-if value="{{l.box}}"><button class="{{l.boxCls}}" type="button" contentEditable="false" tabIndex="-1" style="{{l.decStyle}}" data-box="{{l.boxAt}}" aria-label="{{l.boxLabel}}" onClick="{{onBoxClick}}"><svg class="ck" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.8 8.4l2.7 2.7 5.7-6.2"></path></svg></button></sc-if><sc-for list="{{l.ps}}" as="p" hint-placeholder-count="0"><sc-if value="{{p.link}}"><a class="{{p.cls}}" href="{{p.href}}" data-a="{{p.a}}" data-tip="{{p.tip}}" data-keys="{{p.tipKeys}}" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onNoteLinkClick}}">{{p.s}}</a></sc-if><sc-if value="{{p.plain}}"><span class="{{p.cls}}" data-a="{{p.a}}">{{p.s}}</span></sc-if></sc-for><br></div></sc-for></div></div></sc-if>
+</div>
+</sc-if>
+<sc-for list="{{heads}}" as="hd" hint-placeholder-count="0">
+<div class="{{hd.cls}}" style="{{hd.style}}" data-id="{{hd.id}}" onPointerDown="{{onRowDown}}" onPointerMove="{{onRowMove}}" onPointerUp="{{onRowUp}}" onPointerCancel="{{onRowUp}}" onDoubleClick="{{onRowDbl}}" onContextMenu="{{onRowCtx}}">
+<sc-if value="{{hd.editing}}"><input class="ri" data-id="{{hd.id}}" value="{{hd.editText}}" placeholder="New Heading" spellCheck="false" autoFocus="{{hd.autoFocus}}" aria-label="Heading" onChange="{{onEditChange}}" onKeyDown="{{onEditKey}}" onBlur="{{onEditBlur}}" onFocus="{{onEditFocus}}" onPointerDown="{{stopPD}}"></sc-if>
+<sc-if value="{{hd.notEditing}}"><span class="{{hd.titleCls}}">{{hd.title}}</span></sc-if><span class="{{hd.countCls}}">{{hd.count}}</span>
+<span class="hacts"><button class="hbtn reveal" type="button" data-add="1" data-id="{{hd.id}}" aria-label="{{hd.plusTip}}" data-tip="{{hd.plusTip}}" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onPointerDown="{{stopPD}}" onClick="{{onHeadPlus}}"><svg class="i i--sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"></path></svg></button><button class="{{hd.chevBtnCls}}" type="button" data-id="{{hd.id}}" aria-label="{{hd.chevLabel}}" aria-expanded="{{hd.expanded}}" onPointerDown="{{stopPD}}" onClick="{{onHeadChev}}"><svg class="{{hd.chevCls}}" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4l4 4-4 4"></path></svg></button></span>
+</div>
+</sc-for>
+<sc-for list="{{hnotes}}" as="hn" hint-placeholder-count="0">
+<div class="{{hn.cls}}" style="{{hn.style}}" data-mh="{{hn.mk}}" onPointerDown="{{stopPD}}"><div class="{{hn.nt.cls}}" ref="{{notesRefCb}}" contentEditable="{{hn.nt.ce}}" data-rev="{{hn.nt.rev}}" data-nk="{{hn.nt.nk}}" data-nid="{{hn.nt.id}}" data-of="task" aria-label="Heading notes" data-ph="Notes" suppressContentEditableWarning="{{true}}" spellCheck="false" role="textbox" aria-multiline="true" onFocus="{{onNotesFocus}}" onBlur="{{onNotesBlur}}" onKeyDown="{{onNotesKey}}" onPaste="{{onNotesPaste}}" onCopy="{{onNotesCopy}}" onCut="{{onNotesCut}}" onMouseDown="{{onNotesMouseDown}}" onDragStart="{{onNotesNoDrag}}" onDrop="{{onNotesNoDrag}}"><sc-for list="{{hn.nt.lines}}" as="l" hint-placeholder-count="0"><div class="{{l.cls}}" style="{{l.style}}" data-ls="{{l.a}}" data-le="{{l.b}}" data-cs="{{l.cs}}"><sc-if value="{{l.dot}}"><span class="{{l.decCls}}" contentEditable="false" style="{{l.decStyle}}"></span></sc-if><sc-if value="{{l.num}}"><span class="dec num" contentEditable="false" style="{{l.decStyle}}">{{l.numText}}</span></sc-if><sc-if value="{{l.box}}"><button class="{{l.boxCls}}" type="button" contentEditable="false" tabIndex="-1" style="{{l.decStyle}}" data-box="{{l.boxAt}}" aria-label="{{l.boxLabel}}" onClick="{{onBoxClick}}"><svg class="ck" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.8 8.4l2.7 2.7 5.7-6.2"></path></svg></button></sc-if><sc-for list="{{l.ps}}" as="p" hint-placeholder-count="0"><sc-if value="{{p.link}}"><a class="{{p.cls}}" href="{{p.href}}" data-a="{{p.a}}" data-tip="{{p.tip}}" data-keys="{{p.tipKeys}}" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onNoteLinkClick}}">{{p.s}}</a></sc-if><sc-if value="{{p.plain}}"><span class="{{p.cls}}" data-a="{{p.a}}">{{p.s}}</span></sc-if></sc-for><br></div></sc-for></div></div>
+</sc-for>
 <sc-for list="{{labels}}" as="g" hint-placeholder-count="0">
 <div class="{{g.cls}}" style="{{g.style}}" data-day="{{g.day}}" onDoubleClick="{{onLabelDbl}}">
 <div class="glabel"><span class="gl">{{g.name}}</span><span class="gs">{{g.sub}}</span>
@@ -123,7 +140,7 @@ body{margin:0}
 </span>
 </header>
 <div class="dbody">
-<sc-if value="{{dp.none}}"><div class="empty" style="top: 40%;"><span class="e1">No task selected</span><span class="e2">Select a task to see its notes and dates.</span></div></sc-if>
+<sc-if value="{{dp.none}}"><div class="empty" style="top: 40%;"><span class="e1">No task selected</span><span class="e2">Select a task to see its notes and dates.</span></div></sc-if><sc-if value="{{dp.headOnly}}"><div class="empty" style="top: 40%;"><span class="e1">{{dp.headTitle}}</span><span class="e2">{{dp.headText}}</span></div></sc-if>
 <sc-if value="{{dp.single}}">
 <div class="dtitle">
 <button class="{{dp.checkCls}}" type="button" aria-label="Complete" onClick="{{onDCheck}}"><svg class="ck" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.8 8.4l2.7 2.7 5.7-6.2"></path></svg></button>
@@ -155,7 +172,7 @@ body{margin:0}
 <sc-if value="{{dp.single}}">
 <div class="{{dp.sepCls}}"></div>
 <div class="{{dp.notesCls}}">
-<div class="{{dp.nt.cls}}" ref="{{notesRefCb}}" contentEditable="{{dp.nt.ce}}" data-rev="{{dp.nt.rev}}" suppressContentEditableWarning="{{true}}" spellCheck="false" role="textbox" aria-multiline="true" aria-label="Notes" data-ph="Notes" onFocus="{{onNotesFocus}}" onBlur="{{onNotesBlur}}" onKeyDown="{{onNotesKey}}" onPaste="{{onNotesPaste}}" onCopy="{{onNotesCopy}}" onCut="{{onNotesCut}}" onMouseDown="{{onNotesMouseDown}}" onDragStart="{{onNotesNoDrag}}" onDrop="{{onNotesNoDrag}}"><sc-for list="{{dp.nt.lines}}" as="l" hint-placeholder-count="0"><div class="{{l.cls}}" style="{{l.style}}" data-ls="{{l.a}}" data-le="{{l.b}}" data-cs="{{l.cs}}"><sc-if value="{{l.dot}}"><span class="{{l.decCls}}" contentEditable="false" style="{{l.decStyle}}"></span></sc-if><sc-if value="{{l.num}}"><span class="dec num" contentEditable="false" style="{{l.decStyle}}">{{l.numText}}</span></sc-if><sc-if value="{{l.box}}"><button class="{{l.boxCls}}" type="button" contentEditable="false" tabIndex="-1" style="{{l.decStyle}}" data-box="{{l.boxAt}}" aria-label="{{l.boxLabel}}" onClick="{{onBoxClick}}"><svg class="ck" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.8 8.4l2.7 2.7 5.7-6.2"></path></svg></button></sc-if><sc-for list="{{l.ps}}" as="p" hint-placeholder-count="0"><sc-if value="{{p.link}}"><a class="{{p.cls}}" href="{{p.href}}" data-a="{{p.a}}" data-tip="{{p.tip}}" data-keys="{{p.tipKeys}}" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onNoteLinkClick}}">{{p.s}}</a></sc-if><sc-if value="{{p.plain}}"><span class="{{p.cls}}" data-a="{{p.a}}">{{p.s}}</span></sc-if></sc-for><br></div></sc-for></div>
+<div class="{{dp.nt.cls}}" ref="{{notesRefCb}}" contentEditable="{{dp.nt.ce}}" data-rev="{{dp.nt.rev}}" data-nk="{{dp.nt.nk}}" data-nid="{{dp.nt.id}}" data-of="task" suppressContentEditableWarning="{{true}}" spellCheck="false" role="textbox" aria-multiline="true" aria-label="Notes" data-ph="Notes" onFocus="{{onNotesFocus}}" onBlur="{{onNotesBlur}}" onKeyDown="{{onNotesKey}}" onPaste="{{onNotesPaste}}" onCopy="{{onNotesCopy}}" onCut="{{onNotesCut}}" onMouseDown="{{onNotesMouseDown}}" onDragStart="{{onNotesNoDrag}}" onDrop="{{onNotesNoDrag}}"><sc-for list="{{dp.nt.lines}}" as="l" hint-placeholder-count="0"><div class="{{l.cls}}" style="{{l.style}}" data-ls="{{l.a}}" data-le="{{l.b}}" data-cs="{{l.cs}}"><sc-if value="{{l.dot}}"><span class="{{l.decCls}}" contentEditable="false" style="{{l.decStyle}}"></span></sc-if><sc-if value="{{l.num}}"><span class="dec num" contentEditable="false" style="{{l.decStyle}}">{{l.numText}}</span></sc-if><sc-if value="{{l.box}}"><button class="{{l.boxCls}}" type="button" contentEditable="false" tabIndex="-1" style="{{l.decStyle}}" data-box="{{l.boxAt}}" aria-label="{{l.boxLabel}}" onClick="{{onBoxClick}}"><svg class="ck" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.8 8.4l2.7 2.7 5.7-6.2"></path></svg></button></sc-if><sc-for list="{{l.ps}}" as="p" hint-placeholder-count="0"><sc-if value="{{p.link}}"><a class="{{p.cls}}" href="{{p.href}}" data-a="{{p.a}}" data-tip="{{p.tip}}" data-keys="{{p.tipKeys}}" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onNoteLinkClick}}">{{p.s}}</a></sc-if><sc-if value="{{p.plain}}"><span class="{{p.cls}}" data-a="{{p.a}}">{{p.s}}</span></sc-if></sc-for><br></div></sc-for></div>
 </div>
 <div class="{{dp.metaCls}}">{{dp.meta}}</div>
 </sc-if>
@@ -214,7 +231,7 @@ body{margin:0}
 <sc-if value="{{stage.show}}">
 <div class="stage" aria-label="Prototype controls">
 <span class="sl">Prototype</span>
-<span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Edit tasks</span><span class="seg"><sc-for list="{{stage.editTasks}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
+<span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Edit tasks</span><span class="seg"><sc-for list="{{stage.editTasks}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><sc-for list="{{stage.vars}}" as="vg" hint-placeholder-count="0"><span class="sl">{{vg.label}}</span><span class="seg"><sc-for list="{{vg.opts}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span></sc-for>
 <span class="sn">The browser keeps ⌘N, ⌘T and ⌘1–9, so ⌥N, ⌥T and ⌃1–9 also work here.</span>
 <span style="flex: 1;"></span>
 <button class="lnk" type="button" data-k="reset" data-v="1" onClick="{{onStage}}">Reset</button>
@@ -227,12 +244,13 @@ body{margin:0}
 <div class="kh">Tasks</div>
 <div class="kr"><span class="kk">⌘N (⌥N here)</span><span>New task, opened in the details with the cursor in its title. Return goes on to the notes; Esc is done.</span></div>
 <div class="kr"><span class="kk">↩ · double-click</span><span>Edit the title: in the details, or in the row, as the strip's Edit tasks says. Esc cancels.</span></div>
-<div class="kr"><span class="kk">Space · ⌘K</span><span>Complete or uncomplete</span></div>
+<div class="kr"><span class="kk">Space · ⌘K</span><span>Complete or uncomplete. Space on a heading: collapse or expand</span></div>
+<div class="kr"><span class="kk">⌥⌘N (⌃⌥N here)</span><span>New heading, above the selected task (or at the bottom). Return names it; Tab goes on to its notes.</span></div>
 <div class="kr"><span class="kk">⌘D · ›</span><span>Show or hide details</span></div>
 <div class="kr"><span class="kk">⌘S · ⇧⌘D</span><span>When… · Deadline… (type tom, fri, 3d)</span></div>
 <div class="kr"><span class="kk">⌘T (⌥T here)</span><span>When: Today</span></div>
 <div class="kr"><span class="kk">⇧⌘M</span><span>Move to… (⌘1–9 picks)</span></div>
-<div class="kr"><span class="kk">⌥⌘↑ ⌥⌘↓</span><span>Move up or down. In Upcoming: a day earlier or later</span></div>
+<div class="kr"><span class="kk">⌥⌘↑ ⌥⌘↓</span><span>Move up or down. A heading moves with its tasks. In Upcoming: a day earlier or later</span></div>
 <div class="kr"><span class="kk">⌘⌫</span><span>Delete (Undo in the notice, or ⌘Z). In Trash: Put Back</span></div>
 <div class="kh">Notes</div>
 <div class="kr"><span class="kk">⌘B · ⌘I</span><span>Bold, italic: the selection, or the word at the caret. Again to remove.</span></div>
@@ -252,7 +270,7 @@ body{margin:0}
 </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"select":{"editor":null,"default":""},"detail":{"editor":null,"default":"closed"},"pick":{"editor":null,"default":"none"},"caret":{"editor":null,"default":""},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"select":{"editor":null,"default":""},"detail":{"editor":null,"default":"closed"},"pick":{"editor":null,"default":"none"},"caret":{"editor":null,"default":""},"vTitle":{"editor":null,"default":"large"},"vHeads":{"editor":null,"default":"bold"},"vText":{"editor":null,"default":"heads"},"vCtx":{"editor":null,"default":"row"},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
 // ---------- Calendar dates: "YYYY-MM-DD" strings, never instants (SPEC §2). ----------
 const DAY_MS = 86400000;
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -425,6 +443,17 @@ const VIEW_EMPTY = {
   completed: { e1: 'Nothing completed yet', e2: 'Tasks you check off show up here, newest first.', top: '34%', icon: 'done' },
   trash: { e1: 'Trash is empty', e2: 'Deleted tasks wait here until you put them back.', top: '34%', icon: 'trash' },
 };
+// Headings, a list's notes and a clearer title (proposed, INTERACTIONS-v2 §23): the open choices, with the
+// recommendation as the default. The strip switches them; a board sets them with v-title, v-heads, v-text, v-ctx.
+const SEC_DEFAULTS = { title: 'large', heads: 'bold', text: 'heads', ctx: 'row' };
+const SEC_OPTS = {
+  title: [['band', 'In the band'], ['large', 'Large']],
+  heads: [['quiet', 'Quiet'], ['bold', 'Bold']],
+  text: [['list', 'List'], ['heads', 'List + headings']],
+  ctx: [['row', 'On the row'], ['none', 'Off']],
+};
+const SEC_LABEL = { title: 'Title', heads: 'Headings', text: 'Text', ctx: 'Elsewhere' };
+const HEAD_AIR = 8;   // a Bold heading's air above its row
 
 let UID = 0;
 function uid(p) { UID += 1; return p + UID.toString(36) + Math.random().toString(36).slice(2, 6); }
@@ -442,6 +471,7 @@ function makeSeed(T) {
   const lists = [
     { id: 'inbox', name: 'Inbox', order: 1, color: 'ink', archivedAt: null },
     { id: 'school', name: 'School', order: 2, color: 'blue', archivedAt: null },
+    { id: 'phys', name: 'PHYS 122', order: 2.5, color: 'yellow', archivedAt: null, notes: 'Waves, electricity and magnetism. Lectures **Mon, Wed, Fri 9:30** in STC 0010; labs Tuesdays in PHY 2009.\nMidterm Nov 6, final in December. [Course page](https://example.com/phys122)' },
     { id: 'tasks', name: 'Tasks app', order: 3, color: 'magenta', archivedAt: null },
     { id: 'home', name: 'Home', order: 4, color: 'green', archivedAt: null },
     { id: 'errands', name: 'Errands', order: 5, color: 'cyan', archivedAt: null },
@@ -455,7 +485,7 @@ function makeSeed(T) {
   const t = (list, title, o) => {
     n += 1;
     o = o || {};
-    tasks.push({ id: 't' + n, list, order: n, title, notes: o.notes || '', when: o.when ?? null, deadline: o.deadline ?? null,
+    tasks.push({ id: 't' + n, list, order: n, kind: o.kind, title, notes: o.notes || '', when: o.when ?? null, deadline: o.deadline ?? null,
       completedAt: o.done != null ? doneAt(o.done) : null, doneAt: o.done != null ? doneAt(o.done) : null, deleted: o.del != null, deletedAt: o.del != null ? doneAt(o.del) - 3600e3 : null, createdAt: now - ((n <= 31 ? 60 : 120) - n) * DAY_MS });
   };
   t('school', 'ECE 358 lab report', { when: d(-3), deadline: d(-2) });
@@ -506,6 +536,22 @@ function makeSeed(T) {
   t('tasks', 'Pick a name for the app', { done: 47 });
   t('inbox', 'Try the new notes app', { del: 0 });
   t('school', 'Old group project notes', { del: 1, notes: 'Superseded by the shared doc.' });
+  // The example list for headings (§23): a course, with a description, headings with and without notes, and a task
+  // before the first heading.
+  t('phys', 'Buy safety glasses for the lab', { when: d(0) });
+  t('phys', 'Lectures', { kind: 'heading', notes: 'Slides go up the night before. The weekly quiz comes from the **worked examples**.' });
+  t('phys', 'Read chapter 15 · oscillations', { when: d(0) });
+  t('phys', 'Redo the worked examples from lecture 9');
+  t('phys', 'Watch the recording on standing waves', { when: d(2) });
+  t('phys', 'Labs', { kind: 'heading', notes: 'Reports due Fridays 11:59 pm on Crowdmark, one PDF per pair. Partner: Priya.' });
+  t('phys', 'Lab 2 report · projectile motion', { done: 5 });
+  t('phys', 'Lab 3 report · pendulum', { when: d(0), deadline: d(1) });
+  t('phys', 'Lab 4 pre-lab · RC circuits', { deadline: d(5) });
+  t('phys', 'Book a make-up lab bench');
+  t('phys', 'Exam prep', { kind: 'heading' });
+  t('phys', 'Make the midterm formula sheet', { when: d(3) });
+  t('phys', 'Past midterms 2024 and 2025, timed', { when: d(4) });
+  t('phys', 'Ask about problem 7 at office hours');
   t('home', 'Buy a second lamp', { del: 3, when: d(2), notes: 'The one by the window is fine after all.' });
   t('errands', 'Pick up dry cleaning', { del: 8, done: 9 });
   t('tasks', 'Prototype a menu bar widget', { del: 20 });
@@ -754,7 +800,11 @@ class Component extends DCLogic {
       noAnim: true,
       // Markdown notes: a checklist box's pop; a board's hovered link.
       boxPop: null, hoverLink: null,
+      // Headings (§23): collapsed headings (local, never synced); the strip's choices; whether the large title has
+      // scrolled under the band.
+      collapsed: {}, secv: {}, scrolled: false,
     };
+    this.mh = {};   // measured heights of the list pane's text blocks (measureBlocks)
     const pickName = props.pick ?? 'none';   // a board can open on a task's notes (prototype-markdown's boards do)
     const pick = pickName && pickName !== 'none' ? seed.tasks.find((t) => t.title.startsWith(pickName)) : null;
     if (pick) { this.state.sel = [pick.id]; this.state.anchor = pick.id; this.state.detail = 'open'; this.state.focus = 'detail'; }
@@ -782,7 +832,9 @@ class Component extends DCLogic {
     if (this.props.demo === 'add') setTimeout(() => this.demoAdd(), 250);
     if (this.props.select) setTimeout(() => this.demoSelect(), 250);
     if (/^(notes|long|hover)$/.test(this.props.demo || '')) setTimeout(() => this.demoNotes(this.props.demo), 200);
+    if (/^(scroll|newhead|collapse|dragsec)$/.test(this.props.demo || '')) setTimeout(() => this.demoSec(this.props.demo), 250);   // §23's boards
     this.markClippedTitles();
+    this.measureBlocks();
     document.addEventListener('selectionchange', this.onDocSel);
     document.addEventListener('mouseup', this.onDocUp);
   }
@@ -805,7 +857,7 @@ class Component extends DCLogic {
       const link = ps.find((p) => p.href && p.a <= at && at <= p.a + p.s.length) || ps.find((p) => p.href);
       if (!link) return;
       this.setState({ hoverLink: link.a });
-      setTimeout(() => { const el = this.notesEl && this.notesEl.querySelector('[data-a="' + link.a + '"]'); if (el) { const r = this.rectIn(el); const { w } = this.winSize(); this.setState({ tip: { text: link.href.replace(/^https?:\/\/(www\.)?/, ''), keys: '', x: clamp(r.left + r.width / 2 - 60, 6, w - 160), y: r.bottom + 6 } }); } }, 60);
+      setTimeout(() => { const box = this.rootRef.current && this.rootRef.current.querySelector('.dp .mded'), el = box && box.querySelector('[data-a="' + link.a + '"]'); if (el) { const r = this.rectIn(el); const { w } = this.winSize(); this.setState({ tip: { text: link.href.replace(/^https?:\/\/(www\.)?/, ''), keys: '', x: clamp(r.left + r.width / 2 - 60, 6, w - 160), y: r.bottom + 6 } }); } }, 60);
       return;
     }
     this.setState({ edit: { kind: 'notes', id, text: t.notes, orig: t.notes, sel: [at, at], demo: true }, focus: 'detail' });
@@ -815,6 +867,7 @@ class Component extends DCLogic {
   componentDidUpdate() {
     this.nAfterRender();
     this.markClippedTitles();
+    this.measureBlocks();
     if (this.scrollToId) { const id = this.scrollToId; this.scrollToId = null; this.ensureVisible(id); }
     if (this.wantTitle) {
       // A new task's title takes the keys once the detail pane is on screen (autoFocus would miss a pane that was already open).
@@ -882,30 +935,16 @@ class Component extends DCLogic {
   // ---------- Layout: where every row of the open view sits ----------
   layout() {
     const s = this.state, T = this.today;
-    const L = { key: this.routeKey(s.route), ys: new Map(), order: [], groupOf: new Map(), groups: [], labels: new Map(), crowY: null, ghostY: null, done: 0, height: 0, empty: null, top: 4 };
+    const L = { key: this.routeKey(s.route), ys: new Map(), order: [], groupOf: new Map(), groups: [], labels: new Map(), crowY: null, ghostY: null, done: 0, height: 0, empty: null, top: 4, hOf: new Map(), airOf: new Map(), noteH: new Map(), folded: new Set(), headY: 0 };
     const live = s.tasks.filter((t) => !t.deleted);
     if (s.route.kind === 'list') {
-      const l = this.list(s.route.id);
-      if (l && l.archivedAt) L.top = 64;
-      const mine = live.filter((t) => t.list === s.route.id);
-      const open = mine.filter((t) => this.placedOpen(t)).sort(byOrder);
-      const done = mine.filter((t) => !this.placedOpen(t)).sort((a, b) => (b.completedAt || b.doneAt || 0) - (a.completedAt || a.doneAt || 0));
-      let y = L.top;
-      L.groups.push({ listId: s.route.id, top: y, ids: open.map((t) => t.id) });
-      for (const t of open) { L.ys.set(t.id, y); L.order.push(t.id); L.groupOf.set(t.id, s.route.id); y += PITCH; }
-      L.ghostY = y; y += PITCH;
-      L.done = done.length;
-      if (done.length) {
-        L.crowY = y + 8; y = L.crowY + PITCH;
-        if (s.completedOpen[s.route.id]) for (const t of done) { L.ys.set(t.id, y); L.order.push(t.id); L.groupOf.set(t.id, 'done'); y += PITCH; }
-      }
-      if (!open.length && !done.length) L.empty = 'list';
-      L.height = y + 24;
+      this.layoutList(L, live);   // headings, under the title and the list's notes (§23)
     } else if (s.route.kind === 'today') {
       const lists = this.activeLists();
+      L.top = this.headBlockH(L);   // the large title, when that's the choice (§23)
       let y = L.top;
       for (const l of lists) {
-        const open = live.filter((t) => t.list === l.id && this.placedOpen(t) && (t.draft || this.inTodayDates(t))).sort(byOrder);
+        const open = live.filter((t) => t.list === l.id && !this.isHead(t) && this.placedOpen(t) && (t.draft || this.inTodayDates(t))).sort(byOrder);
         if (!open.length) continue;
         L.labels.set(l.id, y); y += PITCH;
         L.groups.push({ listId: l.id, top: y, ids: open.map((t) => t.id) });
@@ -914,14 +953,14 @@ class Component extends DCLogic {
       const anyOpen = L.order.length > 0;
       const done = live.filter((t) => this.isActive(t.list) && !this.placedOpen(t) && this.doneToday(t) && this.inTodayDates(t))
         .sort((a, b) => (a.completedAt || a.doneAt) - (b.completedAt || b.doneAt));
-      if (!anyOpen) { L.empty = done.length ? 'allDone' : 'today'; y = done.length ? 132 : y; }
+      if (!anyOpen) { L.empty = done.length ? 'allDone' : 'today'; y = done.length ? 128 + L.top : y; if (done.length) L.emptyTop = L.top + 36; }
       if (done.length) {
         L.labels.set('done', y + (anyOpen ? 8 : 0)); y += PITCH + (anyOpen ? 8 : 0);
         for (const t of done) { L.ys.set(t.id, y); L.order.push(t.id); L.groupOf.set(t.id, 'done'); y += PITCH; }
       }
       L.done = done.length;
       L.height = y + 24;
-    } else this.layoutView(L, live);   // Upcoming, Undated, Completed, Trash (§22)
+    } else { L.top = this.headBlockH(L); this.layoutView(L, live); }   // Upcoming, Undated, Completed, Trash (§22)
     this.applyDragToLayout(L);
     return L;
   }
@@ -932,21 +971,26 @@ class Component extends DCLogic {
     const g = L.groups.find((x) => x.listId === d.group);
     if (!g) return;
     const others = g.ids.filter((id) => !d.ids.includes(id));
-    const k = d.ids.length;
-    // Over the list, the other rows part to open a k-row gap at the target slot.
+    // The gap is the dragged rows' height; a heading's notes and tasks fold into its copy, so its gap is its row (§23).
+    const hOf = (id) => L.hOf.get(id) || PITCH;
+    const dragged = d.ids.filter((id) => g.ids.includes(id));
+    const gapH = d.sec ? (L.airOf.get(d.grabbed) || 0) + PITCH : dragged.reduce((a, id) => a + hOf(id), 0);
+    // Over the list, the other rows part to open the gap at the target slot.
     const gap = !d.sb;
     const target = d.sb ? others.length : clamp(d.target, 0, others.length);
-    others.forEach((id, i) => L.ys.set(id, g.top + (i + (gap && i >= target ? k : 0)) * PITCH));
+    let y = g.top, gapY = g.top;
+    others.forEach((id, i) => { if (gap && i === target) { gapY = y; y += gapH; } L.ys.set(id, y + (L.airOf.get(id) || 0)); y += hOf(id); });
+    if (gap && target >= others.length) gapY = y;
     if (d.sb) {
       // The group closes up: the dragged rows are leaving it.
-      const shift = k * PITCH;
-      const end = g.top + g.ids.length * PITCH;
-      for (const [id, y] of L.ys) if (y >= end && L.groupOf.get(id) !== d.group) L.ys.set(id, y - shift);
-      for (const [lid, y] of L.labels) if (y >= end) L.labels.set(lid, y - shift);
+      const shift = dragged.reduce((a, id) => a + hOf(id), 0);
+      const end = g.top + g.ids.reduce((a, id) => a + hOf(id), 0);
+      for (const [id, yy] of L.ys) if (yy >= end && L.groupOf.get(id) !== d.group) L.ys.set(id, yy - shift);
+      for (const [lid, yy] of L.labels) if (yy >= end) L.labels.set(lid, yy - shift);
       if (L.ghostY != null) L.ghostY -= shift;
       if (L.crowY != null) L.crowY -= shift;
     }
-    d.ids.forEach((id, i) => { if (!L.ys.has(id)) return; if (gap) L.ys.set(id, g.top + (target + i) * PITCH); });
+    if (gap) { let gy = gapY; d.ids.forEach((id) => { if (!L.ys.has(id)) return; L.ys.set(id, gy + (L.airOf.get(id) || 0)); if (!d.sec) gy += hOf(id); }); }
   }
 
   sidebarLayout() {
@@ -1006,7 +1050,7 @@ class Component extends DCLogic {
   go(route, opts) {
     this.endEdit();
     clearTimeout(this.settleTimer);   // leaving a view settles its checked rows at once
-    const patch = { route, sel: (opts && opts.sel) || [], anchor: (opts && opts.sel && opts.sel[0]) || null, pins: {}, picker: null, menu: null, focus: (opts && opts.focus) || this.state.focus };
+    const patch = { route, sel: (opts && opts.sel) || [], anchor: (opts && opts.sel && opts.sel[0]) || null, pins: {}, picker: null, menu: null, focus: (opts && opts.focus) || this.state.focus, scrolled: false };
     if (this.routeKey(route) === this.routeKey(this.state.route)) { this.setState(patch); return; }
     this.instant(patch);
     if (this.listScrollRef.current) this.listScrollRef.current.scrollTop = 0;
@@ -1067,6 +1111,12 @@ class Component extends DCLogic {
         this.focusRoot();
       } else if (t && e.text !== t.title) this.commit('Rename Task', { tasks: this.state.tasks.map((x) => (x.id === e.id ? { ...x, title: e.text } : x)), edit: null });
       else this.setState({ edit: null });
+    } else if (e.kind === 'heading' || e.kind === 'ltitle') {
+      this.commitSecEdit(e, text);   // a heading's name, the list's title (§23)
+    } else if (e.kind === 'notes' && e.of === 'list') {
+      const l = this.list(e.id);
+      if (l && e.text !== (l.notes || '')) this.commit('Edit List Notes', { lists: this.state.lists.map((x) => (x.id === e.id ? { ...x, notes: e.text } : x)), edit: null });
+      else this.setState({ edit: null });
     } else if (e.kind === 'notes') {
       const t = this.task(e.id);
       if (t && e.text !== t.notes) this.commit('Edit Notes', { tasks: this.state.tasks.map((x) => (x.id === e.id ? { ...x, notes: e.text } : x)), edit: null });
@@ -1089,6 +1139,7 @@ class Component extends DCLogic {
     if (!e) return;
     if (e.kind === 'dtitle' && e.isNew) this.dropDraft(e.id);
     else if (e.kind === 'list' && e.isNew) this.setState({ lists: this.state.lists.filter((x) => x.id !== e.id), edit: null });
+    else if (e.kind === 'heading' && e.isNew) this.setState({ tasks: this.state.tasks.filter((x) => x.id !== e.id), edit: null, sel: [], anchor: null });
     else this.setState({ edit: null });
     this.focusRoot();
   }
@@ -1125,6 +1176,7 @@ class Component extends DCLogic {
         this.scrollToId = dr.id;
       }
       if (dr && opts.day && opts.day !== dr.when) this.setState({ tasks: this.state.tasks.map((t) => (t.id === dr.id ? { ...t, when: opts.day } : t)) });
+      if (dr && opts.under && dr.list === (opts.listId || dr.list)) { const o = this.orderAtSectionEnd(dr.list, opts.under); this.setState({ tasks: this.state.tasks.map((t) => (t.id === dr.id ? { ...t, order: o } : t)) }); this.scrollToId = dr.id; }
       this.focusTitle();
       return;
     }
@@ -1139,10 +1191,11 @@ class Component extends DCLogic {
       }
     }
     if (!listId) { this.showNotice('Create a list first: ⇧⌘N', false); return; }
-    const max = s.tasks.filter((t) => t.list === listId).reduce((m, t) => Math.max(m, t.order), 0);
+    const no = this.newTaskOrder(listId, opts);   // a heading's section, or the bottom (§23)
+    if (no.under && this.isCollapsed(no.under)) this.toggleCollapse([no.under], false);
     const id = uid('n');
     const inToday = s.route.kind === 'today', when = inToday ? this.today : this.newTaskWhen(opts);
-    const task = { id, list: listId, order: max + 1, title: '', notes: '', when, deadline: null, completedAt: null, doneAt: null, deleted: false, createdAt: Date.now(), draft: true };
+    const task = { id, list: listId, order: no.order, title: '', notes: '', when, deadline: null, completedAt: null, doneAt: null, deleted: false, createdAt: Date.now(), draft: true };
     this.draftPrev = { sel: s.sel, paneOpen: s.detail === 'open' || s.detail === 'opening' };
     this.setState({ tasks: s.tasks.concat(task), sel: [id], anchor: id, cursor: id, focus: 'detail', edit: { kind: 'dtitle', id, text: '', orig: '', isNew: true }, picker: null, menu: null });
     this.openDetail();
@@ -1161,7 +1214,7 @@ class Component extends DCLogic {
   targetIds() { return this.state.sel.filter((id) => { const t = this.task(id); return t && this.hereNow(t) && !t.draft; }); }
   toggleComplete(ids) {
     if (this.inTrash()) return;
-    ids = ids.filter((id) => this.task(id));
+    ids = this.onlyTasks(ids);   // headings have no check
     if (!ids.length) return;
     const anyOpen = ids.some((id) => this.task(id).completedAt == null);
     const now = Date.now();
@@ -1193,12 +1246,15 @@ class Component extends DCLogic {
     if (!ids.length) return;
     const next = this.nextSelAfterRemoving(ids);
     const tasks = this.state.tasks.map((t) => (ids.includes(t.id) ? { ...t, deleted: true, deletedAt: Date.now() } : t));
-    this.commit(ids.length > 1 ? 'Delete ' + ids.length + ' Tasks' : 'Delete', { tasks, sel: next, anchor: next[0] || null, menu: null, picker: null });
-    this.showNotice(ids.length > 1 ? 'Deleted ' + ids.length + ' tasks' : 'Deleted ' + quote(this.task(ids[0]).title), true);
+    // A heading goes on its own: its tasks stay where they are, under the heading above it (§23). It isn't in Trash.
+    const nh = ids.filter((id) => this.isHead(this.task(id))).length;
+    const label = nh === ids.length ? (nh > 1 ? 'Delete ' + nh + ' Headings' : 'Delete Heading') : ids.length > 1 ? 'Delete ' + ids.length + ' Tasks' : 'Delete';
+    this.commit(label, { tasks, sel: next, anchor: next[0] || null, menu: null, picker: null });
+    this.showNotice(nh === ids.length ? (nh > 1 ? 'Deleted ' + nh + ' headings' : 'Deleted heading ' + quote(this.task(ids[0]).title)) : nh ? 'Deleted ' + ids.length + ' items' : ids.length > 1 ? 'Deleted ' + ids.length + ' tasks' : 'Deleted ' + quote(this.task(ids[0]).title), true);
     if (this.state.detail !== 'closed' && !next.length) this.closeDetail();
   }
   moveTasks(ids, listId) {
-    ids = ids.filter((id) => { const t = this.task(id); return t && t.list !== listId; });
+    ids = this.onlyTasks(ids).filter((id) => this.task(id).list !== listId);
     if (!ids.length) return;
     const l = this.list(listId);
     let max = this.state.tasks.filter((t) => t.list === listId).reduce((m, t) => Math.max(m, t.order), 0);
@@ -1209,7 +1265,7 @@ class Component extends DCLogic {
     if (leaves) this.showNotice((ids.length > 1 ? 'Moved ' + ids.length + ' tasks to ' : 'Moved to ') + l.name, true);
   }
   setDate(ids, field, ymd) {
-    ids = ids.filter((id) => this.task(id));
+    ids = this.onlyTasks(ids);
     if (!ids.length || this.inTrash()) return;
     const tasks = this.state.tasks.map((t) => (ids.includes(t.id) ? { ...t, [field]: ymd } : t));
     const leavesToday = this.leavesView(ids, tasks);   // Today's rule, and the views' (§22)
@@ -1232,7 +1288,23 @@ class Component extends DCLogic {
       if (target > 0) { prev = this.task(others[target - 1]); const i = full.findIndex((t) => t.id === prev.id); next = full[i + 1] || null; }
       else if (others.length) { next = this.task(others[0]); const i = full.findIndex((t) => t.id === next.id); prev = full[i - 1] || null; }
     } else {
-      prev = full[target - 1] || null; next = full[target] || null;
+      // A list: around the visible rows. Dropped just under a collapsed heading, a task goes to the end of its
+      // section (it folds in with the rest); headings are rows in the order (§23).
+      const g = this.lastLayout.groups.find((x) => x.listId === groupId);
+      const others = g ? g.ids.filter((id) => !ids.includes(id)) : full.map((t) => t.id);
+      const at = (id) => full.findIndex((t) => t.id === id);   // a row checked a moment ago isn't in full: skip it
+      let j = target - 1;
+      while (j >= 0 && at(others[j]) < 0) j--;
+      if (j >= 0) {
+        let i = at(others[j]);
+        if (this.isHead(full[i]) && this.isCollapsed(full[i].id)) while (full[i + 1] && !this.isHead(full[i + 1])) i++;
+        prev = full[i]; next = full[i + 1] || null;
+      } else {
+        let k = target;
+        while (k < others.length && at(others[k]) < 0) k++;
+        const i = k < others.length ? at(others[k]) : 0;
+        next = full[i] || null; prev = full[i - 1] || null;
+      }
     }
     const lo = prev ? prev.order : (next ? next.order - ids.length - 1 : 0);
     const hi = next ? next.order : lo + ids.length + 1;
@@ -1244,6 +1316,8 @@ class Component extends DCLogic {
     if (this.viewMoveBy(delta)) return;   // Upcoming: a day earlier or later; Completed and Trash: nothing (§22)
     const L = this.lastLayout, ids = this.targetIds().filter((id) => L.groupOf.get(id) && L.groupOf.get(id) !== 'done');
     if (!ids.length) return;
+    const head = ids.find((id) => this.isHead(this.task(id)));
+    if (head) { this.moveSectionBy(head, delta); return; }   // a heading moves with its tasks, past the next heading (§23)
     const gid = L.groupOf.get(ids[0]);
     const g = L.groups.find((x) => x.listId === gid);
     const mine = g.ids.filter((id) => ids.includes(id));
@@ -1319,6 +1393,7 @@ class Component extends DCLogic {
     if (one) items.push({ label: 'Show Details', keys: '⌘D', action: () => { this.select([t.id]); this.openDetail(); } });
     if (one) items.push({ label: 'Rename', keys: '↩', action: () => this.editTask(t.id, { selectAll: true }) });
     if (one && this.state.route.kind !== 'list') items.push({ label: 'Show in ' + this.list(t.list).name, action: () => this.go({ kind: 'list', id: t.list }, { sel: [t.id] }) });
+    if (this.state.route.kind === 'list') items.push({ label: 'New Heading Above', keys: '⌥⌘N', action: () => this.newHeading() });   // §23
     items.push({ sep: true });
     items.push({ label: anyOpen ? (one ? 'Complete' : 'Complete ' + n + ' Tasks') : 'Mark as Not Done', keys: '⌘K', action: () => this.toggleComplete(ids) });
     items.push({ label: 'When', sub: [
@@ -1360,7 +1435,8 @@ class Component extends DCLogic {
     this.openMenu(x, y, items);
   }
   moveMenuAt(ids) {
-    if (this.inTrash()) return;
+    ids = this.onlyTasks(ids);
+    if (this.inTrash() || !ids.length) return;
     const el = this.rowEl(ids[0]);
     const r = el ? this.rectIn(el) : { left: 300, bottom: 120 };
     const lists = this.activeLists().filter((l) => !l.draft);
@@ -1411,6 +1487,8 @@ class Component extends DCLogic {
     this.setState({ picker: { field, ids, text: '', hot, cur, other, month: hot.slice(0, 7), x, y }, menu: null, tip: null });
   }
   openPickerForRows(field, ids) {
+    ids = this.onlyTasks(ids);
+    if (!ids.length) return;
     // From the focused detail pane showing these tasks, the popover hangs off its date chip; else off the row's chip,
     // else the row's right end.
     const s = this.state;
@@ -1448,7 +1526,9 @@ class Component extends DCLogic {
     const L = this.lastLayout, s = this.state;
     const gid = L.groupOf.get(c.id);
     if (!gid || gid === 'done') { this.dragCand = null; return; }
-    let ids = s.sel.includes(c.id) ? L.order.filter((id) => s.sel.includes(id) && L.groupOf.get(id) === gid) : [c.id];
+    // A heading carries its section (its tasks fold into the copy); a task carries the selected tasks (§23).
+    const sec = this.isHead(this.task(c.id));
+    let ids = sec ? this.sectionIds(c.id) : s.sel.includes(c.id) ? L.order.filter((id) => s.sel.includes(id) && L.groupOf.get(id) === gid && !this.isHead(this.task(id))) : [c.id];
     if (!ids.includes(c.id)) ids = [c.id];
     const g = L.groups.find((x) => x.listId === gid);
     const others = g.ids.filter((id) => !ids.includes(id));
@@ -1458,7 +1538,7 @@ class Component extends DCLogic {
     const p = this.winXY(e);
     this.endEdit();
     this.pendingCollapse = null;
-    this.setState({ drag: { ids, grabbed: c.id, group: gid, offX: c.wx - r.left, offY: c.wy - r.top, w: r.width, left: r.left, x: p.x - (c.wx - r.left), y: p.y - (c.wy - r.top), target, over: null, phase: 'drag', count: ids.length, startTop: r.top, mode: this.dragMode(), toDay: null }, menu: null, picker: null, tip: null });
+    this.setState({ drag: { ids, grabbed: c.id, group: gid, offX: c.wx - r.left, offY: c.wy - r.top, w: r.width, left: r.left, x: p.x - (c.wx - r.left), y: p.y - (c.wy - r.top), target, over: null, phase: 'drag', count: sec ? this.openUnder(c.id) : ids.length, sec, startTop: r.top, mode: this.dragMode(), toDay: null }, menu: null, picker: null, tip: null });
   }
   updateDrag(e) {
     const d = this.state.drag;
@@ -1467,7 +1547,7 @@ class Component extends DCLogic {
     const p = this.winXY(e);
     const x = p.x - d.offX, y = p.y - d.offY;
     let over = null; const sb = this.state.sbVisible && p.x < this.state.sbW - 4;   // on a target or not (v2 feedback 7)
-    if (sb) {
+    if (sb && !d.sec) {   // a heading doesn't drop on the sidebar
       const sc = this.sbScrollRef.current ? this.sbScrollRef.current.scrollTop : 0;
       const sy = p.y - SB_TOP + sc;
       const S = this.lastSidebar;
@@ -1484,10 +1564,13 @@ class Component extends DCLogic {
       const sc = this.listScrollRef.current ? this.listScrollRef.current.scrollTop : 0;
       const L = this.lastLayout;
       const g = L.groups.find((gg) => gg.listId === d.group);
-      const others = g.ids.filter((id) => !d.ids.includes(id)).length;
-      const top = PANE_TOP + HEAD_H + g.top - sc;
-      cy = clamp(y, top - 6, top + others * PITCH + 6);
-      target = clamp(Math.round((cy - top) / PITCH), 0, others);
+      const others = g.ids.filter((id) => !d.ids.includes(id));
+      // Rows have different heights (headings, their notes): the nearest slot top. A heading lands only between
+      // sections (§23).
+      const tops = this.slotTops(L, others, PANE_TOP + HEAD_H + g.top - sc);
+      const allowed = d.sec ? this.secTargets(others) : null;
+      cy = clamp(y, tops[allowed ? allowed[0] : 0] - 6, tops[others.length] + 6);
+      target = this.nearestSlot(tops, cy, allowed);
     }
     // Over the sidebar the copy is a small tag at the pointer, target or not, so the target row stays readable.
     const px = sb ? p.x + 12 : x, py = sb ? p.y + 8 : cy;
@@ -1534,10 +1617,11 @@ class Component extends DCLogic {
     }
     const g = L.groups.find((x) => x.listId === d.group);
     const sc = this.listScrollRef.current ? this.listScrollRef.current.scrollTop : 0;
-    const slotY = PANE_TOP + HEAD_H + g.top + d.target * PITCH - sc;
     const others = g.ids.filter((id) => !d.ids.includes(id));
+    const slotY = PANE_TOP + HEAD_H + this.slotTops(L, others, g.top)[clamp(d.target, 0, others.length)] + (L.airOf.get(d.grabbed) || 0) - sc;
     const origTarget = g.ids.slice(0, g.ids.indexOf(d.ids[0])).filter((id) => !d.ids.includes(id)).length;
-    const contiguous = d.ids.every((id, i) => g.ids.indexOf(id) === g.ids.indexOf(d.ids[0]) + i);
+    const vis = d.ids.filter((id) => g.ids.includes(id));   // a section's folded tasks aren't rows
+    const contiguous = vis.every((id, i) => g.ids.indexOf(id) === g.ids.indexOf(vis[0]) + i);
     this.setState({ drag: { ...d, phase: 'fly', flyTo: { x: d.left, y: slotY } } });
     setTimeout(() => {
       if (!(contiguous && d.target === origTarget)) this.reorder(d.group, d.ids, clamp(d.target, 0, others.length));
@@ -1617,7 +1701,7 @@ class Component extends DCLogic {
     if (s.tip) this.setState({ tip: null });
     clearTimeout(this.tipTimer);
     // An edit whose field doesn't have focus (a demo row, or focus lost elsewhere) ends on the next press outside it.
-    if (s.edit && !isTextTarget(document.activeElement) && !(t.closest && t.closest('.row.editing, .srow.editing, .dtitle, .notes'))) this.endEdit();
+    if (s.edit && !isTextTarget(document.activeElement) && !(t.closest && t.closest('.row.editing, .srow.editing, .dtitle, .notes, .lhead, .hnote'))) this.endEdit();
   };
   onRootClickCapture = (e) => { if (this.swallow) { this.swallow = false; e.stopPropagation(); e.preventDefault(); } };
   onRootContextMenu = (e) => { e.preventDefault(); };
@@ -1640,7 +1724,8 @@ class Component extends DCLogic {
 
     const cmd = meta || ctrl;
     const letter = code.startsWith('Key') ? code.slice(3).toLowerCase() : k.toLowerCase();
-    // Global: new task, new list (the browser keeps ⌘N, so ⌥N also works here)
+    // Global: new heading (⌥⌘N; ⌃⌥N here too), new task, new list (the browser keeps ⌘N, so ⌥N also works here)
+    if (cmd && alt && !shift && letter === 'n') { e.preventDefault(); this.newHeading(); return; }
     if ((cmd && !shift && letter === 'n') || (alt && !shift && !cmd && letter === 'n')) { e.preventDefault(); this.newTask(); return; }
     if ((cmd && shift && letter === 'n') || (alt && shift && !cmd && letter === 'n')) { e.preventDefault(); this.newList(); return; }
     if (cmd && letter === 'z' && !inText) { e.preventDefault(); if (shift) this.redo(); else this.undo(); return; }
@@ -1684,7 +1769,7 @@ class Component extends DCLogic {
     if (cmd && shift && letter === 'd') { e.preventDefault(); if (ids.length) this.openPickerForRows('deadline', ids); return; }
     if (cmd && shift && letter === 'm') { e.preventDefault(); if (ids.length) this.moveMenuAt(ids); return; }
     if (cmd && k === 'Backspace') { e.preventDefault(); this.deleteTasks(ids); return; }
-    if (cmd && letter === 'a') { e.preventDefault(); this.setState({ sel: this.visualOrder().filter((id) => this.lastLayout.groupOf.get(id) !== 'done'), focus: 'list' }); return; }
+    if (cmd && letter === 'a') { e.preventDefault(); this.setState({ sel: this.visualOrder().filter((id) => this.lastLayout.groupOf.get(id) !== 'done' && !this.isHead(this.task(id))), focus: 'list' }); return; }
     if (alt && cmd && (k === 'ArrowUp' || k === 'ArrowDown')) { e.preventDefault(); this.moveSelBy(k === 'ArrowUp' ? -1 : 1); return; }
 
     if (s.focus === 'detail') {
@@ -1705,7 +1790,7 @@ class Component extends DCLogic {
       }
       case 'ArrowLeft': if (s.focus === 'list') { e.preventDefault(); this.setState({ focus: 'sidebar' }); } return;
       case 'Enter': e.preventDefault(); if (ids.length === 1) this.editTask(ids[0], { selectAll: true }); else if (!ids.length) this.moveSel(1, false); return;
-      case ' ': e.preventDefault(); this.toggleComplete(ids); return;
+      case ' ': { e.preventDefault(); const hs = ids.filter((id) => this.isHead(this.task(id))); if (hs.length && hs.length === ids.length) this.toggleCollapse(hs); else this.toggleComplete(ids); return; }   // on headings: collapse (§23)
       case 'Escape':
         e.preventDefault();
         if (s.picker) { this.setState({ picker: null }); return; }
@@ -1781,7 +1866,7 @@ class Component extends DCLogic {
     if (e.button !== 0) return;
     const id = e.currentTarget.dataset.id;
     const s = this.state;
-    if (s.edit && s.edit.id === id && (s.edit.kind === 'task')) return;
+    if (s.edit && s.edit.id === id && (s.edit.kind === 'task' || s.edit.kind === 'heading')) return;
     const t = this.task(id);
     if (!t) return;
     const L = this.lastLayout;
@@ -1817,7 +1902,7 @@ class Component extends DCLogic {
     if (t && this.inTrash()) { this.openDetail(); return; }   // Trash reads but doesn't edit (§22)
     if (!t || t.completedAt != null) return;
     let caret = null;
-    const span = e.currentTarget.querySelector('.tt');
+    const span = e.currentTarget.querySelector('.tt, .ht');
     if (span && document.caretRangeFromPoint) {
       const r = document.caretRangeFromPoint(e.clientX, e.clientY);
       if (r && span.contains(r.startContainer)) caret = r.startOffset;
@@ -1832,7 +1917,8 @@ class Component extends DCLogic {
     if (!sel.includes(id)) { sel = [id]; this.setState({ sel, anchor: id }); }
     this.setState({ focus: 'list' });
     const p = this.winXY(e);
-    this.taskMenu(sel, p.x, p.y);
+    if (this.isHead(this.task(id))) this.headingMenu(sel.filter((x) => this.isHead(this.task(x))), p.x, p.y);   // §23
+    else this.taskMenu(this.onlyTasks(sel), p.x, p.y);
   };
   onCheck = (e) => { e.stopPropagation(); this.toggleComplete([e.currentTarget.dataset.id]); };
   stopPD = (e) => { e.stopPropagation(); };
@@ -1874,7 +1960,7 @@ class Component extends DCLogic {
   onEditBlur = (e) => {
     const ed = this.state.edit;
     const id = e.currentTarget.dataset.id || e.currentTarget.dataset.key;
-    if (ed && ed.id === id && (ed.kind === 'task' || ed.kind === 'list')) this.commitEdit();
+    if (ed && ed.id === id && (ed.kind === 'task' || ed.kind === 'list' || ed.kind === 'heading' || ed.kind === 'ltitle')) this.commitEdit();
   };
   onEditKey = (e) => {
     const ed = this.state.edit;
@@ -1882,7 +1968,13 @@ class Component extends DCLogic {
     const k = e.key;
     if (k === 'Enter') { e.preventDefault(); e.stopPropagation(); this.commitEdit(); this.focusRoot(); return; }
     if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); this.cancelEdit(); return; }
-    if (k === 'Tab') { e.preventDefault(); e.stopPropagation(); this.commitEdit(); this.focusRoot(); return; }
+    if (k === 'Tab') {
+      e.preventDefault(); e.stopPropagation();
+      const to = !e.shiftKey && this.notesAfter(ed);   // a list's title or a heading's name: on to its notes (§23)
+      this.commitEdit();
+      if (to && this.nSource(to) != null) { this.startNotes(undefined, to); return; }
+      this.focusRoot(); return;
+    }
     if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z')) e.stopPropagation();
   };
 
@@ -1892,6 +1984,7 @@ class Component extends DCLogic {
     const id = this.inTrash() ? null : this.detailTaskId();
     const ed = this.state.edit;
     if (ed && ed.kind === 'dtitle' && ed.id === id) return;
+    if (ed && ed.kind !== 'dtitle') this.commitEdit();
     const t = this.task(id);
     if (t) this.setState({ edit: { kind: 'dtitle', id, text: t.title, orig: t.title, isNew: !!t.draft }, focus: 'detail' });
   };
@@ -1952,21 +2045,27 @@ class Component extends DCLogic {
   // One view of the source, always editable in place. Focusing it starts an editing session; every key edits the
   // source string; the session commits once, as today (one "Edit Notes" op).
   mdLines(text) { if (!this.mdCache || this.mdCache.text !== text) this.mdCache = { text, lines: mdParseLines(text) }; return this.mdCache.lines; }
-  startNotes = (sel) => {
-    const id = this.detailTaskId();
-    const t = this.task(id);
-    if (!t || t.deleted) return;
-    if (this.state.edit && this.state.edit.kind !== 'notes') this.commitEdit();
+  // The same editor shows a task's notes in the detail pane and, in the list pane, the list's notes and its headings'
+  // (§23): tgt is {of: task | list, id, where: detail | pane}.
+  startNotes = (sel, tgt) => {
+    tgt = tgt || { of: 'task', id: this.detailTaskId(), where: 'detail' };
+    const text = this.nSource(tgt);
+    if (text == null) return;
+    if (tgt.of === 'task') { const t = this.task(tgt.id); if (!t || t.deleted) return; }
+    const ed0 = this.state.edit;
+    if (ed0 && (ed0.kind !== 'notes' || this.nKeyOf(ed0) !== this.nKeyOf(tgt))) this.commitEdit();
     this.nUndo = []; this.nRedo = []; this.nCur = null;
-    const s = sel === undefined ? [t.notes.length, t.notes.length] : sel;
-    this.setState({ edit: { kind: 'notes', id, text: t.notes, orig: t.notes, sel: s }, focus: 'detail' });
+    const s = sel === undefined ? [text.length, text.length] : sel;
+    this.setState({ edit: { kind: 'notes', of: tgt.of, id: tgt.id, where: tgt.where, text, orig: text, sel: s }, focus: tgt.where === 'pane' ? 'list' : 'detail' });
     if (sel === undefined) this.nFocusWant = true;   // from the title (Return, Tab): the caret goes to the end
   };
   notesRefCb = (el) => {
-    if (this.notesEl === el) return;
-    if (this.notesEl) { this.notesEl.removeEventListener('beforeinput', this.onNotesBeforeInput); this.notesEl.removeEventListener('compositionend', this.onNotesCompEnd); }
-    this.notesEl = el;
-    if (el) { el.addEventListener('beforeinput', this.onNotesBeforeInput); el.addEventListener('compositionend', this.onNotesCompEnd); }
+    // Every editor (the detail pane's, the list's, each heading's) gets the input listeners once.
+    if (!el) return;
+    if (!this.nBound) this.nBound = new WeakSet();
+    if (this.nBound.has(el)) return;
+    this.nBound.add(el);
+    el.addEventListener('beforeinput', this.onNotesBeforeInput); el.addEventListener('compositionend', this.onNotesCompEnd);
   };
   // The latest source and selection. Keys can arrive faster than React renders, so changes made since the last render
   // are kept here (nCur) and win over both this.state and the DOM's selection until the render lands (nAfterRender).
@@ -1977,7 +2076,7 @@ class Component extends DCLogic {
   }
   nPut(next) { next = { ...next, rev: (next.rev || 0) + 1 }; this.nCur = next; this.setState({ edit: next }); }
   nDomSel() {
-    const el = this.notesEl, s = window.getSelection();
+    const el = this.nEl(), s = window.getSelection();
     if (!el || document.activeElement !== el || !s.rangeCount || !el.contains(s.anchorNode) || !el.contains(s.focusNode)) return null;
     return [mdPointToOffset(el, s.anchorNode, s.anchorOffset), mdPointToOffset(el, s.focusNode, s.focusOffset)];
   }
@@ -2159,7 +2258,7 @@ class Component extends DCLogic {
   }
   // A source range's rectangle in window coordinates (keeping the caret in view).
   nRect(a, b) {
-    const el = this.notesEl;
+    const el = this.nEl();
     if (!el || !this.winRef.current) return null;
     const r = document.createRange();
     try { const p = mdOffsetToPoint(el, a), q = mdOffsetToPoint(el, b); r.setStart(p[0], p[1]); r.setEnd(q[0], q[1]); } catch (e) { return null; }
@@ -2168,11 +2267,11 @@ class Component extends DCLogic {
     const w = this.winRef.current.getBoundingClientRect();
     return { left: rc.left - w.left, right: rc.right - w.left, top: rc.top - w.top, bottom: rc.bottom - w.top };
   }
-  onNotesFocus = () => {
+  onNotesFocus = (e) => {
     if (this.nRestoring) return;
-    const ed = this.state.edit, id = this.detailTaskId();
-    if (ed && ed.kind === 'notes' && ed.id === id) return;
-    this.startNotes(null);
+    const tgt = this.nTarget(e && e.currentTarget), ed = this.state.edit;
+    if (ed && ed.kind === 'notes' && this.nKeyOf(ed) === this.nKeyOf(tgt)) return;
+    this.startNotes(null, tgt);
   };
   onNotesBlur = () => {
     const ed = this.nState();
@@ -2231,13 +2330,15 @@ class Component extends DCLogic {
   };
   onBoxClick = (e) => {
     e.preventDefault(); e.stopPropagation();
-    const at = +e.currentTarget.dataset.box, t = this.task(this.detailTaskId());
-    if (!t) return;
+    const at = +e.currentTarget.dataset.box, tgt = this.nTarget(e.currentTarget.closest('.mded')), src = this.nSource(tgt);
+    if (src == null) return;
     const flip = (s) => s.slice(0, at) + (s[at] === ' ' ? 'x' : ' ') + s.slice(at + 1);
     clearTimeout(this.boxPopTimer);
     this.boxPopTimer = setTimeout(() => this.setState({ boxPop: null }), 320);
     const ed = this.nState();
-    if (ed && ed.id === t.id) {
+    if (tgt.of === 'list' && !(ed && this.nKeyOf(ed) === this.nKeyOf(tgt))) { this.commit(src[at] === ' ' ? 'Check Item' : 'Uncheck Item', { lists: this.state.lists.map((x) => (x.id === tgt.id ? { ...x, notes: flip(x.notes || '') } : x)), boxPop: at }); return; }
+    const t = this.task(tgt.id);
+    if (ed && this.nKeyOf(ed) === this.nKeyOf(tgt)) {
       this.nUndo.push({ text: ed.text, sel: ed.sel, kind: 'box', t: Date.now() }); this.nRedo = [];
       this.nPut({ ...ed, text: flip(ed.text) }); this.setState({ boxPop: at });
       return;
@@ -2254,7 +2355,7 @@ class Component extends DCLogic {
     if (k === 'Tab') {
       e.preventDefault(); e.stopPropagation();
       if (this.nIndent(e.shiftKey)) return;
-      if (e.shiftKey) { this.commitEdit(); this.focusTitle(true); } else { const [a, b] = this.nSel(); this.nReplace(a, b, '\t', 'type'); }
+      if (e.shiftKey) { const where = this.nState().where; this.commitEdit(); if (where === 'pane') { e.currentTarget.blur(); this.setState({ focus: 'list' }); this.focusRoot(); } else this.focusTitle(true); } else { const [a, b] = this.nSel(); this.nReplace(a, b, '\t', 'type'); }
       return;
     }
     if (cmd && e.altKey && e.shiftKey && letter === 'v') { this.nPlainPaste = true; e.stopPropagation(); return; }
@@ -2268,8 +2369,9 @@ class Component extends DCLogic {
   nAfterRender() {
     cancelAnimationFrame(this.nRaf);
     const step = (n) => {
-      const el = this.notesEl, ed = this.state.edit;
-      if (!el || !ed || ed.kind !== 'notes') { this.nCur = null; return; }
+      const el = this.nEl(), ed = this.state.edit;
+      if (!ed || ed.kind !== 'notes') { this.nCur = null; return; }
+      if (!el) { if (n < 8) this.nRaf = requestAnimationFrame(() => step(n + 1)); else this.nCur = null; return; }   // a block that's only now drawn
       if ((this.nCur && this.nCur !== ed) || el.dataset.rev !== String(ed.rev || 0)) { if (n < 8) this.nRaf = requestAnimationFrame(() => step(n + 1)); else this.nCur = null; return; }
       this.nCur = null;
       this.nRestore(el, ed);
@@ -2290,7 +2392,7 @@ class Component extends DCLogic {
     if (!ok) { const p = mdOffsetToPoint(el, ed.sel[0]), q = mdOffsetToPoint(el, ed.sel[1]); try { s.setBaseAndExtent(p[0], p[1], q[0], q[1]); } catch (err) { /* ignore */ } }
     if (this.nScrollWant) {
       this.nScrollWant = false;
-      const body = el.closest('.dbody'), r = this.nRect(ed.sel[1], ed.sel[1]), w = this.winRef.current;
+      const body = el.closest('.dbody') || el.closest('.pcs'), r = this.nRect(ed.sel[1], ed.sel[1]), w = this.winRef.current;
       if (body && r && w) {
         const br = body.getBoundingClientRect(), wr = w.getBoundingClientRect(), top = br.top - wr.top, bottom = br.bottom - wr.top;
         if (r.bottom > bottom - 19) body.scrollTop += r.bottom - (bottom - 19);
@@ -2362,7 +2464,7 @@ class Component extends DCLogic {
   onDDelete = () => { this.deleteTasks(this.detailIds()); };
   onDClose = () => { this.closeDetail(); };
   onLinkClick = (e) => { e.preventDefault(); e.stopPropagation(); this.showNotice('Opens ' + e.currentTarget.getAttribute('href'), false); };
-  detailIds() { return this.state.sel.filter((id) => { const t = this.task(id); return t && this.hereNow(t); }); }
+  detailIds() { return this.state.sel.filter((id) => { const t = this.task(id); return t && this.hereNow(t) && !this.isHead(t); }); }   // headings have no details (§23)
   detailTaskId() { const ids = this.detailIds(); return ids.length === 1 ? ids[0] : null; }
 
   // Sidebar
@@ -2483,7 +2585,8 @@ class Component extends DCLogic {
   onStage = (e) => {
     const k = e.currentTarget.dataset.k, v = e.currentTarget.dataset.v;
     if (k === 'theme') this.instant({ theme: v }); else if (k === 'editTasks') this.setEditTasks(v);
-    else if (k === 'reset') { const seed = makeSeed(this.today); this.undoStack = []; this.redoStack = []; this.instant({ lists: seed.lists, tasks: seed.tasks, sel: [], edit: null, picker: null, menu: null, pins: {}, route: this.routeFromProp(this.props.start, seed.lists), detail: 'closed', notice: null, sbVisible: true }); }
+    else if (k.startsWith('sv:')) this.setState({ secv: { ...this.state.secv, [k.slice(3)]: v } });   // §23's choices
+    else if (k === 'reset') { const seed = makeSeed(this.today); this.undoStack = []; this.redoStack = []; this.instant({ lists: seed.lists, tasks: seed.tasks, sel: [], edit: null, picker: null, menu: null, pins: {}, route: this.routeFromProp(this.props.start, seed.lists), detail: 'closed', notice: null, sbVisible: true, collapsed: {}, scrolled: false }); }
     else if (k === 'keys') this.setState({ keysOpen: !this.state.keysOpen });
     this.focusRoot();
   };
@@ -2500,6 +2603,7 @@ class Component extends DCLogic {
         const t = this.task(id);
         let to = y;
         if (t && !t.deleted && L.crowY != null && t.list === s.route.id && !this.placedOpen(t)) to = L.crowY;
+        else if (t && L.folded.has(id)) { const h = this.headingOf(t); if (h && L.ys.has(h.id)) to = L.ys.get(h.id); }   // collapsing folds them into it
         this.leaving.set(id, { y: to, at: now });
       }
       for (const id of L.ys.keys()) if (!this.prev.ys.has(id)) this.entering.set(id, now);
@@ -2554,6 +2658,7 @@ class Component extends DCLogic {
     // ----- Task rows: one node per task, in creation order, so motion follows the task.
     const visSel = (id) => selSet.has(id) && L.ys.has(id) && !(d && d.ids.includes(id) && d.phase !== 'done');
     const rows = s.tasks.map((t) => {
+      if (this.isHead(t)) return { id: t.id, cls: 'row hidden', style: '', title: '', editing: false, notEditing: true, chips: [], checkCls: 'check', titleCls: 'tt', where: '', hasWhere: false, checkLabel: '' };   // headings are drawn as heads (§23)
       let y = L.ys.get(t.id);
       const lv = this.leaving.get(t.id);
       let cls = 'row';
@@ -2568,7 +2673,8 @@ class Component extends DCLogic {
       if (isEd) cls += ' editing';
       if (visSel(t.id) && !lv) {
         cls += ' sel';
-        const above = L.order.find((x) => L.ys.get(x) === y - PITCH), below = L.order.find((x) => L.ys.get(x) === y + PITCH);
+        const row = (x) => !this.isHead(this.task(x));   // a selected heading doesn't join the block
+        const above = L.order.find((x) => L.ys.get(x) === y - PITCH && row(x)), below = L.order.find((x) => L.ys.get(x) === y + PITCH && row(x));
         if (above && visSel(above) && !this.leaving.has(above)) cls += ' sj-t';
         if (below && visSel(below) && !this.leaving.has(below)) cls += ' sj-b';
       }
@@ -2590,6 +2696,11 @@ class Component extends DCLogic {
       };
     });
 
+    // ----- Headings, their notes, and the top of the list pane (§23)
+    const heads = this.headVMs(L, visSel), hnotes = this.sec('text') === 'heads' ? this.headNoteVMs(L) : [];
+    const lh = this.headBlockVM(L, routeList), bigTitle = this.sec('title') === 'large';
+    const titleEd = !!(routeList && ed && ed.kind === 'ltitle' && ed.id === routeList.id);
+
     // ----- Today's group labels, the Completed disclosure, the add slot, the empty states.
     const labels = this.labelVMs(L);   // Today's list names and Completed; the views' days, months and lists (§22)
     const crowOpen = !!(routeList && s.completedOpen[routeList.id]);
@@ -2606,6 +2717,8 @@ class Component extends DCLogic {
       cls: 'pane lp' + (!detailOpen ? ' single' : s.focus === 'list' ? ' focused' : '') + (Date.now() - (this.paneSwapAt || 0) < DETAIL_CLOSE_MS ? ' swap' : ''),   // alone: no focus look; the change rides the detail pane (v2 feedback 3)
       style: 'left: ' + (s.sbVisible ? s.sbW : GUTTER) + 'px; right: ' + (detailOpen ? GUTTER + s.detailW + GUTTER : GUTTER) + 'px',
       headStyle: s.sbVisible ? '' : 'padding-left: 124px',
+      phCls: 'ph' + (bigTitle ? ' lg' : ' band'), idCls: 'pid' + (bigTitle && !s.scrolled ? ' fold' : ''),   // §23: the large title's band title shows once it's scrolled under
+      renaming: titleEd && !bigTitle, notRenaming: !(titleEd && !bigTitle), editText: titleEd ? ed.text : '', key: routeList ? routeList.id : '',
       isToday: inToday, isList: !!routeList, ...this.viewHead(),
       title: inToday ? 'Today' : routeList ? routeList.name || 'New List' : this.keyName(s.route.kind),
       sub: inToday ? WD[weekdayIdx(T)] + ', ' + md(T) : routeList && routeList.archivedAt ? 'Archived' : '',
@@ -2627,7 +2740,7 @@ class Component extends DCLogic {
     const one = dIds.length === 1 ? this.task(dIds[0]) : null;
     const many = dIds.length > 1 ? dIds.map((id) => this.task(id)) : null;
     const dpo = { show: s.detail !== 'closed', cls: 'pane dp' + (s.focus === 'detail' ? ' focused' : '') + (s.detail === 'opening' || s.detail === 'closing' ? ' out' : ''), style: 'width: ' + s.detailW + 'px' };
-    dpo.nt = { lines: [], cls: 'mded', ce: 'false' };
+    dpo.nt = { lines: [], cls: 'mded', ce: 'false', nk: '', id: '' };
     dpo.single = !!one; dpo.multi = !!many; dpo.none = !one && !many;
     const dateRow = (field, value, mixed) => {
       if (mixed) return { has: false, mixed: true, ghost: 'Mixed', text: '', cls: 'chip lg ghost', rel: '', relCls: 'rel' };
@@ -2654,17 +2767,19 @@ class Component extends DCLogic {
       const dEd = ed && ed.kind === 'dtitle' && ed.id === one.id;
       dpo.titleValue = dEd ? ed.text : one.title;
       dpo.checkCls = 'check' + (one.completedAt != null ? ' on' : '') + (s.pops[one.id] ? ' pop' : '') + (one.draft ? ' new' : '') + (inert ? ' inert' : '');
-      const nEd = ed && ed.kind === 'notes' && ed.id === one.id;
+      const nEd = ed && ed.kind === 'notes' && this.nKeyOf(ed) === 'detail:' + one.id;
       const ntext = nEd ? ed.text : one.notes;
       dpo.nt = {
         lines: this.mdView(ntext, { focused: !!nEd, sel: nEd ? ed.sel : null }),
         cls: 'mded' + (ntext ? '' : ' empty') + (nEd ? ' editing' : ''),
-        ce: inert ? 'false' : 'true', rev: nEd ? ed.rev || 0 : -1,
+        ce: inert ? 'false' : 'true', rev: nEd ? ed.rev || 0 : -1, nk: 'detail:' + one.id, id: one.id,
       };
       dpo.meta = 'Created ' + md(ymdOf(new Date(one.createdAt))) + (one.completedAt ? ' · Completed ' + md(ymdOf(new Date(one.completedAt))) : '') + (ntext.length >= MD_NEAR ? ' · ' + ntext.length.toLocaleString('en-US') + ' / 20,000' : '');
     }
     if (many) dpo.multiTitle = many.length + ' tasks selected';
     this.viewDetail(dpo, one, many);   // Trash: read-only, with Put Back in place of Delete (§22)
+    this.headDetail(dpo);   // only headings selected (§23)
+    if (one && this.sec('ctx') === 'row') { const hh = this.headingOf(one); if (hh) dpo.headName += ' › ' + hh.title; }
 
     // ----- Sidebar
     const cmdKeys = this.numberKeys();
@@ -2695,7 +2810,7 @@ class Component extends DCLogic {
     sbItems.push({ isRow: false, isLabel: true, key: 'lbl-lists', cls: 'sbi glabel', style: 'transform: translateY(' + S.ys.get('lbl-lists') + 'px)', name: 'Lists', plus: true, chev: false, revealCls: 'gbtn reveal' });
     for (const l of s.lists) {
       const arch = !!l.archivedAt;
-      const count = arch ? '' : String(s.tasks.filter((t) => t.list === l.id && !t.deleted && !t.draft && t.completedAt == null).length || '');
+      const count = arch ? '' : String(s.tasks.filter((t) => t.list === l.id && !t.deleted && !t.draft && !this.isHead(t) && t.completedAt == null).length || '');
       const typing = ed && ed.kind === 'list' && ed.id === l.id;   // the tile's letter follows the name as it's typed
       mkRow(l.id, { name: l.name || (l.draft ? '' : 'Untitled'), count, tileCls: 'tile ' + COLOR_CLASS[l.color], mono: monogram(typing ? ed.text : l.name), arch });
     }
@@ -2708,9 +2823,9 @@ class Component extends DCLogic {
       const t = this.task(d.grabbed);
       const pos = d.phase === 'drag' ? { x: d.x, y: d.y } : d.flyTo;
       const width = d.sb || (d.phase === 'fly' && d.shrink) ? 210 : d.w;
-      const chips = t && !d.sb ? rows.find((r) => r.id === t.id).chips : [];
-      drag = { show: true, cls: 'lifted' + (d.phase === 'fly' ? ' flying' : '') + (d.phase === 'done' ? ' settle' : '') + (d.shrink ? ' shrink' : ''), style: 'transform: translate(' + pos.x + 'px, ' + pos.y + 'px); width: ' + width + 'px',
-        title: t ? t.title || 'New Task' : '', chips, multi: d.count > 1, count: String(d.count), checkCls: 'check' };
+      const chips = t && !d.sb && !d.sec ? rows.find((r) => r.id === t.id).chips : [];
+      drag = { show: true, cls: 'lifted' + (d.sec ? ' hlift ' + (this.sec('heads') === 'bold' ? 'h-bold' : 'h-quiet') : '') + (d.phase === 'fly' ? ' flying' : '') + (d.phase === 'done' ? ' settle' : '') + (d.shrink ? ' shrink' : ''), style: 'transform: translate(' + pos.x + 'px, ' + pos.y + 'px); width: ' + width + 'px',
+        title: t ? t.title || (d.sec ? 'New Heading' : 'New Task') : '', chips, multi: d.sec ? d.count > 0 : d.count > 1, count: String(d.count), checkCls: 'check' };   // a heading's copy: its name and its open tasks' count
     }
     let sbLift = { show: false };
     if (sbd) {
@@ -2758,7 +2873,8 @@ class Component extends DCLogic {
     const seg = (k, opts) => opts.map(([v, label]) => ({ k, v, label, cls: s[k] === v ? 'on' : '' }));
     const stage = { show: stageOn,
       theme: seg('theme', [['dark', 'Dark'], ['light', 'Light']]),
-      editTasks: [['detail', 'Open in detail pane'], ['list', 'Rename in the list']].map(([v, label]) => ({ k: 'editTasks', v, label, cls: this.editTasksMode() === v ? 'on' : '' })),
+      editTasks: [['detail', 'Details'], ['list', 'In the row']].map(([v, label]) => ({ k: 'editTasks', v, label, cls: this.editTasksMode() === v ? 'on' : '' })),
+      vars: Object.keys(SEC_OPTS).map((k) => ({ label: SEC_LABEL[k], opts: SEC_OPTS[k].map(([v, label]) => ({ k: 'sv:' + k, v, label, cls: this.sec(k) === v ? 'on' : '' })) })),
     };
 
     return {
@@ -2770,6 +2886,7 @@ class Component extends DCLogic {
       sbTip: s.sbVisible ? 'Hide Sidebar' : 'Show Sidebar', sbStyle: 'width: ' + s.sbW + 'px', dv: this.dividerVM(detailOpen),
       lp, rows, labels, dp: dpo, drag, sbLift, menu, pk, notice, tip: tipv, stage, keysOpen: s.keysOpen,
       onLabelDbl: this.onLabelDbl,
+      heads, hnotes, lh, onHeadPlus: this.onHeadPlus, onHeadChev: this.onHeadChev, onTitleDbl: this.onTitleDbl, onListScroll: this.onListScroll,
       onKey: this.onKey, onKeyUp: this.onKeyUp, onRootMouseDown: this.onRootMouseDown, onRootPointerDownCapture: this.onRootPointerDownCapture, onRootClickCapture: this.onRootClickCapture, onRootContextMenu: this.onRootContextMenu, onRootFocusCapture: this.onRootFocusCapture,
       onRowDown: this.onRowDown, onRowMove: this.onRowMove, onRowUp: this.onRowUp, onRowDbl: this.onRowDbl, onRowCtx: this.onRowCtx,
       onCheck: this.onCheck, stopPD: this.stopPD, onChip: this.onChip, onOpen: this.onOpen, onListPaneDown: this.onListPaneDown, onScrollAreaDown: this.onScrollAreaDown,
@@ -2857,6 +2974,7 @@ class Component extends DCLogic {
     this.setState({ editTasks: v });
   }
   editTask(id, opts) {
+    if (this.isHead(this.task(id))) { this.startHeadRename(id, opts); return; }   // headings rename in place, either way (§23)
     if (this.inTrash()) { this.setState({ sel: [id], anchor: id, cursor: id }); this.openDetail(); return; }   // Return in Trash shows it
     if (this.editTasksMode() !== 'detail') { this.startRename(id, opts); return; }
     const t = this.task(id);
@@ -2921,7 +3039,7 @@ class Component extends DCLogic {
     if (k === 'undated') {
       // Open tasks with neither date, by list in sidebar order, each in its list's order (as Today).
       for (const l of this.activeLists()) {
-        const open = live.filter((t) => t.list === l.id && this.placedOpen(t) && !t.when && !t.deadline).sort(byOrder);
+        const open = live.filter((t) => t.list === l.id && !this.isHead(t) && this.placedOpen(t) && !t.when && !t.deadline).sort(byOrder);
         if (open.length) group(l.id, { name: l.name, plus: true, list: l.id, tip: 'New Task in ' + l.name }, open.map((t) => ({ t })), 'list');
       }
       if (!L.order.length) L.empty = 'undated';
@@ -2956,7 +3074,7 @@ class Component extends DCLogic {
     } else {
       // Completed and Trash: newest first, a group per day for the last week, then per month.
       const trash = k === 'trash';
-      const list = trash ? s.tasks.filter((t) => t.deleted && this.isActive(t.list)) : live.filter((t) => this.isActive(t.list) && !this.placedOpen(t));
+      const list = trash ? s.tasks.filter((t) => t.deleted && !this.isHead(t) && this.isActive(t.list)) : live.filter((t) => this.isActive(t.list) && !this.placedOpen(t));
       const stamp = (t) => (trash ? t.deletedAt || 0 : this.doneStamp(t));
       list.sort((a, b) => stamp(b) - stamp(a));
       const buckets = new Map();
@@ -2977,11 +3095,14 @@ class Component extends DCLogic {
   // In Upcoming, a day group's date; rows don't repeat it as a chip ("Due" marks a deadline on that day).
   groupDay(L, id) { const g = this.state.route.kind === 'upcoming' && L.gmap && L.gmap.get(L.groupOf.get(id)); return g && g.kind === 'day' ? g.day : null; }
   // The list name after the title where rows from several lists share a group; in a month group, the date too.
+  // With headings on the row (§23): the heading where the list is already the group, "List › Heading" elsewhere.
   whereText(L, t, inToday) {
     const k = this.state.route.kind, gid = L.groupOf.get(t.id) || '', name = (this.list(t.list) || { name: '' }).name;
-    if (inToday) return gid === 'done' ? name : '';
-    if (k === 'upcoming') return name;
-    if (k === 'completed' || k === 'trash') { const at = k === 'trash' ? t.deletedAt : this.doneStamp(t); return name + (gid.startsWith('m:') && at ? ' · ' + md(localDayOfMs(at)) : ''); }
+    const h = k !== 'list' && this.sec('ctx') === 'row' ? this.headingOf(t) : null, full = name + (h ? ' › ' + h.title : '');
+    if (inToday) return gid === 'done' ? full : h ? h.title : '';
+    if (k === 'undated') return h ? h.title : '';
+    if (k === 'upcoming') return full;
+    if (k === 'completed' || k === 'trash') { const at = k === 'trash' ? t.deletedAt : this.doneStamp(t); return full + (gid.startsWith('m:') && at ? ' · ' + md(localDayOfMs(at)) : ''); }
     return '';
   }
   // Group labels keep one node per id for as long as the view is open, so they move rather than swap.
@@ -3186,6 +3307,347 @@ class Component extends DCLogic {
     if (!t) return;
     this.setState({ sel: [t.id], anchor: t.id, cursor: t.id });
     if (this.props.detail === 'open') this.openDetail();
+  }
+
+  // ======================================================================
+  // Headings, a list's notes and its title (proposed: docs/TASK-design-sections.md, INTERACTIONS-v2 §23)
+  // ======================================================================
+  // A heading is a task with kind 'heading' in its list's order. It groups the tasks under it, down to the next
+  // heading. It has a title and notes, and never a date or a check. A list's notes are a `notes` field on the list,
+  // in the same Markdown editor as a task's. The strip switches the open choices (SEC_OPTS); boards set them with
+  // v-title, v-heads, v-text and v-ctx.
+  sec(k) { const o = this.state.secv && this.state.secv[k]; return o || this.props['v' + k[0].toUpperCase() + k.slice(1)] || SEC_DEFAULTS[k]; }
+  isHead(t) { return !!t && t.kind === 'heading'; }
+  onlyTasks(ids) { return ids.filter((id) => { const t = this.task(id); return t && !this.isHead(t); }); }
+  // A list's order: headings and open tasks, and the completed tasks too when asked (they keep their keys).
+  listItems(listId, withDone) { return this.state.tasks.filter((t) => t.list === listId && !t.deleted && (withDone || this.isHead(t) || t.completedAt == null)).sort(byOrder); }
+  hasHeads(listId) { return this.state.tasks.some((t) => t.list === listId && this.isHead(t) && !t.deleted && !t.draft); }
+  // The heading a task sits under: the last one before it in its list's order (completed and deleted tasks too).
+  headingOf(t) {
+    if (!t || this.isHead(t)) return null;
+    let h = null;
+    for (const x of this.state.tasks) if (x.list === t.list && this.isHead(x) && !x.deleted && !x.draft && x.order < t.order && (!h || x.order > h.order)) h = x;
+    return h;
+  }
+  // A heading's section: the heading, then every task under it, open or completed, down to the next heading.
+  sectionIds(hid) {
+    const h = this.task(hid);
+    if (!h) return [];
+    const items = this.listItems(h.list, true), i = items.findIndex((x) => x.id === hid), out = [hid];
+    for (let j = i + 1; j < items.length && !this.isHead(items[j]); j++) out.push(items[j].id);
+    return out;
+  }
+  openUnder(hid) { return this.sectionIds(hid).slice(1).filter((id) => { const t = this.task(id); return t && t.completedAt == null && !t.draft; }).length; }
+  // The key at the end of a section: the heading's (hid), or the tasks before the first heading (hid null).
+  orderAtSectionEnd(listId, hid) {
+    const items = this.listItems(listId, true);
+    let j = hid ? items.findIndex((x) => x.id === hid) + 1 : 0;
+    while (j < items.length && !this.isHead(items[j])) j++;
+    const last = items[j - 1] || null, next = items[j] || null;
+    if (!next) return (last ? last.order : 0) + 1;
+    return ((last ? last.order : next.order - 1) + next.order) / 2;
+  }
+  // Where ⌘N, + and a double-click put a new task: a heading's + adds to its section; in a list with headings and a
+  // selection, the selected row's section; else the bottom of the list, as before.
+  newTaskOrder(listId, opts) {
+    const s = this.state;
+    if (opts && opts.under) return { order: this.orderAtSectionEnd(listId, opts.under), under: opts.under };
+    if (s.route.kind === 'list' && s.route.id === listId && s.sel.length && this.hasHeads(listId)) {
+      const t = this.task(s.sel[0]);
+      if (t && t.list === listId && !t.draft) { const h = this.isHead(t) ? t : this.headingOf(t); return { order: this.orderAtSectionEnd(listId, h ? h.id : null), under: h ? h.id : null }; }
+    }
+    return { order: s.tasks.filter((t) => t.list === listId).reduce((m, t) => Math.max(m, t.order), 0) + 1 };
+  }
+
+  // ---------- Adding, renaming, deleting a heading ----------
+  // ⌥⌘N, or New Heading in a row's menu: above the selected row (it becomes the heading's first), or at the bottom.
+  // It opens renaming in its row; Return names it (one task.create), Esc or no name leaves nothing.
+  newHeading(demoText) {
+    const s = this.state;
+    if (s.route.kind !== 'list' || !this.list(s.route.id)) return;
+    this.endEdit();
+    const listId = s.route.id, items = this.listItems(listId, true), L = this.lastLayout;
+    const selId = L.order.find((id) => this.state.sel.includes(id) && L.groupOf.get(id) !== 'done');
+    const at = selId ? items.findIndex((t) => t.id === selId) : -1;
+    const order = at >= 0 ? (items[at - 1] ? (items[at - 1].order + items[at].order) / 2 : items[at].order - 1) : this.state.tasks.filter((t) => t.list === listId).reduce((m, t) => Math.max(m, t.order), 0) + 1;
+    const id = uid('h');
+    const h = { id, list: listId, kind: 'heading', order, title: '', notes: '', when: null, deadline: null, completedAt: null, doneAt: null, deleted: false, createdAt: Date.now(), draft: true };
+    this.setState({ tasks: this.state.tasks.concat(h), sel: [id], anchor: id, cursor: id, focus: 'list', edit: { kind: 'heading', id, text: demoText || '', orig: '', isNew: true, demo: !!demoText }, menu: null, picker: null });
+    this.scrollToId = id;
+  }
+  startHeadRename(id, opts) {
+    const t = this.task(id);
+    if (!this.isHead(t) || t.deleted) return;
+    this.endEdit();
+    const caret = opts && opts.caret != null ? opts.caret : null;
+    this.setState({ edit: { kind: 'heading', id, text: t.title, orig: t.title, isNew: false, selectAll: caret == null, caret }, sel: [id], anchor: id, focus: 'list' });
+  }
+  // The list's title renames in place (double-click it), as its sidebar row does.
+  startTitleRename(listId) {
+    const l = this.list(listId);
+    if (!l || l.draft) return;
+    this.endEdit();
+    if (this.sec('title') === 'large' && this.listScrollRef.current) this.listScrollRef.current.scrollTop = 0;
+    this.setState({ edit: { kind: 'ltitle', id: listId, text: l.name, orig: l.name, isNew: false, selectAll: true }, focus: 'list' });
+  }
+  commitSecEdit(e, text) {
+    if (e.kind === 'ltitle') {
+      const l = this.list(e.id);
+      if (l && text && text !== l.name) this.commit('Rename List', { lists: this.state.lists.map((x) => (x.id === e.id ? { ...x, name: text } : x)), edit: null });
+      else this.setState({ edit: null });
+      return;
+    }
+    const t = this.task(e.id);
+    if (!t) { this.setState({ edit: null }); return; }
+    if (e.isNew) {
+      if (!text) { this.setState({ tasks: this.state.tasks.filter((x) => x.id !== e.id), edit: null, sel: [], anchor: null }); return; }
+      this.commit('New Heading', { tasks: this.state.tasks.map((x) => (x.id === e.id ? { ...x, title: text, draft: false } : x)), edit: null }, { ids: [e.id] });
+    } else if (text && text !== t.title) this.commit('Rename Heading', { tasks: this.state.tasks.map((x) => (x.id === e.id ? { ...x, title: text } : x)), edit: null });
+    else this.setState({ edit: null });
+  }
+  // Tab from a list's title or a heading's name goes on to its notes, as the detail title's does.
+  notesAfter(ed) {
+    if (!ed) return null;
+    if (ed.kind === 'ltitle') return { of: 'list', id: ed.id, where: 'pane' };
+    if (ed.kind === 'heading' && this.sec('text') === 'heads') return { of: 'task', id: ed.id, where: 'pane' };
+    return null;
+  }
+  startHeadNotes(id) { this.select([id]); this.startNotes(undefined, { of: 'task', id, where: 'pane' }); }
+
+  // ---------- Collapsing (local, like a window's size: UserDefaults in the app, never synced) ----------
+  isCollapsed(hid) { return !!(this.state.collapsed && this.state.collapsed[hid]); }
+  toggleCollapse(hids, force) {
+    hids = hids.filter((id) => this.isHead(this.task(id)));
+    if (!hids.length) return;
+    const c = { ...this.state.collapsed };
+    const to = force !== undefined ? force : !hids.every((id) => c[id]);
+    for (const id of hids) { if (to) c[id] = true; else delete c[id]; }
+    let sel = this.state.sel;
+    if (to) {
+      // Selected tasks that fold away leave the selection; their heading takes it if nothing else is left.
+      const gone = new Set();
+      for (const id of hids) this.sectionIds(id).slice(1).forEach((x) => gone.add(x));
+      if (sel.some((x) => gone.has(x))) { sel = sel.filter((x) => !gone.has(x)); if (!sel.length) sel = hids.slice(0, 1); }
+    }
+    this.setState({ collapsed: c, sel, anchor: sel.length ? sel[sel.length - 1] : null });
+  }
+
+  // ---------- Moving a heading: it takes its section along ----------
+  // Where a section may land among the other rows (others: the group's visible ids without it): before a heading or
+  // at the end, never inside another section or above the tasks that have no heading.
+  secTargets(others) { const out = []; for (let t = 0; t <= others.length; t++) if (t === others.length || this.isHead(this.task(others[t]))) out.push(t); return out; }
+  moveSectionBy(hid, delta) {
+    const L = this.lastLayout, g = L.groups.find((x) => x.listId === L.groupOf.get(hid));
+    if (!g) return;
+    const sec = this.sectionIds(hid), others = g.ids.filter((id) => !sec.includes(id));
+    const allowed = this.secTargets(others);
+    const cur = g.ids.slice(0, g.ids.indexOf(hid)).filter((id) => !sec.includes(id)).length;
+    const k = allowed.indexOf(cur), nt = allowed[k + delta];
+    if (k < 0 || nt == null) return;
+    this.reorder(g.listId, sec, nt);
+    this.scrollToId = hid;
+  }
+  // Slot tops for a drag over rows of different heights: out[t] is where a gap at target t starts.
+  slotTops(L, ids, top) { const out = [top]; let y = top; for (const id of ids) { y += L.hOf.get(id) || PITCH; out.push(y); } return out; }
+  nearestSlot(tops, cy, allowed) {
+    const cand = allowed || tops.map((_, i) => i);
+    let best = cand[0];
+    for (const t of cand) if (Math.abs(tops[t] - cy) < Math.abs(tops[best] - cy)) best = t;
+    return best;
+  }
+
+  // ---------- Layout: a list with headings, under its title and notes ----------
+  // A heading's slot: 8 of air above it (Bold), its 32pt row, then its notes when it has some (measured). A collapsed
+  // heading's tasks aren't laid out (L.folded); they fold into it.
+  layoutList(L, live) {
+    const s = this.state, l = this.list(s.route.id);
+    L.headY = l && l.archivedAt ? 60 : 0;
+    L.top = L.headY + this.headBlockH(L);
+    const mine = live.filter((t) => t.list === s.route.id);
+    const items = mine.filter((t) => this.isHead(t) || this.placedOpen(t)).sort(byOrder);
+    const done = mine.filter((t) => !this.isHead(t) && !this.placedOpen(t)).sort((a, b) => (b.completedAt || b.doneAt || 0) - (a.completedAt || a.doneAt || 0));
+    const bold = this.sec('heads') === 'bold', withNotes = this.sec('text') === 'heads';
+    let y = L.top, fold = false;
+    const g = { listId: s.route.id, top: y, ids: [] };
+    L.groups.push(g);
+    for (const t of items) {
+      if (this.isHead(t)) {
+        fold = this.isCollapsed(t.id);
+        const air = bold ? HEAD_AIR : 0;
+        const nh = withNotes && !fold && this.headNotesShown(t) ? this.mh['h:' + t.id] || this.guessH(t.notes) : 0;
+        L.airOf.set(t.id, air); L.hOf.set(t.id, air + PITCH + nh); L.noteH.set(t.id, nh);
+        L.ys.set(t.id, y + air); L.order.push(t.id); L.groupOf.set(t.id, g.listId); g.ids.push(t.id);
+        y += air + PITCH + nh;
+        continue;
+      }
+      if (fold) { L.folded.add(t.id); continue; }
+      L.ys.set(t.id, y); L.order.push(t.id); L.groupOf.set(t.id, g.listId); g.ids.push(t.id); y += PITCH;
+    }
+    L.ghostY = y; y += PITCH;
+    L.done = done.length;
+    if (done.length) {
+      L.crowY = y + 8; y = L.crowY + PITCH;
+      if (s.completedOpen[s.route.id]) for (const t of done) { L.ys.set(t.id, y); L.order.push(t.id); L.groupOf.set(t.id, 'done'); y += PITCH; }
+    }
+    if (!items.length && !done.length) L.empty = 'list';
+    L.height = y + 24;
+  }
+  headNotesShown(t) { const ed = this.state.edit; return !!t.notes || !!(ed && ed.kind === 'notes' && this.nKeyOf(ed) === 'pane:' + t.id); }
+  guessH(text) { return 6 + 19 * Math.max(1, (text || '').split('\n').length); }
+  // The block at the top of the list pane: the large title (B), and a list's notes under it. Measured once drawn;
+  // until then, an estimate. In the band (A), Today and the views have no block.
+  headBlockH(L) {
+    const s = this.state, big = this.sec('title') === 'large', l = s.route.kind === 'list' ? this.list(s.route.id) : null;
+    if (!big && !l) return 4;
+    const m = this.mh['lhead:' + L.key];
+    if (m) return m;
+    const notes = l ? this.guessH(l.notes) - 6 : 0;
+    return big ? 4 + 30 + (l ? 4 + notes : 0) + 12 : 6 + notes + 10;
+  }
+  // Heights of the drawn text blocks (data-mh): read a frame after each render, laid out on the next.
+  measureBlocks() {
+    cancelAnimationFrame(this.mhRaf);
+    this.mhRaf = requestAnimationFrame(() => {
+      const root = this.rootRef.current;
+      if (!root || !root.querySelectorAll) return;
+      let changed = false;
+      for (const el of root.querySelectorAll('[data-mh]')) {
+        const k = el.dataset.mh, h = el.offsetHeight;
+        if (k && h && Math.abs((this.mh[k] || 0) - h) >= 1) { this.mh[k] = h; changed = true; }
+      }
+      if (changed) this.forceUpdate();
+    });
+  }
+
+  // ---------- The editor in the list pane: the same Markdown notes, on a list or a heading ----------
+  nKeyOf(ed) { return (ed.where || 'detail') + ':' + ed.id; }
+  nEl() {
+    const ed = this.state.edit, root = this.rootRef.current;
+    if (!ed || ed.kind !== 'notes' || !root || !root.querySelector) return null;
+    return root.querySelector('.mded[data-nk="' + this.nKeyOf(ed) + '"]');
+  }
+  nSource(tgt) {
+    if (!tgt || !tgt.id) return null;
+    if (tgt.of === 'list') { const l = this.list(tgt.id); return l ? l.notes || '' : null; }
+    const t = this.task(tgt.id);
+    return t ? t.notes || '' : null;
+  }
+  nTarget(el) {
+    const ds = (el && el.dataset) || {};
+    return { of: ds.of || 'task', id: ds.nid || this.detailTaskId(), where: (ds.nk || 'detail:').split(':')[0] };
+  }
+
+  // ---------- Pointer and keys ----------
+  onHeadPlus = (e) => {
+    e.stopPropagation();
+    const h = this.task(e.currentTarget.dataset.id);
+    if (!h) return;
+    if (this.isCollapsed(h.id)) this.toggleCollapse([h.id], false);
+    this.newTask({ listId: h.list, under: h.id });
+  };
+  onHeadChev = (e) => { e.stopPropagation(); this.toggleCollapse([e.currentTarget.dataset.id]); };
+  onTitleDbl = () => { const r = this.state.route; if (r.kind === 'list') this.startTitleRename(r.id); };
+  onListScroll = (e) => { const on = e.currentTarget.scrollTop > 24; if (on !== !!this.state.scrolled) this.setState({ scrolled: on }); };
+  headingMenu(ids, x, y) {
+    const hs = ids.map((id) => this.task(id)).filter((t) => this.isHead(t));
+    if (!hs.length) return;
+    const one = hs.length === 1, h = hs[0];
+    const items = [];
+    if (one) items.push({ label: 'Rename', keys: '↩', action: () => this.startHeadRename(h.id) });
+    if (one && this.sec('text') === 'heads') items.push({ label: h.notes ? 'Edit Notes' : 'Add Notes', action: () => this.startHeadNotes(h.id) });
+    if (one) items.push({ label: 'New Task in ' + (h.title || 'Heading'), action: () => { if (this.isCollapsed(h.id)) this.toggleCollapse([h.id], false); this.newTask({ listId: h.list, under: h.id }); } });
+    items.push({ sep: true });
+    const allFolded = hs.every((x) => this.isCollapsed(x.id));
+    items.push({ label: allFolded ? 'Expand' : 'Collapse', keys: 'Space', action: () => this.toggleCollapse(ids) });
+    if (one) {
+      const L = this.lastLayout, g = L.groups.find((x) => x.listId === L.groupOf.get(h.id));
+      const sec = this.sectionIds(h.id), others = g ? g.ids.filter((id) => !sec.includes(id)) : [];
+      const allowed = this.secTargets(others), cur = g ? g.ids.slice(0, g.ids.indexOf(h.id)).filter((id) => !sec.includes(id)).length : 0, k = allowed.indexOf(cur);
+      items.push({ label: 'Move Up', keys: '⌥⌘↑', disabled: k <= 0, action: () => this.moveSectionBy(h.id, -1) });
+      items.push({ label: 'Move Down', keys: '⌥⌘↓', disabled: k < 0 || k >= allowed.length - 1, action: () => this.moveSectionBy(h.id, 1) });
+    }
+    items.push({ sep: true });
+    items.push({ label: one ? 'Delete Heading' : 'Delete ' + hs.length + ' Headings', keys: '⌘⌫', action: () => this.deleteTasks(ids) });
+    this.openMenu(x, y, items);
+  }
+
+  // ---------- View model pieces ----------
+  // Heading rows: one node per heading, in creation order, so motion follows the heading.
+  headVMs(L, visSel) {
+    const s = this.state, d = s.drag, ed = s.edit, bold = this.sec('heads') === 'bold';
+    const off = { cls: 'row hidden', style: '', title: '', titleCls: 'ht', editing: false, notEditing: true, editText: '', autoFocus: false, count: '', countCls: 'hct', chevBtnCls: 'hbtn reveal', chevCls: 'i i--sm gchev', chevLabel: '', expanded: 'true', plusTip: '' };
+    return s.tasks.filter((t) => this.isHead(t)).map((t) => {
+      let y = L.ys.get(t.id);
+      const lv = this.leaving.get(t.id);
+      let cls = 'row hrow ' + (bold ? 'h-bold' : 'h-quiet');
+      if (y == null && lv) { y = lv.y; cls += ' leave'; }
+      if (y == null) return { ...off, id: t.id };
+      if (this.entering.has(t.id) && !lv) cls += ' enter';
+      if (d && d.ids.includes(t.id) && d.phase !== 'done') cls += ' dragsrc'; else if (d && d.phase === 'done' && t.id === d.grabbed) cls += ' landed';
+      const isEd = !!(ed && ed.kind === 'heading' && ed.id === t.id);
+      if (isEd) cls += ' editing';
+      if (visSel(t.id) && !lv) cls += ' sel';
+      const fold = this.isCollapsed(t.id), n = fold ? this.openUnder(t.id) : 0;
+      return { id: t.id, cls, style: 'transform: translateY(' + y + 'px)', title: t.title || 'New Heading', titleCls: 'ht' + (t.title ? '' : ' untitled'),
+        editing: isEd, notEditing: !isEd, editText: isEd ? ed.text : '', autoFocus: isEd && !ed.demo,
+        count: n ? String(n) : '', countCls: 'hct', chevBtnCls: 'hbtn reveal' + (fold ? ' on' : ''), chevCls: 'i i--sm gchev' + (fold ? '' : ' open'),
+        chevLabel: (fold ? 'Expand ' : 'Collapse ') + (t.title || 'heading'), expanded: fold ? 'false' : 'true', plusTip: 'New Task in ' + (t.title || 'this heading') };
+    });
+  }
+  // A heading's notes, under its row (text: list and headings).
+  headNoteVMs(L) {
+    const s = this.state, d = s.drag, ed = s.edit, bold = this.sec('heads') === 'bold';
+    return s.tasks.filter((t) => this.isHead(t)).map((t) => {
+      const y = L.ys.get(t.id), nk = 'pane:' + t.id, nh = L.noteH ? L.noteH.get(t.id) : 0;
+      if (y == null || !nh) return { id: t.id, cls: 'hnote hidden', style: '', mk: '', nt: { lines: [], cls: 'mded', ce: 'false', rev: -1, nk, id: t.id } };
+      const nEd = !!(ed && ed.kind === 'notes' && this.nKeyOf(ed) === nk);
+      const text = nEd ? ed.text : t.notes;
+      const cls = 'hnote ' + (bold ? 'h-bold' : 'h-quiet') + (d && d.ids.includes(t.id) && d.phase !== 'done' ? ' dragsrc' : '');
+      return { id: t.id, cls, style: 'transform: translateY(' + (y + PITCH) + 'px)', mk: 'h:' + t.id,
+        nt: { lines: this.mdView(text, { focused: nEd, sel: nEd ? ed.sel : null }), cls: 'mded' + (text ? '' : ' empty') + (nEd ? ' editing' : ''), ce: 'true', rev: nEd ? ed.rev || 0 : -1, nk, id: t.id } };
+    });
+  }
+  // The top of the list pane: the large title, and a list's notes.
+  headBlockVM(L, routeList) {
+    const s = this.state, ed = s.edit, big = this.sec('title') === 'large';
+    const lnk = routeList ? 'pane:' + routeList.id : '';
+    const lnEd = !!(routeList && ed && ed.kind === 'notes' && this.nKeyOf(ed) === lnk);
+    const text = routeList ? (lnEd ? ed.text : routeList.notes || '') : '';
+    const naming = !!(routeList && ed && ed.kind === 'ltitle' && ed.id === routeList.id);
+    return {
+      show: big || !!routeList, big, cls: 'lhead' + (big ? ' big' : ' band') + (naming || lnEd ? ' naming' : ''), style: 'top: ' + (L.headY || 0) + 'px', mk: 'lhead:' + L.key,
+      tileCls: 'tile ' + (routeList ? COLOR_CLASS[routeList.color] : ''), renaming: naming && big, notRenaming: !(naming && big), editText: naming ? ed.text : '', key: routeList ? routeList.id : '',
+      hasNotes: !!routeList,
+      nt: { lines: routeList ? this.mdView(text, { focused: lnEd, sel: lnEd ? ed.sel : null }) : [], cls: 'mded' + (text ? '' : ' empty') + (lnEd ? ' editing' : ''), ce: routeList ? 'true' : 'false', rev: lnEd ? ed.rev || 0 : -1, nk: lnk, id: routeList ? routeList.id : '' },
+    };
+  }
+  // Boards that start part-way through: the large title scrolled under the band, a heading being added above
+  // "Lab 4 pre-lab", Labs collapsed, Lectures mid-drag between Labs and Exam prep.
+  demoSec(kind) {
+    const find = (q) => this.state.tasks.find((t) => t.title.startsWith(q));
+    if (kind === 'scroll') { const sc = this.listScrollRef.current; if (sc) sc.scrollTop = 150; this.setState({ scrolled: true }); return; }
+    if (kind === 'collapse') { const h = find('Labs'); if (h) { this.select([h.id]); setTimeout(() => this.toggleCollapse([h.id], true), 0); } return; }
+    if (kind === 'newhead') { const t = find('Lab 4'); if (t) { this.select([t.id]); setTimeout(() => this.newHeading('Pre-labs'), 0); } return; }
+    if (kind === 'dragsec') {
+      const h = find('Lectures'), root = this.rootRef.current, el = h && root && root.querySelector('.hrow[data-id="' + h.id + '"]');
+      if (!el) return;
+      const r = el.getBoundingClientRect(), x = r.left + 60, y = r.top + 15, p = this.winXY({ clientX: x, clientY: y });
+      this.select([h.id]);
+      this.beginDrag({ id: h.id, x, y, wx: p.x, wy: p.y, el, pointerId: 0 }, { clientX: x, clientY: y });
+      let n = 0;
+      const step = () => { n += 1; this.updateDrag({ clientX: x + 6, clientY: y + n * 12 }); if (n < 15) requestAnimationFrame(step); };
+      requestAnimationFrame(step);
+    }
+  }
+  // The detail pane with only headings selected: what they are, quietly.
+  headDetail(dpo) {
+    const hs = this.state.sel.map((id) => this.task(id)).filter((t) => this.isHead(t) && !t.deleted && !t.draft);
+    dpo.headOnly = false;
+    if (!dpo.none || !hs.length) return;
+    const n = hs.length === 1 ? this.openUnder(hs[0].id) : 0;
+    dpo.none = false; dpo.headOnly = true;
+    dpo.headTitle = hs.length > 1 ? hs.length + ' headings selected' : hs[0].title;
+    dpo.headText = hs.length > 1 ? 'Select a task to see its notes and dates.' : n ? 'A heading with ' + plural(n, 'open task', 'open tasks') + ' under it.' : 'A heading with no tasks under it yet.';
   }
 }
 

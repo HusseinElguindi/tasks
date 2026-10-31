@@ -19,6 +19,14 @@ citations.
 - `Upcoming-*`, `Undated-*`, `Completed-*`, `Trash-*`: each view in dark and light.
 - `canvas.json`: the canvas layout and its notes.
 
+**Proposed (§23, `docs/TASK-design-sections.md`): headings and text in a list, and a clearer title.** Its canvas is
+https://claude.ai/artifact/9dQ4fC46yZLLhf61gLiELx (private until shared), laid out by `canvas-sections.json`. The
+prototype carries it behind the strip's Title, Headings, Text and Elsewhere switches; their defaults are the
+recommendations, and a board sets them with `v-title`, `v-heads`, `v-text` and `v-ctx`. The example list is PHYS 122.
+Its boards: `Sections` (the prototype on that list), `Title-*`, `Heads-*`, `Text-*`, `Context-*` (each choice side by
+side), `Heading-*` (adding, collapsed, mid-drag, from `demo="newhead|collapse|dragsec"`) and the light ones. The code
+is the block at the end of the component, after the four views'. Until the user picks, §1–§22 describe the app.
+
 The user's picks (add opens in the detail pane, the calendar popover, drag opens a gap, checked rows move after 1.5 s)
 and their picks for the views (Upcoming and Undated under Today, Completed and Trash after the lists; Upcoming's
 seven days, then months; a task with both dates shown once) are the only behavior here; the alternatives they didn't
