@@ -110,7 +110,7 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
    the only "New Task" (pressing the empty area still does what §6 says: caret back to the title, or write it). Checked
    live after ⌘N, the header +, a press on the empty area, a titled draft, in an empty list and in Today, and after
    the draft is written, dropped with Esc, or dropped by hiding the pane (the ghost comes back on hover). The
-   prototype had the same bug (`ghostShow`, dc:1963); fixed there too, in the source only (the published canvas
+   prototype had the same bug (`ghostShow`, dc:2743); fixed there too, in the source only (the published canvas
    wasn't republished).
 
 2. **A click on empty space no longer adds a task.** It clears the selection, as in Rex and Finder; with a task being
@@ -184,7 +184,7 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
      and out again, a drop on no target, a drop on Home (moved) and Esc (back in its slot). The prototype had the
      same dead band and got the same fix, checked in Chrome. Its Esc also left the gap at the last target while the
      copy flew home, so the row snapped back when the drag ended; the gap now reopens at the row's own slot
-     (`homeSlot`, dc:2211–2217), as in the app. Mid-file line numbers are unchanged.
+     (`homeSlot`, dc:2998–3004), as in the app. Mid-file line numbers are unchanged.
 
 8. **Settings ▸ Edit tasks.** A pop-up in a new "Behavior" section (Rex's settings have a behavior page whose rows are
    a title and a one-line description, as this one is): "Open in detail pane", the default, or "Rename in the list".
@@ -382,7 +382,7 @@ Built to the spec and the prototype (`design/prototype-markdown/`); §11 of the 
 
 ## The four views: Upcoming, Undated, Completed, Trash (INTERACTIONS-v2 §22)
 
-Built from §22 and the prototype (`design/prototype-v2/`, dc:2219–2530), with the user's picks:
+Built from §22 and the prototype (`design/prototype-v2/`, dc:3006–3318), with the user's picks:
 - **Sidebar.** It reads Today, Upcoming, Undated, the lists, then 8pt and Completed and Trash, then the Archive group.
   - The four have no counts, no menu, and can't be renamed or dragged.
   - ⌘1–⌘9 (the menu and the held-⌘ hints) number the first nine rows top to bottom.
@@ -412,7 +412,7 @@ Built from §22 and the prototype (`design/prototype-v2/`, dc:2219–2530), with
   - Upcoming and Undated don't take drops.
   - From the Trash, a list puts the task back.
 - Empty states for all four. Upcoming's sits 24 under its seven quiet days.
-- The demo seed has the prototype's view tasks (dc:487–508), so the app and the prototype can be compared.
+- The demo seed has the prototype's view tasks (dc:510–547, around the headings example), so the app and the prototype can be compared.
 
 How it's built:
 - `Route` gains the four cases, and the sidebar's key is the route (`Window/Views.swift`). Everything per view is
@@ -460,3 +460,59 @@ Not checked:
 - Anything needing a real pointer or the screen: hover looks and tooltips ("New Task for Monday"), the menus as
   drawn, real ⌘-key shortcuts, trackpad drags.
 - VoiceOver on the views' rows and labels.
+
+## Headings, a list's text and the large title (INTERACTIONS-v2 §23)
+
+Built from §23 (final, with "Bugs the prototype had") and the prototype (`design/prototype-v2/`, the PHYS 122 list:
+the seed at dc:528–543, the layout at dc:3465–3499). The demo seed has PHYS 122, so the two can be compared; at the
+same size they match line for line (title block 88 tall with two lines of notes, a heading's row 8 below its slot,
+its notes 2 below its row).
+
+- **Model:** a heading is a task with `kind: "heading"` (TasksCore `TaskItem.isHeading`), a list has `notes`. The
+  projection keeps headings in the list's open order and in a `headings` bucket, so counts subtract them and Today,
+  Upcoming, Undated and Trash never show one. The snapshot schema is 2 (old snapshots replay).
+- **Layout** (`TaskLayout`): a heading's slot is 8 of air, its 32pt row, and its notes (measured, + 6); a collapsed
+  heading's tasks aren't laid out and are kept in `folded` for the fold. Rows start under the title block (4 + 30,
+  then a list's notes 4 below, then 12); Today and the views get the 46pt title line. Drags use real slot tops.
+- **Views:** `HeadingRowView` (the + and the chevron are `IconButtonLayer`s, the chevron's glyph a fixed 12pt
+  `GlyphLayer` that only rotates), `ListTitleView` (the large title, its rename field, the "Notes" placeholder). The
+  list's and the headings' notes are the same notes editor, hosted through `NotesHost` (`NotesField.makeEditor`),
+  quieter (`ink-secondary`), one `list.update` or `task.update` per session.
+- **The +, the chevron and the row's press:** the rows are layers, and the list hit-tests them itself, so the
+  equivalent of "subviews that win the hit test" is that `TaskListView.target(at:)` asks the heading for its part
+  first: a press on the + or the chevron is that button, whatever its fade, and never selects or starts a drag.
+- **Expanding and collapsing:** a revealed row or note is placed at the heading's row and moved to its place with the
+  same additive `layout` spring as every other row, fading in on 220 ms ease-in, under the heading (heading views sit
+  above the rows). Collapsing moves them up into the heading's row as they fade out (150 ms). A folding notes editor is
+  inert, so it never takes a press while it passes over the heading.
+
+How it was checked (scratch app, debug steps; the screen was locked):
+- Rendered against the prototype in headless Chromium: PHYS 122 at 1180 wide, same rows, rules, notes and title.
+- **Every way of expanding** opens a collapsed heading, and collapsing works the same ways: the chevron (a click
+  through the list's real mouse path), Space, Collapse / Expand in its menu, its + (expands, then the new task lands
+  at the end of the section), and ⌘N with it selected (`newTask`, which expands first).
+- **Relaunch and sync:** collapsed headings stay collapsed after a relaunch on the same data, and through a sync with
+  a fresh `wrangler dev` (8795) while the CLI renamed a collapsed heading and added a task under it; the chevron then
+  expanded it with the CLI's task at the top of the section.
+- **The chevron's size:** its glyph is 12×12 in a 22pt button on the first render after launch (hidden, pointing
+  down), on the first hover (shown), and collapsed after a relaunch (shown, pointing right). `act:where` logs it.
+- **Frame by frame** (`act:trace`): expanding Labs, its notes and three tasks start at the heading's y (168) and
+  move with Exam prep and everything below on one curve; the last task stays exactly 40 above Exam prep's row in
+  every frame, never over it. Collapsing is the reverse, the rows rising into the heading's row as they fade.
+- ⌥⌘N above the selection (one `task.create` with `kind`), Esc and an empty name leave nothing, Tab writes it and
+  goes on to its notes; Return renames; ⌥⌘↓ moves a section; a heading drag moves its section in one request
+  (completed tasks included) and lands only before a heading or at the end; a task dropped across a heading changes
+  section; delete keeps the tasks under the heading above ("Deleted heading “Exams”", Undo brings it back); ⌘A selects
+  tasks only; the detail pane with a heading selected; the list's title renames in place and Tab goes to its notes;
+  the band's title shows once the list has scrolled 24pt.
+- TasksCore: 156 tests (SectionTests, fixture 12 byte for byte, headings in the randomized multi-Mac simulation);
+  benchmarks within §9 (snapshot decode 17.8 → ~19.5 ms).
+
+Notes for the script: steps run without passes of NSApp's event loop, so undo groups merge across steps unless an
+`event` step sits between them (a real click or key is its own group). And a `click:` that lands on a notes editor
+blocks the script: NSTextView tracks the mouse until a mouse-up the script never sends.
+
+Not checked:
+- Hover and press looks frame by frame, the band's 150 ms fade, the "Notes" placeholder on an empty list's hover,
+  trackpad drags of a heading (driven with posted mouse events only), and VoiceOver on heading rows.
+- Clicking into a list's or a heading's notes (the script can't; Tab and Add Notes were used instead).

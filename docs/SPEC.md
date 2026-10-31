@@ -132,6 +132,8 @@ There are no new op types. Position is written through the ordinary `set` patch.
 | Move a task to another list | `task.update set {list: target, order: keyBetween(lastInTarget, nil)}`. Triggered by dropping it on a sidebar list or with a "Move to…" command. It lands at the bottom. |
 | Reorder a list | `list.update set {order}`. |
 | Drag k selected tasks | k keys from `keysBetween(prev, next, k)`, one op each, in one sync request. |
+| Create a heading | `task.create` with `kind: "heading"` and the key where it goes (above the selected row, or the bottom). Headings and tasks share the list's keys. |
+| Move a heading with its section | The heading and every task under it down to the next heading, completed ones included, get `keysBetween` keys before another heading or at the end: `task.update set {list, order}`, one op each, in one sync request (`design/INTERACTIONS-v2.md` §23). |
 
 **Rule: a task's position change always writes `list` and `order` together, in one op.** Position then behaves like a single value. Concurrent position changes resolve wholly to one of them, and a task never ends up in list B carrying a key computed against list A.
 
@@ -197,8 +199,12 @@ Adding from Today (`+`, ⌘N) creates a task with `when = today`, at the bottom 
 
 A list screen shows:
 
-- the list's open tasks in manual order, draggable;
+- its name as a large title, and its `notes` under it;
+- the list's open tasks and its headings in manual order, draggable; a heading groups the tasks under it, down to
+  the next heading, and can be collapsed on this Mac (never synced);
 - a collapsed "Completed" section, newest first, kept forever.
+
+Headings never show outside their list: Today, the views and counts leave them out (`design/INTERACTIONS-v2.md` §23).
 
 Each row shows its `when` and `deadline` inline.
 
@@ -797,7 +803,8 @@ Files in Application Support:
 
 **Contents:**
 
-- `schema`: a version number.
+- `schema`: a version number. Schema 2 added a task's `kind` and a list's `notes` (§23): a snapshot of another schema
+  is dropped and the log replayed.
 - `cursor`.
 - `hash`: the hash of entry `cursor − 1`.
 - `logOffset`: the byte offset in `log.jsonl` where entry `cursor` starts.
