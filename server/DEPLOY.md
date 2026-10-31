@@ -4,6 +4,10 @@
 `4ad94e15-46bb-48a1-83d6-95bfa57f6a1a`. The token is in `~/.tasks-sync.env` (mode 600) on the Mac it was made on.
 Every smoke test in step 4 passed. No ops were pushed, so the log starts empty.
 
+**Redeployed 2026-10-31** (with the user's approval): version `a0db0c46-dab4-4eaf-9e02-5b7ab64ffc83`, commit `9728858`,
+the optional `actor` and `batch` op keys (SPEC §5). The step-4 checks passed again, read-only: no ops were pushed, and
+the log (166 entries) was unchanged. **Don't roll back past this version** (see the table at the end).
+
 Every command below creates or changes Cloudflare resources, or signs in to Cloudflare. Ask before running them.
 
 What gets created, all on the Workers Free plan (SQLite-backed Durable Objects are included):
@@ -81,6 +85,6 @@ Then enter the base URL (`https://tasks.<subdomain>.workers.dev`) and the token 
 |------|---------|------|
 | Redeploy after a code change | `npx wrangler deploy` | The secret and the log are kept. |
 | Rotate the token | `npx wrangler secret put API_TOKEN` | Each Mac then shows "Check sync token" until it gets the new one. |
-| Roll back the code | `npx wrangler rollback` | Storage is untouched. |
+| Roll back the code | `npx wrangler rollback` | Storage is untouched. Never to a version before `a0db0c46` (2026-10-31): older ones reject ops with `actor`/`batch`, so a 409 recovery would discard agents' ops (SPEC §5). |
 | Tail logs | `npx wrangler tail` | |
 | Delete everything | `npx wrangler delete` | Destroys the server log. It doesn't destroy data: on the resulting 409, each Mac re-pushes every op it has (SPEC §5) and rebuilds the log. To really start over, also delete each Mac's Application Support data before it syncs. |
