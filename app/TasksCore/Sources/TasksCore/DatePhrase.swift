@@ -297,11 +297,12 @@ public enum DateLabel {
         return (n <= countdownDays ? "\(n)d left" : monthDayYear(d, today: today), n == 1 ? .soon : .neutral)
     }
 
-    /// A deadline in words, for tooltips, the detail pane and the CLI: "2 days overdue" ("3 weeks overdue" from 14
-    /// days), "due today", "1 day left" … "14 days left", then how far it is ("in 2 weeks") (prototype `dueRelText`).
+    /// A deadline in words, for tooltips, the detail pane and the CLI: "2 days overdue" (then weeks, months and years,
+    /// as `relative`'s past: "10 months overdue", "1 year overdue"), "due today", "1 day left" … "14 days left", then
+    /// how far it is ("in 2 weeks") (prototype `dueRelText`, §25).
     public static func deadlineWords(_ d: CalendarDate, today: CalendarDate) -> String {
         let n = today.daysTo(d)
-        if n < 0 { return -n == 1 ? "1 day overdue" : -n < 14 ? "\(-n) days overdue" : "\(rounded(-n, over: 7)) weeks overdue" }
+        if n < 0 { return -n == 1 ? "1 day overdue" : pastSpan(-n, oneYear: "1 year") + " overdue" }
         if n == 0 { return "due today" }
         if n <= countdownDays { return n == 1 ? "1 day left" : "\(n) days left" }
         return relative(d, today: today)
@@ -320,8 +321,8 @@ public enum DateLabel {
     }
 
     /// The relative date: "today", "tomorrow", "yesterday"; "in N days" up to 14 days, "in N weeks" under 60, "in N
-    /// months" under a year, then "in a year" or "in N years"; "N days ago" under 14 days, else "N weeks ago". N is
-    /// rounded (prototype `relText`, §24).
+    /// months" under a year, then "in a year" or "in N years"; the past the same way, "N days ago" under 14 days, then
+    /// weeks, months, "a year ago" and "N years ago". N is rounded (prototype `relText`, §24, §25).
     public static func relative(_ d: CalendarDate, today: CalendarDate) -> String {
         let n = today.daysTo(d)
         switch n {
@@ -332,8 +333,18 @@ public enum DateLabel {
         case 15..<60: return "in \(rounded(n, over: 7)) weeks"
         case 60..<365: return "in \(rounded(n, over: 30)) months"
         case 365...: let y = rounded(n, over: 365); return y == 1 ? "in a year" : "in \(y) years"
-        case -13 ... -2: return "\(-n) days ago"
-        default: return "\(rounded(-n, over: 7)) weeks ago"
+        default: return pastSpan(-n, oneYear: "a year") + " ago"
+        }
+    }
+
+    /// How long ago, `d` ≥ 2 days: days under two weeks, then weeks under 60 days, months under a year, then years
+    /// (prototype `pastSpan`).
+    private static func pastSpan(_ d: Int, oneYear: String) -> String {
+        switch d {
+        case ..<14: return "\(d) days"
+        case ..<60: return "\(rounded(d, over: 7)) weeks"
+        case ..<365: return "\(rounded(d, over: 30)) months"
+        default: let y = rounded(d, over: 365); return y == 1 ? oneYear : "\(y) years"
         }
     }
 
@@ -374,7 +385,7 @@ extension CalendarDate {
     fileprivate static let lastDate = CalendarDate(year: 9999, month: 12, day: 31)!
 
     /// Days since 1970-01-01.
-    var dayNumber: Int {
+    public var dayNumber: Int {
         let y = month <= 2 ? year - 1 : year
         let era = (y >= 0 ? y : y - 399) / 400
         let yoe = y - era * 400
@@ -384,7 +395,7 @@ extension CalendarDate {
     }
 
     /// The date `dayNumber` days after 1970-01-01; nil outside years 0–9999.
-    init?(dayNumber: Int) {
+    public init?(dayNumber: Int) {
         let z = dayNumber + 719_468
         let era = (z >= 0 ? z : z - 146_096) / 146_097
         let doe = z - era * 146_097

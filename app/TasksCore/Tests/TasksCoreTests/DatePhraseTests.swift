@@ -368,6 +368,11 @@ final class DateLabelTests: XCTestCase {
         XCTAssertEqual(words(-2), "2 days overdue")
         XCTAssertEqual(words(-13), "13 days overdue")
         XCTAssertEqual(words(-16), "2 weeks overdue")
+        XCTAssertEqual(words(-59), "8 weeks overdue")
+        XCTAssertEqual(words(-60), "2 months overdue")
+        XCTAssertEqual(words(-300), "10 months overdue")
+        XCTAssertEqual(words(-365), "1 year overdue")
+        XCTAssertEqual(words(-548), "2 years overdue")
         XCTAssertEqual(words(0), "due today")
         XCTAssertEqual(words(1), "1 day left")
         XCTAssertEqual(words(13), "13 days left")
@@ -414,8 +419,13 @@ final class DateLabelTests: XCTestCase {
         XCTAssertEqual(rel(-13), "13 days ago")
         XCTAssertEqual(rel(-14), "2 weeks ago")
         XCTAssertEqual(rel(-59), "8 weeks ago")
-        XCTAssertEqual(rel(-60), "9 weeks ago")  // 8.57; the past never reads in months
-        XCTAssertEqual(rel(-365), "52 weeks ago")
+        XCTAssertEqual(rel(-60), "2 months ago")  // the past reads as the future does (§25)
+        XCTAssertEqual(rel(-300), "10 months ago")
+        XCTAssertEqual(rel(-364), "12 months ago")
+        XCTAssertEqual(rel(-365), "a year ago")
+        XCTAssertEqual(rel(-547), "a year ago")
+        XCTAssertEqual(rel(-548), "2 years ago")
+        XCTAssertEqual(DateLabel.relative(date("1990-01-03"), today: date("2026-10-31")), "37 years ago")
     }
 
     func testMonthDayAndTitle() {
