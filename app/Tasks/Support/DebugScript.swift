@@ -8,6 +8,8 @@ import TasksCore
 ///
 ///     click:X,Y   dbl:X,Y   cmdclick:X,Y   shiftclick:X,Y     (window points from the top left)
 ///     key:CODE[:cmd|shift]   wait:MS   snap:/path.png   log:/path.txt  (appends the selection and first responder)
+///     hold:CODE:N[:cmd]   (the key held: its press, N auto-repeats from 525 ms, its release)
+///     checkclick:TITLE   checkdbl:TITLE   (a click or a double-click on that task's checkbox)
 ///     glasssnap:/path.png   (what covers the window's glass, as alpha, plus /path.txt: `GlassDebug`)
 ///     hit:X,Y     (prints the view AppKit hit-tests there)   size:W,H   (resizes the window, keeping its top left)
 ///     drag:X1,Y1,X2,Y2[,STEPS]   (press, move in steps 16 ms apart, release)
@@ -49,6 +51,26 @@ enum DebugScript {
                     guard let code = UInt16(k[0]) else { continue }
                     let flags: NSEvent.ModifierFlags = k.count > 1 ? (k[1] == "cmd" ? .command : k[1] == "shift" ? .shift : []) : []
                     key(w, code: code, flags: flags)
+                case "hold":
+                    // hold:CODE:N[:cmd] — the key held down past the repeat delay: its press, N repeats (the first
+                    // 525 ms later, one of System Settings' "Delay until repeat" steps, then 83 ms apart), its release.
+                    let k = arg.split(separator: ":").map(String.init)
+                    guard k.count >= 2, let code = UInt16(k[0]), let n = Int(k[1]) else { continue }
+                    let flags: NSEvent.ModifierFlags = k.count > 2 && k[2] == "cmd" ? .command : []
+                    key(w, code: code, flags: flags, phase: .down)
+                    for i in 0..<n {
+                        try? await Task.sleep(for: .milliseconds(i == 0 ? 525 : 83))
+                        key(w, code: code, flags: flags, phase: .repeated)
+                    }
+                    key(w, code: code, flags: flags, phase: .up)
+                case "checkclick", "checkdbl":
+                    // checkclick:<title> — a click on that task's checkbox through the list's own mouse path;
+                    // checkdbl:<title> a double-click there.
+                    guard let store = model.store,
+                          let id = store.projection.allTaskIDs.sorted().first(where: { store.projection.task($0)?.title == arg }),
+                          let c = window.taskList?.debugCheckPoint(id) else { print("checkclick: \(arg) not on screen"); continue }
+                    click(w, x: c.x, y: c.y, count: 1, flags: [])
+                    if parts[0] == "checkdbl" { click(w, x: c.x, y: c.y, count: 2, flags: []) }
                 case "drag":
                     let v = arg.split(separator: ",").compactMap { Double($0) }
                     guard v.count >= 4 else { continue }
@@ -340,7 +362,10 @@ enum DebugScript {
         }
     }
 
-    private static func key(_ w: NSWindow, code: UInt16, flags: NSEvent.ModifierFlags) {
+    enum KeyPhase { case press, down, repeated, up }
+
+    /// A key press (down and up), or one phase of a held key.
+    private static func key(_ w: NSWindow, code: UInt16, flags: NSEvent.ModifierFlags, phase: KeyPhase = .press) {
         let chars: String = switch code {
         case 125: String(UnicodeScalar(NSDownArrowFunctionKey)!)
         case 126: String(UnicodeScalar(NSUpArrowFunctionKey)!)
@@ -348,6 +373,7 @@ enum DebugScript {
         case 124: String(UnicodeScalar(NSRightArrowFunctionKey)!)
         case 36: "\r"
         case 49: " "
+        case 40: "k"
         case 53: "\u{1b}"
         case 48: flags.contains(.shift) ? "\u{19}" : "\t"
         case 51: "\u{7f}"
@@ -359,10 +385,15 @@ enum DebugScript {
         case 2: "d"
         default: ""
         }
-        for type in [NSEvent.EventType.keyDown, .keyUp] {
+        let types: [NSEvent.EventType] = switch phase {
+        case .press: [.keyDown, .keyUp]
+        case .down, .repeated: [.keyDown]
+        case .up: [.keyUp]
+        }
+        for type in types {
             if let e = NSEvent.keyEvent(with: type, location: .zero, modifierFlags: flags, timestamp: ProcessInfo.processInfo.systemUptime,
                                         windowNumber: w.windowNumber, context: nil, characters: chars,
-                                        charactersIgnoringModifiers: chars, isARepeat: false, keyCode: code) {
+                                        charactersIgnoringModifiers: chars, isARepeat: phase == .repeated, keyCode: code) {
                 // In the background there's no key window to route to: straight to the first responder (menu key
                 // equivalents don't work this way).
                 // With ⌘, the window's views get it as a key equivalent first, as AppKit does.

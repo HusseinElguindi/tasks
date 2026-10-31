@@ -215,8 +215,8 @@ struct DetailPane: View {
             return true
         }
         if k == 49 && plain {
-            // Space completes or uncompletes.
-            a.toggleComplete()
+            // Space completes or uncompletes, once per press (v2 feedback 18).
+            if !e.isARepeat { a.toggleComplete() }
             return true
         }
         if k == 0 && cmd && !shift {

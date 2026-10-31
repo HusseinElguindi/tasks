@@ -114,7 +114,8 @@ struct TasksCommands: Commands {
                 .keyboardShortcut("d")
                 .disabled(actions == nil || pickerOpen)
             Divider()
-            Button(completeTitle) { run { $0.toggleComplete() } }
+            // ⌘K held: its auto-repeat would toggle the tasks back, so only the press counts (v2 feedback 18).
+            Button(completeTitle) { if NSApp.currentEvent?.isARepeat != true { run { $0.toggleComplete() } } }
                 .keyboardShortcut("k")
                 .disabled(!hasTaskTarget || inTrash)
             Button("When…") { run { $0.openPicker(.when) } }

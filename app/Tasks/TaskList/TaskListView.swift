@@ -1201,6 +1201,10 @@ final class TaskListView: NSView {
                     return
                 }
                 selectOnPress(id, event: event)
+            case .check where event.clickCount > 1:
+                // A double-click on a checkbox is one click: its second press would toggle the task straight back
+                // (v2 feedback 18).
+                press = nil
             case .check, .chip, .open:
                 rows[id]?.setPressed(part)
             }
@@ -1410,6 +1414,8 @@ final class TaskListView: NSView {
             if ids.count == 1 { a.editTask(ids[0], caret: .all) } else if ids.isEmpty { a.moveSelection(.by(1), extend: false) }
             return true
         case 49 where !cmd: // Space
+            // One press, one toggle: a held Space's auto-repeat would toggle it back (v2 feedback 18).
+            guard !event.isARepeat else { return true }
             // On headings, collapse or expand: a heading has nothing to complete (§23). Today's Completed label, when
             // it's what's selected, the same (v2 feedback 15).
             let ids = a.targetIDs
@@ -1738,6 +1744,13 @@ final class TaskListView: NSView {
         guard let p, let w = window else { pointerExited(); return }
         let inWin = NSPoint(x: p.x, y: w.contentLayoutRect.height - p.y)
         pointerMoved(at: doc.convert(inWin, from: nil))
+    }
+
+    /// Debug: a task row's checkbox center in window points (top-left origin), for clicking it (v2 feedback 18).
+    func debugCheckPoint(_ id: EntityID) -> CGPoint? {
+        guard let v = rows[id], let w = window else { return nil }
+        let c = v.convert(v.check.position, to: nil)
+        return CGPoint(x: c.x, y: w.contentLayoutRect.height - c.y)
     }
 
     /// Debug: a heading's row, + and chevron centers, and its notes, in window points (top-left origin); and the glyph

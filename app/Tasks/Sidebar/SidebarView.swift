@@ -827,8 +827,8 @@ final class SidebarView: FlippedLayerView {
         case 124, 53, 48:   // → Esc Tab ⇧Tab: back to the list
             a.focus(.list)
             return true
-        case 49:         // Space
-            a.toggleComplete()
+        case 49:         // Space, once per press (v2 feedback 18)
+            if !e.isARepeat { a.toggleComplete() }
             return true
         case 51 where cmd:   // ⌘⌫ archives the open list (the menu usually has it first)
             if let id = cur.listID { a.archive(list: id) }
@@ -845,7 +845,7 @@ final class SidebarView: FlippedLayerView {
             break
         }
         let chars = e.charactersIgnoringModifiers?.lowercased() ?? ""
-        if cmd && !alt && chars == "k" { a.toggleComplete(); return true }
+        if cmd && !alt && chars == "k" { if !e.isARepeat { a.toggleComplete() }; return true }
         if cmd && !alt && !shift && chars == "a" { a.selectAll(); return true }
         if cmd && !alt && chars == "t" { a.setDate(nil, .when, a.today); return true }
         if !cmd && !alt, let s = e.characters, s.count == 1, let ch = s.first, ch.isLetter || ch.isNumber {

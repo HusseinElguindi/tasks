@@ -50,7 +50,8 @@ final class DetailCheckView: FlippedLayerView {
     private var pressing = false
 
     override func mouseDown(with event: NSEvent) {
-        guard interactive else { return }
+        // A double-click is one click: its second press would toggle the task straight back (v2 feedback 18).
+        guard interactive, event.clickCount < 2 else { return }
         pressing = true
         check.setPressed(true)
     }

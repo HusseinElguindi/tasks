@@ -463,12 +463,16 @@ struct WindowActions {
         let tasks = ids.compactMap(p.task)
         guard !tasks.isEmpty else { return }
         let completing = tasks.contains { $0.completedAt == nil }
+        // Pins keep toggled rows where they are until the settle. A row toggled back before then is already in place:
+        // one completed a moment ago is still among the open rows, so un-completing it just drops its pin (pinning it
+        // among the done ones hid it in a folded Completed group); one un-completed a moment ago keeps its pin among
+        // the done ones (v2 feedback 18).
         var pins = window.pins
         for t in tasks {
             if completing {
-                if t.completedAt == nil { pins[t.id] = .open }
+                if t.completedAt == nil, pins[t.id] == nil { pins[t.id] = .open }
             } else if let c = t.completedAt {
-                pins[t.id] = .done(completedAt: c)
+                if pins[t.id] == .open { pins[t.id] = nil } else { pins[t.id] = .done(completedAt: c) }
             }
         }
         let name = completing ? (ids.count > 1 ? "Complete \(ids.count) Tasks" : "Complete") : "Mark Not Done"
