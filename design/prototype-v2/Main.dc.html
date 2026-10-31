@@ -44,10 +44,10 @@ body{margin:0}
 <button class="tbtn" type="button" aria-label="{{sbTip}}" data-tip="{{sbTip}}" data-keys="⌃⌘S" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onToggleSidebar}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="2"></rect><line x1="6" y1="3" x2="6" y2="13"></line></svg></button>
 
 <section class="{{lp.cls}}" style="{{lp.style}}" aria-label="{{lp.title}}" onPointerDown="{{onListPaneDown}}">
-<header class="{{lp.phCls}}" style="{{lp.headStyle}}">
+<header class="ph" style="{{lp.headStyle}}">
 <span class="{{lp.idCls}}"><sc-if value="{{lp.isToday}}"><span class="c-yellow"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6"></circle><path d="M8 1.9v1.3M8 12.8v1.3M1.9 8h1.3M12.8 8h1.3M3.7 3.7l.9.9M11.4 11.4l.9.9M3.7 12.3l.9-.9M11.4 4.6l.9-.9"></path></svg></span></sc-if><sc-if value="{{lp.isUp}}"><span class="c-magenta"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg></span></sc-if><sc-if value="{{lp.isUnd}}"><span class="c-cyan"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l5.5 2.75L8 8 2.5 5.25z"></path><path d="M2.5 8l5.5 2.75L13.5 8M2.5 10.75l5.5 2.75 5.5-2.75"></path></svg></span></sc-if><sc-if value="{{lp.isDone}}"><span class="c-green"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"></circle><path d="M5.3 8.2l1.9 1.9 3.6-4"></path></svg></span></sc-if><sc-if value="{{lp.isTrash}}"><span class="c-mute"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9"></path></svg></span></sc-if>
 <sc-if value="{{lp.isList}}"><span class="{{lp.tileCls}}">{{lp.mono}}</span></sc-if>
-<sc-if value="{{lp.notRenaming}}"><span class="pt" onDoubleClick="{{onTitleDbl}}">{{lp.title}}</span></sc-if><sc-if value="{{lp.renaming}}"><input class="ri pti" data-key="{{lp.key}}" value="{{lp.editText}}" placeholder="New List" spellCheck="false" autoFocus="{{true}}" aria-label="List name" onChange="{{onEditChange}}" onKeyDown="{{onEditKey}}" onBlur="{{onEditBlur}}" onFocus="{{onEditFocus}}" onPointerDown="{{stopPD}}"></sc-if>
+<span class="pt" onDoubleClick="{{onTitleDbl}}">{{lp.title}}</span>
 <span class="ps">{{lp.sub}}</span></span>
 <span class="acts">
 <button class="{{lp.addCls}}" type="button" data-add="1" aria-label="{{lp.newTip}}" data-tip="{{lp.newTip}}" data-keys="⌘N" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onNewTaskBtn}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"></path></svg></button>
@@ -68,13 +68,11 @@ body{margin:0}
      hover "New Task" row: a single click never adds.
      These lines stand in for the removed markup so the
      spec's dc: citations keep their line numbers. -->
-<!-- §23 (proposed): the top of the list pane, the large title and the list's notes; then headings and their notes. -->
-<sc-if value="{{lh.show}}">
+<!-- §23: the top of the list pane, the large title and the list's notes; then headings and their notes. -->
 <div class="{{lh.cls}}" style="{{lh.style}}" data-mh="{{lh.mk}}">
-<sc-if value="{{lh.big}}"><div class="lht"><sc-if value="{{lp.isToday}}"><span class="c-yellow"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6"></circle><path d="M8 1.9v1.3M8 12.8v1.3M1.9 8h1.3M12.8 8h1.3M3.7 3.7l.9.9M11.4 11.4l.9.9M3.7 12.3l.9-.9M11.4 4.6l.9-.9"></path></svg></span></sc-if><sc-if value="{{lp.isUp}}"><span class="c-magenta"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg></span></sc-if><sc-if value="{{lp.isUnd}}"><span class="c-cyan"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l5.5 2.75L8 8 2.5 5.25z"></path><path d="M2.5 8l5.5 2.75L13.5 8M2.5 10.75l5.5 2.75 5.5-2.75"></path></svg></span></sc-if><sc-if value="{{lp.isDone}}"><span class="c-green"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"></circle><path d="M5.3 8.2l1.9 1.9 3.6-4"></path></svg></span></sc-if><sc-if value="{{lp.isTrash}}"><span class="c-mute"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9"></path></svg></span></sc-if><sc-if value="{{lp.isList}}"><span class="{{lh.tileCls}}">{{lp.mono}}</span></sc-if><sc-if value="{{lh.notRenaming}}"><span class="lhn" onDoubleClick="{{onTitleDbl}}">{{lp.title}}</span></sc-if><sc-if value="{{lh.renaming}}"><input class="ri lti" data-key="{{lh.key}}" value="{{lh.editText}}" placeholder="New List" spellCheck="false" autoFocus="{{true}}" aria-label="List name" onChange="{{onEditChange}}" onKeyDown="{{onEditKey}}" onBlur="{{onEditBlur}}" onFocus="{{onEditFocus}}" onPointerDown="{{stopPD}}"></sc-if><span class="lhs">{{lp.sub}}</span></div></sc-if>
+<div class="lht"><sc-if value="{{lp.isToday}}"><span class="c-yellow"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6"></circle><path d="M8 1.9v1.3M8 12.8v1.3M1.9 8h1.3M12.8 8h1.3M3.7 3.7l.9.9M11.4 11.4l.9.9M3.7 12.3l.9-.9M11.4 4.6l.9-.9"></path></svg></span></sc-if><sc-if value="{{lp.isUp}}"><span class="c-magenta"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg></span></sc-if><sc-if value="{{lp.isUnd}}"><span class="c-cyan"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l5.5 2.75L8 8 2.5 5.25z"></path><path d="M2.5 8l5.5 2.75L13.5 8M2.5 10.75l5.5 2.75 5.5-2.75"></path></svg></span></sc-if><sc-if value="{{lp.isDone}}"><span class="c-green"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"></circle><path d="M5.3 8.2l1.9 1.9 3.6-4"></path></svg></span></sc-if><sc-if value="{{lp.isTrash}}"><span class="c-mute"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9"></path></svg></span></sc-if><sc-if value="{{lp.isList}}"><span class="{{lh.tileCls}}">{{lp.mono}}</span></sc-if><sc-if value="{{lh.notRenaming}}"><span class="lhn" onDoubleClick="{{onTitleDbl}}">{{lp.title}}</span></sc-if><sc-if value="{{lh.renaming}}"><input class="ri lti" data-key="{{lh.key}}" value="{{lh.editText}}" placeholder="New List" spellCheck="false" autoFocus="{{true}}" aria-label="List name" onChange="{{onEditChange}}" onKeyDown="{{onEditKey}}" onBlur="{{onEditBlur}}" onFocus="{{onEditFocus}}" onPointerDown="{{stopPD}}"></sc-if><span class="lhs">{{lp.sub}}</span></div>
 <sc-if value="{{lh.hasNotes}}"><div class="lhd" onPointerDown="{{stopPD}}"><div class="{{lh.nt.cls}}" ref="{{notesRefCb}}" contentEditable="{{lh.nt.ce}}" data-rev="{{lh.nt.rev}}" data-nk="{{lh.nt.nk}}" data-nid="{{lh.nt.id}}" data-of="list" aria-label="List notes" data-ph="Notes" suppressContentEditableWarning="{{true}}" spellCheck="false" role="textbox" aria-multiline="true" onFocus="{{onNotesFocus}}" onBlur="{{onNotesBlur}}" onKeyDown="{{onNotesKey}}" onPaste="{{onNotesPaste}}" onCopy="{{onNotesCopy}}" onCut="{{onNotesCut}}" onMouseDown="{{onNotesMouseDown}}" onDragStart="{{onNotesNoDrag}}" onDrop="{{onNotesNoDrag}}"><sc-for list="{{lh.nt.lines}}" as="l" hint-placeholder-count="0"><div class="{{l.cls}}" style="{{l.style}}" data-ls="{{l.a}}" data-le="{{l.b}}" data-cs="{{l.cs}}"><sc-if value="{{l.dot}}"><span class="{{l.decCls}}" contentEditable="false" style="{{l.decStyle}}"></span></sc-if><sc-if value="{{l.num}}"><span class="dec num" contentEditable="false" style="{{l.decStyle}}">{{l.numText}}</span></sc-if><sc-if value="{{l.box}}"><button class="{{l.boxCls}}" type="button" contentEditable="false" tabIndex="-1" style="{{l.decStyle}}" data-box="{{l.boxAt}}" aria-label="{{l.boxLabel}}" onClick="{{onBoxClick}}"><svg class="ck" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.8 8.4l2.7 2.7 5.7-6.2"></path></svg></button></sc-if><sc-for list="{{l.ps}}" as="p" hint-placeholder-count="0"><sc-if value="{{p.link}}"><a class="{{p.cls}}" href="{{p.href}}" data-a="{{p.a}}" data-tip="{{p.tip}}" data-keys="{{p.tipKeys}}" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onNoteLinkClick}}">{{p.s}}</a></sc-if><sc-if value="{{p.plain}}"><span class="{{p.cls}}" data-a="{{p.a}}">{{p.s}}</span></sc-if></sc-for><br></div></sc-for></div></div></sc-if>
 </div>
-</sc-if>
 <sc-for list="{{heads}}" as="hd" hint-placeholder-count="0">
 <div class="{{hd.cls}}" style="{{hd.style}}" data-id="{{hd.id}}" onPointerDown="{{onRowDown}}" onPointerMove="{{onRowMove}}" onPointerUp="{{onRowUp}}" onPointerCancel="{{onRowUp}}" onDoubleClick="{{onRowDbl}}" onContextMenu="{{onRowCtx}}">
 <sc-if value="{{hd.editing}}"><input class="ri" data-id="{{hd.id}}" value="{{hd.editText}}" placeholder="New Heading" spellCheck="false" autoFocus="{{hd.autoFocus}}" aria-label="Heading" onChange="{{onEditChange}}" onKeyDown="{{onEditKey}}" onBlur="{{onEditBlur}}" onFocus="{{onEditFocus}}" onPointerDown="{{stopPD}}"></sc-if>
@@ -231,7 +229,7 @@ body{margin:0}
 <sc-if value="{{stage.show}}">
 <div class="stage" aria-label="Prototype controls">
 <span class="sl">Prototype</span>
-<span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Edit tasks</span><span class="seg"><sc-for list="{{stage.editTasks}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><sc-for list="{{stage.vars}}" as="vg" hint-placeholder-count="0"><span class="sl">{{vg.label}}</span><span class="seg"><sc-for list="{{vg.opts}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span></sc-for>
+<span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Edit tasks</span><span class="seg"><sc-for list="{{stage.editTasks}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
 <span class="sn">The browser keeps ⌘N, ⌘T and ⌘1–9, so ⌥N, ⌥T and ⌃1–9 also work here.</span>
 <span style="flex: 1;"></span>
 <button class="lnk" type="button" data-k="reset" data-v="1" onClick="{{onStage}}">Reset</button>
@@ -270,7 +268,7 @@ body{margin:0}
 </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"select":{"editor":null,"default":""},"detail":{"editor":null,"default":"closed"},"pick":{"editor":null,"default":"none"},"caret":{"editor":null,"default":""},"vTitle":{"editor":null,"default":"large"},"vHeads":{"editor":null,"default":"bold"},"vText":{"editor":null,"default":"heads"},"vCtx":{"editor":null,"default":"row"},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"select":{"editor":null,"default":""},"detail":{"editor":null,"default":"closed"},"pick":{"editor":null,"default":"none"},"caret":{"editor":null,"default":""},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
 // ---------- Calendar dates: "YYYY-MM-DD" strings, never instants (SPEC §2). ----------
 const DAY_MS = 86400000;
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -443,17 +441,8 @@ const VIEW_EMPTY = {
   completed: { e1: 'Nothing completed yet', e2: 'Tasks you check off show up here, newest first.', top: '34%', icon: 'done' },
   trash: { e1: 'Trash is empty', e2: 'Deleted tasks wait here until you put them back.', top: '34%', icon: 'trash' },
 };
-// Headings, a list's notes and a clearer title (proposed, INTERACTIONS-v2 §23): the open choices, with the
-// recommendation as the default. The strip switches them; a board sets them with v-title, v-heads, v-text, v-ctx.
-const SEC_DEFAULTS = { title: 'large', heads: 'bold', text: 'heads', ctx: 'row' };
-const SEC_OPTS = {
-  title: [['band', 'In the band'], ['large', 'Large']],
-  heads: [['quiet', 'Quiet'], ['bold', 'Bold']],
-  text: [['list', 'List'], ['heads', 'List + headings']],
-  ctx: [['row', 'On the row'], ['none', 'Off']],
-};
-const SEC_LABEL = { title: 'Title', heads: 'Headings', text: 'Text', ctx: 'Elsewhere' };
-const HEAD_AIR = 8;   // a Bold heading's air above its row
+// Headings, a list's notes and its title (INTERACTIONS-v2 §23).
+const HEAD_AIR = 8;   // a heading's air above its row
 
 let UID = 0;
 function uid(p) { UID += 1; return p + UID.toString(36) + Math.random().toString(36).slice(2, 6); }
@@ -800,9 +789,8 @@ class Component extends DCLogic {
       noAnim: true,
       // Markdown notes: a checklist box's pop; a board's hovered link.
       boxPop: null, hoverLink: null,
-      // Headings (§23): collapsed headings (local, never synced); the strip's choices; whether the large title has
-      // scrolled under the band.
-      collapsed: {}, secv: {}, scrolled: false,
+      // Headings (§23): collapsed headings (local, never synced); whether the large title has scrolled under the band.
+      collapsed: {}, scrolled: false,
     };
     this.mh = {};   // measured heights of the list pane's text blocks (measureBlocks)
     const pickName = props.pick ?? 'none';   // a board can open on a task's notes (prototype-markdown's boards do)
@@ -811,7 +799,7 @@ class Component extends DCLogic {
     this.undoStack = []; this.redoStack = [];
     this.rootRef = { current: null }; this.winRef = { current: null };
     this.listScrollRef = { current: null }; this.sbScrollRef = { current: null }; this.liftRef = { current: null };
-    this.prev = null; this.leaving = new Map(); this.entering = new Map();
+    this.prev = null; this.leaving = new Map(); this.entering = new Map(); this.unfold = new Map();
     this.typeBuf = ''; this.typeAt = 0;
   }
 
@@ -2585,7 +2573,6 @@ class Component extends DCLogic {
   onStage = (e) => {
     const k = e.currentTarget.dataset.k, v = e.currentTarget.dataset.v;
     if (k === 'theme') this.instant({ theme: v }); else if (k === 'editTasks') this.setEditTasks(v);
-    else if (k.startsWith('sv:')) this.setState({ secv: { ...this.state.secv, [k.slice(3)]: v } });   // §23's choices
     else if (k === 'reset') { const seed = makeSeed(this.today); this.undoStack = []; this.redoStack = []; this.instant({ lists: seed.lists, tasks: seed.tasks, sel: [], edit: null, picker: null, menu: null, pins: {}, route: this.routeFromProp(this.props.start, seed.lists), detail: 'closed', notice: null, sbVisible: true, collapsed: {}, scrolled: false }); }
     else if (k === 'keys') this.setState({ keysOpen: !this.state.keysOpen });
     this.focusRoot();
@@ -2601,15 +2588,32 @@ class Component extends DCLogic {
       for (const [id, y] of this.prev.ys) {
         if (L.ys.has(id) || this.leaving.has(id)) continue;
         const t = this.task(id);
-        let to = y;
+        let to = y, fold = false;
         if (t && !t.deleted && L.crowY != null && t.list === s.route.id && !this.placedOpen(t)) to = L.crowY;
-        else if (t && L.folded.has(id)) { const h = this.headingOf(t); if (h && L.ys.has(h.id)) to = L.ys.get(h.id); }   // collapsing folds them into it
-        this.leaving.set(id, { y: to, at: now });
+        else if (t && L.folded.has(id)) { const h = this.headingOf(t); if (h && L.ys.has(h.id)) { to = L.ys.get(h.id); fold = true; } }   // collapsing folds them into it
+        this.leaving.set(id, { y: to, at: now, fold });
       }
-      for (const id of L.ys.keys()) if (!this.prev.ys.has(id)) this.entering.set(id, now);
-    } else if (!this.prev || this.prev.key !== L.key) { this.leaving.clear(); this.entering.clear(); }
+      const was = this.prev.coll || new Set();
+      for (const id of L.ys.keys()) {
+        if (this.prev.ys.has(id)) continue;
+        this.entering.set(id, now);
+        // Expanding unfolds them from under the heading, the fold played backwards (§23): drawn first at the
+        // heading's y, then moved to their own on the layout curve (armUnfold).
+        const h = this.prev.folded && this.prev.folded.has(id) ? this.headingOf(this.task(id)) : null;
+        if (h && L.ys.has(h.id) && was.has(h.id) && !this.isCollapsed(h.id)) this.unfold.set(id, { y: L.ys.get(h.id), at: now, armed: false });
+      }
+      // A heading's notes fold and unfold with its tasks.
+      for (const [hid, hy] of L.ys) {
+        if (!this.prev.ys.has(hid) || !this.isHead(this.task(hid))) continue;
+        const k = 'n:' + hid, is = this.isCollapsed(hid);
+        if (is && !was.has(hid) && this.prev.noteH && this.prev.noteH.get(hid)) this.leaving.set(k, { y: hy, at: now, fold: true });
+        if (!is && was.has(hid) && L.noteH.get(hid)) { this.leaving.delete(k); this.entering.set(k, now); this.unfold.set(k, { y: hy, at: now, armed: false }); }
+      }
+      if ([...this.unfold.values()].some((v) => !v.armed)) this.armUnfold();
+    } else if (!this.prev || this.prev.key !== L.key) { this.leaving.clear(); this.entering.clear(); this.unfold.clear(); }
     for (const [id, v] of this.leaving) if (now - v.at > MOTION_WINDOW_MS || L.ys.has(id)) this.leaving.delete(id);
     for (const [id, at] of this.entering) if (now - at > MOTION_WINDOW_MS) this.entering.delete(id);
+    for (const [id, v] of this.unfold) if (now - v.at > MOTION_WINDOW_MS) this.unfold.delete(id);
     // Today's group labels and a list's Completed row come and go the same way as rows.
     if (!this.lblLeaving) { this.lblLeaving = new Map(); this.lblEntering = new Map(); }
     if (this.prev && this.prev.key === L.key && !s.noAnim) {
@@ -2620,7 +2624,15 @@ class Component extends DCLogic {
     for (const [id, v] of this.lblLeaving) if (now - v.at > MOTION_WINDOW_MS || L.labels.has(id)) this.lblLeaving.delete(id);
     for (const [id, at] of this.lblEntering) if (now - at > MOTION_WINDOW_MS) this.lblEntering.delete(id);
     if (this.leaving.size || this.entering.size || this.lblLeaving.size || this.lblEntering.size || now - (this.crowEnterAt || 0) < MOTION_WINDOW_MS) { clearTimeout(this.cleanTimer); this.cleanTimer = setTimeout(() => this.forceUpdate(), MOTION_WINDOW_MS + 10); }
-    this.prev = { key: L.key, ys: new Map(L.ys), labels: new Map(L.labels), crowY: L.crowY };
+    this.prev = { key: L.key, ys: new Map(L.ys), labels: new Map(L.labels), crowY: L.crowY, folded: new Set(L.folded), noteH: new Map(L.noteH), coll: new Set(Object.keys(s.collapsed || {})) };
+  }
+  // The unfolding rows and notes have been drawn at their heading's y; two frames on, they move to their own, so the
+  // browser sees a change and runs the layout transition (they come out of display: none, which has none).
+  armUnfold() {
+    cancelAnimationFrame(this.unfoldRaf);
+    this.unfoldRaf = requestAnimationFrame(() => {
+      this.unfoldRaf = requestAnimationFrame(() => { for (const v of this.unfold.values()) v.armed = true; this.forceUpdate(); });
+    });
   }
 
   trackSidebar(S) {
@@ -2662,8 +2674,10 @@ class Component extends DCLogic {
       let y = L.ys.get(t.id);
       const lv = this.leaving.get(t.id);
       let cls = 'row';
-      if (y == null && lv) { y = lv.y; cls += ' leave'; }
+      if (y == null && lv) { y = lv.y; cls += ' leave' + (lv.fold ? ' folding' : ''); }
       if (y == null) return { id: t.id, cls: 'row hidden', style: '', title: '', editing: false, notEditing: true, chips: [], checkCls: 'check', titleCls: 'tt', where: '', hasWhere: false, checkLabel: '' };
+      const uf = !lv && this.unfold.get(t.id);
+      if (uf) { if (!uf.armed) y = uf.y; cls += ' unfolding'; }
       const done = t.completedAt != null;
       if (done) cls += ' done';
       if (t.deleted) cls += ' trashed';
@@ -2697,9 +2711,8 @@ class Component extends DCLogic {
     });
 
     // ----- Headings, their notes, and the top of the list pane (§23)
-    const heads = this.headVMs(L, visSel), hnotes = this.sec('text') === 'heads' ? this.headNoteVMs(L) : [];
-    const lh = this.headBlockVM(L, routeList), bigTitle = this.sec('title') === 'large';
-    const titleEd = !!(routeList && ed && ed.kind === 'ltitle' && ed.id === routeList.id);
+    const heads = this.headVMs(L, visSel), hnotes = this.headNoteVMs(L);
+    const lh = this.headBlockVM(L, routeList);
 
     // ----- Today's group labels, the Completed disclosure, the add slot, the empty states.
     const labels = this.labelVMs(L);   // Today's list names and Completed; the views' days, months and lists (§22)
@@ -2717,8 +2730,7 @@ class Component extends DCLogic {
       cls: 'pane lp' + (!detailOpen ? ' single' : s.focus === 'list' ? ' focused' : '') + (Date.now() - (this.paneSwapAt || 0) < DETAIL_CLOSE_MS ? ' swap' : ''),   // alone: no focus look; the change rides the detail pane (v2 feedback 3)
       style: 'left: ' + (s.sbVisible ? s.sbW : GUTTER) + 'px; right: ' + (detailOpen ? GUTTER + s.detailW + GUTTER : GUTTER) + 'px',
       headStyle: s.sbVisible ? '' : 'padding-left: 124px',
-      phCls: 'ph' + (bigTitle ? ' lg' : ' band'), idCls: 'pid' + (bigTitle && !s.scrolled ? ' fold' : ''),   // §23: the large title's band title shows once it's scrolled under
-      renaming: titleEd && !bigTitle, notRenaming: !(titleEd && !bigTitle), editText: titleEd ? ed.text : '', key: routeList ? routeList.id : '',
+      idCls: 'pid' + (s.scrolled ? '' : ' fold'),   // §23: the band's title shows once the large title has scrolled under it
       isToday: inToday, isList: !!routeList, ...this.viewHead(),
       title: inToday ? 'Today' : routeList ? routeList.name || 'New List' : this.keyName(s.route.kind),
       sub: inToday ? WD[weekdayIdx(T)] + ', ' + md(T) : routeList && routeList.archivedAt ? 'Archived' : '',
@@ -2779,7 +2791,6 @@ class Component extends DCLogic {
     if (many) dpo.multiTitle = many.length + ' tasks selected';
     this.viewDetail(dpo, one, many);   // Trash: read-only, with Put Back in place of Delete (§22)
     this.headDetail(dpo);   // only headings selected (§23)
-    if (one && this.sec('ctx') === 'row') { const hh = this.headingOf(one); if (hh) dpo.headName += ' › ' + hh.title; }
 
     // ----- Sidebar
     const cmdKeys = this.numberKeys();
@@ -2824,7 +2835,7 @@ class Component extends DCLogic {
       const pos = d.phase === 'drag' ? { x: d.x, y: d.y } : d.flyTo;
       const width = d.sb || (d.phase === 'fly' && d.shrink) ? 210 : d.w;
       const chips = t && !d.sb && !d.sec ? rows.find((r) => r.id === t.id).chips : [];
-      drag = { show: true, cls: 'lifted' + (d.sec ? ' hlift ' + (this.sec('heads') === 'bold' ? 'h-bold' : 'h-quiet') : '') + (d.phase === 'fly' ? ' flying' : '') + (d.phase === 'done' ? ' settle' : '') + (d.shrink ? ' shrink' : ''), style: 'transform: translate(' + pos.x + 'px, ' + pos.y + 'px); width: ' + width + 'px',
+      drag = { show: true, cls: 'lifted' + (d.sec ? ' hlift' : '') + (d.phase === 'fly' ? ' flying' : '') + (d.phase === 'done' ? ' settle' : '') + (d.shrink ? ' shrink' : ''), style: 'transform: translate(' + pos.x + 'px, ' + pos.y + 'px); width: ' + width + 'px',
         title: t ? t.title || (d.sec ? 'New Heading' : 'New Task') : '', chips, multi: d.sec ? d.count > 0 : d.count > 1, count: String(d.count), checkCls: 'check' };   // a heading's copy: its name and its open tasks' count
     }
     let sbLift = { show: false };
@@ -2873,8 +2884,7 @@ class Component extends DCLogic {
     const seg = (k, opts) => opts.map(([v, label]) => ({ k, v, label, cls: s[k] === v ? 'on' : '' }));
     const stage = { show: stageOn,
       theme: seg('theme', [['dark', 'Dark'], ['light', 'Light']]),
-      editTasks: [['detail', 'Details'], ['list', 'In the row']].map(([v, label]) => ({ k: 'editTasks', v, label, cls: this.editTasksMode() === v ? 'on' : '' })),
-      vars: Object.keys(SEC_OPTS).map((k) => ({ label: SEC_LABEL[k], opts: SEC_OPTS[k].map(([v, label]) => ({ k: 'sv:' + k, v, label, cls: this.sec(k) === v ? 'on' : '' })) })),
+      editTasks: [['detail', 'Open in detail pane'], ['list', 'Rename in the list']].map(([v, label]) => ({ k: 'editTasks', v, label, cls: this.editTasksMode() === v ? 'on' : '' })),
     };
 
     return {
@@ -3095,14 +3105,12 @@ class Component extends DCLogic {
   // In Upcoming, a day group's date; rows don't repeat it as a chip ("Due" marks a deadline on that day).
   groupDay(L, id) { const g = this.state.route.kind === 'upcoming' && L.gmap && L.gmap.get(L.groupOf.get(id)); return g && g.kind === 'day' ? g.day : null; }
   // The list name after the title where rows from several lists share a group; in a month group, the date too.
-  // With headings on the row (§23): the heading where the list is already the group, "List › Heading" elsewhere.
+  // A task's heading never shows outside its list (§23).
   whereText(L, t, inToday) {
     const k = this.state.route.kind, gid = L.groupOf.get(t.id) || '', name = (this.list(t.list) || { name: '' }).name;
-    const h = k !== 'list' && this.sec('ctx') === 'row' ? this.headingOf(t) : null, full = name + (h ? ' › ' + h.title : '');
-    if (inToday) return gid === 'done' ? full : h ? h.title : '';
-    if (k === 'undated') return h ? h.title : '';
-    if (k === 'upcoming') return full;
-    if (k === 'completed' || k === 'trash') { const at = k === 'trash' ? t.deletedAt : this.doneStamp(t); return full + (gid.startsWith('m:') && at ? ' · ' + md(localDayOfMs(at)) : ''); }
+    if (inToday) return gid === 'done' ? name : '';
+    if (k === 'upcoming') return name;
+    if (k === 'completed' || k === 'trash') { const at = k === 'trash' ? t.deletedAt : this.doneStamp(t); return name + (gid.startsWith('m:') && at ? ' · ' + md(localDayOfMs(at)) : ''); }
     return '';
   }
   // Group labels keep one node per id for as long as the view is open, so they move rather than swap.
@@ -3310,13 +3318,11 @@ class Component extends DCLogic {
   }
 
   // ======================================================================
-  // Headings, a list's notes and its title (proposed: docs/TASK-design-sections.md, INTERACTIONS-v2 §23)
+  // Headings, a list's notes and its title (docs/TASK-design-sections.md, INTERACTIONS-v2 §23)
   // ======================================================================
   // A heading is a task with kind 'heading' in its list's order. It groups the tasks under it, down to the next
   // heading. It has a title and notes, and never a date or a check. A list's notes are a `notes` field on the list,
-  // in the same Markdown editor as a task's. The strip switches the open choices (SEC_OPTS); boards set them with
-  // v-title, v-heads, v-text and v-ctx.
-  sec(k) { const o = this.state.secv && this.state.secv[k]; return o || this.props['v' + k[0].toUpperCase() + k.slice(1)] || SEC_DEFAULTS[k]; }
+  // in the same Markdown editor as a task's.
   isHead(t) { return !!t && t.kind === 'heading'; }
   onlyTasks(ids) { return ids.filter((id) => { const t = this.task(id); return t && !this.isHead(t); }); }
   // A list's order: headings and open tasks, and the completed tasks too when asked (they keep their keys).
@@ -3387,7 +3393,7 @@ class Component extends DCLogic {
     const l = this.list(listId);
     if (!l || l.draft) return;
     this.endEdit();
-    if (this.sec('title') === 'large' && this.listScrollRef.current) this.listScrollRef.current.scrollTop = 0;
+    if (this.listScrollRef.current) this.listScrollRef.current.scrollTop = 0;
     this.setState({ edit: { kind: 'ltitle', id: listId, text: l.name, orig: l.name, isNew: false, selectAll: true }, focus: 'list' });
   }
   commitSecEdit(e, text) {
@@ -3409,7 +3415,7 @@ class Component extends DCLogic {
   notesAfter(ed) {
     if (!ed) return null;
     if (ed.kind === 'ltitle') return { of: 'list', id: ed.id, where: 'pane' };
-    if (ed.kind === 'heading' && this.sec('text') === 'heads') return { of: 'task', id: ed.id, where: 'pane' };
+    if (ed.kind === 'heading') return { of: 'task', id: ed.id, where: 'pane' };
     return null;
   }
   startHeadNotes(id) { this.select([id]); this.startNotes(undefined, { of: 'task', id, where: 'pane' }); }
@@ -3457,7 +3463,7 @@ class Component extends DCLogic {
   }
 
   // ---------- Layout: a list with headings, under its title and notes ----------
-  // A heading's slot: 8 of air above it (Bold), its 32pt row, then its notes when it has some (measured). A collapsed
+  // A heading's slot: 8 of air above it, its 32pt row, then its notes when it has some (measured). A collapsed
   // heading's tasks aren't laid out (L.folded); they fold into it.
   layoutList(L, live) {
     const s = this.state, l = this.list(s.route.id);
@@ -3466,15 +3472,14 @@ class Component extends DCLogic {
     const mine = live.filter((t) => t.list === s.route.id);
     const items = mine.filter((t) => this.isHead(t) || this.placedOpen(t)).sort(byOrder);
     const done = mine.filter((t) => !this.isHead(t) && !this.placedOpen(t)).sort((a, b) => (b.completedAt || b.doneAt || 0) - (a.completedAt || a.doneAt || 0));
-    const bold = this.sec('heads') === 'bold', withNotes = this.sec('text') === 'heads';
     let y = L.top, fold = false;
     const g = { listId: s.route.id, top: y, ids: [] };
     L.groups.push(g);
     for (const t of items) {
       if (this.isHead(t)) {
         fold = this.isCollapsed(t.id);
-        const air = bold ? HEAD_AIR : 0;
-        const nh = withNotes && !fold && this.headNotesShown(t) ? this.mh['h:' + t.id] || this.guessH(t.notes) : 0;
+        const air = HEAD_AIR;
+        const nh = !fold && this.headNotesShown(t) ? this.mh['h:' + t.id] || this.guessH(t.notes) : 0;
         L.airOf.set(t.id, air); L.hOf.set(t.id, air + PITCH + nh); L.noteH.set(t.id, nh);
         L.ys.set(t.id, y + air); L.order.push(t.id); L.groupOf.set(t.id, g.listId); g.ids.push(t.id);
         y += air + PITCH + nh;
@@ -3494,15 +3499,13 @@ class Component extends DCLogic {
   }
   headNotesShown(t) { const ed = this.state.edit; return !!t.notes || !!(ed && ed.kind === 'notes' && this.nKeyOf(ed) === 'pane:' + t.id); }
   guessH(text) { return 6 + 19 * Math.max(1, (text || '').split('\n').length); }
-  // The block at the top of the list pane: the large title (B), and a list's notes under it. Measured once drawn;
-  // until then, an estimate. In the band (A), Today and the views have no block.
+  // The block at the top of the list pane: the large title, and a list's notes under it. Measured once drawn; until
+  // then, an estimate.
   headBlockH(L) {
-    const s = this.state, big = this.sec('title') === 'large', l = s.route.kind === 'list' ? this.list(s.route.id) : null;
-    if (!big && !l) return 4;
+    const s = this.state, l = s.route.kind === 'list' ? this.list(s.route.id) : null;
     const m = this.mh['lhead:' + L.key];
     if (m) return m;
-    const notes = l ? this.guessH(l.notes) - 6 : 0;
-    return big ? 4 + 30 + (l ? 4 + notes : 0) + 12 : 6 + notes + 10;
+    return 4 + 30 + (l ? 4 + this.guessH(l.notes) - 6 : 0) + 12;
   }
   // Heights of the drawn text blocks (data-mh): read a frame after each render, laid out on the next.
   measureBlocks() {
@@ -3554,7 +3557,7 @@ class Component extends DCLogic {
     const one = hs.length === 1, h = hs[0];
     const items = [];
     if (one) items.push({ label: 'Rename', keys: '↩', action: () => this.startHeadRename(h.id) });
-    if (one && this.sec('text') === 'heads') items.push({ label: h.notes ? 'Edit Notes' : 'Add Notes', action: () => this.startHeadNotes(h.id) });
+    if (one) items.push({ label: h.notes ? 'Edit Notes' : 'Add Notes', action: () => this.startHeadNotes(h.id) });
     if (one) items.push({ label: 'New Task in ' + (h.title || 'Heading'), action: () => { if (this.isCollapsed(h.id)) this.toggleCollapse([h.id], false); this.newTask({ listId: h.list, under: h.id }); } });
     items.push({ sep: true });
     const allFolded = hs.every((x) => this.isCollapsed(x.id));
@@ -3574,12 +3577,12 @@ class Component extends DCLogic {
   // ---------- View model pieces ----------
   // Heading rows: one node per heading, in creation order, so motion follows the heading.
   headVMs(L, visSel) {
-    const s = this.state, d = s.drag, ed = s.edit, bold = this.sec('heads') === 'bold';
+    const s = this.state, d = s.drag, ed = s.edit;
     const off = { cls: 'row hidden', style: '', title: '', titleCls: 'ht', editing: false, notEditing: true, editText: '', autoFocus: false, count: '', countCls: 'hct', chevBtnCls: 'hbtn reveal', chevCls: 'i i--sm gchev', chevLabel: '', expanded: 'true', plusTip: '' };
     return s.tasks.filter((t) => this.isHead(t)).map((t) => {
       let y = L.ys.get(t.id);
       const lv = this.leaving.get(t.id);
-      let cls = 'row hrow ' + (bold ? 'h-bold' : 'h-quiet');
+      let cls = 'row hrow';
       if (y == null && lv) { y = lv.y; cls += ' leave'; }
       if (y == null) return { ...off, id: t.id };
       if (this.entering.has(t.id) && !lv) cls += ' enter';
@@ -3587,36 +3590,39 @@ class Component extends DCLogic {
       const isEd = !!(ed && ed.kind === 'heading' && ed.id === t.id);
       if (isEd) cls += ' editing';
       if (visSel(t.id) && !lv) cls += ' sel';
-      const fold = this.isCollapsed(t.id), n = fold ? this.openUnder(t.id) : 0;
+      const fold = this.isCollapsed(t.id), n = fold && !t.deleted ? this.openUnder(t.id) : 0;
       return { id: t.id, cls, style: 'transform: translateY(' + y + 'px)', title: t.title || 'New Heading', titleCls: 'ht' + (t.title ? '' : ' untitled'),
         editing: isEd, notEditing: !isEd, editText: isEd ? ed.text : '', autoFocus: isEd && !ed.demo,
         count: n ? String(n) : '', countCls: 'hct', chevBtnCls: 'hbtn reveal' + (fold ? ' on' : ''), chevCls: 'i i--sm gchev' + (fold ? '' : ' open'),
         chevLabel: (fold ? 'Expand ' : 'Collapse ') + (t.title || 'heading'), expanded: fold ? 'false' : 'true', plusTip: 'New Task in ' + (t.title || 'this heading') };
     });
   }
-  // A heading's notes, under its row (text: list and headings).
+  // A heading's notes, under its row. Collapsing folds them up under it, and expanding unfolds them, with its tasks.
   headNoteVMs(L) {
-    const s = this.state, d = s.drag, ed = s.edit, bold = this.sec('heads') === 'bold';
+    const s = this.state, d = s.drag, ed = s.edit;
     return s.tasks.filter((t) => this.isHead(t)).map((t) => {
       const y = L.ys.get(t.id), nk = 'pane:' + t.id, nh = L.noteH ? L.noteH.get(t.id) : 0;
-      if (y == null || !nh) return { id: t.id, cls: 'hnote hidden', style: '', mk: '', nt: { lines: [], cls: 'mded', ce: 'false', rev: -1, nk, id: t.id } };
+      const lv = this.leaving.get('n:' + t.id), uf = this.unfold.get('n:' + t.id);
+      const shown = y != null && !!nh;
+      if (!shown && !(lv && t.notes)) return { id: t.id, cls: 'hnote hidden', style: '', mk: '', nt: { lines: [], cls: 'mded', ce: 'false', rev: -1, nk, id: t.id } };
+      if (!shown) return { id: t.id, cls: 'hnote leave folding', style: 'transform: translateY(' + lv.y + 'px)', mk: '', nt: { lines: this.mdView(t.notes, {}), cls: 'mded', ce: 'false', rev: -1, nk, id: t.id } };
       const nEd = !!(ed && ed.kind === 'notes' && this.nKeyOf(ed) === nk);
       const text = nEd ? ed.text : t.notes;
-      const cls = 'hnote ' + (bold ? 'h-bold' : 'h-quiet') + (d && d.ids.includes(t.id) && d.phase !== 'done' ? ' dragsrc' : '');
-      return { id: t.id, cls, style: 'transform: translateY(' + (y + PITCH) + 'px)', mk: 'h:' + t.id,
+      const cls = 'hnote' + (uf ? ' unfolding' : '') + (d && d.ids.includes(t.id) && d.phase !== 'done' ? ' dragsrc' : '');
+      return { id: t.id, cls, style: 'transform: translateY(' + (uf && !uf.armed ? uf.y : y + PITCH) + 'px)', mk: 'h:' + t.id,
         nt: { lines: this.mdView(text, { focused: nEd, sel: nEd ? ed.sel : null }), cls: 'mded' + (text ? '' : ' empty') + (nEd ? ' editing' : ''), ce: 'true', rev: nEd ? ed.rev || 0 : -1, nk, id: t.id } };
     });
   }
   // The top of the list pane: the large title, and a list's notes.
   headBlockVM(L, routeList) {
-    const s = this.state, ed = s.edit, big = this.sec('title') === 'large';
+    const s = this.state, ed = s.edit;
     const lnk = routeList ? 'pane:' + routeList.id : '';
     const lnEd = !!(routeList && ed && ed.kind === 'notes' && this.nKeyOf(ed) === lnk);
     const text = routeList ? (lnEd ? ed.text : routeList.notes || '') : '';
     const naming = !!(routeList && ed && ed.kind === 'ltitle' && ed.id === routeList.id);
     return {
-      show: big || !!routeList, big, cls: 'lhead' + (big ? ' big' : ' band') + (naming || lnEd ? ' naming' : ''), style: 'top: ' + (L.headY || 0) + 'px', mk: 'lhead:' + L.key,
-      tileCls: 'tile ' + (routeList ? COLOR_CLASS[routeList.color] : ''), renaming: naming && big, notRenaming: !(naming && big), editText: naming ? ed.text : '', key: routeList ? routeList.id : '',
+      cls: 'lhead' + (naming || lnEd ? ' naming' : ''), style: 'top: ' + (L.headY || 0) + 'px', mk: 'lhead:' + L.key,
+      tileCls: 'tile ' + (routeList ? COLOR_CLASS[routeList.color] : ''), renaming: naming, notRenaming: !naming, editText: naming ? ed.text : '', key: routeList ? routeList.id : '',
       hasNotes: !!routeList,
       nt: { lines: routeList ? this.mdView(text, { focused: lnEd, sel: lnEd ? ed.sel : null }) : [], cls: 'mded' + (text ? '' : ' empty') + (lnEd ? ' editing' : ''), ce: routeList ? 'true' : 'false', rev: lnEd ? ed.rev || 0 : -1, nk: lnk, id: routeList ? routeList.id : '' },
     };

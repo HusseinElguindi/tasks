@@ -9,7 +9,7 @@ This is the reference implementation for the Mac app's v2 interactions. `design/
 every value and cites these files by line (`css:N`, `dc:N`), so keep the two in step: a change here moves the
 citations.
 
-- `Main.dc.html`: the whole prototype. Template first (lines 1–250), then its logic: date parsing, layout, selection,
+- `Main.dc.html`: the whole prototype. Template first (lines 1–270), then its logic: date parsing, layout, selection,
   adding, editing, drag, undo, then the view model (`renderVals`). The four views (§22) are the block at the end of
   the component.
 - `tasks-v2.css`: every color, size, timing and curve the prototype uses.
@@ -19,15 +19,15 @@ citations.
 - `Upcoming-*`, `Undated-*`, `Completed-*`, `Trash-*`: each view in dark and light.
 - `canvas.json`: the canvas layout and its notes.
 
-**Proposed (§23, `docs/TASK-design-sections.md`): headings and text in a list, and a clearer title.** Its canvas is
+**Headings, text in a list and a clearer title (§23, `docs/TASK-design-sections.md`), final.** Its canvas is
 https://claude.ai/artifact/9dQ4fC46yZLLhf61gLiELx (private until shared), laid out by `canvas-sections.json`. The
-prototype carries it behind the strip's Title, Headings, Text and Elsewhere switches; their defaults are the
-recommendations, and a board sets them with `v-title`, `v-heads`, `v-text` and `v-ctx`. The example list is PHYS 122.
-Its boards: `Sections` (the prototype on that list), `Title-*`, `Heads-*`, `Text-*`, `Context-*` (each choice side by
-side), `Heading-*` (adding, collapsed, mid-drag, from `demo="newhead|collapse|dragsec"`) and the light ones. The code
-is the block at the end of the component, after the four views'. Until the user picks, §1–§22 describe the app.
+example list is PHYS 122: a course with notes, three headings with notes of their own, and a task before the first.
+Its boards: `Sections` (the prototype on that list), `Title-Large` and `Title-Scrolled` (the large title, and the band's
+title once it has scrolled under), `Heading-*` (adding, collapsed, mid-drag, from `demo="newhead|collapse|dragsec"`)
+and the light ones. The code is the block at the end of the component, after the four views'.
 
-The user's picks (add opens in the detail pane, the calendar popover, drag opens a gap, checked rows move after 1.5 s)
-and their picks for the views (Upcoming and Undated under Today, Completed and Trash after the lists; Upcoming's
-seven days, then months; a task with both dates shown once) are the only behavior here; the alternatives they didn't
+The user's picks (add opens in the detail pane, the calendar popover, drag opens a gap, checked rows move after 1.5 s),
+their picks for the views (Upcoming and Undated under Today, Completed and Trash after the lists; Upcoming's
+seven days, then months; a task with both dates shown once) and for §23 (the large title, bold headings, notes on a
+list and on its headings, no headings outside their list) are the only behavior here; the alternatives they didn't
 pick were removed. The canvas runtime (`support.js`) comes from the Design artifact type and isn't stored here.

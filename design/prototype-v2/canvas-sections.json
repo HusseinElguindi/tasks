@@ -8,47 +8,31 @@
     { "title": "Pane", "namespace": "pane", "artifact": "https://claude.ai/artifact/MS3VdrN9VHU7A7pTUTzpm8", "version": null, "copiedAt": "2026-10-31T19:20:00Z" }
   ],
   "boards": {
-    "Sections.dc.html": { "x": 0, "y": 0, "w": 1180, "h": 764, "radius": 12, "is_interactive": true, "title": "Prototype · PHYS 122, the example list: headings, the list's notes, the large title (the strip switches each choice)" },
-    "Main.dc.html": { "x": 1260, "y": 0, "w": 1180, "h": 764, "radius": 12, "is_interactive": true, "title": "Prototype · Today, each task's heading on its row" },
-    "Title-Band.dc.html": { "x": 0, "y": 1200, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "A · The title in the band, 15pt semibold, the list's notes under it" },
-    "Title-Large.dc.html": { "x": 1080, "y": 1200, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "B · A large title, 20pt semibold, the list's notes under it (recommended)" },
-    "Title-Scrolled.dc.html": { "x": 2160, "y": 1200, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "B, scrolled: the band's own title fades in" },
-    "Heads-Quiet.dc.html": { "x": 0, "y": 2240, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "A · Quiet: Today's group-label style" },
-    "Heads-Bold.dc.html": { "x": 1080, "y": 2240, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "B · Bold, with a hairline and air above (recommended)" },
-    "Text-List.dc.html": { "x": 0, "y": 3280, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "A · Notes on the list only" },
-    "Text-Headings.dc.html": { "x": 1080, "y": 3280, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "B · Notes on the list and on any heading (recommended)" },
-    "Context-Today.dc.html": { "x": 0, "y": 4320, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "A · On the row: Today shows the heading (recommended)" },
-    "Context-Upcoming.dc.html": { "x": 1080, "y": 4320, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "A · On the row: Upcoming shows “List › Heading”" },
-    "Context-Off.dc.html": { "x": 2160, "y": 4320, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "B · Off: no headings outside their list" },
-    "Heading-Adding.dc.html": { "x": 0, "y": 5360, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "Adding a heading above “Lab 4 pre-lab” (⌥⌘N); Return names it" },
-    "Heading-Collapsed.dc.html": { "x": 1080, "y": 5360, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "Labs collapsed: its chevron stays, with its open tasks' count" },
-    "Heading-Dragging.dc.html": { "x": 2160, "y": 5360, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "Dragging Lectures: its notes and tasks fold into it; it lands only between sections" },
-    "Sections-Light.dc.html": { "x": 0, "y": 6400, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "PHYS 122 · light" },
-    "Context-Today-Light.dc.html": { "x": 1080, "y": 6400, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "Today · light" }
+    "Sections.dc.html": { "x": 0, "y": 0, "w": 1180, "h": 764, "radius": 12, "is_interactive": true, "title": "Prototype · PHYS 122, the example list: the large title and its notes, headings and theirs" },
+    "Main.dc.html": { "x": 1260, "y": 0, "w": 1180, "h": 764, "radius": 12, "is_interactive": true, "title": "Prototype · Today: a task under a heading reads as before, with no heading" },
+    "Title-Large.dc.html": { "x": 0, "y": 1200, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "The list's title, 20pt semibold, with its notes; bold headings with theirs" },
+    "Title-Scrolled.dc.html": { "x": 1080, "y": 1200, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "Scrolled: the band's own title fades in" },
+    "Heading-Adding.dc.html": { "x": 0, "y": 2240, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "Adding a heading above “Lab 4 pre-lab” (⌥⌘N); Return names it" },
+    "Heading-Collapsed.dc.html": { "x": 1080, "y": 2240, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "Labs collapsed: its chevron stays, with its open tasks' count" },
+    "Heading-Dragging.dc.html": { "x": 2160, "y": 2240, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "Dragging Lectures: its notes and tasks fold into it; it lands only between sections" },
+    "Sections-Light.dc.html": { "x": 0, "y": 3280, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "PHYS 122 · light" },
+    "Today-Light.dc.html": { "x": 1080, "y": 3280, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "Today · light" }
   },
   "order": [
     "Sections.dc.html", "Main.dc.html",
-    "Title-Band.dc.html", "Title-Large.dc.html", "Title-Scrolled.dc.html",
-    "Heads-Quiet.dc.html", "Heads-Bold.dc.html",
-    "Text-List.dc.html", "Text-Headings.dc.html",
-    "Context-Today.dc.html", "Context-Upcoming.dc.html", "Context-Off.dc.html",
+    "Title-Large.dc.html", "Title-Scrolled.dc.html",
     "Heading-Adding.dc.html", "Heading-Collapsed.dc.html", "Heading-Dragging.dc.html",
-    "Sections-Light.dc.html", "Context-Today-Light.dc.html"
+    "Sections-Light.dc.html", "Today-Light.dc.html"
   ],
-  "noteOrder": ["title", "howto", "t_title", "n_title", "t_heads", "n_heads", "t_text", "n_text", "t_ctx", "n_ctx", "t_work", "n_work", "t_light"],
+  "noteOrder": ["title", "howto", "n_ctx", "t_title", "n_title", "t_work", "n_work", "t_light"],
   "notes": {
-    "title": { "kind": "title1", "x": 0, "y": -300, "maxW": 2440, "text": "Tasks · Headings, list text and a clearer title (proposed)" },
-    "howto": { "x": -560, "y": 0, "w": 480, "size": 24, "text": "How to try it\n\n• Press Play, then click inside once so it has the keys.\n• PHYS 122 is the example: a course with notes, three headings, and a task before the first.\n• ⌥⌘N (⌃⌥N here) adds a heading above the selected task. Double-click a heading or the title to rename it; Tab goes on to its notes.\n• Space on a heading collapses it. Drag a heading and its tasks come with it.\n• The strip switches each open choice." },
-    "t_title": { "kind": "title1", "x": 0, "y": 900, "maxW": 3160, "text": "1 · The list's title" },
-    "n_title": { "x": -560, "y": 1200, "w": 480, "size": 24, "text": "A keeps the title in the band, a step bigger. B puts a 20pt title at the top of the list, with the list's notes under it, and the band's own title fades in once it scrolls under. Today and the views get B's title too, without notes.\n\nB: the list reads like a page, its notes sit under its name, and the band stays quiet." },
-    "t_heads": { "kind": "title1", "x": 0, "y": 1940, "maxW": 2080, "text": "2 · Headings" },
-    "n_heads": { "x": -560, "y": 2240, "w": 480, "size": 24, "text": "A heading is a row in the list's order. It groups the tasks under it, down to the next heading. A uses Today's group-label style; B is 13pt semibold ink with a hairline and 8pt of air above.\n\nB: headings are the user's own structure. A looks like Today's list labels, which mean something else." },
-    "t_text": { "kind": "title1", "x": 0, "y": 2980, "maxW": 2080, "text": "3 · Text in a list" },
-    "n_text": { "x": -560, "y": 3280, "w": 480, "size": 24, "text": "Markdown in the notes editor, a step quieter than the tasks. A: a list has notes, under its title. B: a heading can have notes too, under it.\n\nB: it describes tasks where they are, and costs nothing more in the model. Free text between tasks is left out: it would be a third kind of row to select, drag and edit." },
-    "t_ctx": { "kind": "title1", "x": 0, "y": 4020, "maxW": 3160, "text": "4 · Headings outside their list" },
-    "n_ctx": { "x": -560, "y": 4320, "w": 480, "size": 24, "text": "Headings are never rows in Today, Upcoming, Undated, Completed or Trash. A puts a task's heading on its row: “Labs” where the group is already the list (Today, Undated), “PHYS 122 › Labs” elsewhere. B leaves it off.\n\nA: the same task reads the same way everywhere." },
-    "t_work": { "kind": "title1", "x": 0, "y": 5060, "maxW": 3160, "text": "Working with headings" },
-    "n_work": { "x": -560, "y": 5360, "w": 480, "size": 24, "text": "⌥⌘N, or New Heading Above in a task's menu. Return names it; Esc or no name leaves nothing.\n\nDeleting a heading keeps its tasks (they join the heading above). It doesn't go to Trash, and Undo brings it back.\n\nCollapsing is local to the Mac, like a window's size, and never synced." },
-    "t_light": { "kind": "title1", "x": 0, "y": 6100, "maxW": 2080, "text": "Light" }
+    "title": { "kind": "title1", "x": 0, "y": -300, "maxW": 2440, "text": "Tasks · Headings, list text and a clearer title" },
+    "howto": { "x": -560, "y": 0, "w": 480, "size": 24, "text": "How to try it\n\n• Press Play, then click inside once so it has the keys.\n• PHYS 122 is the example: a course with notes, three headings with notes of their own, and a task before the first.\n• ⌥⌘N (⌃⌥N here) adds a heading above the selected task. Double-click a heading or the title to rename it; Tab goes on to its notes.\n• Space or the chevron collapses a heading. Drag a heading and its tasks come with it." },
+    "n_ctx": { "x": 2520, "y": 0, "w": 480, "size": 24, "text": "Headings stay in their list. Today, Upcoming, Undated, Completed and Trash never show one, as a row or on a task's row: a task there reads as it did before." },
+    "t_title": { "kind": "title1", "x": 0, "y": 900, "maxW": 2080, "text": "The list's title, its notes, and headings" },
+    "n_title": { "x": -560, "y": 1200, "w": 480, "size": 24, "text": "The list's name is a 20pt semibold title at the top of the list, after its tile, with the list's notes under it. Once it scrolls under the band, the band's own small title fades in. Today and the views get the same title line, without notes.\n\nHeadings are 13pt semibold with a hairline and 8pt of air above. A heading can have notes too, under it. All of it is Markdown in the notes editor, a step quieter than the tasks." },
+    "t_work": { "kind": "title1", "x": 0, "y": 1940, "maxW": 3160, "text": "Working with headings" },
+    "n_work": { "x": -560, "y": 2240, "w": 480, "size": 24, "text": "⌥⌘N, or New Heading Above in a task's menu. Return names it; Esc or no name leaves nothing.\n\nCollapsing folds a heading's notes and tasks up under it; expanding unfolds them from under it, on the same curve as the rows below. It's local to the Mac and never synced.\n\nDeleting a heading keeps its tasks (they join the heading above). It doesn't go to Trash, and Undo brings it back." },
+    "t_light": { "kind": "title1", "x": 0, "y": 2980, "maxW": 2080, "text": "Light" }
   }
 }
