@@ -26,19 +26,17 @@ Its boards: `Sections` (the prototype on that list), `Title-Large` and `Title-Sc
 title once it has scrolled under), `Heading-*` (adding, collapsed, mid-drag, from `demo="newhead|collapse|dragsec"`)
 and the light ones. The code is the block at the end of the component, after the four views'.
 
-**§24, When and Deadline at a glance (`docs/TASK-design-dates.md`, `-2.md`).** Its canvas is
-https://claude.ai/artifact/2wUF9Dz2JEt8Xp2pBDahy2 (private until shared), laid out by `canvas-dates.json`. Picked and
-built in: Quiet When, and the checkbox ring (red overdue, amber due today, blue planned for today). Open, behind the
-strip: Wording (Nd left, Absolute, Relative under two weeks, Compact with "2d ago" or "−2d"), Planned + due (double
-ring, split ring, blue moves to the When) and When at (right, after the title, a column, below the title). The
-defaults are the recommendations, except When at, which stays right; a board sets them with `v-words`, `v-mix` and
-`v-wa`. Its boards: `When-Deadline` (the prototype on the School list), `Cues-*` (`Cues-Compare` is every checkbox
-state in each combination, a static board generated from the prototype's own functions and CSS), `Place-*` (each
-placement on School, beside the detail pane with long names, and on PHYS 122), `Wording-Compare` (generated the same
-way) and `Words-*`, `Tip-*` (a date's tooltip held open, from `demo="tipwhen|tipdl"`), `Upcoming-Dates`, `Narrow-*`
-(from `demo="narrow"`), `Detail-Dates` and `Popover-*` (from `demo="pickwhen|pickdl"`). The code is the block at the
-very end of the component and the wording functions near the top; the CSS is the block near the end of
-`tasks-v2.css`. Until it's built, §11 describes the app.
+**§24, When and Deadline at a glance (`docs/TASK-design-dates.md`, `-2.md`): final.** Its canvas is
+https://claude.ai/artifact/2wUF9Dz2JEt8Xp2pBDahy2 (private until shared), laid out by `canvas-dates.json`. The
+prototype has the picks built in, with no switches: the When as quiet text after the title and its notes hint, the
+countdown wording ("3d left", "Due today", "2d ago"; the date past 14 days), and the checkbox ring (red overdue,
+amber due today, blue planned for today, the double ring when planned and due). Its boards: `When-Deadline` (the
+prototype on the School list), `Dates-Reference` and `Rings-Reference` (static, generated from the prototype's own
+functions and CSS), `List-Light`, `Headings-Dates`, `Cues-*` (Today, selected, the detail pane), `Tip-*` (a date's
+tooltip held open, from `demo="tipwhen|tipdl"`), `Upcoming-Dates`, `Narrow-*` (from `demo="narrow"`), `Detail-Dates`
+and `Popover-*` (from `demo="pickwhen|pickdl"`). The code is the block at the very end of the component and the
+wording functions near the top; the CSS is the block near the end of `tasks-v2.css`. Where §24 differs from §11, §24
+wins.
 
 The user's picks (add opens in the detail pane, the calendar popover, drag opens a gap, checked rows move after 1.5 s),
 their picks for the views (Upcoming and Undated under Today, Completed and Trash after the lists; Upcoming's

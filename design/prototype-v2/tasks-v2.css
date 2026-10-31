@@ -482,47 +482,29 @@
 
 /* ---------- When and Deadline (INTERACTIONS-v2 §24) ---------- */
 /* Urgency is the deadline's tone: late (past) danger, due (today) attention, soon (tomorrow) an attention flag on the
-   neutral look, later neutral. */
-.tk .chip .ct { white-space: nowrap; }
-.tk.dw-cmp .chip .ct, .tk.dw-cmpm .chip .ct, .tk.dw-left .chip .ct { font-variant-numeric: tabular-nums; }   /* compact wording: the numbers line up down the column */
+   neutral look, later neutral. Digits are tabular, so a column of "3d left" lines up. */
+.tk .chip .ct { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .tk .chip.soon .i { color: var(--attn); }   /* soon: only the flag is tinted, so today stays the one amber capsule */
 .tk .chip.open-picker .i { color: inherit; }
-/* Quiet When (picked): When is text (glyph and date in ink-tertiary, no capsule); only a deadline is a capsule, so a
-   capsule on a row always means something is due. Hover and an open popover still show the capsule. */
+/* Quiet When: text (glyph and date in ink-tertiary, no capsule), after the title and its notes hint (the title slot's
+   6 gap; -5 so its glyph sits 6 from the hint, not 11). Only a deadline is a capsule, at the row's end, so a capsule
+   always means something is due. Hover and an open popover still show the When as a capsule. */
 .tk .chip.when:not(.lg) { background: transparent; padding: 0 5px; color: var(--ink-3); }
 .tk button.chip.when:not(.lg):hover { filter: none; background: var(--hover); color: var(--ink-2); }
 .tk .chip.when.open-picker:not(.lg) { background: var(--accent-tint); color: var(--accent-text); }
-/* Cues on the checkbox, open tasks only (picked): the ring in danger when overdue, attention when due today, and
-   accent-text when the task is on today's plate (its When is today or earlier), seen outside Today. Hover keeps the
-   cue's ring. */
+.tk .row .ttw .chip.when { position: relative; margin-left: -5px; }   /* positioned: above the row's ::before hit layer, or it can't be pressed */
+/* The checkbox ring, open tasks only: danger when overdue, attention when due today, accent-text when the task is
+   planned for today (its When is today or earlier) and seen outside Today. Hover keeps the cue's ring. Planned for
+   today with a deadline's ring: the deadline's ring outside, a 1.25pt accent-text ring inside, 1.5 apart (the double
+   ring). A deadline is past or today, never both. */
 .tk .check.late:not(.on) { box-shadow: inset 0 0 0 1.5px var(--danger); }
 .tk .check.due:not(.on) { box-shadow: inset 0 0 0 1.5px var(--attn); }
 .tk :where(.check.plate):not(.on) { box-shadow: inset 0 0 0 1.5px var(--accent-text); }
-/* Planned for today and a deadline's ring (proposed, mix): Double, the deadline's ring outside and a 1.25pt blue ring
-   inside, 1.5 apart; Split, the left half blue and the right half the deadline's; Wins, the deadline's ring alone, and
-   the blue moves to the When's "Today". */
-.tk.mix-double .check.plate.late:not(.on)::before, .tk.mix-double .check.plate.due:not(.on)::before { content: ""; position: absolute; inset: 3px; border-radius: 50%; box-shadow: inset 0 0 0 1.25px var(--accent-text); }
-.tk.mix-split .check.plate.late:not(.on), .tk.mix-split .check.plate.due:not(.on) { box-shadow: none; }
-.tk.mix-split .check.plate.late:not(.on)::before, .tk.mix-split .check.plate.due:not(.on)::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 180deg, var(--accent-text) 0 50%, var(--ring) 50% 100%);
-  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.25px)); mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.25px)); }
-.tk.mix-split .check.late { --ring: var(--danger); }
-.tk.mix-split .check.due { --ring: var(--attn); }
-.tk.mix-wins .row.ptaken .chip.when:not(.open-picker) { color: var(--accent-text); }
-/* Where the When sits (experiment, wa). Right is as built. After: in the title's slot, after the notes hint (6 apart),
-   and it drops before the title goes under 120pt. Column: an 80pt column after the checkbox, in lists only, empty
-   when there's no When, so titles line up. Below: a second line under the title, the row 14 taller. */
-.tk .row .ttw .chip.when { margin-left: -5px; }
-.tk .row .wcol { flex: none; width: 80px; margin-left: 10px; display: flex; align-items: center; }
-.tk .row .wcol .chip.when { margin-left: -5px; }
-.tk .row .wcol + .ttw { margin-left: 4px; }
-.tk .row.two { height: 44px; align-items: flex-start; padding-top: 6px; }
-.tk .row.two .chips { margin-top: -1px; }
-.tk .row.two .open { margin-top: -3px; }
-.tk .row .wbelow { position: absolute; left: 31px; top: 25px; height: 16px; display: flex; align-items: center; }
-.tk .row .wbelow .chip.when { height: 16px; }
-/* Narrow widths, as the app built v2 feedback 16 (f08ca77), approximated: the title keeps up to 120pt with its hint;
-   dates keep their size and drop from the first (the When before the deadline); the list name truncates (fading
-   when cut); only then does the title go under 120pt. A deadline always shows. Nothing overlaps. */
+.tk .check.plate.late:not(.on)::before, .tk .check.plate.due:not(.on)::before { content: ""; position: absolute; inset: 3px; border-radius: 50%; box-shadow: inset 0 0 0 1.25px var(--accent-text); }
+/* Narrow widths, as the app built v2 feedback 16 (f08ca77), approximated, with the When after the title (§24): the
+   title keeps up to 120pt; the When (in the title's slot) drops before the title goes under that; the list name
+   truncates (fading when cut); only then does the title go under 120pt. Dates never truncate, and a deadline always
+   shows. Nothing overlaps. */
 .tk .lp .row .ttw { flex: 1 1 0; min-width: 120px; }
 .tk .lp .row .where { flex: 0 1 auto; min-width: 0; overflow: hidden; }
 .tk .lp .row .where[data-clip] { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent); }

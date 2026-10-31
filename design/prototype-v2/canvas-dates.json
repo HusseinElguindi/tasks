@@ -26,7 +26,7 @@
       "h": 764,
       "radius": 12,
       "is_interactive": true,
-      "title": "Prototype · the School list. The strip switches Wording, Planned + due and When at (defaults: Nd left, double ring, right)"
+      "title": "Prototype · the School list"
     },
     "Main.dc.html": {
       "x": 1260,
@@ -35,83 +35,65 @@
       "h": 764,
       "radius": 12,
       "is_interactive": true,
-      "title": "Prototype · Today; the same strip"
+      "title": "Prototype · Today"
     },
-    "Cues-Compare.dc.html": {
+    "Dates-Reference.dc.html": {
       "x": 0,
       "y": 1200,
+      "w": 1400,
+      "h": 900,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "How dates read at each distance: the row, the tooltips, the detail pane"
+    },
+    "Dates-Reference-Light.dc.html": {
+      "x": 1480,
+      "y": 1200,
+      "w": 1400,
+      "h": 900,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "The same · light"
+    },
+    "Rings-Reference.dc.html": {
+      "x": 0,
+      "y": 2380,
       "w": 1400,
       "h": 764,
       "radius": 12,
       "is_interactive": true,
-      "title": "Every state in each combination, and in Today"
+      "title": "The checkbox ring in each state, in a list and in Today"
     },
-    "Cues-Compare-Light.dc.html": {
+    "Rings-Reference-Light.dc.html": {
       "x": 1480,
-      "y": 1200,
+      "y": 2380,
       "w": 1400,
       "h": 764,
       "radius": 12,
       "is_interactive": true,
       "title": "The same · light"
     },
-    "Cues-Double-List.dc.html": {
+    "List-Light.dc.html": {
       "x": 0,
-      "y": 2240,
+      "y": 3720,
       "w": 1000,
       "h": 620,
       "radius": 12,
       "is_interactive": true,
-      "title": "Double ring (recommended)"
+      "title": "A list · light"
     },
-    "Cues-Split-List.dc.html": {
+    "Headings-Dates.dc.html": {
       "x": 1080,
-      "y": 2240,
+      "y": 3720,
       "w": 1000,
       "h": 620,
       "radius": 12,
       "is_interactive": true,
-      "title": "Split ring"
-    },
-    "Cues-Wins-List.dc.html": {
-      "x": 2160,
-      "y": 2240,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "The deadline's ring wins; the blue moves to the When"
-    },
-    "Cues-Double-List-Light.dc.html": {
-      "x": 3240,
-      "y": 2240,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Double ring · light"
-    },
-    "Cues-Today.dc.html": {
-      "x": 0,
-      "y": 3280,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "In Today: red and amber only; blue never shows there"
-    },
-    "Cues-Today-Light.dc.html": {
-      "x": 1080,
-      "y": 3280,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "In Today · light"
+      "title": "With headings and notes"
     },
     "Cues-Selected.dc.html": {
       "x": 2160,
-      "y": 3280,
+      "y": 3720,
       "w": 1000,
       "h": 620,
       "radius": 12,
@@ -120,241 +102,79 @@
     },
     "Cues-Detail.dc.html": {
       "x": 3240,
-      "y": 3280,
+      "y": 3720,
       "w": 1000,
       "h": 620,
       "radius": 12,
       "is_interactive": true,
       "title": "The detail pane's checkbox carries the same rings"
     },
-    "Place-Right-List.dc.html": {
+    "Cues-Today.dc.html": {
       "x": 0,
-      "y": 4620,
+      "y": 4760,
       "w": 1000,
       "h": 620,
       "radius": 12,
       "is_interactive": true,
-      "title": "Right (as built)"
+      "title": "Today: red and amber only; blue never shows there"
     },
-    "Place-After-List.dc.html": {
+    "Cues-Today-Light.dc.html": {
       "x": 1080,
-      "y": 4620,
+      "y": 4760,
       "w": 1000,
       "h": 620,
       "radius": 12,
       "is_interactive": true,
-      "title": "After the title (recommended)"
-    },
-    "Place-Col-List.dc.html": {
-      "x": 2160,
-      "y": 4620,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "A column before the title"
-    },
-    "Place-Below-List.dc.html": {
-      "x": 3240,
-      "y": 4620,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Below the title"
-    },
-    "Place-Right-Narrow.dc.html": {
-      "x": 0,
-      "y": 5660,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Right, beside the detail pane with long names"
-    },
-    "Place-After-Narrow.dc.html": {
-      "x": 1080,
-      "y": 5660,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "After: a When that doesn’t fit drops first"
-    },
-    "Place-Col-Narrow.dc.html": {
-      "x": 2160,
-      "y": 5660,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Column: every title pays for it"
-    },
-    "Place-Below-Narrow.dc.html": {
-      "x": 3240,
-      "y": 5660,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Below: nothing drops; dated rows are taller"
-    },
-    "Place-Right-Phys.dc.html": {
-      "x": 0,
-      "y": 6700,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Right, with headings and notes"
-    },
-    "Place-After-Phys.dc.html": {
-      "x": 1080,
-      "y": 6700,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "After, with headings and notes"
-    },
-    "Place-Col-Phys.dc.html": {
-      "x": 2160,
-      "y": 6700,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Column, with headings and notes"
-    },
-    "Place-Below-Phys.dc.html": {
-      "x": 3240,
-      "y": 6700,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Below, with headings and notes"
-    },
-    "Wording-Compare.dc.html": {
-      "x": 0,
-      "y": 8040,
-      "w": 1400,
-      "h": 764,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Every distance in each wording"
-    },
-    "Wording-Compare-Light.dc.html": {
-      "x": 1480,
-      "y": 8040,
-      "w": 1400,
-      "h": 764,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "The same · light"
-    },
-    "Words-Left-List.dc.html": {
-      "x": 0,
-      "y": 9080,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Nd left (recommended)"
-    },
-    "Words-Abs-List.dc.html": {
-      "x": 1080,
-      "y": 9080,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Absolute (as built)"
-    },
-    "Words-Rel-List.dc.html": {
-      "x": 2160,
-      "y": 9080,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Relative under two weeks"
-    },
-    "Words-Cmp-List.dc.html": {
-      "x": 3240,
-      "y": 9080,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Compact, “2d ago”"
-    },
-    "Words-Cmpm-List.dc.html": {
-      "x": 4320,
-      "y": 9080,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Compact, “−2d”"
-    },
-    "Words-Left-Upcoming.dc.html": {
-      "x": 0,
-      "y": 10120,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Nd left in Upcoming: it counts from today, not from the day's group"
-    },
-    "Tip-When.dc.html": {
-      "x": 1080,
-      "y": 10120,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "The tooltip gives the date: “When: Mon, Nov 2 · in 2 days”"
-    },
-    "Tip-Deadline.dc.html": {
-      "x": 2160,
-      "y": 10120,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "… “Deadline: Tue, Nov 3 · 3 days left”"
+      "title": "Today · light"
     },
     "Upcoming-Dates.dc.html": {
-      "x": 0,
-      "y": 11460,
+      "x": 2160,
+      "y": 4760,
       "w": 1000,
       "h": 620,
       "radius": 12,
       "is_interactive": true,
       "title": "Upcoming: a deadline on its day reads “Due”"
     },
-    "Narrow-List.dc.html": {
-      "x": 1080,
-      "y": 11460,
+    "Tip-When.dc.html": {
+      "x": 0,
+      "y": 5800,
       "w": 1000,
       "h": 620,
       "radius": 12,
       "is_interactive": true,
-      "title": "Long names beside the detail pane: a When that doesn't fit is left out"
+      "title": "A When's tooltip: “When: Mon, Nov 2 · in 2 days”"
+    },
+    "Tip-Deadline.dc.html": {
+      "x": 1080,
+      "y": 5800,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "A Deadline's: “Deadline: Tue, Nov 3 · 3 days left”"
+    },
+    "Narrow-List.dc.html": {
+      "x": 2160,
+      "y": 5800,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Long names beside the detail pane: a When that would squeeze the title under 120pt is left out"
     },
     "Narrow-Today.dc.html": {
-      "x": 2160,
-      "y": 11460,
+      "x": 3240,
+      "y": 5800,
       "w": 520,
       "h": 620,
       "radius": 12,
       "is_interactive": true,
-      "title": "Today in a 520pt window: the list name gives way first"
+      "title": "Today in a 520pt window"
     },
     "Detail-Dates.dc.html": {
       "x": 0,
-      "y": 12800,
+      "y": 7140,
       "w": 1000,
       "h": 620,
       "radius": 12,
@@ -363,7 +183,7 @@
     },
     "Popover-When.dc.html": {
       "x": 1080,
-      "y": 12800,
+      "y": 7140,
       "w": 1000,
       "h": 620,
       "radius": 12,
@@ -372,7 +192,7 @@
     },
     "Popover-Deadline.dc.html": {
       "x": 2160,
-      "y": 12800,
+      "y": 7140,
       "w": 1000,
       "h": 620,
       "radius": 12,
@@ -381,7 +201,7 @@
     },
     "Popover-When-Light.dc.html": {
       "x": 3240,
-      "y": 12800,
+      "y": 7140,
       "w": 1000,
       "h": 620,
       "radius": 12,
@@ -392,39 +212,19 @@
   "order": [
     "When-Deadline.dc.html",
     "Main.dc.html",
-    "Cues-Compare.dc.html",
-    "Cues-Compare-Light.dc.html",
-    "Cues-Double-List.dc.html",
-    "Cues-Split-List.dc.html",
-    "Cues-Wins-List.dc.html",
-    "Cues-Double-List-Light.dc.html",
-    "Cues-Today.dc.html",
-    "Cues-Today-Light.dc.html",
+    "Dates-Reference.dc.html",
+    "Dates-Reference-Light.dc.html",
+    "Rings-Reference.dc.html",
+    "Rings-Reference-Light.dc.html",
+    "List-Light.dc.html",
+    "Headings-Dates.dc.html",
     "Cues-Selected.dc.html",
     "Cues-Detail.dc.html",
-    "Place-Right-List.dc.html",
-    "Place-After-List.dc.html",
-    "Place-Col-List.dc.html",
-    "Place-Below-List.dc.html",
-    "Place-Right-Narrow.dc.html",
-    "Place-After-Narrow.dc.html",
-    "Place-Col-Narrow.dc.html",
-    "Place-Below-Narrow.dc.html",
-    "Place-Right-Phys.dc.html",
-    "Place-After-Phys.dc.html",
-    "Place-Col-Phys.dc.html",
-    "Place-Below-Phys.dc.html",
-    "Wording-Compare.dc.html",
-    "Wording-Compare-Light.dc.html",
-    "Words-Left-List.dc.html",
-    "Words-Abs-List.dc.html",
-    "Words-Rel-List.dc.html",
-    "Words-Cmp-List.dc.html",
-    "Words-Cmpm-List.dc.html",
-    "Words-Left-Upcoming.dc.html",
+    "Cues-Today.dc.html",
+    "Cues-Today-Light.dc.html",
+    "Upcoming-Dates.dc.html",
     "Tip-When.dc.html",
     "Tip-Deadline.dc.html",
-    "Upcoming-Dates.dc.html",
     "Narrow-List.dc.html",
     "Narrow-Today.dc.html",
     "Detail-Dates.dc.html",
@@ -435,13 +235,9 @@
   "noteOrder": [
     "title",
     "howto",
-    "t_cues",
-    "n_cues",
-    "t_place",
-    "n_place",
-    "t_words",
-    "n_words",
-    "t_views",
+    "t_ref",
+    "n_ref",
+    "t_lists",
     "t_detail"
   ],
   "notes": {
@@ -450,68 +246,40 @@
       "x": 0,
       "y": -300,
       "maxW": 4240,
-      "text": "Tasks · When and Deadline at a glance"
+      "text": "Tasks · When and Deadline at a glance (final)"
     },
     "howto": {
       "x": -560,
       "y": 0,
       "w": 480,
       "size": 24,
-      "text": "How to try it\n\n• Press Play, then click inside once so it has the keys.\n• Picked: the When is quiet grey text, only a deadline is a capsule; the checkbox ring is red when overdue, amber when due today, blue when planned for today.\n• Proposed, on the strip: Wording, Planned + due, and When at (an experiment). The defaults are the recommendations, except When at, which stays right until you pick.\n• Hover a date for its full date; click it for the popover."
+      "text": "How to try it\n\n• Press Play, then click inside once so it has the keys.\n• The When is quiet grey text after the title and its notes hint; only a deadline is a capsule, at the row's end.\n• The checkbox ring: red overdue, amber due today, blue planned for today (outside Today). With both, the deadline's ring outside and a thin blue one inside.\n• Hover a date for its full date; click it for the popover."
     },
-    "t_cues": {
+    "t_ref": {
       "kind": "title1",
       "x": 0,
       "y": 900,
-      "maxW": 4240,
-      "text": "1 · The checkbox rings: planned for today with a deadline (proposed)"
+      "maxW": 2880,
+      "text": "Reference"
     },
-    "n_cues": {
+    "n_ref": {
       "x": -560,
       "y": 1200,
       "w": 480,
       "size": 24,
-      "text": "Picked: the ring is red when overdue, amber when due today, blue when the task is on today's plate (seen in a list).\n\nA deadline is past or today, never both, so the only clash is blue with red or amber.\n\nDouble ring (recommended): the deadline's ring outside, a thin blue ring inside. Both stay at the checkbox, where the user put the cues, and the deadline keeps the outer, stronger ring.\n\nSplit: half and half reads as two states, but at 16pt it looks broken. Blue moves to the When: quiet, but the plan leaves the checkbox, and in Today there's no When to carry it."
+      "text": "Both boards are generated from the prototype's own functions and CSS, so they read exactly as it does. §24 of INTERACTIONS-v2.md is the build spec."
     },
-    "t_place": {
+    "t_lists": {
       "kind": "title1",
       "x": 0,
-      "y": 4320,
+      "y": 3420,
       "maxW": 4240,
-      "text": "2 · The When aligned left (experiment)"
-    },
-    "n_place": {
-      "x": -560,
-      "y": 4620,
-      "w": 480,
-      "size": 24,
-      "text": "After the title (recommended): the When reads with the title, after its notes hint, and the right edge holds only deadlines, so a scan down it finds every one. One line per row. At narrow widths the When drops before the title goes under 120pt.\n\nColumn: lines Whens up, but takes 84pt from every title, dated or not; beside the detail pane the median title loses a third.\n\nBelow the title: never competes for width, and never drops; but a dated row is 14pt taller, so the list's rhythm goes uneven (28% taller on School)."
-    },
-    "t_words": {
-      "kind": "title1",
-      "x": 0,
-      "y": 7740,
-      "maxW": 5320,
-      "text": "3 · Wording: “Nd left” to 14 days, then the date (proposed)"
-    },
-    "n_words": {
-      "x": -560,
-      "y": 8040,
-      "w": 480,
-      "size": 24,
-      "text": "A deadline counts whole days left, not its own day: “14d left” … “1d left”, “Due today”, then “2d ago” (days at any distance, “16d ago”). Farther than 14 days it's the date: “Nov 15”, “Jan 3, 2027”.\n\nThe When follows the same rule as a plan: “Today”, “Tomorrow”, “in 2d” … “in 14d”, then the date.\n\nThe tooltip and the detail pane say it in words: “13 days left”, “2 days overdue”."
-    },
-    "t_views": {
-      "kind": "title1",
-      "x": 0,
-      "y": 11160,
-      "maxW": 3240,
-      "text": "Views and narrow widths"
+      "text": "In the app"
     },
     "t_detail": {
       "kind": "title1",
       "x": 0,
-      "y": 12500,
+      "y": 6840,
       "maxW": 4240,
       "text": "The detail pane and the popover"
     }

@@ -93,10 +93,8 @@ body{margin:0}
 <sc-for list="{{rows}}" as="r" hint-placeholder-count="0">
 <div class="{{r.cls}}" style="{{r.style}}" data-id="{{r.id}}" onPointerDown="{{onRowDown}}" onPointerMove="{{onRowMove}}" onPointerUp="{{onRowUp}}" onPointerCancel="{{onRowUp}}" onDoubleClick="{{onRowDbl}}" onContextMenu="{{onRowCtx}}">
 <button class="{{r.checkCls}}" type="button" data-id="{{r.id}}" aria-label="{{r.checkLabel}}" onPointerDown="{{stopPD}}" onClick="{{onCheck}}"><svg class="ck" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.8 8.4l2.7 2.7 5.7-6.2"></path></svg></button>
-<sc-if value="{{r.lCol}}"><span class="wcol"><sc-for list="{{r.lColChips}}" as="c" hint-placeholder-count="0"><button class="{{c.cls}}" type="button" data-id="{{r.id}}" data-field="{{c.field}}" aria-label="{{c.tip}}" data-tip="{{c.tip}}" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onPointerDown="{{stopPD}}" onClick="{{onChip}}"><sc-if value="{{c.cal}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg></sc-if><sc-if value="{{c.flag}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 14V2.5M4 3h7.5L10 5.75 11.5 8.5H4"></path></svg></sc-if><span class="ct">{{c.text}}</span></button></sc-for></span></sc-if>
 <sc-if value="{{r.editing}}"><input class="ri" data-id="{{r.id}}" value="{{r.editText}}" placeholder="New Task" spellCheck="false" autoFocus="{{r.autoFocus}}" aria-label="Task title" onChange="{{onEditChange}}" onKeyDown="{{onEditKey}}" onBlur="{{onEditBlur}}" onFocus="{{onEditFocus}}" onPointerDown="{{stopPD}}"></sc-if>
 <sc-if value="{{r.notEditing}}"><span class="ttw"><span class="{{r.titleCls}}">{{r.title}}</span><sc-if value="{{r.nGlyph}}"><span class="nglyph" role="img" aria-label="Has notes"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M3.5 8h9M3.5 11.5h5.5"></path></svg></span></sc-if><sc-if value="{{r.nCount}}"><span class="{{r.nCountCls}}" role="img" aria-label="{{r.nCountLabel}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="3"></rect><path d="M5.4 8.2l1.8 1.8 3.4-3.7"></path></svg>{{r.nCountText}}</span></sc-if><sc-for list="{{r.lAfter}}" as="c" hint-placeholder-count="0"><button class="{{c.cls}}" type="button" data-id="{{r.id}}" data-field="{{c.field}}" aria-label="{{c.tip}}" data-tip="{{c.tip}}" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onPointerDown="{{stopPD}}" onClick="{{onChip}}"><sc-if value="{{c.cal}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg></sc-if><sc-if value="{{c.flag}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 14V2.5M4 3h7.5L10 5.75 11.5 8.5H4"></path></svg></sc-if><span class="ct">{{c.text}}</span></button></sc-for></span></sc-if>
-<sc-if value="{{r.lBelowHas}}"><span class="wbelow"><sc-for list="{{r.lBelow}}" as="c" hint-placeholder-count="0"><button class="{{c.cls}}" type="button" data-id="{{r.id}}" data-field="{{c.field}}" aria-label="{{c.tip}}" data-tip="{{c.tip}}" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onPointerDown="{{stopPD}}" onClick="{{onChip}}"><sc-if value="{{c.cal}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg></sc-if><sc-if value="{{c.flag}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 14V2.5M4 3h7.5L10 5.75 11.5 8.5H4"></path></svg></sc-if><span class="ct">{{c.text}}</span></button></sc-for></span></sc-if>
 <sc-if value="{{r.hasWhere}}"><span class="where">{{r.where}}</span></sc-if>
 <span class="chips">
 <sc-for list="{{r.chips}}" as="c" hint-placeholder-count="0">
@@ -231,7 +229,7 @@ body{margin:0}
 <sc-if value="{{stage.show}}">
 <div class="stage" aria-label="Prototype controls">
 <span class="sl">Prototype</span>
-<span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Edit tasks</span><span class="seg"><sc-for list="{{stage.editTasks}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><sc-for list="{{stage.vars}}" as="vg" hint-placeholder-count="0"><span class="sl">{{vg.label}}</span><span class="seg"><sc-for list="{{vg.opts}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span></sc-for>
+<span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Edit tasks</span><span class="seg"><sc-for list="{{stage.editTasks}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
 <span class="sn">The browser keeps ⌘N, ⌘T and ⌘1–9, so ⌥N, ⌥T and ⌃1–9 also work here.</span>
 <span style="flex: 1;"></span>
 <button class="lnk" type="button" data-k="reset" data-v="1" onClick="{{onStage}}">Reset</button>
@@ -270,7 +268,7 @@ body{margin:0}
 </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"select":{"editor":null,"default":""},"detail":{"editor":null,"default":"closed"},"pick":{"editor":null,"default":"none"},"caret":{"editor":null,"default":""},"vWords":{"editor":null,"default":"left"},"vMix":{"editor":null,"default":"double"},"vWa":{"editor":null,"default":"right"},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"select":{"editor":null,"default":""},"detail":{"editor":null,"default":"closed"},"pick":{"editor":null,"default":"none"},"caret":{"editor":null,"default":""},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
 // ---------- Calendar dates: "YYYY-MM-DD" strings, never instants (SPEC §2). ----------
 const DAY_MS = 86400000;
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -300,62 +298,41 @@ function relText(s, today) {
   if (n === 0) return 'today';
   if (n === 1) return 'tomorrow';
   if (n === -1) return 'yesterday';
-  if (n > 0) return n < 14 ? 'in ' + n + ' days' : n < 60 ? 'in ' + Math.round(n / 7) + ' weeks' : n < 365 ? 'in ' + Math.round(n / 30) + ' months' : Math.round(n / 365) === 1 ? 'in a year' : 'in ' + Math.round(n / 365) + ' years';
+  if (n > 0) return n <= 14 ? 'in ' + n + ' days' : n < 60 ? 'in ' + Math.round(n / 7) + ' weeks' : n < 365 ? 'in ' + Math.round(n / 30) + ' months' : Math.round(n / 365) === 1 ? 'in a year' : 'in ' + Math.round(n / 365) + ' years';
   return -n < 14 ? -n + ' days ago' : Math.round(-n / 7) + ' weeks ago';
 }
 function localDayOfMs(ms) { return ymdOf(new Date(ms)); }
 
-// How the row chips read.
-// Compact distance, at any range (§24 wording "Compact"): 3d, 13d, 2w, 8w, 2mo, 1y.
-function cmpDist(n) { return n < 14 ? n + 'd' : n < 60 ? Math.round(n / 7) + 'w' : n < 365 ? Math.round(n / 30) + 'mo' : Math.round(n / 365) + 'y'; }
-// The countdown (§24 wording "Left", the user's): whole days left, not counting the deadline's own day, so the day
-// before reads "1d left". Relative up to 14 days out; farther, the date ("Nov 20", with the year when it isn't this
-// year), for a When too. Overdue counts days at any distance: "2d ago", "45d ago".
+// How the row chips read (§24). A deadline counts the whole days left, not its own day: "14d left" … "1d left", then
+// "Due today", then "2d ago" (days at any distance). Farther than 14 days, the date ("Nov 20", with the year when it
+// isn't this year). The When is a plan, not a countdown: "Today", "Tomorrow", "in 2d" … "in 14d", then the date.
 const LEFT_MAX = 14;
-// Relative words up to two weeks out (§24 wording "Relative"): in 3 days, 2 days.
-function relDays(n) { return n === 1 ? '1 day' : n + ' days'; }
-function relLate(n) { return n < 14 ? relDays(n) : Math.round(n / 7) + ' weeks'; }
-// How the row chips read. words is §24's wording: abs (a weekday within the week, then the date), rel (relative
-// under two weeks, then the date), cmp / cmpm (compact distance always; overdue as "2d ago" / "−2d"), left (the
-// countdown: "14d left" … "1d left", "Due today", "2d ago"; a When "in 14d"; farther, the date).
-function whenChipText(s, today, words) {
+function whenChipText(s, today) {
   const n = diffDays(today, s);
   if (n <= 0) return 'Today';
-  if (words === 'cmp' || words === 'cmpm') return cmpDist(n);
-  if (words === 'left') return n === 1 ? 'Tomorrow' : n <= LEFT_MAX ? 'in ' + n + 'd' : mdy(s, today);   // a plan, not a countdown: no "left"
   if (n === 1) return 'Tomorrow';
-  if (words === 'rel' && n < 14) return 'In ' + n + ' days';
-  if (words !== 'rel' && n < 7) return WD[weekdayIdx(s)];
-  return mdy(s, today);
+  return n <= LEFT_MAX ? 'in ' + n + 'd' : mdy(s, today);
 }
-// A deadline always says "Due" in words (§24; the compact wording lets the flag and capsule say it), and its tone is
-// its urgency: late (past), due (today), soon (tomorrow), or none.
-function deadlineChip(s, today, words) {
-  const n = diffDays(today, s), cmp = words === 'cmp' || words === 'cmpm';
-  const tone = n < 0 ? 'late' : n === 0 ? 'due' : n === 1 ? 'soon' : '';   // soon: only the flag is tinted
-  if (words === 'left') return { text: n < 0 ? -n + 'd ago' : n === 0 ? 'Due today' : n <= LEFT_MAX ? n + 'd left' : mdy(s, today), tone };
-  if (cmp) return { text: n < 0 ? (words === 'cmpm' ? '\u2212' + cmpDist(-n) : cmpDist(-n) + ' ago') : n === 0 ? 'Today' : cmpDist(n), tone };
-  if (n < 0) return { text: words === 'rel' ? 'Overdue · ' + relLate(-n) : 'Overdue · ' + -n + 'd', tone };
-  if (n === 0) return { text: 'Due today', tone };
-  if (n === 1) return { text: 'Due tomorrow', tone };
-  if (words === 'rel' && n < 14) return { text: 'Due in ' + n + ' days', tone };
-  if (words !== 'rel' && n < 7) return { text: 'Due ' + WD[weekdayIdx(s)], tone };
-  return { text: 'Due ' + mdy(s, today), tone };
-}
-// The relative words beside a deadline: how late, or how long until it's due.
-function dueRelText(s, today, words) {
+// A deadline's tone is its urgency: late (past), due (today), soon (tomorrow: only the flag is tinted), or none.
+function deadlineChip(s, today) {
   const n = diffDays(today, s);
-  if (words === 'left' && n > 0 && n <= LEFT_MAX) return n === 1 ? '1 day left' : n + ' days left';   // the countdown in words
+  const tone = n < 0 ? 'late' : n === 0 ? 'due' : n === 1 ? 'soon' : '';
+  return { text: n < 0 ? -n + 'd ago' : n === 0 ? 'Due today' : n <= LEFT_MAX ? n + 'd left' : mdy(s, today), tone };
+}
+// The words beside a deadline in the detail pane and its tooltip: "2 days overdue", "due today", "13 days left", then
+// the distance ("in 3 weeks").
+function dueRelText(s, today) {
+  const n = diffDays(today, s);
   if (n < 0) return -n === 1 ? '1 day overdue' : -n < 14 ? -n + ' days overdue' : Math.round(-n / 7) + ' weeks overdue';
   if (n === 0) return 'due today';
-  if (n === 1) return 'due tomorrow';
+  if (n <= LEFT_MAX) return n === 1 ? '1 day left' : n + ' days left';
   return relText(s, today);
 }
 // The popover's note on a When after the deadline, or a deadline before the When (no rule forbids either; SPEC §2).
 function pkHint(p, hot) { return !p.none && p.other && ((p.field === 'when' && hot > p.other) || (p.field === 'deadline' && hot < p.other)); }
 // A chip's tooltip: the full date and how far it is.
-function dateTip(field, s, today, words) {
-  return (field === 'when' ? 'When: ' : 'Deadline: ') + longDate(s, today) + ' · ' + (field === 'when' ? relText(s, today) : dueRelText(s, today, words));
+function dateTip(field, s, today) {
+  return (field === 'when' ? 'When: ' : 'Deadline: ') + longDate(s, today) + ' · ' + (field === 'when' ? relText(s, today) : dueRelText(s, today));
 }
 
 // ---------- Typed dates ----------
@@ -481,18 +458,6 @@ const VIEW_EMPTY = {
 };
 // Headings, a list's notes and its title (INTERACTIONS-v2 §23).
 const HEAD_AIR = 8;   // a heading's air above its row
-const TWO_LINE = 14;  // a row with its When below the title (§24 experiment) is this much taller
-// When and Deadline (INTERACTIONS-v2 §24). Picked: Quiet When; the checkbox ring red when overdue, amber when due
-// today, blue when the task is on today's plate. Still proposed: how the blue ring combines with a deadline's (mix),
-// where the When sits (wa, an experiment), and the wording. The strip switches them, with the recommendation as the
-// default; a board sets them with v-words, v-mix and v-wa.
-const DATE_DEFAULTS = { words: 'left', mix: 'double', wa: 'right' };
-const DATE_OPTS = {
-  words: [['left', 'Nd left'], ['abs', 'Absolute'], ['rel', 'Relative < 2 wk'], ['cmp', 'Compact · 2d ago'], ['cmpm', 'Compact · \u22122d']],
-  mix: [['double', 'Double ring'], ['split', 'Split ring'], ['wins', 'Blue moves to the When']],
-  wa: [['right', 'Right'], ['after', 'After the title'], ['col', 'Column'], ['below', 'Below the title']],
-};
-const DATE_LABEL = { words: 'Wording', mix: 'Planned + due', wa: 'When at' };
 // The checkbox's cue classes (§24): late (a past deadline), due (a deadline today), plate (a When on or before today,
 // so it's in Today; not drawn in Today itself, where every task is). Open tasks only, never in Trash.
 // …and the same, read aloud on the checkbox's label: "Complete: ECE 358 lab report, overdue, planned for today".
@@ -851,7 +816,6 @@ class Component extends DCLogic {
       boxPop: null, hoverLink: null,
       // Headings (§23): collapsed headings (local, never synced); whether the large title has scrolled under the band.
       collapsed: {}, scrolled: false,
-      dv: {},   // §24's choices, from the strip
     };
     this.mh = {};   // measured heights of the list pane's text blocks (measureBlocks)
     const pickName = props.pick ?? 'none';   // a board can open on a task's notes (prototype-markdown's boards do)
@@ -998,7 +962,7 @@ class Component extends DCLogic {
         if (!open.length) continue;
         L.labels.set(l.id, y); y += PITCH;
         L.groups.push({ listId: l.id, top: y, ids: open.map((t) => t.id) });
-        for (const t of open) { L.ys.set(t.id, y); L.order.push(t.id); L.groupOf.set(t.id, l.id); const x = this.extraH(t, this.state.route.kind === 'today'); if (x) L.hOf.set(t.id, PITCH + x); y += PITCH + x; }
+        for (const t of open) { L.ys.set(t.id, y); L.order.push(t.id); L.groupOf.set(t.id, l.id); y += PITCH; }
       }
       const anyOpen = L.order.length > 0;
       const done = live.filter((t) => this.isActive(t.list) && !this.placedOpen(t) && this.doneToday(t) && this.inTodayDates(t))
@@ -2085,17 +2049,18 @@ class Component extends DCLogic {
     this.clipRaf = requestAnimationFrame(() => {
       const root = this.rootRef.current;
       if (!root) return;
-      // §24 and v2 feedback 16: dates never truncate. A row too narrow for its When leaves the When out (the deadline
-      // always stays); the title, at its 120pt minimum, then gets the room back. (SwiftUI: ViewThatFits over the
-      // trailing dates.) Then, only if even that doesn't fit (the list pane at its 220pt minimum), the title goes under.
+      // §24 and v2 feedback 16: dates never truncate. The When sits after the title; when the title would go under
+      // 120pt (or the row's end overflows), the When is left out and the title gets the room back. The deadline always
+      // stays. (SwiftUI: ViewThatFits.) Then, only if even that doesn't fit (the list pane at its 220pt minimum), the
+      // title goes under.
       for (const row of root.querySelectorAll('.lp .row:not(.hidden)')) {
-        const w = row.querySelector('.chip.when:not(.wcol .chip)'), end = row.lastElementChild;   // a When in the column keeps its place
+        const w = row.querySelector('.chip.when'), end = row.lastElementChild;
         if (w) w.removeAttribute('data-drop');
         row.removeAttribute('data-tight');
         const over = () => end && end.getBoundingClientRect().right > row.getBoundingClientRect().right - 4.5;
         if (w && over()) w.setAttribute('data-drop', '');
-        const tt = row.querySelector('.ttw .tt');   // after the title: the When drops before the title goes under 120pt
-        if (w && !w.hasAttribute('data-drop') && w.closest('.ttw') && tt && tt.clientWidth < Math.min(120, tt.scrollWidth) - 0.5) w.setAttribute('data-drop', '');
+        const tt = row.querySelector('.ttw .tt');
+        if (w && !w.hasAttribute('data-drop') && tt && tt.clientWidth < Math.min(120, tt.scrollWidth) - 0.5) w.setAttribute('data-drop', '');
         if (over()) row.setAttribute('data-tight', '');
       }
       for (const el of root.querySelectorAll('.row .ttw .tt, .row .where')) {
@@ -2650,7 +2615,6 @@ class Component extends DCLogic {
   onStage = (e) => {
     const k = e.currentTarget.dataset.k, v = e.currentTarget.dataset.v;
     if (k === 'theme') this.instant({ theme: v }); else if (k === 'editTasks') this.setEditTasks(v);
-    else if (k.startsWith('dv:')) this.setState({ dv: { ...this.state.dv, [k.slice(3)]: v } });   // §24's choices
     else if (k === 'reset') { const seed = makeSeed(this.today); this.undoStack = []; this.redoStack = []; this.instant({ lists: seed.lists, tasks: seed.tasks, sel: [], edit: null, picker: null, menu: null, pins: {}, route: this.routeFromProp(this.props.start, seed.lists), detail: 'closed', notice: null, sbVisible: true, collapsed: {}, scrolled: false }); }
     else if (k === 'keys') this.setState({ keysOpen: !this.state.keysOpen });
     this.focusRoot();
@@ -2773,13 +2737,10 @@ class Component extends DCLogic {
       const chips = [], lchips = [], gday = this.groupDay(L, t.id);   // in Upcoming, a day group's own date isn't repeated on its rows
       if (!done) {
         const opened = (f) => (pickerFor && pickerFor.has(t.id) && s.picker.field === f ? ' open-picker' : '');
-        if (t.when && !(inToday && t.when <= T) && t.when !== gday) chips.push({ field: 'when', cal: true, flag: false, text: whenChipText(t.when, T, this.dv('words')), cls: 'chip when' + opened('when'), tip: dateTip('when', t.when, T, this.dv('words')) });
-        const wa = this.whenAt();
-        if (wa !== 'right' && chips.length) lchips.push(chips.pop());   // the When, moved left (§24 experiment)
-        if (t.deadline) { const dc = deadlineChip(t.deadline, T, this.dv('words')); chips.push({ field: 'deadline', cal: false, flag: true, text: t.deadline === gday ? 'Due' : dc.text, cls: 'chip dl ' + dc.tone + opened('deadline'), tip: dateTip('deadline', t.deadline, T, this.dv('words')) }); }
+        if (t.when && !(inToday && t.when <= T) && t.when !== gday) chips.push({ field: 'when', cal: true, flag: false, text: whenChipText(t.when, T), cls: 'chip when' + opened('when'), tip: dateTip('when', t.when, T) });
+        if (chips.length) lchips.push(chips.pop());   // the When sits after the title and its notes hint (§24)
+        if (t.deadline) { const dc = deadlineChip(t.deadline, T); chips.push({ field: 'deadline', cal: false, flag: true, text: t.deadline === gday ? 'Due' : dc.text, cls: 'chip dl ' + dc.tone + opened('deadline'), tip: dateTip('deadline', t.deadline, T) }); }
       }
-      if (lchips.length && this.whenAt() === 'below') cls += ' two';
-      { const cc = cueCls(t, T, inToday); if (cc.includes('plate') && (cc.includes('late') || cc.includes(' due'))) cls += ' ptaken'; }   // planned for today and a deadline's ring
       const where = this.whereText(L, t, inToday);
       return {
         id: t.id, cls, style: 'transform: translateY(' + y + 'px)',
@@ -2788,8 +2749,7 @@ class Component extends DCLogic {
         checkCls: 'check' + (done ? ' on' : '') + (s.pops[t.id] ? ' pop' : '') + (t.draft ? ' new' : '') + cueCls(t, T, inToday),
         checkLabel: (done ? 'Mark not done: ' : 'Complete: ') + (t.title || 'New Task') + cueWords(cueCls(t, T, inToday)),
         chips, where, hasWhere: !!where,
-        lCol: this.whenAt() === 'col', lColChips: this.whenAt() === 'col' ? lchips : [], lAfter: this.whenAt() === 'after' ? lchips : [],
-        lBelow: this.whenAt() === 'below' ? lchips : [], lBelowHas: this.whenAt() === 'below' && lchips.length > 0,
+        lAfter: lchips,
         ...this.rowNotes(t),
       };
     });
@@ -2844,7 +2804,7 @@ class Component extends DCLogic {
       const tone = field === 'deadline' ? deadlineChip(value, T).tone : '';
       // §24: a deadline reads how late or how soon, in its tone; a past When says it's still in Today.
       const open = !(one && one.completedAt != null);
-      const rel = field === 'deadline' ? dueRelText(value, T, this.dv('words')) : relText(value, T) + (open && value < T ? ' · still in Today' : '');
+      const rel = field === 'deadline' ? dueRelText(value, T) : relText(value, T) + (open && value < T ? ' · still in Today' : '');
       return { has: true, mixed: false, text: longDate(value, T), cls: 'chip lg ' + (field === 'when' ? 'when ' : 'dl ') + tone + (s.picker && s.picker.field === field ? ' open-picker' : ''), rel, relCls: 'rel after-clr' + (tone ? ' t-' + tone : '') };
     };
     if (one || many) {
@@ -2963,7 +2923,7 @@ class Component extends DCLogic {
         // §24: a deadline previews as "Due …"; a When after the deadline, or a deadline before the When, gets a quiet note.
         hint: p.none || !p.other ? '' : p.field === 'when' && hot > p.other ? 'after the deadline' : p.field === 'deadline' && hot < p.other ? 'before the When' : '',
         // With a note, it takes the relative words' place, so the line stays one line.
-        preview: p.none ? 'No date matches “' + p.text.trim() + '”' : (p.field === 'deadline' ? 'Due ' : '') + longDate(hot, T) + (pkHint(p, hot) ? '' : ' · ' + (p.field === 'deadline' && hot < T ? dueRelText(hot, T, this.dv('words')) : relText(hot, T))), previewCls: 'pvt' + (p.none ? ' none' : ''),
+        preview: p.none ? 'No date matches “' + p.text.trim() + '”' : (p.field === 'deadline' ? 'Due ' : '') + longDate(hot, T) + (pkHint(p, hot) ? '' : ' · ' + (p.field === 'deadline' && hot < T ? dueRelText(hot, T) : relText(hot, T))), previewCls: 'pvt' + (p.none ? ' none' : ''),
         isWhen: p.field === 'when', isDl: p.field === 'deadline',
         autoFocus: !p.demo,
       };
@@ -2976,11 +2936,10 @@ class Component extends DCLogic {
     const stage = { show: stageOn,
       theme: seg('theme', [['dark', 'Dark'], ['light', 'Light']]),
       editTasks: [['detail', 'Open in detail pane'], ['list', 'Rename in the list']].map(([v, label]) => ({ k: 'editTasks', v, label, cls: this.editTasksMode() === v ? 'on' : '' })),
-      vars: Object.keys(DATE_OPTS).map((k) => ({ label: DATE_LABEL[k], opts: DATE_OPTS[k].map(([v, label]) => ({ k: 'dv:' + k, v, label, cls: this.dv(k) === v ? 'on' : '' })) })),
     };
 
     return {
-      rootCls: 'tk ' + s.theme + ' dw-' + this.dv('words') + ' mix-' + this.dv('mix') + ' wa-' + this.dv('wa') + (s.noAnim ? ' no-anim' : '') + (s.detail === 'open' || s.detail === 'opening' ? ' detail-open' : '') + (s.resize ? ' resizing' : '') + (Date.now() - (this.springbackAt || 0) < DETAIL_CLOSE_MS ? ' springback' : ''),
+      rootCls: 'tk ' + s.theme + (s.noAnim ? ' no-anim' : '') + (s.detail === 'open' || s.detail === 'opening' ? ' detail-open' : '') + (s.resize ? ' resizing' : '') + (Date.now() - (this.springbackAt || 0) < DETAIL_CLOSE_MS ? ' springback' : ''),
       rootStyle: 'width: ' + w + 'px; height: ' + (h + (stageOn ? 44 : 0)) + 'px',
       winStyle: 'height: ' + h + 'px',
       rootRef: this.rootRef, winRef: this.winRef, listScrollRef: this.listScrollRef, sbScrollRef: this.sbScrollRef, liftRef: this.liftRef,
@@ -3133,7 +3092,7 @@ class Component extends DCLogic {
       L.labels.set(id, y); L.labelInfo.set(id, info); y += PITCH;
       const g = { listId: id, kind, day: day || null, top: y, ids: [] };
       for (const it of items) {
-        g.ids.push(it.t.id); L.ys.set(it.t.id, y); L.order.push(it.t.id); L.groupOf.set(it.t.id, id); { const x = this.extraH(it.t, s.route.kind === 'today'); if (x) L.hOf.set(it.t.id, PITCH + x); y += PITCH + x; }
+        g.ids.push(it.t.id); L.ys.set(it.t.id, y); L.order.push(it.t.id); L.groupOf.set(it.t.id, id); y += PITCH;
       }
       L.groups.push(g); L.gmap.set(id, g);
     };
@@ -3416,13 +3375,6 @@ class Component extends DCLogic {
   // heading. It has a title and notes, and never a date or a check. A list's notes are a `notes` field on the list,
   // in the same Markdown editor as a task's.
   isHead(t) { return !!t && t.kind === 'heading'; }
-  // §24's open choices: the strip's, else the board's v-words, v-mix and v-wa, else the recommendation.
-  // Where a row's When sits (§24 experiment). The column is a list's; elsewhere (Today's rare future When) it goes
-  // after the title.
-  whenAt() { const w = this.dv('wa'); return w === 'col' && this.state.route.kind !== 'list' ? 'after' : w; }
-  // With the When below the title, a row that shows one is two lines: 14 taller.
-  extraH(t, inToday) { return this.whenAt() === 'below' && t.when && t.completedAt == null && !(inToday && t.when <= this.today) && !this.isHead(t) ? TWO_LINE : 0; }
-  dv(k) { const o = this.state.dv && this.state.dv[k]; return o || this.props['v' + k[0].toUpperCase() + k.slice(1)] || DATE_DEFAULTS[k]; }
   onlyTasks(ids) { return ids.filter((id) => { const t = this.task(id); return t && !this.isHead(t); }); }
   // A list's order: headings and open tasks, and the completed tasks too when asked (they keep their keys).
   listItems(listId, withDone) { return this.state.tasks.filter((t) => t.list === listId && !t.deleted && (withDone || this.isHead(t) || t.completedAt == null)).sort(byOrder); }
@@ -3585,7 +3537,7 @@ class Component extends DCLogic {
         continue;
       }
       if (fold) { L.folded.add(t.id); continue; }
-      L.ys.set(t.id, y); L.order.push(t.id); L.groupOf.set(t.id, g.listId); g.ids.push(t.id); { const x = this.extraH(t, false); if (x) L.hOf.set(t.id, PITCH + x); y += PITCH + x; }
+      L.ys.set(t.id, y); L.order.push(t.id); L.groupOf.set(t.id, g.listId); g.ids.push(t.id); y += PITCH;
     }
     L.ghostY = y; y += PITCH;
     L.done = done.length;
