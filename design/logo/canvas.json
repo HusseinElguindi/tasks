@@ -16,6 +16,7 @@
     "D5-Tile.dc.html": { "x": 0, "y": 3580, "w": 1920, "h": 1160, "radius": 16, "page": "directions", "title": "05 Tile · the list monogram tile, scaled up" },
     "D6-Cursor.dc.html": { "x": 2000, "y": 3580, "w": 1920, "h": 1160, "radius": 16, "page": "directions", "title": "06 Cursor · a check, then the block cursor waiting for the next task" },
     "D7-Gap.dc.html": { "x": 0, "y": 4860, "w": 1920, "h": 1160, "radius": 16, "page": "directions", "title": "07 Gap · drag-to-reorder's insertion line parting two rows" },
+    "Final.dc.html": { "x": 2000, "y": 4860, "w": 1920, "h": 1460, "radius": 16, "page": "directions", "title": "Final · 04 Log as shipped: masters, small cut, macOS 26 appearances, optical checks" },
     "Sheet.dc.html": { "x": 0, "y": 0, "w": 1920, "h": 1160, "radius": 16, "page": "parts", "title": "Sheet · the per-direction layout (Mark tweak picks the direction)" },
     "Icon.dc.html": { "x": 2000, "y": 0, "w": 512, "h": 512, "page": "parts", "title": "Icon · every mark, look and size (tweaks)" }
   },
@@ -28,10 +29,15 @@
     "D5-Tile.dc.html",
     "D6-Cursor.dc.html",
     "D7-Gap.dc.html",
+    "Final.dc.html",
     "Sheet.dc.html",
     "Icon.dc.html"
   ],
   "notes": {
+    "final": {
+      "x": 4000, "y": 4860, "w": 560, "size": "m", "fill": "green", "page": "directions",
+      "text": "What ships\n\nmacOS 26 and later: AppIcon.icon (Icon Composer). Light and dark colours per layer; tinted and clear use white head and bar with the history stepping down. The system draws every size from the 1024 master, because .icon has no per-size variants.\n\nmacOS 14 and 15: the AppIcon.icns that actool renders from the same .icon.\n\nThe hand-tuned small cut (rings become dots, strokes thicken) ships in the exported PNGs and design/logo/final/AppIcon.icns. Xcode ignores an appiconset when an .icon of the same name exists, so the app itself doesn't use the cut.\n\nPolish over the picked direction: equal gaps between nodes, mark centred on the body, older bars a step brighter, all shapes outlined (no strokes)."
+    },
     "title": { "x": 0, "y": -300, "text": "Tasks · app icon directions", "kind": "title1", "maxW": 2560, "page": "directions" },
     "rec": {
       "x": 2000, "y": 0, "w": 560, "size": "m", "fill": "blue", "page": "directions",

@@ -2,7 +2,9 @@
 
 Canvas: https://claude.ai/artifact/ScTE29QmxCwxJxfRdnrNPd (private until shared from its Share menu). Brief: `docs/TASK-logo.md`.
 
-**Decision (2026-10-31): 04 Log is the app icon.** The others are kept on the canvas for reference.
+**Decision (2026-10-31): 04 Log is the app icon.** The others are kept on the canvas for reference. The final mark,
+its exports and the Icon Composer document are in `final/` (see `final/README.md`) and on the canvas's Final board
+(`Final.dc.html`).
 
 Seven directions for the macOS app icon, all drawn in the Pane vocabulary (Rex colours from `design/REX-REFERENCE.md`,
 light colours from `design/prototype-v2/tasks-v2.css`).
