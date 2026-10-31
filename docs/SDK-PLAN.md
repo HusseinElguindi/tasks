@@ -871,3 +871,16 @@ Phases 1–3 are built as planned (commits `9728858` through `d1fbbcb`), with th
   `TASKS_RUN_TIMEOUT`, `TASKS_DATE_ORDER`.
 - **Not exercised live:** the Keychain path (it would read the real token), and registering `tasks mcp` in a client
   (it changes the user's config). The MCP protocol is tested directly, and `tasks mcp` was driven over stdio.
+
+## Later: the CLI and the app on one Mac (tabled 2026-10-31)
+
+Today the CLI and the app are separate replicas that meet only through the server.
+- **Offline,** neither sees the other's changes.
+- **Changes the CLI made offline** wait in its queue until the next `tasks` command runs online.
+
+The coordinator's recommendation, which the user tabled for now:
+- The CLI always goes through the app over a local socket, launching it in the background with no window if it's closed. That leaves one replica per Mac and no gap offline.
+- After a CLI write, a nudge (for example a Darwin notification) makes the app sync at once.
+- The CLI's own replica stays only as a fallback.
+
+The alternative was for the app to adopt the CLI's pending queue at launch: op ids make duplicate pushes safe. It works, but it still leaves two replicas on one Mac.
