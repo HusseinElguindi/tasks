@@ -197,7 +197,7 @@ enum DebugScript {
                     }
                     let stored = window.selection.first.flatMap { model.store?.projection.task($0)?.notes } ?? "-"
                     let sel = n.selectedRange()
-                    let line = "notes=\(n.string.debugDescription) sel=\(sel.location),\(sel.length) hidden=\(hidden) editing=\(window.detailEditing.map { "\($0)" } ?? "-") stored=\(stored.debugDescription) responder=\(w.firstResponder === n)\n"
+                    let line = "notes=\(n.string.debugDescription) sel=\(sel.location),\(sel.length) hidden=\(hidden) editing=\(window.detailEditing.map { "\($0)" } ?? "-") stored=\(stored.debugDescription) responder=\(w.firstResponder === n) inert=\(n.inert)\n"
                     if let h = FileHandle(forWritingAtPath: arg) { h.seekToEndOfFile(); h.write(Data(line.utf8)); h.closeFile() }
                     else { try? line.write(toFile: arg, atomically: true, encoding: .utf8) }
                 case "sidebar":

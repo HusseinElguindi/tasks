@@ -6,7 +6,8 @@ import TasksCore
 /// Debug aid for the four views (§22): `-debugScript` step `act:<what>[:<arg>]` runs a window action by name, so a
 /// script can drive what menu key equivalents would (they don't reach a background app), and records what's on screen.
 ///
-///     act:go:N   act:hints:on|off   act:select:<title>[|<title>…]   act:complete   act:delete   act:putback
+///     act:go:N|<view name>   act:hints:on|off   act:detail   (Show or Hide Details)
+///     act:select:<title>[|<title>…]   act:complete   act:delete   act:putback
 ///     act:putbackin:<list>   act:move:<list>   act:when:+N|none   act:deadline:+N|none   act:moveby:+1|-1
 ///     act:new   act:newday:+N   act:newin:<list>   act:title:<text>   act:commit   act:undo   act:redo
 ///     act:typesel:<letters>   (type-select in the sidebar)   act:menu:/path.txt   (the selection's context menu)
@@ -25,8 +26,12 @@ enum DebugViews {
         func list(_ name: String) -> EntityID? { p.allListIDs.sorted().first { p.list($0)?.name == name } }
         func date(_ s: String) -> CalendarDate? { s == "none" ? nil : Int(s).map { a.today.adding(days: $0) } }
         switch what {
-        case "go": a.goNumber(Int(rest) ?? 1)
+        case "go":
+            // A number as ⌘N does, or a view by name (Completed and Trash sit past ⌘9 with six lists).
+            if let n = Int(rest) { a.goNumber(n) }
+            else if let r = WindowState.Route.sidebarOrder(p).first(where: { a.routeName($0).lowercased() == rest.lowercased() }) { a.go(r) }
         case "hints": w.cmdHints = rest == "on"
+        case "detail": a.toggleDetail()
         case "select": a.select(rest.split(separator: "|").compactMap { task(String($0)) })
         case "complete": a.toggleComplete()
         case "delete": a.delete()

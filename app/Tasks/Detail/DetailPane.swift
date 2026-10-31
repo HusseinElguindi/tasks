@@ -311,7 +311,7 @@ private struct SingleDetail: View {
                     .frame(height: 1)
                     .padding(.top, 10)
                     .dimmed(inert)
-                NotesField(store: store, window: window, refs: refs, id: item.id, notes: item.notes, inert: inert,
+                NotesField(store: store, window: window, refs: refs, id: item.id, notes: item.notes, inert: inert || readOnly,
                            palette: tk, layoutTick: notesTick, onLayoutChange: { notesTick &+= 1 },
                            onLength: { if notesLength != $0 { notesLength = $0 } })
                     .padding(.top, 12)

@@ -381,7 +381,9 @@ Built from §22 and the prototype (`design/prototype-v2/`, dc:2219–2530), with
   "School · Oct 22". Unchecking holds the row unchecked for 1.5 s. ⌘N adds in the default list.
 - **Trash.** Newest-deleted first, read-only.
   - Rows: titles `ink-secondary`, the checkbox at 60%; the checkbox and chips don't respond to the pointer.
-  - Detail pane: fields don't respond; the footer reads "Created … · Deleted …"; ↶ Put Back replaces Delete.
+  - Detail pane: fields don't respond; the footer reads "Created … · Deleted …"; ↶ Put Back replaces Delete. The notes
+    editor is `inert` there too (no link or box hover, no I-beam): SwiftUI's `allowsHitTesting` stops clicks but not
+    an AppKit view's tracking areas or cursor rects.
   - Put Back: ⌘⌫, the menu, or ↶. It returns the task to its old place, with Undo "Put Back". Put Back in ▸ and a
     drop on a list put it at the bottom of that list.
 - **Drops from a task drag.**

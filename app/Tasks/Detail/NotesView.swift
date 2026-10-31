@@ -10,8 +10,11 @@ import TasksCore
 
 final class NotesTextView: NSTextView {
     weak var notes: NotesField.Coordinator?
-    /// Under an untitled new task: dimmed and deaf to the pointer.
-    var inert = false
+    /// Under an untitled new task (which the pane dims) and in the Trash (§22): deaf to the pointer, with no hover, no
+    /// I-beam and no session.
+    var inert = false {
+        didSet { if inert != oldValue { window?.invalidateCursorRects(for: self); if inert { notes?.hover(at: nil) } } }
+    }
     var placeholder: NSAttributedString?
     /// The notes' own undo while typing (§6), never the window's.
     private let notesUndo = UndoManager()
@@ -77,9 +80,14 @@ final class NotesTextView: NSTextView {
         tracking = t
     }
 
+    override func resetCursorRects() {
+        if !inert { super.resetCursorRects() }
+    }
+
     override func mouseMoved(with event: NSEvent) {
+        guard !inert else { return }
         super.mouseMoved(with: event)
-        guard !inert, let n = notes else { return }
+        guard let n = notes else { return }
         let p = convert(event.locationInWindow, from: nil)
         n.hover(at: p)
         if n.link(at: p) != nil { NSCursor.pointingHand.set() } else if n.box(at: p) != nil || n.inGutter(p) { NSCursor.arrow.set() }
