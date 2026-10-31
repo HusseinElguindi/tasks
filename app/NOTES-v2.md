@@ -204,6 +204,45 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
    prototype in Chrome (its runtime isn't in the repo; the script parses). The prototype's strip has the same choice,
    kept in `localStorage`.
 
+9. **Switching appearance.** Two faults, found by switching Settings ▸ Theme in every order on the scratch instance
+   and standing in for the system with the app's own appearance (`NSApp.appearance`; the system setting wasn't
+   touched):
+   - **The traffic lights rose to the window's top edge.** Any appearance change, the window's or the app's, makes
+     AppKit lay the title bar out again. It shrinks the container back to 32pt and leaves the buttons (the same
+     instances) at the origins we gave them, so they sat 18pt too high, half off the window. The old fix-up ran
+     async after resize and key notifications, so it raced that layout and sometimes lost; an appearance change posts
+     neither. Now the container's and the buttons' own frame changes put them back, inside AppKit's layout, so no
+     frame is drawn with them out of place. Sampled before every commit (`watch:` below) through 11 switches with
+     the sidebar shown and hidden: 0 of 152 run-loop turns out of place, against 15 of 150 with the old code
+     (container 32, close button at y 0).
+   - **System didn't follow.** Going from Dark or Light back to System kept the old palette: `ThemedRoot` read
+     SwiftUI's `colorScheme`, which still had the last explicit choice, while the window had gone back to the system
+     appearance. Light rows drawn over a dark window, and the reverse, left some text unreadable. Now the model
+     watches the app's effective appearance (KVO), resolves System itself (`AppModel.dark`), and always gives the
+     window that explicit scheme, so the window and the palette can't come apart. The Settings window gets the same
+     root.
+   - Checked with in-process renders of the whole window (title bar and lights included, `snap:`), since the screen
+     was locked: every order of System, Dark and Light with the system dark and light; one pane and two; the detail
+     pane open with its title being edited; the sidebar hidden through switches and shown again; and the date
+     popover open through switches. Rows, chips, selection, the sidebar, the detail pane and the popover all switch
+     with the window. Not checked:
+     - full screen, since entering it takes over a Space;
+     - the lights' hover glyphs and pressed states, with no real pointer;
+     - context menus and tooltips, which are modal or need hover (they take the window's appearance, which now always
+       matches);
+     - a real system flip, since only the app's appearance was simulated;
+     - a frame-by-frame screen recording, because the screen was locked.
+
+     One capture taken before the lock showed the lights in color in an inactive window right after a switch, while
+     they were out of place. It couldn't be checked again after the fix.
+   - New `-debugScript` steps:
+     - `theme:system|dark|light`;
+     - `sys:dark|light|none`, which stands in for the system appearance;
+     - `chrome:/path`, which logs the window appearance, the lights' frames and the container height;
+     - `watch:MS:/path`, which checks the lights before every commit;
+     - `sidebar`;
+     - `picker:when|deadline`.
+
 ## Notes for whoever drives the UI next
 
 - Scratch tools (not committed) are in the session scratchpad's `tools/`: `ui` (window-relative HID input that only

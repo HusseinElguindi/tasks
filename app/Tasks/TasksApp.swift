@@ -21,14 +21,16 @@ struct TasksApp: App {
     }
 }
 
-/// Applies the Pane theme: Dark or Light by the system appearance unless the user picked one in Settings.
+/// Applies the Pane theme: Dark or Light by the system appearance unless the user picked one in Settings. The window
+/// always gets an explicit scheme, the one the palette is for. Reading SwiftUI's `colorScheme` here kept the last
+/// explicit choice after switching back to System while the window followed the system, so they came apart (v2
+/// feedback 9).
 struct ThemedRoot<Content: View>: View {
     let model: AppModel
     @ViewBuilder var content: Content
-    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        let dark = model.theme == .dark || (model.theme == .system && scheme == .dark)
+        let dark = model.dark
         let colors = PaneColors(dark ? .dark : .light)
         content
             .environment(\.pane, colors)
@@ -36,7 +38,7 @@ struct ThemedRoot<Content: View>: View {
             .environment(\.paneInterfaceStyle, model.interfaceStyle)
             .tint(colors.accent)
             .paneRespectsReduceMotion()
-            .preferredColorScheme(model.theme == .system ? nil : (dark ? .dark : .light))
+            .preferredColorScheme(dark ? .dark : .light)
     }
 }
 

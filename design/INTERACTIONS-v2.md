@@ -22,8 +22,12 @@ Status: **final, 2026-10-30.** The user reviewed the prototype and made the four
 - Item 8: Settings ▸ Edit tasks picks what double-click and Return do to a task: open it in the detail pane with the
   caret in its title (the default), or rename it in its row as before (§7 Edit tasks; §2, §4, §5, §15, §17 and §21 say
   so). Lists in the sidebar rename in place either way. In the prototype the strip's "Edit tasks" stands in for Settings.
+- Item 9: Settings ▸ Theme (System, Dark, Light, in any order) and the system's own appearance switch the whole window
+  in one frame, and the traffic lights stay at their centers through it (§4 Theme, The top band). System follows the
+  system appearance as it changes.
 
 The prototype source matches all seven (item 5's rename part is the app's drawing; the browser has no equivalent).
+Item 9 has no counterpart there: the prototype has no System choice and draws its own window controls.
 
 **The prototype is the reference implementation:** https://claude.ai/artifact/QetdV1H57SC6kLXtNzJRXM (press Play on the
 main board, then click inside it once so it has the keys). Its source is in `design/prototype-v2/`, and this spec cites
@@ -231,7 +235,14 @@ Everything in the top 50pt is centered on one line, **y = 25**:
 
 So the window controls, the sidebar toggle, the pane titles and the buttons at each pane's top right read as one row.
 In AppKit: hidden title bar, and move `standardWindowButton(.closeButton …)` to those centers (v1 already places them
-as Rex does, commit 21fbc2f).
+as Rex does, commit 21fbc2f). They stay there through every layout AppKit gives the title bar, an appearance change
+included: it shrinks the title bar back to 32pt and leaves the buttons where they were, so they rose to the window's
+top edge. They're put back from the title bar's own frame change, before that frame is drawn (v2 feedback 9).
+
+**Theme.** Settings ▸ Theme is System (the default), Dark or Light; System follows the system appearance as it
+changes. A switch is instant (§2.5), and everything changes in the same frame to the same scheme: the window's
+appearance (the traffic lights, native controls, menus and tooltips) and every drawn surface (rows, the sidebar, the
+detail pane, the date popover, notices).
 
 ### Hiding and showing the sidebar (⌃⌘S, the toggle)
 

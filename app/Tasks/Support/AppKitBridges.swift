@@ -3,8 +3,9 @@ import SwiftUI
 
 /// Lets the window be dragged by its empty background (the hidden title bar's area included), and puts the traffic
 /// lights where Rex has them: 9pt further in and down than AppKit's (close button centered 25pt from the corner), on
-/// the line of the pane titles. AppKit lays the title bar out again on resizes and key changes, so they are put back
-/// after each.
+/// the line of the pane titles. AppKit lays the title bar out again on resizes, key changes and appearance changes
+/// (it shrinks the container back to 32pt and leaves the buttons where they were, so they rose to the window's top
+/// edge: v2 feedback 9), so they are put back whenever the container or a button moves.
 struct WindowConfigurator: NSViewRepresentable {
     var ground: NSColor
     var window: WindowState? = nil
@@ -63,8 +64,11 @@ struct WindowConfigurator: NSViewRepresentable {
     final class Coordinator: NSObject {
         private weak var window: NSWindow?
         nonisolated(unsafe) private var observers: [NSObjectProtocol] = []
+        nonisolated(unsafe) private var frameObservers: [NSObjectProtocol] = []
+        private weak var container: NSView?
 
         func watch(_ window: NSWindow) {
+            watchFrames(window)
             guard self.window !== window else { return }
             self.window = window
             observers.forEach(NotificationCenter.default.removeObserver)
@@ -72,18 +76,44 @@ struct WindowConfigurator: NSViewRepresentable {
                                               NSWindow.didBecomeKeyNotification, NSWindow.didResignKeyNotification,
                                               NSWindow.didExitFullScreenNotification, NSWindow.didChangeScreenNotification]
             observers = names.map { name in
-                NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak window] _ in
+                NotificationCenter.default.addObserver(forName: name, object: window, queue: .main) { [weak self, weak window] _ in
                     MainActor.assumeIsolated {
                         guard let window else { return }
                         WindowConfigurator.placeButtons(window)
                         // AppKit may lay the title bar out once more after the notification.
-                        DispatchQueue.main.async { WindowConfigurator.placeButtons(window) }
+                        DispatchQueue.main.async {
+                            WindowConfigurator.placeButtons(window)
+                            self?.watchFrames(window)
+                        }
                     }
                 }
             }
         }
 
-        deinit { observers.forEach(NotificationCenter.default.removeObserver) }
+        /// Puts the buttons back from inside AppKit's own title bar layout, the moment it resizes the container or
+        /// moves a button, so there's no frame with them out of place. Watched again whenever the container is a new
+        /// one (full screen moves the title bar to another window and back).
+        private func watchFrames(_ window: NSWindow) {
+            guard let close = window.standardWindowButton(.closeButton), let container = close.superview?.superview,
+                  container !== self.container else { return }
+            self.container = container
+            frameObservers.forEach(NotificationCenter.default.removeObserver)
+            let buttons = [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].compactMap(window.standardWindowButton)
+            frameObservers = ([container] + buttons).map { view in
+                view.postsFrameChangedNotifications = true
+                return NotificationCenter.default.addObserver(forName: NSView.frameDidChangeNotification, object: view, queue: nil) { [weak window] _ in
+                    MainActor.assumeIsolated {
+                        guard let window else { return }
+                        WindowConfigurator.placeButtons(window)
+                    }
+                }
+            }
+        }
+
+        deinit {
+            observers.forEach(NotificationCenter.default.removeObserver)
+            frameObservers.forEach(NotificationCenter.default.removeObserver)
+        }
     }
 }
 

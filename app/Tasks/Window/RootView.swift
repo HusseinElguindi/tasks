@@ -22,7 +22,7 @@ struct RootView: View {
                         DebugAutomation.runIfRequested(store)
                         DebugTiming.runIfRequested(store, window)
                         DebugKeyLog.installIfRequested()
-                        DebugScript.runIfRequested(window) {
+                        DebugScript.runIfRequested(window, model: model) {
                             let titles = window.selection.compactMap { store.projection.task($0)?.title }.sorted()
                             return "selection=\(titles) focus=\(window.focus) detail=\(window.detailOpen) draft=\(window.draft.map { "'\($0.title)'" } ?? "-") widths=\(Int(window.sidebarWidth))/\(Int(window.detailWidth)) rename=\(window.rename.map { "\($0.kind)" } ?? "-") detailEditing=\(window.detailEditing.map { "\($0)" } ?? "-") editor=\((window.nsWindow?.firstResponder as? NSTextView).map { "'\($0.string)'" } ?? "-")"
                         }

@@ -45,6 +45,13 @@ final class AppModel {
         didSet { UserDefaults.standard.set(theme.rawValue, forKey: Keys.theme) }
     }
 
+    /// Whether the system appearance is dark, for Theme ▸ System: the app's effective appearance, watched. Reading
+    /// SwiftUI's `colorScheme` instead kept the last explicit choice after switching back to System (v2 feedback 9).
+    private(set) var systemDark = AppModel.isDark(NSApplication.shared.effectiveAppearance)
+
+    /// Dark or Light, after resolving System.
+    var dark: Bool { theme == .dark || (theme == .system && systemDark) }
+
     var interfaceStyle: PaneInterfaceStyle {
         didSet { UserDefaults.standard.set(interfaceStyle == .glass ? "glass" : "classic", forKey: Keys.interfaceStyle) }
     }
@@ -55,6 +62,7 @@ final class AppModel {
 
     @ObservationIgnored private var periodic: Task<Void, Never>?
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
+    @ObservationIgnored private var appearanceObservation: NSKeyValueObservation?
 
     enum Keys {
         static let serverURL = "serverURL"
@@ -84,8 +92,16 @@ final class AppModel {
         interfaceStyle = defaults.string(forKey: Keys.interfaceStyle) == "glass" ? .glass : .classic
         taskEditing = TaskEditing.current
         hasToken = defaults.string(forKey: Keys.syncToken) != nil || Keychain.token() != nil
+        appearanceObservation = NSApplication.shared.observe(\.effectiveAppearance) { [weak self] app, _ in
+            MainActor.assumeIsolated {
+                let dark = AppModel.isDark(app.effectiveAppearance)
+                if self?.systemDark != dark { self?.systemDark = dark }
+            }
+        }
         Task { await load() }
     }
+
+    private static func isDark(_ a: NSAppearance) -> Bool { a.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua }
 
     private func load() async {
         let store = await Store.open(directory: dataDirectory)
