@@ -1,0 +1,39 @@
+{
+  "name": "11-push-with-actor",
+  "spec": "§5 op schema, actor and batch",
+  "description": "An agent pushes an op with the optional actor and batch keys. They're stored after set and hashed with the op; ops without them are stored exactly as before.",
+  "setup": {
+    "log": [
+      {"id":"00000000-0000-0000-0000-000000000002","at":1761811200000,"type":"list.create","target":"00000000-0000-0000-0000-000000000001","set":{"name":"Inbox","order":"a0"}},
+      {"id":"5b0c6c1e-3f0a-4c8e-9d61-0f4f6f1a2b3c","at":1761811260000,"type":"task.create","target":"9f8e7d6c-5b4a-4321-8fed-cba987654321","set":{"list":"00000000-0000-0000-0000-000000000001","order":"a0","title":"Buy milk","when":"2026-10-30"}}
+    ]
+  },
+  "request": {
+    "method": "POST",
+    "path": "/v1/sync",
+    "headers": {
+      "Authorization": "Bearer test-token",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "from": 2,
+      "base": "184ceb4c3d11bd53025385963c25f50298c2d652f84d5989941d2ec13a66fd79",
+      "ops": [
+        {"id":"3a7f2c1e-8b4d-4e6a-9c5f-1d2e3f4a5b6c","at":1761811320000,"type":"task.update","target":"9f8e7d6c-5b4a-4321-8fed-cba987654321","set":{"when":"2026-11-06"},"actor":"agent:claude-code","batch":"2c1f9e0a-7b3d-4c5e-8f6a-9b0c1d2e3f4a"}
+      ]
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "body": {
+      "entries": [
+        {"seq":2,"received":1761811261234,"hash":"c5b433872ab251f4e6232ed62d5f9d7be5b97c08b0a7173c504c3197a083f723","op":{"id":"3a7f2c1e-8b4d-4e6a-9c5f-1d2e3f4a5b6c","at":1761811320000,"type":"task.update","target":"9f8e7d6c-5b4a-4321-8fed-cba987654321","set":{"when":"2026-11-06"},"actor":"agent:claude-code","batch":"2c1f9e0a-7b3d-4c5e-8f6a-9b0c1d2e3f4a"}}
+      ],
+      "head": 3,
+      "more": false
+    }
+  }
+}

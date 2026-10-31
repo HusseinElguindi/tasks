@@ -9,7 +9,7 @@ response to match byte for byte.
 
 | File | What |
 |------|------|
-| `NN-*.json` | One request/response pair each. `01`–`05` are the SPEC §5 worked examples (with `b`/`c` follow-ups); `06`–`10` cover the remaining rows of the error and HTTP tables. |
+| `NN-*.json` | One request/response pair each. `01`–`05` are the SPEC §5 worked examples (with `b`/`c` follow-ups); `06`–`10` cover the remaining rows of the error and HTTP tables; `11` is an op with the optional `actor` and `batch` keys. |
 | `hash-vectors.json` | The opA/opB chain hashes, with the exact stored op text that was hashed. |
 | `log-2345.jsonl` | The 2,345-entry log behind example 2, one server entry per line, in the client's `log.jsonl` format. |
 
