@@ -766,3 +766,63 @@ unchanged, except the past's wording (below).
     a momentum event would. A fast flick by hand, once installed, is the remaining check.
   - **Motion by eye.** Snapping and jumps were read from the per-frame log, not watched.
   - **VoiceOver.** The days and the pill have their labels, but they weren't read back or heard.
+
+## The sync indicator (INTERACTIONS-v2 §26)
+
+Built from §26 (9e1ea5b), `docs/TASK-build-sync-indicator.md`, with the user's calls: it lives in the header row, a
+rejected change isn't amber, server errors read as offline, and the dot waits 3 s.
+
+- **The model** (`Window/SyncIndicator.swift`, one per window): `SyncIndicator` watches `store.syncState`,
+  `store.recovery` and `store.pendingCount`, the one thing added to TasksCore (an observable count of changes waiting;
+  `projection.pending` isn't observed). It notes when the current sync, trouble and wait began, and runs one timer to
+  the next threshold:
+  - a sync shows after 300 ms and stays at least 600 ms, with "Syncing…" after 3 s or during a recovery;
+  - offline comes after 5 s of retrying with no success between (a retry's own `.syncing` doesn't end it) and goes at
+    the first success;
+  - the dot appears after 3 s of waiting, on the syncing, offline or stopped cloud only;
+  - stopped and a bad token show at once.
+- **The cloud** (`SyncCloud`):
+  - **Glyphs:** SF Symbols (`icloud`, `icloud.slash`, `exclamationmark.icloud.fill`), monochrome and tinted so the "!"
+    stays cut out, drawn in layers. The pulse (1 → 0.35 → 1, 1.6 s) runs in Core Animation, the glyphs crossfade over
+    150 ms, and the dot cuts the cloud away 1.3pt.
+  - **Showing:** fades in over 100 ms and out over 200 ms. Synced and off show only while the header row or the cloud
+    is hovered. A click syncs (⌘R's `requestSync(force:)`), or for off and a bad token opens Settings.
+  - **Tooltip:** the app's tooltip, which now takes a second line (`Tip.detail`).
+  - **VoiceOver:** a "Sync" button whose value is the tooltip in words, listed before the sidebar's rows. Stopped and
+    a bad token post one announcement.
+- **Where:**
+  - **The header row:** a 22pt hit area in the label buttons' column, 5pt in from the row's end, so the glyph ends
+    where the counts do. It's hosted in the sidebar's scrolled content.
+  - **The band:** with the sidebar hidden or its header scrolled out of view, offline and stopped show as a 28pt
+    round button at x 125. While it shows, the band's title moves from 124 to 156 on the sidebar's curve.
+  - **Motion off:** with Reduce Motion there's no pulse. With the app inactive there's no pulse and no fades.
+- **Differences from the mock-up:** the mock-up draws its own cloud, but the app uses SF Symbols, as the spec says.
+  There's no press fill (none is specified), and the tooltip's keys are in the app's `ink-secondary`.
+- **Checked** (scratch Tasks Dev against the scratch `wrangler dev` on :8795, through `DebugSync.Transport`, with
+  per-change logs, renders and clicks through the window):
+  - **Timing:**
+    - 100 ms polls never show.
+    - A 450 ms sync shows at +308 ms for 606 ms.
+    - A 1.5 s sync shows from +308 ms to its end.
+    - A 5 s sync gets "Syncing…" at +3.0 s.
+    - A 2 s wake blip shows nothing.
+    - 8 s offline shows the slash at +5.0 s, and it goes at the next success.
+  - **Wording:** offline reads "Can’t reach the server / Trying again in 7 s ⌘R", or "The server isn’t answering
+    (503)". After 3 s with a change waiting, the dot shows and the detail reads "1 change will go out when it’s back".
+  - **The band:** offline shows there with the sidebar hidden, and with it visible but scrolled past its header.
+  - **Bad token and stop:** both are amber. A bad token's click opens "Tasks Settings", and a stop's click in the band
+    syncs it.
+  - **Motion:** with the app treated as active, a sync pulses (the presentation opacity read 0.35). With Reduce
+    Motion, or inactive, it doesn't.
+  - **Looks:** dark and light, including "Syncing…", the dot, and the "!" cut out.
+  - **Tests:** TasksCore 158 and CLI 34 pass.
+- **Debug:**
+  - Debug builds sync through `DebugSync.Transport`, set by `sync:delay:MS`, `sync:mode:none|offline|server|token|
+    stop` and `sync:now`.
+  - Logs: `sync:rec:/f` … `sync:recstop`, `sync:log:/f`.
+  - Driving it: `sync:click`, `sync:rowhover:on|off`, `sync:sidebar:show|hide`, `sync:sidebarscroll:Y`.
+  - Flags: `-debugAppActive YES`, `-debugReduceMotion YES`.
+- **Not checked:**
+  - **The tooltip on screen.** Hover can't be posted; its text was read from the model.
+  - **VoiceOver itself.** The labels and values were read back, not heard.
+  - **A real network drop and a real recovery.** The failures were made by the debug transport.
