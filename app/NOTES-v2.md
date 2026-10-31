@@ -632,3 +632,56 @@ Not checked:
 - Hover and press looks frame by frame, the band's 150 ms fade, the "Notes" placeholder on an empty list's hover,
   trackpad drags of a heading (driven with posted mouse events only), and VoiceOver on heading rows.
 - Clicking into a list's or a heading's notes (the script can't; Tab and Add Notes were used instead).
+
+## When and Deadline at a glance (INTERACTIONS-v2 §24)
+
+Built from the final §24 (1078f4b), `docs/TASK-build-dates.md`. Display only: the model, sync, typed dates and Today's
+rule are unchanged.
+
+- **The wording** (`DateLabel`, TasksCore, shared with the CLI): a When reads "Today" (a past one carries forward),
+  "Tomorrow", "in 2d" … "in 14d", then the date ("Nov 15", "Jan 3, 2027"); a Deadline "2d ago" (days at any distance),
+  "Due today", "1d left" … "14d left", then the date. `deadlineWords` and `tooltip` say it in full words ("2 days
+  overdue", "13 days left", "When: Sun, Nov 1 · tomorrow"); `relative` says days up to 14 ("in 14 days"), then weeks,
+  months, and "in a year" / "in N years", as the final prototype's `relText`. Tone `soon` is new (a deadline
+  tomorrow: the neutral capsule with its flag in `attention`).
+- **A row** (`TaskRowView`, `RowDates.swift`): the When is quiet text in the title's slot, 6 after the title and its
+  notes hint (glyph and words in `ink-tertiary`, padding 5; the `hover` capsule while hovered, `accent-tint` while its
+  popover is open); the Deadline is the only capsule, at the right, in its tone. Both have tooltips in full words and
+  are their own VoiceOver buttons, labelled with the tooltip, that open the popover. Digits are tabular. In Upcoming
+  a deadline on its group's day reads "Due" with its tone. Done rows show no dates.
+- **Narrow widths:** v2 feedback 16's order with the When in the title's slot: the When goes when the title would
+  drop under 120pt; the Deadline always shows; the list name keeps 72pt then fades; only at the list pane's 220pt
+  minimum does the title go under 120.
+- **The checkbox ring** (`CheckLayer.Cue`): `danger` overdue, `attention` due today, `accent-text` planned for today
+  (its When today or earlier) outside Today; planned with a deadline's ring is the double ring, the deadline's outside
+  and a 1.25pt `accent-text` ring inset 3. Hover keeps it; checking clears it; done, trashed and new tasks have none;
+  Today shows only red and amber. The detail pane's box has the same ring. VoiceOver: "Complete: ECE 358 lab report,
+  overdue, planned for today" (the detail pane's box: "Complete, overdue, planned for today").
+- **The detail pane:** the words beside the Deadline are `deadlineWords` in its tone (`danger`, `attention`); a past
+  When on an open task reads "3 days ago · still in Today".
+- **The popover:** the field shows the calendar or the flag; the other date's dot is by kind (a deadline
+  `attention`, a When `ink-tertiary`); the footer previews "Due Sun, Nov 1 · tomorrow" or "… · 1 day overdue"; a When
+  after the deadline or a deadline before the When reads "· after the deadline" / "· before the When" in `attention`
+  in place of the relative words.
+- **The CLI:** its rows use the same words, with ⚑ before every deadline ("⚑ 2d ago", standing in for the capsule),
+  and `show`'s deadline line uses the deadline words.
+- **Checked** (scratch Tasks Dev, demo data, `act:dates` dumps and in-app renders):
+  - School, PHYS 122, Today, Upcoming, Undated, Completed and Trash, dark and light: every row's When, Deadline, tone
+    and ring as in §24's tables; Today never blue; Completed, Trash and Undated no rings.
+  - Day turnovers (`act:day:+1`, `+2`, the path the midnight notification takes): "Tomorrow" becomes "Today" with
+    the blue ring in School and joins Today without one; "1d left" (amber flag) becomes "Due today" with the amber
+    ring; "Due today" becomes "1d ago" in red; counts step down ("3d left" → "2d left" → "1d left").
+  - Hovered When and Deadline: the capsule and the tooltip ("When: Mon, Nov 2 · in 2 days", "Deadline: Tue, Nov 3 ·
+    3 days left"); the detail pane with the double ring, "3 days ago · still in Today" and "2 days overdue"; both
+    popovers with their glyph, the other date's dot and "· after the deadline" / "· before the When".
+  - Beside the detail pane every When shows; with the list pane at its 220pt minimum the Whens drop and every
+    Deadline stays.
+  - TasksCore 158 tests and the CLI's 34 pass; `Scripts/completion-check.sh` passes.
+  - §9, optimized builds of 9509276 (before) and this side by side: list switches 1.9–3.9 ms of work, 5.4–10.7 ms to
+    first rows on both; in the 2,000-task list a selection change renders in 0.96 ms (0.90 before), a check in 1.34
+    (1.24), a Dark/Light switch in 1.64 (1.51); Upcoming's dated rows 1.65 (1.57).
+- **Debug steps:** `act:day:+N` (the day turns over), `act:dates:/path` (each row's dates and ring as shown),
+  `chiphover:<title>:when|deadline`.
+- **Not checked:** the real midnight notification (the turnover was driven through the same `setDay`), hover and
+  press looks frame by frame, VoiceOver itself (the labels were read back, not heard), long list names beside the
+  dates (the demo's long names need a fresh data folder; v2 feedback 16's checks cover the list name's rule).
