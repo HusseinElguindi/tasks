@@ -183,6 +183,32 @@ final class SyncTests: XCTestCase {
         XCTAssertEqual(entries.last?.op.batch, "2c1f9e0a-7b3d-4c5e-8f6a-9b0c1d2e3f4a")
     }
 
+    /// Fixture 12 (§23): a list's notes and a heading go out byte for byte as the fixture has them, and come back as
+    /// a heading and the list's notes.
+    func testFixturePushHeadingAndListNotes() async throws {
+        let server = try FixtureServer(["01-push", "12-push-heading-and-list-notes"])
+        let store = makeStore(server)
+        store.perform([op(Spec.opBJSON)])
+        store.cancelScheduledSync()
+        await store.sync()
+        store.perform([
+            Op(id: "b1e4c7a2-9d3f-4e8b-8c1a-5f6e7d8c9b0a", at: 1_761_811_330_000, type: .listUpdate, target: Spec.inbox,
+               set: Patch(notes: "Things to sort.\n- [ ] **Monday**: groceries")),
+            Op(id: "c2f5d8b3-0e4a-4f9c-9d2b-6a7b8c9d0e1f", at: 1_761_811_331_000, type: .taskCreate,
+               target: "4c2b8e1d-6f3a-4b7c-9d0e-2a1b3c4d5e6f",
+               set: Patch(list: Spec.inbox, order: "Zz", title: "Errands", kind: Patch.heading)),
+        ])
+        store.cancelScheduledSync()
+        await store.sync()
+        XCTAssertEqual(server.mismatches, [])
+        XCTAssertEqual(store.cursor, 4)
+        XCTAssertTrue(store.projection.pending.isEmpty)
+        XCTAssertEqual(store.projection.confirmed.lists[Spec.inbox]?.notes, "Things to sort.\n- [ ] **Monday**: groceries")
+        XCTAssertEqual(store.projection.confirmed.tasks["4c2b8e1d-6f3a-4b7c-9d0e-2a1b3c4d5e6f"]?.isHeading, true)
+        XCTAssertEqual(store.projection.headings(in: Spec.inbox).ids, ["4c2b8e1d-6f3a-4b7c-9d0e-2a1b3c4d5e6f"])
+        XCTAssertEqual(store.projection.openTaskCount(in: Spec.inbox), 1)
+    }
+
     /// Example 2: a second Mac joins a 2,345-entry log; it pages from each new cursor until `more` is false.
     /// (Its own seed is a duplicate of seq 0, so the server answers exactly as for an empty push.)
     func testFixturePagination() async throws {

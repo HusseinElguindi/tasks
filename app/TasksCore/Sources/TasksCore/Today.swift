@@ -22,9 +22,10 @@ public struct Day: Hashable, Sendable {
 
 /// The Today predicate (spec §4).
 public enum Today {
-    /// The date half: either date has arrived.
+    /// The date half: either date has arrived. A heading never arrives (design/INTERACTIONS-v2.md §23).
     @inline(__always)
     public static func datesArrived(_ t: TaskItem, today: CalendarDate) -> Bool {
+        if t.isHeading { return false }
         if let w = t.when, w <= today { return true }
         if let d = t.deadline, d <= today { return true }
         return false

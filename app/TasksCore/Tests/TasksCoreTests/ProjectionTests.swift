@@ -21,6 +21,7 @@ func assertMatchesRebuild(_ p: Projection, _ context: @autoclosure () -> String,
         }
     }
     compare(p.open, fresh.open, "open")
+    compare(p.headings, fresh.headings, "headings")
     compare(p.completed, fresh.completed, "completed")
     compare(p.today, fresh.today, "today")
     XCTAssertEqual(p.todayDone.ids, fresh.todayDone.ids, "\(ctx): todayDone", file: file, line: line)
@@ -420,9 +421,11 @@ final class RebaseTests: XCTestCase {
                 let key = Bool.random(using: &mac.rng)
                     ? (Ordering.append([id], after: p.orderedOpenTasks(in: list)).last?.order ?? "a0")
                     : "a0" // a duplicate key on purpose: ties are broken by id
+                // Some are headings (§23), now and then with dates another client wrote on them.
                 ops.append(mac.maker.createTask(id, list: list, order: key, title: "t",
                                                 when: Bool.random(using: &mac.rng) ? dates.randomElement(using: &mac.rng) : nil,
-                                                deadline: Bool.random(using: &mac.rng) ? dates.randomElement(using: &mac.rng) : nil))
+                                                deadline: Bool.random(using: &mac.rng) ? dates.randomElement(using: &mac.rng) : nil,
+                                                kind: Int.random(in: 0..<5, using: &mac.rng) == 0 ? Patch.heading : nil))
             case 7, 8:
                 guard let t = tasks.randomElement(using: &mac.rng) else { continue }
                 let c: Int?? = Bool.random(using: &mac.rng)

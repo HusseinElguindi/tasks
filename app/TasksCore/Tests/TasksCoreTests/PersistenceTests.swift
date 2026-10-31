@@ -88,8 +88,11 @@ final class PersistenceTests: XCTestCase {
         let expected = AppState.replay(ops)
 
         let cases: [(String, Data)] = [
-            ("snapshot undecodable", Data("{\"schema\":1,".utf8)),
-            ("snapshot schema 0, want 1", String(decoding: good, as: UTF8.self).replacingOccurrences(of: "\"schema\":1", with: "\"schema\":0").data(using: .utf8)!),
+            ("snapshot undecodable", Data("{\"schema\":\(Persistence.schema),".utf8)),
+            // A snapshot from the schema before this one (§23 added headings and list notes in schema 2).
+            ("snapshot schema \(Persistence.schema - 1), want \(Persistence.schema)",
+             String(decoding: good, as: UTF8.self).replacingOccurrences(of: "\"schema\":\(Persistence.schema)",
+                                                                       with: "\"schema\":\(Persistence.schema - 1)").data(using: .utf8)!),
             ("log shorter than the snapshot's offset", String(decoding: good, as: UTF8.self).replacingOccurrences(of: "\"logOffset\":", with: "\"logOffset\":9").data(using: .utf8)!),
         ]
         for (reason, bytes) in cases {

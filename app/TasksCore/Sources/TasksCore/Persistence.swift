@@ -41,7 +41,7 @@ public struct LoadedState: Sendable {
 /// order within a sync (log, then pending, then snapshot) hold.
 public final class Persistence: @unchecked Sendable {
     /// Bump whenever `AppState`'s shape or the reducer's semantics change: the next launch replays the log.
-    public static let schema = 1
+    public static let schema = 2
 
     public let directory: URL
     public var logURL: URL { directory.appendingPathComponent("log.jsonl") }

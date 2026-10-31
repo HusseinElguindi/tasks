@@ -21,8 +21,10 @@ public final class Projection {
 
     // MARK: Indexes (spec §9 table). Task buckets ignore archive state; Today and the sidebar iterate activeLists.
 
-    /// Open, non-deleted tasks of each list, by (order, id).
+    /// Open, non-deleted tasks of each list, by (order, id), headings included: the list's rows in order.
     private(set) var open: [EntityID: Bucket] = [:]
+    /// The headings among them (design/INTERACTIONS-v2.md §23), by (order, id). Counts subtract these.
+    private(set) var headings: [EntityID: Bucket] = [:]
     /// Completed, non-deleted tasks of each list, newest first.
     private(set) var completed: [EntityID: Bucket] = [:]
     /// Open tasks of each list that match the Today predicate, by (order, id).
@@ -37,6 +39,7 @@ public final class Projection {
     struct TaskPlacement: Equatable {
         var list: EntityID
         var open: SortKey?
+        var heading: SortKey?
         var inToday: Bool
         var completed: SortKey?
         var todayDone: SortKey?
@@ -91,7 +94,11 @@ public final class Projection {
         return m
     }
 
+    /// The list's rows in order: its open tasks and its headings.
     public func openTasks(in list: EntityID) -> Bucket { bucket(in: &open, list) }
+    public func headings(in list: EntityID) -> Bucket { bucket(in: &headings, list) }
+    /// Open tasks, headings not counted (§23: counts don't include them).
+    public func openTaskCount(in list: EntityID) -> Int { openTasks(in: list).count - headings(in: list).count }
     public func completedTasks(in list: EntityID) -> Bucket { bucket(in: &completed, list) }
     public func todayTasks(in list: EntityID) -> Bucket { bucket(in: &today, list) }
 
@@ -103,6 +110,37 @@ public final class Projection {
     /// The open tasks of a list with their keys, for computing new keys (spec §3).
     public func orderedOpenTasks(in list: EntityID) -> [OrderedItem] {
         (open[list]?.keys ?? []).map { OrderedItem(id: $0.id, order: $0.order) }
+    }
+
+    /// Every task of a list that isn't deleted, open and completed, with its key, sorted by (order, id): a completed
+    /// task keeps its key, so it keeps its place under its heading (§23).
+    public func orderedTasksIncludingCompleted(in list: EntityID) -> [OrderedItem] {
+        var keys = open[list]?.keys ?? []
+        for k in completed[list]?.keys ?? [] {
+            if let t = task(k.id) { keys.append(.manual(t.order, t.id)) }
+        }
+        keys.sort()
+        return keys.map { OrderedItem(id: $0.id, order: $0.order) }
+    }
+
+    /// A heading and the tasks under it, down to the next heading (§23 "section"), completed ones included, in order.
+    public func section(of heading: EntityID) -> [EntityID] {
+        guard let h = task(heading), h.isHeading, !h.deleted else { return [] }
+        let all = orderedTasksIncludingCompleted(in: h.list)
+        guard let i = all.firstIndex(where: { $0.id == heading }) else { return [heading] }
+        var out = [heading]
+        for item in all[(i + 1)...] {
+            if task(item.id)?.isHeading == true { break }
+            out.append(item.id)
+        }
+        return out
+    }
+
+    /// The heading a task sits under in its list, nil before the first one.
+    public func heading(of id: EntityID) -> EntityID? {
+        guard let t = task(id), !t.isHeading else { return nil }
+        let key = SortKey.manual(t.order, t.id)
+        return headings[t.list]?.keys.last { $0 < key }?.id
     }
 
     public func orderedActiveLists() -> [OrderedItem] {
@@ -276,6 +314,7 @@ public final class Projection {
             var keys: [SortKey] = []
             for key in bucket.keys {
                 guard let t = task(key.id) else { continue }
+                // A heading's dates never arrive (`datesArrived`).
                 let inToday = Today.datesArrived(t, today: newDay.date)
                 if inToday { keys.append(key) }
                 taskPlacement[key.id]?.inToday = inToday
@@ -302,12 +341,17 @@ public final class Projection {
 
     private func placement(for t: TaskItem) -> TaskPlacement? {
         guard !t.deleted else { return nil }
+        // A heading is always a row in its list's order, whatever another client wrote on it (§23).
+        if t.isHeading {
+            let key = SortKey.manual(t.order, t.id)
+            return TaskPlacement(list: t.list, open: key, heading: key, inToday: false, completed: nil, todayDone: nil)
+        }
         if let c = t.completedAt {
             let isTodayDone = day.contains(ms: c) && Today.datesArrived(t, today: day.date) && isActive(list: t.list)
-            return TaskPlacement(list: t.list, open: nil, inToday: false, completed: .descending(c, t.id),
+            return TaskPlacement(list: t.list, open: nil, heading: nil, inToday: false, completed: .descending(c, t.id),
                                  todayDone: isTodayDone ? .ascending(c, t.id) : nil)
         }
-        return TaskPlacement(list: t.list, open: .manual(t.order, t.id), inToday: Today.datesArrived(t, today: day.date),
+        return TaskPlacement(list: t.list, open: .manual(t.order, t.id), heading: nil, inToday: Today.datesArrived(t, today: day.date),
                              completed: nil, todayDone: nil)
     }
 
@@ -332,6 +376,7 @@ public final class Projection {
         let old = taskPlacement[id]
         if new != old {
             move(old?.open.map { ($0, old!.list) }, new?.open.map { ($0, new!.list) }, in: \.open)
+            move(old?.heading.map { ($0, old!.list) }, new?.heading.map { ($0, new!.list) }, in: \.headings)
             move(old?.inToday == true ? old?.open.map { ($0, old!.list) } : nil,
                  new?.inToday == true ? new?.open.map { ($0, new!.list) } : nil, in: \.today)
             move(old?.completed.map { ($0, old!.list) }, new?.completed.map { ($0, new!.list) }, in: \.completed)
@@ -405,6 +450,7 @@ public final class Projection {
 
         taskPlacement = [:]
         var openKeys: [EntityID: [SortKey]] = [:]
+        var headingKeys: [EntityID: [SortKey]] = [:]
         var todayKeys: [EntityID: [SortKey]] = [:]
         var completedKeys: [EntityID: [SortKey]] = [:]
         var done: [SortKey] = []
@@ -417,13 +463,16 @@ public final class Projection {
                 openKeys[p.list, default: []].append(k)
                 if p.inToday { todayKeys[p.list, default: []].append(k) }
             }
+            if let k = p.heading { headingKeys[p.list, default: []].append(k) }
             if let k = p.completed { completedKeys[p.list, default: []].append(k) }
             if let k = p.todayDone { done.append(k) }
         }
         for (list, keys) in openKeys { openTasks(in: list).replace(with: keys.sorted()) }
+        for (list, keys) in headingKeys { headings(in: list).replace(with: keys.sorted()) }
         for (list, keys) in todayKeys { todayTasks(in: list).replace(with: keys.sorted()) }
         for (list, keys) in completedKeys { completedTasks(in: list).replace(with: keys.sorted()) }
         for (list, b) in open where openKeys[list] == nil { b.replace(with: []) }
+        for (list, b) in headings where headingKeys[list] == nil { b.replace(with: []) }
         for (list, b) in today where todayKeys[list] == nil { b.replace(with: []) }
         for (list, b) in completed where completedKeys[list] == nil { b.replace(with: []) }
         todayDone.replace(with: done.sorted())

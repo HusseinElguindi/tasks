@@ -11,21 +11,38 @@ extension Store {
 
     // MARK: Tasks
 
-    /// Creates a task at the bottom of `list` (or the default list). Returns its id, or nil if no list is active.
+    /// Creates a task at the bottom of `list` (or the default list), or at `anchor` in it (the end of a heading's
+    /// section, §23). Returns its id, or nil if no list is active.
     @discardableResult
     /// `id` lets a draft keep the id it was shown with (the app's new-task draft, design/INTERACTIONS-v2.md §6).
     public func createTask(id: EntityID? = nil, title: String, notes: String = "", in list: EntityID? = nil,
-                           when: CalendarDate? = nil, deadline: CalendarDate? = nil,
+                           at anchor: Ordering.Anchor = .bottom, when: CalendarDate? = nil, deadline: CalendarDate? = nil,
                            undoManager: UndoManager? = nil) -> EntityID? {
+        create(id: id, title: title, notes: notes, in: list, at: anchor, kind: nil, when: when, deadline: deadline,
+               undoManager: undoManager, actionName: "New Task")
+    }
+
+    /// A heading (§23): a task with `kind: "heading"`, at `anchor` in `list` (above the first selected row, or the
+    /// bottom). One `task.create`, "New Heading".
+    @discardableResult
+    public func createHeading(id: EntityID? = nil, title: String, notes: String = "", in list: EntityID,
+                              at anchor: Ordering.Anchor = .bottom, undoManager: UndoManager? = nil) -> EntityID? {
+        create(id: id, title: title, notes: notes, in: list, at: anchor, kind: Patch.heading, when: nil, deadline: nil,
+               undoManager: undoManager, actionName: "New Heading")
+    }
+
+    private func create(id: EntityID?, title: String, notes: String, in list: EntityID?, at anchor: Ordering.Anchor,
+                        kind: String?, when: CalendarDate?, deadline: CalendarDate?, undoManager: UndoManager?,
+                        actionName: String) -> EntityID? {
         guard let list = list ?? defaultListID else { return nil }
         let id = id ?? newID()
-        let key = Ordering.append([id], after: projection.orderedOpenTasks(in: list))
+        let key = Ordering.place([id], at: anchor, in: projection.orderedOpenTasks(in: list))
         var ops = key.filter { $0.id != id }.map { taskOp($0.id, Patch(list: list, order: $0.order)) }
         ops.append(Op(id: newID(), at: nowMs, type: .taskCreate, target: id,
                       set: Patch(list: list, order: key.first { $0.id == id }!.order,
                                  title: Self.clamp(title, Self.maxTitle), notes: Self.clamp(notes, Self.maxNotes),
-                                 when: when.map { .some($0) }, deadline: deadline.map { .some($0) })))
-        perform(ops, undoManager: undoManager, actionName: "New Task")
+                                 when: when.map { .some($0) }, deadline: deadline.map { .some($0) }, kind: kind)))
+        perform(ops, undoManager: undoManager, actionName: actionName)
         return id
     }
 
@@ -45,22 +62,23 @@ extension Store {
 
     @discardableResult
     public func setWhen(_ ids: [EntityID], _ date: CalendarDate?, name: String? = nil, undoManager: UndoManager? = nil) -> Bool {
-        let ops = ids.filter { projection.task($0).map { $0.when != date } ?? false }
+        let ops = ids.filter { projection.task($0).map { !$0.isHeading && $0.when != date } ?? false }
             .map { taskOp($0, Patch(when: .some(date))) }
         return perform(ops, undoManager: undoManager, actionName: name ?? (date == nil ? "Remove When" : "Set When"))
     }
 
     @discardableResult
     public func setDeadline(_ ids: [EntityID], _ date: CalendarDate?, name: String? = nil, undoManager: UndoManager? = nil) -> Bool {
-        let ops = ids.filter { projection.task($0).map { $0.deadline != date } ?? false }
+        let ops = ids.filter { projection.task($0).map { !$0.isHeading && $0.deadline != date } ?? false }
             .map { taskOp($0, Patch(deadline: .some(date))) }
         return perform(ops, undoManager: undoManager, actionName: name ?? (date == nil ? "Remove Deadline" : "Set Deadline"))
     }
 
-    /// Checks or unchecks. Completing doesn't touch `order`, so unchecking puts a task back in its old spot.
+    /// Checks or unchecks. Completing doesn't touch `order`, so unchecking puts a task back in its old spot. Headings
+    /// are skipped: they have no completion (§23).
     @discardableResult
     public func toggleComplete(_ ids: [EntityID], name: String? = nil, undoManager: UndoManager? = nil) -> Bool {
-        let tasks = ids.compactMap(projection.task)
+        let tasks = ids.compactMap(projection.task).filter { !$0.isHeading }
         let complete = tasks.contains { $0.completedAt == nil }
         let now = nowMs
         let ops = tasks.filter { ($0.completedAt == nil) == complete }
@@ -74,10 +92,11 @@ extension Store {
         return perform(ops, undoManager: undoManager, actionName: name ?? (ops.count == 1 ? "Delete Task" : "Delete Tasks"))
     }
 
-    /// "Move to…" or a drop on a sidebar list: the tasks land at the bottom of `list`, in the given order.
+    /// "Move to…" or a drop on a sidebar list: the tasks land at the bottom of `list`, in the given order. Headings
+    /// stay in their list (§23).
     @discardableResult
     public func move(_ ids: [EntityID], to list: EntityID, name: String? = nil, undoManager: UndoManager? = nil) -> Bool {
-        let moving = ids.filter { projection.task($0).map { $0.list != list } ?? false }
+        let moving = ids.filter { projection.task($0).map { !$0.isHeading && $0.list != list } ?? false }
         guard !moving.isEmpty else { return false }
         let placed = Ordering.append(moving, after: projection.orderedOpenTasks(in: list))
         return perform(placed.map { taskOp($0.id, Patch(list: list, order: $0.order)) }, undoManager: undoManager,
@@ -93,6 +112,20 @@ extension Store {
         let ops = placed.filter { p in projection.task(p.id).map { $0.order != p.order || $0.list != list } ?? false }
             .map { taskOp($0.id, Patch(list: list, order: $0.order)) }
         return perform(ops, undoManager: undoManager, actionName: name ?? "Reorder")
+    }
+
+    /// Moves a heading with its section (§23): the heading and every task under it, completed ones included, get
+    /// keys at `anchor` among the list's tasks, one op each. `anchor` is `.before(another heading)` or `.bottom`;
+    /// where the section already is, nothing is written.
+    @discardableResult
+    public func moveSection(_ heading: EntityID, at anchor: Ordering.Anchor, name: String? = nil,
+                            undoManager: UndoManager? = nil) -> Bool {
+        guard let h = projection.task(heading), h.isHeading, !h.deleted else { return false }
+        let section = projection.section(of: heading)
+        let placed = Ordering.place(section, at: anchor, in: projection.orderedTasksIncludingCompleted(in: h.list))
+        let ops = placed.filter { p in projection.task(p.id).map { $0.order != p.order || $0.list != h.list } ?? false }
+            .map { taskOp($0.id, Patch(list: h.list, order: $0.order)) }
+        return perform(ops, undoManager: undoManager, actionName: name ?? "Move Heading")
     }
 
     // MARK: Lists
@@ -113,6 +146,14 @@ extension Store {
         let name = Self.clamp(name, Self.maxName)
         guard let l = projection.list(id), l.name != name else { return false }
         return perform([listOp(id, Patch(name: name))], undoManager: undoManager, actionName: "Rename List")
+    }
+
+    /// The list's notes (§23): one `list.update`, "Edit List Notes".
+    @discardableResult
+    public func setNotes(list id: EntityID, _ notes: String, name: String? = nil, undoManager: UndoManager? = nil) -> Bool {
+        let notes = Self.clamp(notes, Self.maxNotes)
+        guard let l = projection.list(id), l.notes != notes else { return false }
+        return perform([listOp(id, Patch(notes: notes))], undoManager: undoManager, actionName: name ?? "Edit List Notes")
     }
 
     /// "Delete list" is archiving: one op, whatever the list size; its tasks are untouched (spec §2).

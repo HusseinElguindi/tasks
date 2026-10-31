@@ -102,6 +102,8 @@ public final class TaskModel: Identifiable {
     }
     /// What the row shows of the notes (design/MARKDOWN.md §7), worked out once per change of `notes`.
     public private(set) var notesSummary: NotesSummary
+    /// A heading (§23). Set at create and never changed.
+    public internal(set) var isHeading: Bool
     public internal(set) var when: CalendarDate?
     public internal(set) var deadline: CalendarDate?
     public internal(set) var completedAt: Int?
@@ -117,6 +119,7 @@ public final class TaskModel: Identifiable {
         title = t.title
         notes = t.notes
         notesSummary = NotesSummary(t.notes)
+        isHeading = t.isHeading
         when = t.when
         deadline = t.deadline
         completedAt = t.completedAt
@@ -129,6 +132,7 @@ public final class TaskModel: Identifiable {
         if order != t.order { order = t.order }
         if title != t.title { title = t.title }
         if notes != t.notes { notes = t.notes }
+        if isHeading != t.isHeading { isHeading = t.isHeading }
         if when != t.when { when = t.when }
         if deadline != t.deadline { deadline = t.deadline }
         if completedAt != t.completedAt { completedAt = t.completedAt }
@@ -137,7 +141,7 @@ public final class TaskModel: Identifiable {
     }
 
     func matches(_ t: TaskItem) -> Bool {
-        list == t.list && order == t.order && title == t.title && notes == t.notes && when == t.when
+        list == t.list && order == t.order && title == t.title && notes == t.notes && isHeading == t.isHeading && when == t.when
             && deadline == t.deadline && completedAt == t.completedAt && deleted == t.deleted && createdAt == t.createdAt
     }
 }
@@ -148,6 +152,8 @@ public final class ListModel: Identifiable {
     public let id: EntityID
     public internal(set) var name: String
     public internal(set) var order: String
+    /// The text under the list's title (§23), Markdown.
+    public internal(set) var notes: String
     public internal(set) var archivedAt: Int?
     public internal(set) var createdAt: Int
 
@@ -169,6 +175,7 @@ public final class ListModel: Identifiable {
         id = l.id
         name = l.name
         order = l.order
+        notes = l.notes
         archivedAt = l.archivedAt
         createdAt = l.createdAt
         colorSlot = Self.slot(for: l.id)
@@ -177,12 +184,13 @@ public final class ListModel: Identifiable {
     func update(from l: TaskList) {
         if name != l.name { name = l.name }
         if order != l.order { order = l.order }
+        if notes != l.notes { notes = l.notes }
         if archivedAt != l.archivedAt { archivedAt = l.archivedAt }
         if createdAt != l.createdAt { createdAt = l.createdAt }
     }
 
     func matches(_ l: TaskList) -> Bool {
-        name == l.name && order == l.order && archivedAt == l.archivedAt && createdAt == l.createdAt
+        name == l.name && order == l.order && notes == l.notes && archivedAt == l.archivedAt && createdAt == l.createdAt
     }
 
     /// FNV-1a over the id's bytes, mod 7. Stable across processes and Macs (unlike `hashValue`).

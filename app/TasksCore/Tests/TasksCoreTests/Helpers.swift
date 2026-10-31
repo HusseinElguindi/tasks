@@ -50,11 +50,11 @@ struct OpMaker {
     }
 
     mutating func createTask(_ id: String, list: String, order: String, title: String = "", when: CalendarDate? = nil,
-                             deadline: CalendarDate? = nil) -> Op {
+                             deadline: CalendarDate? = nil, kind: String? = nil) -> Op {
         let (opID, at) = next()
         return Op(id: opID, at: at, type: .taskCreate, target: id,
                   set: Patch(list: list, order: order, title: title,
-                             when: when.map { .some($0) }, deadline: deadline.map { .some($0) }))
+                             when: when.map { .some($0) }, deadline: deadline.map { .some($0) }, kind: kind))
     }
 
     mutating func updateTask(_ id: String, _ patch: Patch) -> Op {

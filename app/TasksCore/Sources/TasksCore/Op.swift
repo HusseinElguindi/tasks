@@ -47,14 +47,21 @@ public struct Patch: Hashable, Sendable {
     public var deleted: Bool?
     public var name: String?
     public var archivedAt: Int??
+    /// `task.create` only: `"heading"` makes the task a heading (design/INTERACTIONS-v2.md §23). Absent is a task;
+    /// any other value is kept and read as a task.
+    public var kind: String?
+
+    /// The one `kind` there is.
+    public static let heading = "heading"
 
     public init(list: EntityID? = nil, order: String? = nil, title: String? = nil, notes: String? = nil,
                 when: CalendarDate?? = nil, deadline: CalendarDate?? = nil, completedAt: Int?? = nil,
-                deleted: Bool? = nil, name: String? = nil, archivedAt: Int?? = nil) {
+                deleted: Bool? = nil, name: String? = nil, archivedAt: Int?? = nil, kind: String? = nil) {
         self.list = list
         self.order = order
         self.title = title
         self.notes = notes
+        self.kind = kind
         self.when = when
         self.deadline = deadline
         self.completedAt = completedAt
@@ -66,7 +73,7 @@ public struct Patch: Hashable, Sendable {
 
 extension Patch: Codable {
     enum Key: String, CodingKey {
-        case list, order, title, notes, when, deadline, completedAt, deleted, name, archivedAt
+        case list, order, title, notes, when, deadline, completedAt, deleted, name, archivedAt, kind
     }
 
     public init(from decoder: Decoder) throws {
@@ -80,6 +87,7 @@ extension Patch: Codable {
             case .title: title = try? c.decode(String.self, forKey: key)
             case .notes: notes = try? c.decode(String.self, forKey: key)
             case .name: name = try? c.decode(String.self, forKey: key)
+            case .kind: kind = try? c.decode(String.self, forKey: key)
             case .deleted: deleted = try? c.decode(Bool.self, forKey: key)
             case .when: when = isNull ? .some(nil) : (try? c.decode(CalendarDate.self, forKey: key)).map { .some($0) }
             case .deadline: deadline = isNull ? .some(nil) : (try? c.decode(CalendarDate.self, forKey: key)).map { .some($0) }
@@ -107,6 +115,7 @@ extension Patch: Codable {
         try c.encodeIfPresent(order, forKey: .order)
         try c.encodeIfPresent(title, forKey: .title)
         try c.encodeIfPresent(notes, forKey: .notes)
+        try c.encodeIfPresent(kind, forKey: .kind)
         try put(when, .when)
         try put(deadline, .deadline)
         try put(completedAt, .completedAt)
@@ -236,6 +245,7 @@ extension Op {
         string("order", set.order)
         string("title", set.title)
         string("notes", set.notes)
+        string("kind", set.kind)
         nullable("when", set.when.map { $0.map(\.string) })
         nullable("deadline", set.deadline.map { $0.map(\.string) })
         number("completedAt", set.completedAt)

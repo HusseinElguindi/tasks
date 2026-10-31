@@ -8,6 +8,9 @@ public struct TaskItem: Hashable, Sendable, Codable {
     public var title: String
     /// Markdown.
     public var notes: String
+    /// A heading (design/INTERACTIONS-v2.md §23): a row in its list's order that groups the tasks under it. Set by
+    /// `task.create`'s `kind: "heading"` and never changed; it has no dates and no completion.
+    public var isHeading: Bool
     public var when: CalendarDate?
     public var deadline: CalendarDate?
     /// Epoch ms; nil = open.
@@ -18,13 +21,14 @@ public struct TaskItem: Hashable, Sendable, Codable {
     public var updatedAt: Int
 
     public init(id: EntityID, list: EntityID, order: String, title: String = "", notes: String = "",
-                when: CalendarDate? = nil, deadline: CalendarDate? = nil, completedAt: Int? = nil,
-                deleted: Bool = false, createdAt: Int = 0, updatedAt: Int = 0) {
+                isHeading: Bool = false, when: CalendarDate? = nil, deadline: CalendarDate? = nil,
+                completedAt: Int? = nil, deleted: Bool = false, createdAt: Int = 0, updatedAt: Int = 0) {
         self.id = id
         self.list = list
         self.order = order
         self.title = title
         self.notes = notes
+        self.isHeading = isHeading
         self.when = when
         self.deadline = deadline
         self.completedAt = completedAt
@@ -39,15 +43,19 @@ public struct TaskList: Hashable, Sendable, Codable {
     public var name: String
     /// Fractional index key in the sidebar (spec §3).
     public var order: String
+    /// The list's text under its title, Markdown (design/INTERACTIONS-v2.md §23).
+    public var notes: String
     /// Epoch ms; nil = active.
     public var archivedAt: Int?
     public var createdAt: Int
     public var updatedAt: Int
 
-    public init(id: EntityID, name: String, order: String, archivedAt: Int? = nil, createdAt: Int = 0, updatedAt: Int = 0) {
+    public init(id: EntityID, name: String, order: String, notes: String = "", archivedAt: Int? = nil, createdAt: Int = 0,
+                updatedAt: Int = 0) {
         self.id = id
         self.name = name
         self.order = order
+        self.notes = notes
         self.archivedAt = archivedAt
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -96,11 +104,12 @@ public enum Reducer {
 }
 
 extension TaskItem {
-    /// `task.create`: `list` and `order` are required; only create keys are read (rule 6).
+    /// `task.create`: `list` and `order` are required; only create keys are read (rule 6). `kind` is read here
+    /// only: an update never changes it.
     init?(creating op: Op) {
         guard let list = op.set.list, let order = op.set.order else { return nil }
         self.init(id: op.target, list: list, order: order,
-                  title: op.set.title ?? "", notes: op.set.notes ?? "",
+                  title: op.set.title ?? "", notes: op.set.notes ?? "", isHeading: op.set.kind == Patch.heading,
                   when: op.set.when ?? nil, deadline: op.set.deadline ?? nil,
                   completedAt: op.set.completedAt ?? nil, deleted: false,
                   createdAt: op.at, updatedAt: op.at)
@@ -123,12 +132,14 @@ extension TaskItem {
 extension TaskList {
     init?(creating op: Op) {
         guard let name = op.set.name, let order = op.set.order else { return nil }
-        self.init(id: op.target, name: name, order: order, archivedAt: nil, createdAt: op.at, updatedAt: op.at)
+        self.init(id: op.target, name: name, order: order, notes: op.set.notes ?? "", archivedAt: nil, createdAt: op.at,
+                  updatedAt: op.at)
     }
 
     mutating func update(with p: Patch, at: Int) {
         if let v = p.name { name = v }
         if let v = p.order { order = v }
+        if let v = p.notes { notes = v }
         if let v = p.archivedAt { archivedAt = v }
         updatedAt = at
     }
@@ -213,6 +224,7 @@ public enum Inverse {
             var p = Patch()
             if s.name != nil { p.name = b.name }
             if s.order != nil { p.order = b.order }
+            if s.notes != nil { p.notes = b.notes }
             if s.archivedAt != nil { p.archivedAt = .some(b.archivedAt) }
             return Op(id: id, at: at, type: .listUpdate, target: op.target, set: p)
         default:

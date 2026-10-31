@@ -246,9 +246,10 @@ func randomTaskPatch(_ rng: inout SeededRandom) -> Patch {
 func randomListPatch(_ rng: inout SeededRandom) -> Patch {
     var p = Patch()
     repeat {
-        switch Int.random(in: 0..<3, using: &rng) {
+        switch Int.random(in: 0..<4, using: &rng) {
         case 0: p.name = ["Inbox", "School", "Home"].randomElement(using: &rng)!
         case 1: p.order = ["a0", "a1", "Zz"].randomElement(using: &rng)!
+        case 2: p.notes = ["", "**List** notes"].randomElement(using: &rng)!
         default: p.archivedAt = Bool.random(using: &rng) ? .some(nil) : .some(Int.random(in: 1...1_000, using: &rng))
         }
     } while Bool.random(using: &rng)
