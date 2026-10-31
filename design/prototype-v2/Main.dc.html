@@ -3018,7 +3018,7 @@ class Component extends DCLogic {
     sbItems.push({ isRow: false, isLabel: true, key: 'lbl-lists', cls: 'sbi glabel', style: 'transform: translateY(' + S.ys.get('lbl-lists') + 'px)', name: 'Lists', plus: true, chev: false, revealCls: 'gbtn reveal' });
     for (const l of s.lists) {
       const arch = !!l.archivedAt;
-      const count = arch ? '' : String(s.tasks.filter((t) => t.list === l.id && !t.deleted && !t.draft && !this.isHead(t) && t.completedAt == null).length || '');
+      const count = '';   // lists show no open-task count; only Today does (the user, 2026-10-31)
       const typing = ed && ed.kind === 'list' && ed.id === l.id;   // the tile's letter follows the name as it's typed
       mkRow(l.id, { name: l.name || (l.draft ? '' : 'Untitled'), count, tileCls: 'tile ' + COLOR_CLASS[l.color], mono: monogram(typing ? ed.text : l.name), arch });
     }

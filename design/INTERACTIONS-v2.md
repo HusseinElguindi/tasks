@@ -18,7 +18,7 @@ Status: **final, 2026-10-30.** The user reviewed the prototype and made the four
 - Item 7: dragging a task from one sidebar list to another is continuous. Each row takes half the 2pt gap on either
   side, so the target passes straight from row to row. Anywhere over the sidebar the copy stays a tag and the group
   stays closed up, so a row that takes no drop never snaps the copy back into the list. A drop there cancels, and a
-  list's count changes color in the same frame as its row (§14).
+  row's count (Today's; lists have none since 2026-10-31) changes color in the same frame as its row (§14).
 - Item 8: Settings ▸ Edit tasks picks what double-click and Return do to a task: open it in the detail pane with the
   caret in its title (the default), or rename it in its row as before (§7 Edit tasks; §2, §4, §5, §15, §17 and §21 say
   so). Lists in the sidebar rename in place either way. In the prototype the strip's "Edit tasks" stands in for Settings.
@@ -28,6 +28,10 @@ Status: **final, 2026-10-30.** The user reviewed the prototype and made the four
 - Item 10: Settings ▸ Interface style ▸ Glass shows the desktop through the window: a translucent ground and 88% pane
   fills (§4 Glass). It had changed nothing. The prototype draws Classic only.
 - Item 12: the sidebar opens with a brand header, the app's mark and "Tasks", with Today below it (§12 Brand header).
+
+**Changed after that (the user, 2026-10-31):** sidebar list rows show no open-task count. Today is the only row with
+one; Upcoming, Undated, Completed and Trash already had none. Held ⌘ still shows ⌘1–⌘9 in the count's place on every
+row, lists included (§12, §21, §22).
 
 The prototype source matches all eight (item 5's rename part is the app's drawing; the browser has no equivalent).
 Items 9 and 10 have no counterpart there: the prototype has no System choice and no Glass, and draws its own window
@@ -179,7 +183,7 @@ tooltips 11/14. Tiles and inline code use SF Mono. Counts and day numbers use ta
 | Toolbar band | 50 tall. Traffic lights 14pt circles 9 apart, first at (18, 18), so centers x 25, 48, 71, y 25 **Rex** | `css:87–89` |
 | Sidebar toggle | 28pt circle at (93, 11), center (107, 25) **Rex**; glyph 16pt | `css:92–95` |
 | Sidebar | 230 wide **Rex** by default, 180–400 by its divider (§4); its content starts at y 50: the brand header (34), then Today 6 below it, at y 90 (§12) | `dc:439`, `dc:440` |
-| Sidebar row | Capsule x 10–219 (209 wide), 30 tall, radius 15 **Rex**; tile 10 in; title 7 after the tile, nudged up 0.5 **Rex**; count right-aligned 8 from the capsule's right edge | `css:102–105`, `css:107–120` |
+| Sidebar row | Capsule x 10–219 (209 wide), 30 tall, radius 15 **Rex**; tile 10 in; title 7 after the tile, nudged up 0.5 **Rex**; count (Today only) or ⌘ hint right-aligned 8 from the capsule's right edge | `css:102–105`, `css:107–120` |
 | List tile | 20×16, radius 4, 700 10pt mono glyph; dark `fill-strong` with a white 10% 0.5pt ring, light #E3E3E4 with a #1F2328 10% ring. Small (headers, menus): 16×13, radius 3.5, 8.5pt | `css:123–125` |
 | Group label | A 32pt slot: 11/14 semibold `ink-tertiary`, 12 in from the row edge, text top 10 **Rex**. Reveal button 22×22, radius 6, 5 from the right, top 6 | `css:131–141` |
 | Panes | 8 from the window edges and each other (the list pane starts at x 230 **Rex**); radius 10; 1pt inset edge | `css:144–146`, `dc:441` |
@@ -782,16 +786,17 @@ Clear in the popover, ⌫ in its empty field, the × beside a detail-pane chip, 
 
 | State | Look |
 |---|---|
-| Rest | Title `ink-secondary` **Rex**; count `ink-tertiary`, tabular |
+| Rest | Title `ink-secondary` **Rex**; Today's count `ink-tertiary`, tabular; a list shows no count (the user, 2026-10-31) |
 | Hover | Title → `ink` (`hoverIn`, out on `hoverOut`). No fill, no trailing action |
-| Current | `fill-strong` capsule with the two-step edge, title `ink`, count `ink-secondary` **Rex** |
+| Current | `fill-strong` capsule with the two-step edge, title `ink`, Today's count `ink-secondary` **Rex** |
 | Archived | Title `ink-tertiary`, `ink` on hover or when current; no count |
-| Drop target (a task drag) | `accent-tint` fill, 2pt inset `accent` ring, title and count `accent-text` |
+| Drop target (a task drag) | `accent-tint` fill, 2pt inset `accent` ring, title (and Today's count) `accent-text` |
 | Being renamed | `fill-control`, 1.5pt inset `accent` ring, the name as a field in place |
-| Holding ⌘ (450 ms) | Counts give way to ⌘1–⌘9 on the sidebar's first nine rows (Today, Upcoming, Undated, then lists; §22) in 12pt `ink-secondary` (Rex, preview.16); any key or letting go hides them |
+| Holding ⌘ (450 ms) | ⌘1–⌘9 show in the count's place on the sidebar's first nine rows (Today, Upcoming, Undated, then lists; §22), Today's count giving way, in 12pt `ink-secondary` (Rex, preview.16); any key or letting go hides them |
 
-Pressing a row opens it on mouse-down (instantly) and focuses the sidebar. Counts are open tasks (Today: open tasks in
-Today). Long names fade out over 16pt before the count instead of an ellipsis (Rex) `css:112`.
+Pressing a row opens it on mouse-down (instantly) and focuses the sidebar. Only Today has a count: its open tasks
+across the active lists. Lists have none (the user, 2026-10-31). Long names fade out over 16pt before the count's
+place (Today's count, or a ⌘ hint) instead of an ellipsis (Rex) `css:112`.
 
 **Layout**: the brand header, Today 6 below it, Upcoming and Undated, the "Lists" label, the active lists, then 8pt and
 Completed and Trash (§22), then 8pt and the "Archive" label when anything is archived (`dc:1032–1057`).
@@ -882,7 +887,7 @@ the drop will land; there is no insertion line. Source: `dc:1561–1578`,
 | Move 4pt | Lift: a copy of the row (the grabbed row, for a multi-selection) follows the pointer, keeping the grab offset: `fill-lift`, radius 8, `shadow-lift`, the checkbox ring, title and chips (chips on #3A3A3A in dark). The rows being dragged leave their places (hidden). Several tasks: an `accent` badge with the count, 18 tall, 11 semibold `on-accent`, 7pt past the copy's top-right corner. Tooltips, menus and popovers close |
 | Over the list | The other rows in the group part on `layout` to open a gap (as many slots as rows dragged) at the target. The target is the nearest slot to the copy. The copy stays inside its group: it stops 6pt past the first and last slot (a list's open tasks; one Today group) |
 | Near the top or bottom (24pt) | The list scrolls 8pt every 16 ms |
-| Over the sidebar | The gap closes and everything below the group moves up (the rows are leaving). The copy becomes a compact tag, 210 wide (width on 160 ms ease-out) at the pointer +12, +8, so the target stays readable. It stays a tag, and the group stays closed, anywhere over the sidebar, on a target or not. The row under the pointer shows the drop-target state if it takes the drop. Each row's hit area takes half the 2pt gap on either side, so the state passes straight from one row to the next, with the fill, ring and count changing in one frame and the title easing on `hover-out`. Today is a target (sets When = today) unless you're in Today; the current list, archived lists and labels aren't, and over them nothing is highlighted |
+| Over the sidebar | The gap closes and everything below the group moves up (the rows are leaving). The copy becomes a compact tag, 210 wide (width on 160 ms ease-out) at the pointer +12, +8, so the target stays readable. It stays a tag, and the group stays closed, anywhere over the sidebar, on a target or not. The row under the pointer shows the drop-target state if it takes the drop. Each row's hit area takes half the 2pt gap on either side, so the state passes straight from one row to the next, with the fill, ring and (on Today) count changing in one frame and the title easing on `hover-out`. Today is a target (sets When = today) unless you're in Today; the current list, archived lists and labels aren't, and over them nothing is highlighted |
 | Drop on the list | The copy flies into its slot (160 ms, cubic-bezier(0.2, 0.8, 0.2, 1)); at 170 ms the new order is written (one op per task, `keysBetween`, SPEC §3) and the grabbed row shows at once, exactly under the copy, which then fades out over it (150 ms ease-out), so the lift dissolves into the row; the other rows that came along fade in (150 ms). Dropping where it started writes nothing |
 | Drop on a sidebar list | The copy flies to the row's left (x 10) and fades out (160 ms); at 170 ms the move is written; notice "Moved to Errands" |
 | Drop on the sidebar elsewhere | As Esc: the copy flies home, widening back into the row, and nothing is written |
@@ -1135,8 +1140,8 @@ Found by an audit of the spec against the prototype; each is what the prototype 
   once when its last task goes (`css:228`, `dc:2743–2794`).
 - **After a checked row settles** the selection doesn't move: in a collapsed list the done task stays selected though
   hidden, and the detail pane keeps showing it (`dc:1268`).
-- **Counts**: zero shows nothing. The sidebar count drops the moment a box is checked; a list's Completed count waits
-  for the 1.5 s settle (`dc:2888`, `dc:2987`).
+- **Counts**: zero shows nothing. Today's sidebar count drops the moment a box is checked; a list's Completed count
+  waits for the 1.5 s settle (`dc:2888`, `dc:2987`).
 - **Today's Completed group** holds only tasks completed today that are dated today or earlier
   (`dc:990`).
 - **The date popover**: closes with no exit animation. No day is highlighted while nothing matches. The footer is 12pt.
@@ -1190,7 +1195,8 @@ Put Back deletes it again at that moment.
 
 Top to bottom: the brand header, **Today, Upcoming, Undated**, the "Lists" label and the lists, then 8pt and
 **Completed, Trash**, then the Archive group (`dc:1032–1056`, `dc:3192–3198`). The views you plan from sit under Today;
-the logbook and the Trash sit after the lists. **No counts** on the four: Today and the lists keep theirs.
+the logbook and the Trash sit after the lists. **No counts** on the four, nor on the lists: only Today keeps its count
+(the user, 2026-10-31).
 
 | Row | Glyph (in the 20×16 tile; 14pt bare in the header) |
 |---|---|

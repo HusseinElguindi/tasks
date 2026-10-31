@@ -63,7 +63,7 @@ class Component extends DCLogic {
     const label = (name, chev) => { rows.push({ label: true, name, chev, style: 'top: ' + y + 'px' }); y += 32; };
     row('Today', 'c-yellow', '', 13, 'today'); row('Upcoming', 'c-magenta', '', '', 'up'); row('Undated', 'c-cyan', '', '', 'und');
     label('Lists');
-    for (const [n, m, c, k] of LISTS) row(n, c, m, k, '', n === 'School');
+    for (const [n, m, c] of LISTS) row(n, c, m, '', '', n === 'School');   // lists show no count (2026-10-31)
     y += 8; row('Completed', 'c-green', '', '', 'done'); row('Trash', 'c-ink', '', '', 'trash');
     y += 8; label('Archive', true);
     const contentH = y + 8, top = 50, bottom = foot ? footH : 0, viewH = H - top - bottom;
