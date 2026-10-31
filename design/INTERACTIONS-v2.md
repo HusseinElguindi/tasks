@@ -595,6 +595,14 @@ changed, SPEC §3). Implementation: a `pins` map holds checked and unchecked tas
   expanded, it lists the done tasks newest first (`css:228–233`, `dc:3492–3496`).
 - Today ends with a "Completed" group (a group label like the others, 8pt further down) holding tasks completed today,
   oldest first, each with its list's name at the right in 12pt `ink-tertiary` (`css:174`).
+- **As built (v2 feedback 15):** Today's Completed folds like a heading (§23). Hovering its label reveals a 22pt button
+  with a 12pt chevron at the right (down when open, right and always shown when collapsed); collapsed, its count follows
+  the name, 8 after, in 11/14 medium `ink-tertiary`. The chevron folds the rows up into the label as they fade (150 ms)
+  and unfolds them from it on `layout`, fading in (220 ms ease-in), under the label. A click on the label selects it
+  like a heading's row, and Space then folds it: Space on selected done tasks still marks them not done. Selected done
+  tasks that fold away leave the selection, and the label takes it if nothing's left; ↓ from the label goes to its
+  first task, ↑ to the row above. Local to the Mac and kept across launches, as is a list's Completed row being open,
+  which now folds its tasks into the row the same way. No other view has a Completed group.
 
 ---
 
