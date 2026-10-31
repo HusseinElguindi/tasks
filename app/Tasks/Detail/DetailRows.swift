@@ -161,6 +161,7 @@ private struct DateRow: View {
     private func toneOf(_ t: DateLabel.Tone) -> ChipLayer.Tone {
         switch t {
         case .neutral: .neutral
+        case .soon: .soon
         case .due: .due
         case .late: .late
         }
@@ -225,7 +226,7 @@ private struct DetailChipStyle: ButtonStyle {
         configuration.label
             .overlay(alignment: .leading) {
                 HStack(spacing: TK.M.chipLargeGap) {
-                    if let glyph { GlyphView(glyph: glyph, size: TK.M.chipIcon, color: fg.swiftUI) }
+                    if let glyph { GlyphView(glyph: glyph, size: TK.M.chipIcon, color: (tone == .soon && !pickerOpen ? tk.attention : fg).swiftUI) }
                     Text(text)
                         .font(Font(TK.Font.chipLarge))
                         .foregroundStyle(fg.swiftUI)
@@ -248,7 +249,7 @@ private struct DetailChipStyle: ButtonStyle {
         if ghost { return hovered ? (tk.hover, tk.inkSecondary) : (.clear, tk.inkTertiary) }
         var bg: NSColor, fg: NSColor
         switch tone {
-        case .neutral: bg = tk.fillControl; fg = tk.inkSecondary
+        case .neutral, .soon: bg = tk.fillControl; fg = tk.inkSecondary
         case .due: bg = tk.attentionTint; fg = tk.attention
         case .late: bg = tk.dangerTint; fg = tk.danger
         }

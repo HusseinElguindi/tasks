@@ -382,13 +382,18 @@ final class CheckLayer: CALayer {
 // MARK: - Chips (css:205–215)
 
 final class ChipLayer: CALayer {
-    enum Tone: Equatable { case neutral, due, late }
+    /// A deadline's urgency (§24): late and due are tinted capsules; soon (tomorrow) tints only its flag, so today
+    /// stays the one amber capsule.
+    enum Tone: Equatable { case neutral, soon, due, late }
     struct Content: Equatable {
         var text: String
         var glyph: Glyph?
         var tone: Tone = .neutral
         var large = false
         var ghost = false
+        /// A row's When (§24 Quiet When, css:490–494): its glyph and date in `ink-tertiary`, no capsule, padding 5.
+        /// Hover shows the `hover` capsule, an open popover the `accent-tint` one, so it's still clearly a control.
+        var quiet = false
     }
 
     private let icon = GlyphLayer(.calendar, size: TK.M.chipIcon)
@@ -410,9 +415,12 @@ final class ChipLayer: CALayer {
     override init(layer: Any) { super.init(layer: layer) }
     required init?(coder: NSCoder) { fatalError() }
 
+    /// A quiet When's padding (css:492).
+    static let quietPad: CGFloat = 5
+
     static func width(_ c: Content) -> CGFloat {
         let font = c.large ? TK.Font.chipLarge : TK.Font.chip
-        let pad = c.large ? TK.M.chipLargePad : TK.M.chipPad
+        let pad = c.large ? TK.M.chipLargePad : c.quiet ? quietPad : TK.M.chipPad
         let gap = c.large ? TK.M.chipLargeGap : TK.M.chipGap
         let iconW: CGFloat = c.glyph == nil ? 0 : TK.M.chipIcon + gap
         return pad * 2 + iconW + TextLayer.width(c.text, font: font)
@@ -422,7 +430,7 @@ final class ChipLayer: CALayer {
         content = c
         self.palette = palette
         let h = c.large ? TK.M.chipLarge : TK.M.chip
-        let pad = c.large ? TK.M.chipLargePad : TK.M.chipPad
+        let pad = c.large ? TK.M.chipLargePad : c.quiet ? Self.quietPad : TK.M.chipPad
         let gap = c.large ? TK.M.chipLargeGap : TK.M.chipGap
         let font = c.large ? TK.Font.chipLarge : TK.Font.chip
         bounds = CGRect(x: 0, y: 0, width: Self.width(c), height: h)
@@ -446,7 +454,7 @@ final class ChipLayer: CALayer {
         var bg: NSColor
         var fg: NSColor
         switch content.tone {
-        case .neutral: bg = palette.fillControl; fg = palette.inkSecondary
+        case .neutral, .soon: bg = palette.fillControl; fg = palette.inkSecondary
         case .due: bg = palette.attentionTint; fg = palette.attention
         case .late: bg = palette.dangerTint; fg = palette.danger
         }
@@ -456,25 +464,33 @@ final class ChipLayer: CALayer {
             bg = hovered ? palette.hover : .clear
             fg = hovered ? palette.inkSecondary : palette.inkTertiary
             ring = palette.lineSeparator
+        } else if content.quiet {
+            bg = pressed ? palette.press : hovered ? palette.hover : .clear
+            fg = hovered || pressed ? palette.inkSecondary : palette.inkTertiary
         }
+        var iconColor = content.tone == .soon ? palette.attention : fg
         if pickerOpen {
             bg = palette.accentTint
             fg = palette.accentText
-        } else if !content.ghost {
+            iconColor = fg
+        } else if !content.ghost && !content.quiet {
             let b = pressed ? TK.Palette.pressBrightness : hovered ? palette.chipHoverBrightness : 1
             bg = bg.brightness(b)
             fg = fg.brightness(b)
+            iconColor = iconColor.brightness(b)
+        } else {
+            iconColor = fg
         }
         let apply = {
             self.backgroundColor = bg.cgColor
             self.borderWidth = ring == nil ? 0 : 1
             self.borderColor = ring?.cgColor
-            self.icon.strokeColor = fg.cgColor
+            self.icon.strokeColor = iconColor.cgColor
             self.label.foregroundColor = fg.cgColor
         }
         if animated && !TK.CA.reduce {
             animate("backgroundColor", to: bg.cgColor, TK.CA.iconT)
-            icon.animate("strokeColor", to: fg.cgColor, TK.CA.iconT)
+            icon.animate("strokeColor", to: iconColor.cgColor, TK.CA.iconT)
             label.animate("foregroundColor", to: fg.cgColor, TK.CA.iconT)
             setInstant {
                 borderWidth = ring == nil ? 0 : 1

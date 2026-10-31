@@ -84,8 +84,8 @@ struct Render {
                     if !(inToday && chip == "Today") { chips.append(chip) }
                 }
                 if let d = t.deadline {
-                    let (text, tone) = DateLabel.deadlineChip(d, today: today)
-                    chips.append(tone == .neutral ? "⚑ " + text : text)
+                    // The flag stands in for the app's capsule: "⚑ 3d left", "⚑ 2d ago" (§24).
+                    chips.append("⚑ " + DateLabel.deadlineChip(d, today: today).text)
                 }
             }
             if showList { chips.append(listName(t.list)) }
@@ -143,7 +143,7 @@ struct Render {
         } else {
             line("status", t.deleted ? "deleted" : t.completedAt != nil ? "done" : "open")
             line("when", t.when.map { "\($0.string) (\(DateLabel.long($0, today: today)), \(DateLabel.relative($0, today: today)))" } ?? "—")
-            line("deadline", t.deadline.map { "\($0.string) (\(DateLabel.long($0, today: today)), \(DateLabel.relative($0, today: today)))" } ?? "—")
+            line("deadline", t.deadline.map { "\($0.string) (\(DateLabel.long($0, today: today)), \(DateLabel.deadlineWords($0, today: today)))" } ?? "—")
         }
         line("created", Self.time(t.createdAt))
         if let c = t.completedAt, !t.isHeading { line("completed", Self.time(c)) }

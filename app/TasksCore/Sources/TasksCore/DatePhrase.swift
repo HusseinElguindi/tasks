@@ -269,28 +269,49 @@ public enum DatePhrase {
     }
 }
 
-/// How dates read in rows, the detail pane and the popover (INTERACTIONS-v2 §11 "How chips read", §21).
+/// How dates read in rows, the detail pane, the popover and the CLI (INTERACTIONS-v2 §24, the "Nd left" wording).
 public enum DateLabel {
-    public enum Tone: Sendable { case neutral, due, late }
+    /// A deadline's urgency (§24 Tones): late (past), due (today), soon (tomorrow: only its flag is tinted), neutral.
+    public enum Tone: Sendable { case neutral, soon, due, late }
 
-    /// A row's When chip: "Today" (today or past: a past When carries forward), "Tomorrow", the weekday ("Mon")
-    /// for 2–6 days, else "Nov 9", or "Jan 4, 2027" in another year (prototype `whenChipText`).
+    /// How far ahead a date counts in days ("3d left", "in 3d"); farther, it reads as the date (prototype `LEFT_MAX`).
+    public static let countdownDays = 14
+
+    /// A row's When: "Today" (today or past: a past When carries forward), "Tomorrow", "in 2d" … "in 14d", then
+    /// "Nov 15", or "Jan 3, 2027" in another year. A plan, not a countdown: never "left" (prototype `whenChipText`).
     public static func whenChip(_ d: CalendarDate, today: CalendarDate) -> String {
         let n = today.daysTo(d)
         if n <= 0 { return "Today" }
         if n == 1 { return "Tomorrow" }
-        if n < 7 { return DateNames.weekdays[d.weekdayIndex] }
+        if n <= countdownDays { return "in \(n)d" }
         return monthDayYear(d, today: today)
     }
 
-    /// A Deadline chip: "Overdue · 2d" (late), "Due today" (due), then like the When chip (prototype `deadlineChip`).
+    /// A Deadline: "2d ago" when overdue, in days at any distance (late); "Due today" (due); "1d left" (soon) …
+    /// "14d left", whole days not counting the deadline's own day; then "Nov 15", or "Jan 3, 2027" in another year
+    /// (prototype `deadlineChip`).
     public static func deadlineChip(_ d: CalendarDate, today: CalendarDate) -> (text: String, tone: Tone) {
         let n = today.daysTo(d)
-        if n < 0 { return ("Overdue · \(-n)d", .late) }
+        if n < 0 { return ("\(-n)d ago", .late) }
         if n == 0 { return ("Due today", .due) }
-        if n == 1 { return ("Tomorrow", .neutral) }
-        if n < 7 { return (DateNames.weekdays[d.weekdayIndex], .neutral) }
-        return (monthDayYear(d, today: today), .neutral)
+        return (n <= countdownDays ? "\(n)d left" : monthDayYear(d, today: today), n == 1 ? .soon : .neutral)
+    }
+
+    /// A deadline in words, for tooltips, the detail pane and the CLI: "2 days overdue" ("3 weeks overdue" from 14
+    /// days), "due today", "1 day left" … "14 days left", then how far it is ("in 2 weeks") (prototype `dueRelText`).
+    public static func deadlineWords(_ d: CalendarDate, today: CalendarDate) -> String {
+        let n = today.daysTo(d)
+        if n < 0 { return -n == 1 ? "1 day overdue" : -n < 14 ? "\(-n) days overdue" : "\(rounded(-n, over: 7)) weeks overdue" }
+        if n == 0 { return "due today" }
+        if n <= countdownDays { return n == 1 ? "1 day left" : "\(n) days left" }
+        return relative(d, today: today)
+    }
+
+    /// A row's date tooltip: "When: Sun, Nov 1 · tomorrow", "Deadline: Sat, Nov 14 · 14 days left" (prototype
+    /// `dateTip`).
+    public static func tooltip(deadline: Bool, _ d: CalendarDate, today: CalendarDate) -> String {
+        (deadline ? "Deadline: " : "When: ") + long(d, today: today) + " · "
+            + (deadline ? deadlineWords(d, today: today) : relative(d, today: today))
     }
 
     /// The full date: "Fri, Nov 6", with ", 2027" in another year (prototype `longDate`).

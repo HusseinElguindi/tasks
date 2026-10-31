@@ -326,7 +326,7 @@ final class DatePhraseTests: XCTestCase {
     }
 }
 
-/// INTERACTIONS-v2 §11 "How chips read" and §21 "Relative dates".
+/// INTERACTIONS-v2 §24 (the "Nd left" wording) and §21 "Relative dates".
 final class DateLabelTests: XCTestCase {
     let today = date("2026-10-30")  // a Friday
 
@@ -335,13 +335,13 @@ final class DateLabelTests: XCTestCase {
         XCTAssertEqual(DateLabel.whenChip(date("2025-06-01"), today: today), "Today")      // past, another year
         XCTAssertEqual(DateLabel.whenChip(today, today: today), "Today")
         XCTAssertEqual(DateLabel.whenChip(date("2026-10-31"), today: today), "Tomorrow")
-        XCTAssertEqual(DateLabel.whenChip(date("2026-11-01"), today: today), "Sun")        // 2 days
-        XCTAssertEqual(DateLabel.whenChip(date("2026-11-05"), today: today), "Thu")        // 6 days
-        XCTAssertEqual(DateLabel.whenChip(date("2026-11-06"), today: today), "Nov 6")      // 7 days
-        XCTAssertEqual(DateLabel.whenChip(date("2026-11-09"), today: today), "Nov 9")
+        XCTAssertEqual(DateLabel.whenChip(date("2026-11-01"), today: today), "in 2d")
+        XCTAssertEqual(DateLabel.whenChip(date("2026-11-13"), today: today), "in 14d")     // the last counted day
+        XCTAssertEqual(DateLabel.whenChip(date("2026-11-14"), today: today), "Nov 14")     // 15 days: the date
         XCTAssertEqual(DateLabel.whenChip(date("2026-12-31"), today: today), "Dec 31")
         XCTAssertEqual(DateLabel.whenChip(date("2027-01-04"), today: today), "Jan 4, 2027")
-        XCTAssertEqual(DateLabel.whenChip(date("2027-01-01"), today: date("2026-12-28")), "Fri")  // 4 days, across the year
+        XCTAssertEqual(DateLabel.whenChip(date("2027-01-01"), today: date("2026-12-28")), "in 4d")  // across the year
+        XCTAssertEqual(DateLabel.whenChip(date("2027-01-20"), today: date("2026-12-28")), "Jan 20, 2027")
     }
 
     func testDeadlineChip() {
@@ -349,17 +349,38 @@ final class DateLabelTests: XCTestCase {
             let c = DateLabel.deadlineChip(date(s), today: t ?? today)
             return "\(c.text) \(c.tone)"
         }
-        XCTAssertEqual(chip("2026-10-28"), "Overdue · 2d late")
-        XCTAssertEqual(chip("2026-10-29"), "Overdue · 1d late")
-        XCTAssertEqual(chip("2025-10-30"), "Overdue · 365d late")
+        XCTAssertEqual(chip("2026-10-28"), "2d ago late")
+        XCTAssertEqual(chip("2026-10-29"), "1d ago late")
+        XCTAssertEqual(chip("2025-10-30"), "365d ago late")   // days at any distance
         XCTAssertEqual(chip("2026-10-30"), "Due today due")
-        XCTAssertEqual(chip("2026-10-31"), "Tomorrow neutral")
-        XCTAssertEqual(chip("2026-11-02"), "Mon neutral")
-        XCTAssertEqual(chip("2026-11-05"), "Thu neutral")
-        XCTAssertEqual(chip("2026-11-06"), "Nov 6 neutral")
-        XCTAssertEqual(chip("2026-11-09"), "Nov 9 neutral")
+        XCTAssertEqual(chip("2026-10-31"), "1d left soon")    // the day before: its own day isn't counted
+        XCTAssertEqual(chip("2026-11-01"), "2d left neutral")
+        XCTAssertEqual(chip("2026-11-13"), "14d left neutral")
+        XCTAssertEqual(chip("2026-11-14"), "Nov 14 neutral")
         XCTAssertEqual(chip("2027-01-04"), "Jan 4, 2027 neutral")
-        XCTAssertEqual(chip("2027-01-02", date("2026-12-31")), "Sat neutral")
+        XCTAssertEqual(chip("2027-01-02", date("2026-12-31")), "2d left neutral")
+        XCTAssertEqual(chip("2026-12-30", date("2027-01-02")), "3d ago late")
+    }
+
+    func testDeadlineWords() {
+        func words(_ n: Int) -> String { DateLabel.deadlineWords(today.adding(days: n), today: today) }
+        XCTAssertEqual(words(-1), "1 day overdue")
+        XCTAssertEqual(words(-2), "2 days overdue")
+        XCTAssertEqual(words(-13), "13 days overdue")
+        XCTAssertEqual(words(-16), "2 weeks overdue")
+        XCTAssertEqual(words(0), "due today")
+        XCTAssertEqual(words(1), "1 day left")
+        XCTAssertEqual(words(13), "13 days left")
+        XCTAssertEqual(words(14), "14 days left")
+        XCTAssertEqual(words(15), "in 2 weeks")
+        XCTAssertEqual(words(64), "in 2 months")
+    }
+
+    func testTooltip() {
+        XCTAssertEqual(DateLabel.tooltip(deadline: false, date("2026-10-31"), today: today), "When: Sat, Oct 31 · tomorrow")
+        XCTAssertEqual(DateLabel.tooltip(deadline: true, date("2026-11-13"), today: today), "Deadline: Fri, Nov 13 · 14 days left")
+        XCTAssertEqual(DateLabel.tooltip(deadline: true, date("2026-10-28"), today: today), "Deadline: Wed, Oct 28 · 2 days overdue")
+        XCTAssertEqual(DateLabel.tooltip(deadline: true, date("2027-01-02"), today: today), "Deadline: Sat, Jan 2, 2027 · in 2 months")
     }
 
     func testLong() {

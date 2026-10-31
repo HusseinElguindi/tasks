@@ -130,7 +130,7 @@ final class CLITests: CLITestCase {
         let later = try await json("show", try await id("Later"))
         XCTAssertEqual(later["when"]?.stringValue, "2026-11-06")
         let text = await tasks("today")
-        XCTAssertTrue(text.out.contains("Overdue · 1d"), text.out)
+        XCTAssertTrue(text.out.contains("⚑ 1d ago"), text.out)   // §24: overdue in days, the flag for the capsule
     }
 
     func testEveryWriteCarriesActorAndOneBatchPerCommand() async throws {
