@@ -195,3 +195,18 @@ The user's words: "why does cmd+z not work inside the notes?" They're running th
 - **Verify** with real key events on the scratch instance if the screen is unlocked. Otherwise use the debug steps, and say which.
 
 Commit, rebuild Release and report back.
+
+## 14. The CLI nudges the app to sync at once (after the headings build)
+
+The user approved this. Today the app sees a CLI change only at its next sync: up to 30 s later, or when the app becomes active.
+
+- **The CLI:** after any command that pushed ops to the server (including `tasks run` and `tasks mcp` writes), it posts a Darwin notification with `notify_post("com.elguindi.Tasks.changed")`. It posts after the push succeeds, not before.
+- **The app:**
+  - It registers for that name (`notify_register_dispatch` on the main queue) and triggers its normal sync when the notification arrives.
+  - The trigger is debounced, so a burst of CLI commands means one sync, not ten, and it's ignored if a sync is already in flight. A follow-up sync runs after the in-flight one finishes.
+  - Nothing is shown on screen. The notification carries no data; the changes still arrive through `/v1/sync`.
+- **Debug and Release:** a scratch Debug app and a Debug CLI shouldn't nudge the real app. Use a different name for Debug builds, or include the data directory or server URL in it, so test runs never poke the installed app.
+- **Spec and docs:** add the trigger to `docs/SPEC.md` §5 "Realtime" and to `docs/AGENTS.md`.
+- **Verify:** with the scratch app open against `wrangler dev`, a CLI write appears in the app within about 1 s, not 30 s. A burst of 20 writes causes one or two syncs.
+
+Commit, rebuild Release and report back. Install the CLI only when the coordinator says so.
