@@ -57,27 +57,14 @@ enum SB {
 /// reads re-renders the sidebar when it changes.
 @MainActor
 struct SidebarModel {
-    enum Key: Hashable {
-        case today
-        case list(EntityID)
-
-        var listID: EntityID? {
-            if case .list(let id) = self { id } else { nil }
-        }
-
-        var route: WindowState.Route {
-            switch self {
-            case .today: .today
-            case .list(let id): .list(id)
-            }
-        }
-    }
+    /// A row is a place to go: Today, a view (§22) or a list.
+    typealias Key = WindowState.Route
 
     struct Row: Equatable {
         var key: Key
         var y: CGFloat
         var name: String
-        /// nil: Today's sun.
+        /// nil: Today's or a view's glyph (§22).
         var monogram: String?
         var slot = 0
         /// "" when zero or archived; "⌘3" while ⌘ is held (`hint`).
@@ -122,7 +109,7 @@ struct SidebarModel {
         let pitch = TK.M.pitch
         var m = SidebarModel()
         m.route = w.route
-        m.current = w.route.listID.map(Key.list) ?? .today
+        m.current = w.route
         m.sidebarVisible = w.sidebarVisible
         m.archiveOpen = w.archiveOpen
         let rename = w.rename?.kind == .list ? w.rename : nil
@@ -136,12 +123,11 @@ struct SidebarModel {
         m.active = active
         let archived = p.archivedLists.ids
 
-        // ⌘1 Today, ⌘2–⌘9 the first eight active lists (the draft has none), in place of the counts.
+        // ⌘1–⌘9 on the first nine rows, top to bottom (the draft has none), in place of the counts (§22).
+        let numbered = hints ? Array(WindowState.Route.sidebarOrder(p).prefix(9)) : []
         func hint(_ key: Key) -> String? {
-            guard hints else { return nil }
-            if key == .today { return "⌘1" }
-            guard let id = key.listID, let i = stored.firstIndex(of: id), i < 8 else { return nil }
-            return "⌘\(i + 2)"
+            guard hints, let i = numbered.firstIndex(of: key) else { return nil }
+            return "⌘\(i + 1)"
         }
         func countText(_ n: Int) -> String { n > 0 ? String(n) : "" }
 
@@ -189,6 +175,20 @@ struct SidebarModel {
         }
         m.rows.append(today)
         y += pitch
+        // The views you plan from, under Today; the logbook and the Trash after the lists. No counts (§22, dc:2236–2242).
+        func viewRow(_ key: Key) {
+            var r = Row(key: key, y: y, name: key.viewName ?? "")
+            r.current = m.current == key
+            r.drop = (key == .completed && over == .completed) || (key == .trash && over == .trash)
+            if let h = hint(key) {
+                r.count = h
+                r.hint = true
+            }
+            m.rows.append(r)
+            y += pitch
+        }
+        viewRow(.upcoming)
+        viewRow(.undated)
         m.listsLabelY = y
         y += pitch
         m.listTop = y
@@ -204,6 +204,9 @@ struct SidebarModel {
             m.rows.append(listRow(d.id, y: y + CGFloat(target) * pitch, archived: false))
         }
         y += CGFloat(active.count) * pitch
+        y += SB.archiveGap
+        viewRow(.completed)
+        viewRow(.trash)
 
         if !archived.isEmpty {
             y += SB.archiveGap
@@ -217,7 +220,7 @@ struct SidebarModel {
             }
         }
         m.height = y + SB.bottomPad
-        m.keys = [.today] + stored.map(Key.list) + (w.archiveOpen ? archived.map(Key.list) : [])
+        m.keys = WindowState.Route.sidebarOrder(p) + (w.archiveOpen ? archived.map(Key.list) : [])
         return m
     }
 }

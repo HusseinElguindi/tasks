@@ -40,12 +40,14 @@ struct DetailPane: View {
         .accessibilityLabel("Task details")
     }
 
-    /// The selection minus deleted tasks; the draft when it's what's selected (dc:1611, 1930).
+    /// The selection minus deleted tasks (in the Trash, only deleted ones, §22); the draft when it's what's selected
+    /// (dc:1611, 1930).
     private var selectedItems: [DetailItem] {
         if let d = window.draft, window.selection == [d.id] { return [DetailItem(d)] }
         let p = store.projection
+        let trash = window.route == .trash
         return window.selection.sorted().compactMap { id -> DetailItem? in
-            guard id != window.draft?.id, let m = p.taskModel(id), !m.deleted else { return nil }
+            guard id != window.draft?.id, let m = p.taskModel(id), m.deleted == trash else { return nil }
             return DetailItem(m)
         }
     }
@@ -246,7 +248,11 @@ private struct DetailHeader: View {
             }
             Spacer(minLength: 0)
             HStack(spacing: 2) {
-                if !items.isEmpty {
+                if !items.isEmpty && window.route == .trash {
+                    // In the Trash, Put Back replaces Delete (§22, dc:120).
+                    HeaderIconButton(glyph: .putBack, tip: items.count > 1 ? "Put Back \(items.count) Tasks" : "Put Back", keys: "⌘⌫",
+                                     overlays: window.overlays) { actions.putBack(ids) }
+                } else if !items.isEmpty {
                     HeaderIconButton(glyph: .trash, tip: items.count > 1 ? "Delete \(items.count) Tasks" : "Delete", keys: "⌘⌫",
                                      overlays: window.overlays) { actions.delete(ids) }
                         // Under an untitled new task: 45% and deaf, switching at once (css:286).
@@ -287,14 +293,17 @@ private struct SingleDetail: View {
 
     var body: some View {
         let inert = item.isDraft && item.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        // The Trash reads but doesn't edit: the title, the rows and the notes are deaf to the pointer (§22, css:429–430).
+        let readOnly = window.route == .trash
         ScrollView(.vertical) {
             DetailColumn(minHeight: max(0, viewport - 8 - 18), flexIndex: 3, flexMin: 12 + 120) {
-                titleRow(inert: inert)
+                titleRow(inert: inert, readOnly: readOnly)
                 // Everything under the title starts at the checkbox's left edge and spans the content width, as the
                 // title row does (v2 feedback 6).
                 DetailProps(store: store, window: window, items: [item], actions: actions)
                     .padding(.top, 12)
                     .dimmed(inert)
+                    .allowsHitTesting(!readOnly)
                 Rectangle()
                     .fill(tk.lineSep.swiftUI)
                     .frame(height: 1)
@@ -304,6 +313,7 @@ private struct SingleDetail: View {
                            palette: tk, layoutTick: notesTick, onLayoutChange: { notesTick &+= 1 })
                     .padding(.top, 12)
                     .dimmed(inert)
+                    .allowsHitTesting(!readOnly)
                 Text(meta)
                     .font(Font(TK.Font.caption))
                     .foregroundStyle(tk.ink3.swiftUI)
@@ -319,7 +329,7 @@ private struct SingleDetail: View {
         .scrollBounceBehavior(.basedOnSize)
     }
 
-    private func titleRow(inert: Bool) -> some View {
+    private func titleRow(inert: Bool, readOnly: Bool) -> some View {
         HStack(alignment: .top, spacing: 10) {
             DetailCheckbox(id: item.id, on: item.completedAt != nil, placeholder: item.isDraft, inert: inert, palette: tk) {
                 actions.toggleComplete([item.id])
@@ -327,14 +337,20 @@ private struct SingleDetail: View {
             .frame(width: DetailCheckView.side, height: DetailCheckView.side)
             .padding(-(DetailCheckView.side - TK.M.check) / 2)
             .padding(.top, 2)
+            .opacity(readOnly ? 0.6 : 1)
+            .allowsHitTesting(!readOnly)
             TitleField(store: store, window: window, refs: refs, id: item.id, text: item.title, measure: liveTitle ?? item.title,
                        palette: tk, onLiveText: { liveTitle = $0 })
+                .allowsHitTesting(!readOnly)
         }
     }
 
-    /// "Created Oct 26 · Completed Oct 30" (dc:1964).
+    /// "Created Oct 26 · Completed Oct 30" (dc:1964); in the Trash "Created Aug 20 · Deleted Oct 28" (dc:2437).
     private var meta: String {
         func day(_ ms: Int) -> String { DateLabel.monthDay(CalendarDate(Date(timeIntervalSince1970: TimeInterval(ms) / 1000))) }
+        if window.route == .trash, let t = store.projection.task(item.id), t.deleted {
+            return "Created " + day(item.createdAt) + " · Deleted " + day(ViewItems.deletedAt(t))
+        }
         return "Created " + day(item.createdAt) + (item.completedAt.map { " · Completed " + day($0) } ?? "")
     }
 }

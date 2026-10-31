@@ -60,8 +60,8 @@ final class SidebarRowLayer: CALayer {
         hovered = h
         palette = p
 
-        let tileColor = r.monogram == nil ? p.ansiYellow : p.listColor(slot: r.slot)
-        tile.set(monogram: r.monogram, color: tileColor, palette: p)
+        let tileColor = r.monogram == nil ? r.key.glyphColor(p) : p.listColor(slot: r.slot)
+        tile.set(monogram: r.monogram, color: tileColor, palette: p, glyph: r.key.glyph ?? .sun)
         tile.position = CGPoint(x: SB.tileX + tile.bounds.width / 2, y: SB.rowHeight / 2)
 
         let bg: NSColor? = r.drop ? p.accentTint : r.editing ? p.fillControl : r.current ? p.fillStrong : nil

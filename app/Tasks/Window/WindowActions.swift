@@ -20,9 +20,10 @@ struct WindowActions {
     /// The open view's rows as they stand (cheap: a pass over its buckets).
     var layout: TaskLayout { TaskLayout.make(store: store, window: window) }
 
-    /// The selected tasks that exist (never the draft), top to bottom.
+    /// The selected tasks that exist (never the draft), top to bottom. In the Trash, the deleted ones (§22).
     var targetIDs: [EntityID] {
-        let sel = window.selection.filter { id in id != window.draft?.id && p.task(id).map { !$0.deleted } == true }
+        let trash = window.route == .trash
+        let sel = window.selection.filter { id in id != window.draft?.id && p.task(id).map { $0.deleted == trash } == true }
         guard !sel.isEmpty else { return [] }
         let order = layout.order
         var ids = order.filter(sel.contains)
@@ -91,7 +92,7 @@ struct WindowActions {
         settleNow()
         var route = route
         if case .list(let id) = route, p.list(id) == nil { route = .today }
-        let sel = selection.filter { p.task($0).map { !$0.deleted } == true }
+        let sel = selection.filter { p.task($0).map { $0.deleted == (route == .trash) } == true }
         if route != window.route {
             go(route, select: Array(sel))
         } else {
@@ -199,11 +200,11 @@ struct WindowActions {
         window.typeAt = now
         let buf = window.typeBuffer
         if inSidebar {
-            // Lists before Today, so "t" goes to "Tasks app".
+            // Lists before Today and the views, so "t" goes to "Tasks app" and "u" to Upcoming (§22, dc:1500).
             if let id = p.activeLists.ids.first(where: { (p.list($0)?.name.lowercased() ?? "").hasPrefix(buf) }) {
                 go(.list(id), focus: .sidebar)
-            } else if "today".hasPrefix(buf) {
-                go(.today, focus: .sidebar)
+            } else if let r = WindowState.Route.sidebarOrder(p).first(where: { !$0.isList && routeName($0).lowercased().hasPrefix(buf) }) {
+                go(r, focus: .sidebar)
             }
             return
         }
@@ -247,12 +248,11 @@ struct WindowActions {
         if let first = ids.first { window.taskList?.scrollToVisible(first) } else { window.taskList?.scrollToTop() }
     }
 
-    /// ⌘1 Today, ⌘2–⌘9 the first eight active lists.
+    /// ⌘1–⌘9: the sidebar's first nine rows, top to bottom (§22): Today, Upcoming, Undated, then the lists.
     func goNumber(_ n: Int) {
-        if n == 1 { go(.today); return }
-        let lists = p.activeLists.ids
-        guard n - 2 < lists.count else { return }
-        go(.list(lists[n - 2]))
+        let order = WindowState.Route.sidebarOrder(p)
+        guard n >= 1, n <= min(9, order.count) else { return }
+        go(order[n - 1])
     }
 
     // MARK: - Detail pane (§4: v1's transition, unchanged)
@@ -275,10 +275,14 @@ struct WindowActions {
 
     // MARK: - Adding: a new task opens in the detail pane (§6, dc:837–872)
 
-    func newTask(in listID: EntityID? = nil) {
+    func newTask(in listID: EntityID? = nil, day: CalendarDate? = nil) {
+        // Completed and Trash add in the default list (§22).
+        if window.route.noAdd { addInDefault(); return }
         if untitledDraft, let d = window.draft {
-            // Already adding and nothing typed: back to that title. From another Today group's +, the draft moves there.
+            // Already adding and nothing typed: back to that title. From another Today group's +, the draft moves there;
+            // from another day's, to that day.
             if let listID, listID != d.list { window.draft?.list = listID }
+            if let day, window.route == .upcoming, day != d.when { window.draft?.when = day }
             window.titleFocusRequest = .init(selection: .end)
             window.taskList?.scrollToVisible(d.id)
             return
@@ -293,7 +297,7 @@ struct WindowActions {
             return
         }
         let id = store.newID()
-        let draft = WindowState.Draft(id: id, list: list, title: "", when: window.route == .today ? today : nil,
+        let draft = WindowState.Draft(id: id, list: list, title: "", when: newTaskWhen(day: day),
                                       createdAt: nowMs, prevSelection: window.selection, prevPaneOpen: window.detailOpen)
         overlays.picker = nil
         window.draft = draft
@@ -342,6 +346,12 @@ struct WindowActions {
     /// caret at the end of its title, and only focuses the title if the pane already shows it; "Rename in the list"
     /// renames it in its row with `caret`.
     func editTask(_ id: EntityID, caret: WindowState.Rename.Caret = .all) {
+        // The Trash reads but doesn't edit: Return and a double-click show the task in the detail pane (§22).
+        if window.route == .trash {
+            select([id])
+            openDetail()
+            return
+        }
         guard AppModel.TaskEditing.current == .detail else { startRename(id, caret: caret); return }
         guard let t = p.task(id), !t.deleted else { return }
         endEdits()
@@ -404,6 +414,7 @@ struct WindowActions {
     // MARK: - Completing (§8, dc:883–899)
 
     func toggleComplete(_ ids: [EntityID]? = nil) {
+        guard window.route != .trash else { return }
         let ids = (ids ?? targetIDs).filter { p.task($0) != nil }
         let tasks = ids.compactMap(p.task)
         guard !tasks.isEmpty else { return }
@@ -441,6 +452,8 @@ struct WindowActions {
     // MARK: - Deleting (§9, dc:910–918)
 
     func delete(_ ids: [EntityID]? = nil) {
+        // ⌘⌫ in the Trash is Put Back, as in the Finder (§22).
+        if window.route == .trash { putBack(ids); return }
         let ids = (ids ?? targetIDs).filter { p.task($0).map { !$0.deleted } == true }
         guard !ids.isEmpty else { return }
         let next = nextSelection(afterRemoving: ids)
@@ -457,6 +470,7 @@ struct WindowActions {
     // MARK: - Moving between lists (§10, dc:919–929)
 
     func move(_ ids: [EntityID]? = nil, to list: EntityID) {
+        guard window.route != .trash else { return }
         if let d = window.draft, (ids ?? Array(window.selection)) == [d.id] {
             window.draft?.list = list
             return
@@ -489,7 +503,7 @@ struct WindowActions {
         } else if let next = others[t...].first(where: open.contains) {
             anchor = .before(next)
         } else {
-            anchor = window.route == .today ? .bottom : .top
+            anchor = window.route.listID == nil ? .bottom : .top
         }
         let name = moving.count > 1 ? "Move \(moving.count) Tasks" : "Move"
         undoable(name) { store.reorder(moving, in: group, at: anchor, name: name, undoManager: undo) }
@@ -497,6 +511,7 @@ struct WindowActions {
 
     /// ⌥⌘↑ ⌥⌘↓ (dc:962–975).
     func moveSelectionBy(_ delta: Int) {
+        if viewMoveBy(delta) { return }
         let L = layout
         let ids = targetIDs.filter { L.group($0) != nil && !L.isDone($0) }
         guard let first = ids.first, let gid = L.group(first), let g = L.groups.first(where: { $0.listID == gid }) else { return }
@@ -513,15 +528,12 @@ struct WindowActions {
     // MARK: - Dates (§11, dc:930–941)
 
     func setDate(_ ids: [EntityID]? = nil, _ field: Overlays.Picker.Field, _ date: CalendarDate?) {
+        guard window.route != .trash else { return }
         let ids = (ids ?? targetIDs).filter { p.task($0) != nil }
         guard !ids.isEmpty else { return }
         let name = field == .when ? (date == nil ? "Remove When" : "Set When") : (date == nil ? "Remove Deadline" : "Set Deadline")
-        let leavesToday = window.route == .today && ids.contains { id in
-            guard let t = p.task(id) else { return false }
-            let when = field == .when ? date : t.when
-            let deadline = field == .deadline ? date : t.deadline
-            return !((when.map { $0 <= today } ?? false) || (deadline.map { $0 <= today } ?? false))
-        }
+        // Today's rule, and Upcoming's and Undated's (§22).
+        let leavesToday = leavesView(ids) { t in (field == .when ? date : t.when, field == .deadline ? date : t.deadline) }
         let next = leavesToday ? nextSelection(afterRemoving: ids) : []
         overlays.picker = nil
         let did = undoable(name) {
@@ -535,7 +547,7 @@ struct WindowActions {
             if let date {
                 text = (field == .when ? "Scheduled for " : "Due ") + DateLabel.long(date, today: today)
             } else {
-                text = "Removed from Today"
+                text = "Removed from \(window.route.viewName ?? "Today")"
             }
             overlays.showNotice(text, undo: true)
         }

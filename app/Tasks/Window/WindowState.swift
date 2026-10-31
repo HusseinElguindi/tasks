@@ -13,6 +13,8 @@ import TasksCore
 final class WindowState {
     enum Route: Hashable {
         case today
+        /// The four views beside Today (§22): their rows are queries over the tasks (`TaskLayout.buildView`).
+        case upcoming, undated, completed, trash
         case list(EntityID)
 
         var listID: EntityID? {
@@ -67,11 +69,17 @@ final class WindowState {
             /// A sidebar list.
             case list(EntityID)
         }
-        enum Over: Equatable { case today, list(EntityID) }
+        enum Over: Equatable { case today, list(EntityID), completed, trash }
         enum Phase: Equatable { case drag, fly, done }
+        /// How the rows answer (§22): within a group (§14); onto any day in Upcoming; or not at all in Completed and
+        /// Trash, where only the sidebar takes the drop.
+        enum Mode: Equatable { case group, days, sidebarOnly }
         var kind: Kind
         var target: Int
         var over: Over?
+        var mode: Mode = .group
+        /// Upcoming: the day the dragged rows are laid out on (nil: at home, over a month or past a deadline).
+        var toDay: CalendarDate?
         /// A task drag's pointer is over the sidebar, on a target or not: the copy stays a tag at the pointer and the
         /// group stays closed up the whole way across, so passing a row that takes no drop (the gap between two rows,
         /// a label, the task's own list) never snaps the copy back into the list for a frame (v2 feedback 7).
@@ -103,6 +111,11 @@ final class WindowState {
     /// Holding ⌘ for 450 ms shows ⌘1–⌘9 in the sidebar.
     var cmdHints = false
     var drag: Drag?
+    /// Upcoming and Undated (§22): bumped when an open task's dates or a list's open tasks change (`ViewDates`), so the
+    /// views' rows are read again; and those rows as last read.
+    var viewDatesRevision = 0
+    @ObservationIgnored let viewDates = ViewDates()
+    @ObservationIgnored var viewItemsCache: (key: ViewItems.CacheKey, items: ViewItems)?
     /// Popovers, notices and tooltips: their own observable so they never redraw the panes.
     let overlays = Overlays()
 

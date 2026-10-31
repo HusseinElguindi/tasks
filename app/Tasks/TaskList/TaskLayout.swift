@@ -15,9 +15,25 @@ struct TaskLayout {
         var listID: EntityID
         var top: CGFloat
         var ids: [EntityID]
+        /// The views' groups (§22): a list's (Undated), a day's or a month's (Upcoming, Completed, Trash).
+        var kind: GroupKind = .list
+        var day: CalendarDate?
     }
 
-    enum Empty: Equatable { case list, today, allDone }
+    enum GroupKind: Equatable { case list, day, month }
+
+    /// A view's group label: its name, the day's date after it, whether it's an empty day, and its + (§22).
+    struct LabelInfo: Equatable {
+        var name: String
+        var sub: String?
+        var quiet = false
+        var plus = false
+        /// The + adds to this list (Undated) or for this day (Upcoming).
+        var list: EntityID?
+        var day: CalendarDate?
+    }
+
+    enum Empty: Equatable { case list, today, allDone, upcoming, undated, completed, trash }
 
     /// "today" or the list id: motion is tracked only between layouts with the same key.
     var key: String
@@ -25,7 +41,7 @@ struct TaskLayout {
     /// Rows top to bottom, with their y and their group (an index into `groups`, or -1 for done rows).
     var order: [EntityID] = []
     var yList: [CGFloat] = []
-    private var groupIndex: [Int] = []
+    var groupIndex: [Int] = []
     var index: [EntityID: Int] = [:]
     var groups: [Group] = []
     /// Today's group labels by list id (and `doneGroup` for "Completed").
@@ -38,7 +54,11 @@ struct TaskLayout {
     var doneCount = 0
     var height: CGFloat = 0
     var empty: Empty?
+    /// Upcoming's empty state sits under its seven empty days, not 34% down.
+    var emptyTop: CGFloat?
     var draftID: EntityID?
+    /// The views' labels (Today's are list names, from `labels` alone).
+    var labelInfo: [EntityID: LabelInfo] = [:]
 
     static let doneGroup = "\u{1}done"
     static let pitch = TK.M.pitch
@@ -84,6 +104,8 @@ struct TaskLayout {
         var draft: WindowState.Draft?
         var drag: WindowState.Drag?
         var day: CalendarDate
+        /// A view's rows as read this time (`ViewItems`): what its layout depends on beyond the buckets.
+        var view: ViewItems?
     }
 
     /// The layout for the window's view, reused from the last call while its inputs are unchanged.
@@ -101,12 +123,15 @@ struct TaskLayout {
             let active = p.activeLists.ids
             lists = [active, p.todayDone.ids]
             for l in active { lists.append(p.todayTasks(in: l).ids) }
+        case .upcoming, .undated, .completed, .trash:
+            break
         }
+        let view = ViewItems.read(store: store, window: window)
         // The draft's title doesn't move rows.
         var draft = window.draft
         if let title = draft?.title { draft?.title = title.isEmpty ? "" : "x" }
         let inputs = Inputs(route: window.route, lists: lists, archived: archived, completedOpen: completedOpen,
-                            pins: window.pins, draft: draft, drag: window.drag, day: p.day.date)
+                            pins: window.pins, draft: draft, drag: window.drag, day: p.day.date, view: view)
         if let cached = window.layoutCache, cached.inputs == inputs { return cached.layout }
         let layout = build(store: store, window: window, inputs: inputs)
         window.layoutCache = (inputs, layout)
@@ -118,6 +143,8 @@ struct TaskLayout {
         let pins = inputs.pins
         let draft = inputs.draft
         switch inputs.route {
+        case .upcoming, .undated, .completed, .trash:
+            return buildView(store: store, inputs: inputs)
         case .list(let listID):
             var L = TaskLayout(key: listID, top: inputs.archived ? TK.M.rowTopArchived : TK.M.rowTop)
             var open = inputs.lists[0]
@@ -208,14 +235,14 @@ struct TaskLayout {
         }
     }
 
-    private mutating func reserve(_ n: Int) {
+    mutating func reserve(_ n: Int) {
         order.reserveCapacity(n)
         yList.reserveCapacity(n)
         groupIndex.reserveCapacity(n)
         index.reserveCapacity(n)
     }
 
-    private mutating func place(_ id: EntityID, _ y: CGFloat, group: Int) {
+    mutating func place(_ id: EntityID, _ y: CGFloat, group: Int) {
         index[id] = order.count
         order.append(id)
         yList.append(y)
@@ -261,8 +288,10 @@ struct TaskLayout {
 
     /// The rows of the dragged group part to open a gap at the target; over the sidebar the group closes up and
     /// everything below it moves up, because the rows are leaving (dc:655–676).
-    private mutating func applyDrag(_ drag: WindowState.Drag?) {
-        guard let drag, drag.phase != .done, case .tasks(let dragged, let groupID) = drag.kind,
+    mutating func applyDrag(_ drag: WindowState.Drag?) {
+        // Upcoming's drag is laid out by `buildView` (the rows at the day under the copy); in Completed and Trash nothing
+        // parts (§22).
+        guard let drag, drag.phase != .done, drag.mode == .group, case .tasks(let dragged, let groupID) = drag.kind,
               let gi = groups.firstIndex(where: { $0.listID == groupID }) else { return }
         let g = groups[gi]
         let draggedSet = Set(dragged)

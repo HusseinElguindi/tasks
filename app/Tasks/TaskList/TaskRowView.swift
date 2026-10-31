@@ -26,6 +26,9 @@ struct RowModel: Equatable {
     /// The › may show: not while renaming, on done rows, or with the detail pane open (css:179).
     var openAllowed = true
     var pickerField: Overlays.Picker.Field?
+    /// In the Trash (§22, css:425–428): the title in `ink-secondary` (a done one keeps its struck `ink-tertiary`), the
+    /// checkbox at 60%, and the checkbox and chips deaf to the pointer.
+    var trashed = false
 }
 
 /// A task row (css:159–188): a 30pt shape, 10 in from the pane's sides, radius 8. Checkbox at 10, the title 10 after
@@ -131,6 +134,8 @@ final class TaskRowView: NSView {
         check.position = CGPoint(x: TK.M.rowPadLeft + TK.M.check / 2, y: TK.M.row / 2)
         CATransaction.commit()
         check.set(on: m.done, placeholder: m.draft, palette: palette, animated: anim)
+        // `set` puts the opacity back each time; a trashed row's box is at 60%.
+        if m.trashed { check.setInstant { check.opacity = 0.6 } }
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -183,7 +188,7 @@ final class TaskRowView: NSView {
         // The title: flex 1, nudged up 0.5, its last 24pt fading out (css:166–168).
         let titleX = TK.M.rowPadLeft + TK.M.check + TK.M.titleGap
         let titleW = max(0, right - titleX)
-        let color = (m.done || m.untitled) ? palette.ink3 : palette.ink
+        let color = (m.done || m.untitled) ? palette.ink3 : m.trashed ? palette.ink2 : palette.ink
         let text = m.untitled ? "New Task" : m.title
         title.set(text, font: TK.Font.body, color: same ? (title.foregroundColor.flatMap(NSColor.init(cgColor:)) ?? color) : color)
         title.place(x: titleX, lineTop: (TK.M.row - 16) / 2 - 0.5, lineHeight: 16, width: titleW)
@@ -221,6 +226,7 @@ final class TaskRowView: NSView {
     func part(at p: CGPoint) -> Part {
         guard let m = model else { return .body }
         if style == .row, m.openAllowed, open.frame.insetBy(dx: 0, dy: 0).contains(p) { return .open }
+        if m.trashed { return .body }
         for (field, f) in chipFrames where f.contains(p) { return .chip(field) }
         // The checkbox's hit area is 30×30 around it (css:192); a new task's box ignores the pointer.
         let c = check.position
@@ -329,6 +335,11 @@ extension CheckLayer {
 /// "Completed" label has no button.
 final class GroupLabelView: NSView {
     private let label = TextLayer()
+    /// A day's date after its name (§22): 400 `ink-quiet`, 6 after the name.
+    private let sub = TextLayer()
+    private var palette = TK.Palette.dark
+    private var quiet = false
+    private var drop = false
     let plus = IconButtonLayer(.plus, size: 22, glyphSize: 12)
     private(set) var key: EntityID = ""
     private(set) var hasPlus = true
@@ -341,8 +352,10 @@ final class GroupLabelView: NSView {
         wantsLayer = true
         layerContentsRedrawPolicy = .never
         layer?.addSublayer(label)
+        layer?.addSublayer(sub)
         layer?.addSublayer(plus)
         label.actions = TaskRowView.noActions
+        sub.actions = TaskRowView.noActions
         plus.reveal(false, animated: false)
     }
 
@@ -353,12 +366,29 @@ final class GroupLabelView: NSView {
         layer?.setScaleDeep(window?.backingScaleFactor ?? 2)
     }
 
-    func configure(key: EntityID, name: String, plus hasPlus: Bool, palette: TK.Palette, width: CGFloat) {
+    func configure(key: EntityID, name: String, plus hasPlus: Bool, palette: TK.Palette, width: CGFloat,
+                   sub subText: String? = nil, quiet: Bool = false) {
         self.key = key
         self.hasPlus = hasPlus
+        self.palette = palette
+        self.quiet = quiet
+        let room = max(0, width - 12 - (hasPlus ? 32 : 0))
         layer?.setInstant {
-            label.set(name, font: TK.Font.label, color: palette.ink3)
-            label.place(x: 12, lineTop: 10, lineHeight: 14, width: max(0, width - 12 - (hasPlus ? 32 : 0)))
+            let colors = labelColors
+            label.set(name, font: TK.Font.label, color: colors.name)
+            // The name takes at most 70% when a date follows it (css:417).
+            let nameW = subText == nil ? room : min(TextLayer.width(name, font: TK.Font.label), room * 0.7)
+            // 1pt of room past the text, so the clip never takes a glyph's overhang.
+            label.place(x: 12, lineTop: 10, lineHeight: 14, width: nameW + 1)
+            label.masksToBounds = true
+            if let subText, !subText.isEmpty {
+                sub.isHidden = false
+                sub.set(subText, font: Self.subFont, color: colors.sub)
+                sub.place(x: 12 + nameW + 6, lineTop: 10, lineHeight: 14, width: max(0, room - nameW - 6))
+                sub.masksToBounds = true
+            } else {
+                sub.isHidden = true
+            }
             plus.isHidden = !hasPlus
             plus.setPalette(palette)
             plus.position = CGPoint(x: width - 5 - 11, y: 6 + 11)
@@ -366,6 +396,36 @@ final class GroupLabelView: NSView {
     }
 
     func plusContains(_ p: CGPoint) -> Bool { hasPlus && plus.frame.contains(p) }
+
+    nonisolated(unsafe) static let subFont = NSFont.systemFont(ofSize: 11, weight: .regular)
+
+    #if DEBUG
+    var debugLit: Bool { drop }
+    #endif
+
+    /// The name `ink-tertiary` (an empty day's `ink-quiet`), the date `ink-quiet`; both `accent-text` on the day a drag
+    /// in Upcoming would land on.
+    private var labelColors: (name: NSColor, sub: NSColor) {
+        if drop { return (palette.accentText, palette.accentText) }
+        return (quiet ? palette.inkQ : palette.ink3, palette.inkQ)
+    }
+
+    /// The drop day lights in on `hover-in`, out on `hover-out` (css:421–422).
+    func setDrop(_ on: Bool, animated: Bool) {
+        guard on != drop else { return }
+        drop = on
+        let c = labelColors
+        if animated && !TK.CA.reduce {
+            let t = on ? TK.CA.hoverInT : TK.CA.hoverOutT
+            label.animate("foregroundColor", to: c.name.cgColor, t)
+            sub.animate("foregroundColor", to: c.sub.cgColor, t)
+        } else {
+            layer?.setInstant {
+                label.foregroundColor = c.name.cgColor
+                sub.foregroundColor = c.sub.cgColor
+            }
+        }
+    }
 
     func setHover(_ on: Bool, overPlus: Bool) {
         if on != hovered {
@@ -481,6 +541,10 @@ final class EmptyStateView: NSView {
         case .list: ("No tasks", "Double-click anywhere here or press ⌘N to add one.")
         case .today: ("Nothing for today", "Tasks you plan for today, or that are due, show up here.")
         case .allDone: ("All done for today", "")
+        case .upcoming: ("Nothing upcoming", "Tasks with a date after today show up here, on the day they reach Today.")
+        case .undated: ("Every task has a date", "Open tasks with no When and no Deadline show up here, by list.")
+        case .completed: ("Nothing completed yet", "Tasks you check off show up here, newest first.")
+        case .trash: ("Trash is empty", "Deleted tasks wait here until you put them back.")
         }
         var y: CGFloat = 0
         layer?.setInstant {
@@ -495,6 +559,11 @@ final class EmptyStateView: NSView {
                 glyph.color = palette.accent
             case .list:
                 glyph.isHidden = true
+            case .upcoming, .undated, .completed, .trash:
+                glyph.isHidden = false
+                let g: Glyph = kind == .upcoming ? .calendar : kind == .undated ? .layers : kind == .completed ? .checkCircle : .trash
+                glyph.set(g, size: 22)
+                glyph.color = palette.inkQ
             }
             if !glyph.isHidden {
                 glyph.frame = CGRect(x: (width - 22) / 2, y: 0, width: 22, height: 22)
