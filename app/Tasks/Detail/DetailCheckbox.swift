@@ -75,7 +75,7 @@ final class DetailCheckView: FlippedLayerView {
 
     override func isAccessibilityElement() -> Bool { true }
     override func accessibilityRole() -> NSAccessibility.Role? { .checkBox }
-    override func accessibilityLabel() -> String? { "Complete" }
+    override func accessibilityLabel() -> String? { "Complete" + (check.isOn ? "" : check.cue.words) }
     override func accessibilityValue() -> Any? { check.isOn ? 1 : 0 }
     override func isAccessibilityEnabled() -> Bool { interactive }
     override func accessibilityPerformPress() -> Bool {
@@ -92,6 +92,8 @@ struct DetailCheckbox: NSViewRepresentable {
     let placeholder: Bool
     /// Under an untitled new task's title: 45% (css:286).
     let inert: Bool
+    /// The row's ring (§24).
+    let cue: CheckLayer.Cue
     let palette: TK.Palette
     let action: () -> Void
 
@@ -112,7 +114,7 @@ struct DetailCheckbox: NSViewRepresentable {
         // The placeholder's 70% is the layer's own; under an untitled title the whole box is 45% (the switch is
         // instant: the checkbox has no opacity transition).
         v.alphaValue = inert ? 0.45 / (placeholder ? 0.7 : 1) : 1
-        v.check.set(on: on, placeholder: placeholder, palette: palette, animated: animated && v.check.isOn != on)
+        v.check.set(on: on, placeholder: placeholder, cue: cue, palette: palette, animated: animated && v.check.isOn != on)
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView: DetailCheckView, context: Context) -> CGSize? {

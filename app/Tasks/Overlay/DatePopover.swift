@@ -140,10 +140,22 @@ private final class DatePickModel {
         return out
     }
 
-    /// "Fri, Nov 6 · in 7 days", or "No date matches “xyz”" (dc:2050).
+    /// "Fri, Nov 6 · in 7 days"; a deadline "Due Sun, Nov 1 · tomorrow", and a past one "… · 1 day overdue"; or
+    /// "No date matches “xyz”" (§24, dc:2926). With a `hint`, the hint takes the relative words' place.
     var preview: String {
         if none { return "No date matches “" + text.trimmingCharacters(in: .whitespacesAndNewlines) + "”" }
-        return DateLabel.long(hot, today: today) + " · " + DateLabel.relative(hot, today: today)
+        let date = (field == .deadline ? "Due " : "") + DateLabel.long(hot, today: today)
+        if hint != nil { return date }
+        let words = field == .deadline && hot < today ? DateLabel.deadlineWords(hot, today: today) : DateLabel.relative(hot, today: today)
+        return date + " · " + words
+    }
+
+    /// A When after the deadline, or a deadline before the When: a note, not a rule (SPEC §2 has none; §24, dc:2924).
+    var hint: String? {
+        guard !none, let other else { return nil }
+        if field == .when, hot > other { return "after the deadline" }
+        if field == .deadline, hot < other { return "before the When" }
+        return nil
     }
 }
 
@@ -246,7 +258,8 @@ private struct DatePopover: View {
 
     private var field: some View {
         HStack(spacing: 0) {
-            GlyphView(glyph: .calendar, size: 14, color: tk.inkTertiary.swiftUI)
+            // The date it sets: the calendar for When, the flag for Deadline (§24).
+            GlyphView(glyph: model.field == .when ? .calendar : .flag, size: 14, color: tk.inkTertiary.swiftUI)
             DateFieldView(placeholder: model.placeholder, ref: fieldRef,
                           onText: { model.typed($0) }, onKey: { key($0) })
                 .padding(.leading, 7)
@@ -317,7 +330,7 @@ private struct DatePopover: View {
                         let d = days[week * 7 + i]
                         DayCell(date: d, today: m.today,
                                 out: d.year != m.month.year || d.month != m.month.month,
-                                isToday: d == m.today, isCur: d == m.cur, isOther: d == m.other,
+                                isToday: d == m.today, isCur: d == m.cur, isOther: d == m.other, otherIsDeadline: m.field == .when,
                                 isHot: d == m.hot && !m.none) {
                             apply(d)
                         }
@@ -333,10 +346,17 @@ private struct DatePopover: View {
         VStack(spacing: 0) {
             Rectangle().fill(tk.lineSeparator.swiftUI).frame(height: 1)
             HStack(spacing: 8) {
-                Text(model.preview)
-                    .font(.system(size: 12))
-                    .foregroundStyle((model.none ? tk.inkTertiary : tk.ink).swiftUI)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 6) {
+                    Text(model.preview)
+                        .foregroundStyle((model.none ? tk.inkTertiary : tk.ink).swiftUI)
+                    // "· after the deadline": the dot in `ink-tertiary`, the note in `attention` (css:536–537).
+                    if let hint = model.hint {
+                        Text("· ").foregroundColor(tk.inkTertiary.swiftUI) + Text(hint).foregroundColor(tk.attention.swiftUI)
+                    }
+                }
+                .font(.system(size: 12))
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 Text("↩")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(tk.inkTertiary.swiftUI)
@@ -436,9 +456,9 @@ private struct MonthArrow: View {
 }
 
 /// A day (css:333–337): a 28pt capsule a seventh of the grid wide, 12pt tabular. Other months `ink-quiet`; today
-/// `accent-text` semibold; the current date a 1.5pt inset `accent` ring; the other date a 4pt `attention` dot 3pt from
-/// the bottom; the highlighted day `accent` with `on-accent` semibold and no ring. Hover: `hover`. Only the fill eases
-/// (`icon`), as in the CSS.
+/// `accent-text` semibold; the current date a 1.5pt inset `accent` ring; the other date a 4pt dot 3pt from the
+/// bottom, by kind: a deadline `attention`, a When `ink-tertiary` (§24); the highlighted day `accent` with
+/// `on-accent` semibold and no ring. Hover: `hover`. Only the fill eases (`icon`), as in the CSS.
 private struct DayCell: View {
     let date: CalendarDate
     let today: CalendarDate
@@ -446,6 +466,7 @@ private struct DayCell: View {
     let isToday: Bool
     let isCur: Bool
     let isOther: Bool
+    let otherIsDeadline: Bool
     let isHot: Bool
     let action: () -> Void
     @Environment(\.tk) private var tk
@@ -467,7 +488,7 @@ private struct DayCell: View {
             }
             .overlay(alignment: .bottom) {
                 if isOther {
-                    Circle().fill(tk.attention.swiftUI).frame(width: 4, height: 4).padding(.bottom, 3)
+                    Circle().fill((otherIsDeadline ? tk.attention : tk.inkTertiary).swiftUI).frame(width: 4, height: 4).padding(.bottom, 3)
                 }
             }
             .contentShape(Capsule(style: .circular))

@@ -306,6 +306,17 @@ final class TaskRowView: NSView {
 
     func chipFrame(_ field: Overlays.Picker.Field) -> CGRect? { chipFrames.first { $0.0 == field }?.1 }
 
+    #if DEBUG
+    /// Debug (§24): what the row shows of its dates: the When (or "dropped"), the Deadline and its tone, the ring.
+    var debugDates: String {
+        guard let m = model else { return "-" }
+        let when = m.when.map { whenChip.isHidden ? "dropped" : "'\($0.content.text)'" } ?? "-"
+        let dl = m.deadline.map { "'\($0.content.text)' \($0.content.tone)" } ?? "-"
+        let cue = [m.cue.deadline.map { "\($0)" }, m.cue.planned ? "planned" : nil].compactMap { $0 }.joined(separator: "+")
+        return "when=\(when) deadline=\(dl) ring=\(cue.isEmpty ? "-" : cue)\(m.done ? " done" : "")"
+    }
+    #endif
+
     /// A date's tooltip (§24), while its chip is shown.
     func chipTip(_ field: Overlays.Picker.Field) -> String? {
         guard chipFrame(field) != nil else { return nil }

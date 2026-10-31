@@ -13,6 +13,8 @@ import TasksCore
 ///     act:new   act:newday:+N   act:newin:<list>   act:title:<text>   act:commit   act:undo   act:redo
 ///     act:typesel:<letters>   (type-select in the sidebar)   act:menu:/path.txt   (the selection's context menu)
 ///     act:rows:/path.txt   (appends the route, the selection and every laid-out row and label with its window frame)
+///     act:day:+N   (the day turns over to N days from now, as at midnight; 0 puts it back)
+///     act:dates:/path.txt   (appends every row's When, Deadline and ring as shown, §24)
 ///     act:trace:MS:/path.txt   (for MS ms, before each commit: the rows' and labels' on-screen y, the drag copy's
 ///                               origin and opacity, and the lit label; one line per turn that changed)
 @MainActor
@@ -64,6 +66,10 @@ enum DebugViews {
             append("menu \(a.routeName(w.route)): " + titles(Menus.task(a.targetIDs, actions: a)), to: rest)
         case "rows": append(rows(w, store: store), to: rest)
         case "sync": store.requestSync(force: true)
+        // §24: the day turning over, as at midnight: Today and every date's words and rings move to the new day
+        // (`act:day:+1`; `act:day:0` puts the real day back).
+        case "dates": if let s = w.taskList?.debugDates() { append("dates \(a.routeName(w.route)) today=\(p.day.date.string)\n" + s, to: rest) }
+        case "day": store.projection.setDay(Day(containing: Date().addingTimeInterval(86_400 * (Double(rest) ?? 0))))
         case "newheading": a.newHeading()
         case "titlerename": a.startTitleRename()
         case "headingnotes": if let id = task(rest) { a.editHeadingNotes(id) }

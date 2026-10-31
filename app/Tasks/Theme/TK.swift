@@ -138,8 +138,9 @@ extension TK {
         nonisolated(unsafe) static let bodyMedium = NSFont.systemFont(ofSize: 13, weight: .medium)   // .ph .pt, .crow .cl
         nonisolated(unsafe) static let label = NSFont.systemFont(ofSize: 11, weight: .semibold)      // .glabel 11/14
         nonisolated(unsafe) static let brand = NSFont.systemFont(ofSize: 13, weight: .semibold)      // .sbhead 13/16
-        nonisolated(unsafe) static let chip = NSFont.systemFont(ofSize: 11, weight: .medium)         // .chip 11/14
-        nonisolated(unsafe) static let chipLarge = NSFont.systemFont(ofSize: 12, weight: .medium)    // .chip.lg
+        // Dates' digits are tabular, so "3d left" and "14d left" line up down a column (§24, css:487).
+        nonisolated(unsafe) static let chip = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)       // .chip 11/14
+        nonisolated(unsafe) static let chipLarge = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)  // .chip.lg
         nonisolated(unsafe) static let small = NSFont.systemFont(ofSize: 12)                         // .where, .rel, .bs
         nonisolated(unsafe) static let tooltip = NSFont.systemFont(ofSize: 11)                       // .tip 11/14
         nonisolated(unsafe) static let detailTitle = NSFont.systemFont(ofSize: 15, weight: .semibold) // .dtitle 15/20

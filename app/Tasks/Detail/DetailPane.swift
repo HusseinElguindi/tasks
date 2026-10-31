@@ -352,7 +352,11 @@ private struct SingleDetail: View {
 
     private func titleRow(inert: Bool, readOnly: Bool) -> some View {
         HStack(alignment: .top, spacing: 10) {
-            DetailCheckbox(id: item.id, on: item.completedAt != nil, placeholder: item.isDraft, inert: inert, palette: tk) {
+            // The same ring as the task's row (§24, dc:2868); none in the Trash or on a new task.
+            let cue = readOnly || item.isDraft || item.completedAt != nil ? CheckLayer.Cue()
+                : CheckLayer.Cue(when: item.when, deadline: item.deadline, today: store.projection.dayModel.day.date,
+                                 inToday: window.route == .today)
+            DetailCheckbox(id: item.id, on: item.completedAt != nil, placeholder: item.isDraft, inert: inert, cue: cue, palette: tk) {
                 actions.toggleComplete([item.id])
             }
             .frame(width: DetailCheckView.side, height: DetailCheckView.side)

@@ -1747,6 +1747,12 @@ final class TaskListView: NSView {
         pointerMoved(at: doc.convert(inWin, from: nil))
     }
 
+    /// Debug (§24): every row on screen, top to bottom, with what it shows of its dates.
+    func debugDates() -> String {
+        rows.values.filter { !$0.isHidden && $0.model != nil }.sorted { $0.frame.minY < $1.frame.minY }
+            .map { "  \($0.model!.title): \($0.debugDates)" }.joined(separator: "\n")
+    }
+
     /// Debug: a task row's checkbox center in window points (top-left origin), for clicking it (v2 feedback 18).
     func debugCheckPoint(_ id: EntityID) -> CGPoint? {
         guard let v = rows[id], let w = window else { return nil }

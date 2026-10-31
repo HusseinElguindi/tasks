@@ -139,9 +139,9 @@ private struct DateRow: View {
                         actions.setDate(ids, field, nil)
                     }
                     .padding(.leading, 2)
-                    Text(DateLabel.relative(date, today: today))
+                    Text(relative(date, today: today))
                         .font(Font(TK.Font.small))
-                        .foregroundStyle(tk.inkTertiary.swiftUI)
+                        .foregroundStyle(relativeColor(tone).swiftUI)
                         .lineLimit(1)
                         .fixedSize()
                         .frame(height: 16)
@@ -151,6 +151,23 @@ private struct DateRow: View {
                         .background(ChipFrameReporter(field: field, window: window))
                 }
             }
+        }
+    }
+
+    /// The relative words (§24, dc:2805–2807): a deadline's in words ("2 days overdue", "due today", "1 day left");
+    /// a When's relative date, and on an open task a past one adds "· still in Today", so it doesn't look missed.
+    private func relative(_ date: CalendarDate, today: CalendarDate) -> String {
+        if field == .deadline { return DateLabel.deadlineWords(date, today: today) }
+        let open = !(items.count == 1 && items[0].completedAt != nil)
+        return DateLabel.relative(date, today: today) + (open && date < today ? " · still in Today" : "")
+    }
+
+    /// In the deadline's tone: `danger` overdue, `attention` due today, else `ink-tertiary`.
+    private func relativeColor(_ tone: ChipLayer.Tone) -> NSColor {
+        switch tone {
+        case .late: tk.danger
+        case .due: tk.attention
+        case .neutral, .soon: tk.inkTertiary
         }
     }
 
