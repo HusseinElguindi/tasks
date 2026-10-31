@@ -160,3 +160,22 @@ The user keeps getting "Tasks wants to use your confidential information stored 
 4. **Don't touch the "Tasks sync token" Keychain item.** The user will click Always Allow once on the next build; after that it should stick.
 
 Document it in `app/README.md`. Commit, build Release and report back.
+
+## 12. Branding: the app mark and "Tasks" above Today in the sidebar
+
+The user's words: "we need some branding. like the small app logo and Tasks before the 'Today' in the sidebar, like in the claude design for the logo"
+
+**Reference:** the "Sidebar header" board in the logo canvas (https://claude.ai/artifact/ScTE29QmxCwxJxfRdnrNPd), with its source at `design/logo/Sheet.dc.html` around line 168.
+- The sidebar gets a 34pt header row under the traffic-light row, above Today: the bare 04 · Log mark at 18pt, an 8pt gap, then "Tasks" in 13pt semibold ink, inset 10pt like the rows.
+- Today follows 6pt below it.
+
+**The mark:** use the final mark from `design/logo/final/svg/`. Use `mark-dark-small.svg` for the small cut at 18pt if it reads better than `mark-dark.svg`; compare them on a render.
+- Draw it as a vector or a template-free image so it stays crisp at 1× and 2×.
+- Check it in the Light theme as well. The app icon is dark only, but this mark sits on the light sidebar, so use a light-appearance variant if the canvas has one, or make sure the dark mark reads well there.
+
+**Behaviour:**
+- It isn't a button. No hover state; it's purely a label.
+- When the sidebar collapses, it goes with the sidebar and doesn't move into the title bar.
+- The window-controls line (spec §4) and the alignment rules stay intact.
+
+Update the spec and the prototype source, then commit, rebuild Release and report back.
