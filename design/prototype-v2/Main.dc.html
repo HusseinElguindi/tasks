@@ -2741,7 +2741,7 @@ class Component extends DCLogic {
       // No add zone and no hover "New Task" row (v2 feedback 2); a double-click on the empty space adds.
       hasZone: false, zoneStyle: '',
       ghostShow: false,
-      crow: !!routeList && L.done > 0, crowCls: 'crow' + (Date.now() - (this.crowEnterAt || 0) < MOTION_WINDOW_MS ? ' enter' : ''), crowStyle: 'transform: translateY(' + (L.crowY || 0) + 'px)', crowCount: String(L.done), chevCls: 'gchev' + (crowOpen ? ' open' : ''),
+      crow: !!routeList && L.done > 0, crowCls: 'crow' + (Date.now() - (this.crowEnterAt || 0) < MOTION_WINDOW_MS ? ' enter' : ''), crowStyle: 'transform: translateY(' + (L.crowY || 0) + 'px)', crowCount: String(L.done), chevCls: 'gchev' + (crowOpen ? ' down' : ''),
       empty: !!em, emptyStyle: em ? 'top: ' + (L.emptyTop != null ? L.emptyTop + 'px' : em.top) : '', e1: em ? em.e1 : '', e2: em ? em.e2 : '', hasE2: !!(em && em.e2), glyph: !!(em && em.glyph), emptyCheck: !!(em && em.check),
       eCal: !!(em && em.icon === 'cal'), eLayers: !!(em && em.icon === 'layers'), eDone: !!(em && em.icon === 'done'), eTrash: !!(em && em.icon === 'trash'),
       banner: !!(routeList && routeList.archivedAt), bannerDate: routeList && routeList.archivedAt ? 'Archived ' + md(ymdOf(new Date(routeList.archivedAt))) : '',
@@ -2826,7 +2826,7 @@ class Component extends DCLogic {
       mkRow(l.id, { name: l.name || (l.draft ? '' : 'Untitled'), count, tileCls: 'tile ' + COLOR_CLASS[l.color], mono: monogram(typing ? ed.text : l.name), arch });
     }
     const archY = S.ys.get('lbl-arch');
-    sbItems.push({ isRow: false, isLabel: true, key: 'lbl-arch', cls: 'sbi glabel' + (archY == null ? ' hidden' : ''), style: 'transform: translateY(' + (archY || 0) + 'px)', name: 'Archive', plus: false, chev: true, revealCls: 'gbtn reveal' + (s.archiveOpen ? ' on' : ''), chevCls: 'gchev' + (s.archiveOpen ? ' open' : '') });
+    sbItems.push({ isRow: false, isLabel: true, key: 'lbl-arch', cls: 'sbi glabel' + (archY == null ? ' hidden' : ''), style: 'transform: translateY(' + (archY || 0) + 'px)', name: 'Archive', plus: false, chev: true, revealCls: 'gbtn reveal' + (s.archiveOpen ? ' on' : ''), chevCls: 'gchev' + (s.archiveOpen ? ' down' : '') });
 
     // ----- Overlays
     let drag = { show: false };
@@ -3593,7 +3593,7 @@ class Component extends DCLogic {
       const fold = this.isCollapsed(t.id), n = fold && !t.deleted ? this.openUnder(t.id) : 0;
       return { id: t.id, cls, style: 'transform: translateY(' + y + 'px)', title: t.title || 'New Heading', titleCls: 'ht' + (t.title ? '' : ' untitled'),
         editing: isEd, notEditing: !isEd, editText: isEd ? ed.text : '', autoFocus: isEd && !ed.demo,
-        count: n ? String(n) : '', countCls: 'hct', chevBtnCls: 'hbtn reveal' + (fold ? ' on' : ''), chevCls: 'i i--sm gchev' + (fold ? '' : ' open'),
+        count: n ? String(n) : '', countCls: 'hct', chevBtnCls: 'hbtn reveal' + (fold ? ' on' : ''), chevCls: 'i i--sm gchev' + (fold ? '' : ' down'),
         chevLabel: (fold ? 'Expand ' : 'Collapse ') + (t.title || 'heading'), expanded: fold ? 'false' : 'true', plusTip: 'New Task in ' + (t.title || 'this heading') };
     });
   }
