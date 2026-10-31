@@ -750,6 +750,11 @@ Resources, **deployed 2026-10-30** to `https://tasks.elguindi.workers.dev` with 
 - one DO namespace with a `new_sqlite_classes` migration (`v1`);
 - one secret, `API_TOKEN`.
 
+**Redeployed 2026-10-31** with the user's approval: version `a0db0c46-dab4-4eaf-9e02-5b7ab64ffc83`, commit `9728858`,
+which accepts the optional `actor` and `batch` envelope keys (§5) for the agent CLI. Nothing else changed: the secret,
+the DO and its log were kept (166 entries, untouched by the smoke test, which only pulled). **Never roll the Worker
+back past this version** (§5 "Validation may only loosen").
+
 ### Auth: one fixed token
 
 The app is single-user:
