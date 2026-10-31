@@ -323,11 +323,11 @@ final class TaskListView: NSView {
             } else if let t = p.taskModel(id) {
                 m = RowModel(id: id, title: t.title, untitled: t.title.isEmpty, done: t.isDone, draft: false)
                 m.notes = t.notesSummary
-                // Done rows, in any view, show no dates and no ring: done is done (§24).
-                if !t.isDone {
+                // Done and trashed rows show no dates and no ring (§24, §22).
+                if !t.isDone, !t.deleted {
                     if let when = t.when, !(inToday && when <= today), when != groupDay { m.when = .when(when, today: today) }
                     if let dl = t.deadline { m.deadline = .deadline(dl, today: today, groupDay: groupDay) }
-                    if !t.deleted { m.cue = .init(when: t.when, deadline: t.deadline, today: today, inToday: inToday) }
+                    m.cue = .init(when: t.when, deadline: t.deadline, today: today, inToday: inToday)
                 }
                 if inToday && L.isDone(id) { m.whereText = actions.listName(t.list) }
                 if state.route.isView, let w = viewWhere(L, id: id, list: t.list) { m.whereText = w.name; m.whereSuffix = w.suffix }

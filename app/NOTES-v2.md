@@ -648,7 +648,7 @@ rule are unchanged.
   notes hint (glyph and words in `ink-tertiary`, padding 5; the `hover` capsule while hovered, `accent-tint` while its
   popover is open); the Deadline is the only capsule, at the right, in its tone. Both have tooltips in full words and
   are their own VoiceOver buttons, labelled with the tooltip, that open the popover. Digits are tabular. In Upcoming
-  a deadline on its group's day reads "Due" with its tone. Done rows show no dates.
+  a deadline on its group's day reads "Due" with its tone. Done and trashed rows show no dates (item 19); the detail pane still does.
 - **Narrow widths:** v2 feedback 16's order with the When in the title's slot: the When goes when the title would
   drop under 120pt; the Deadline always shows; the list name keeps 72pt then fades; only at the list pane's 220pt
   minimum does the title go under 120.
