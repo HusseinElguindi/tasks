@@ -112,7 +112,7 @@ Compiled out of Release builds.
 
 | Argument | Effect |
 |----------|--------|
-| `-demoData YES` | Fills an empty data folder with the prototype's seed (`design/prototype-v2/Main.dc.html` dc:426), for side-by-side checks. `-demoBulk N` adds a list "Big" with N tasks. |
+| `-demoData YES` | Fills an empty data folder with the prototype's seed (`design/prototype-v2/Main.dc.html` dc:435–509), for side-by-side checks. `-demoBulk N` adds a list "Big" with N tasks. |
 | `-debugRoute today\|list:<name>`, `-debugSelect <title>`, `-debugDetail YES`, `-debugAdd YES`, `-debugThenRoute …`, `-debugSidebarHidden YES` | Sets up the window. |
 | `-snapshotTo <png>` (`-snapshotQuit YES`, `-snapshotDelay`, `-debugWindowSize WxH`) | Renders the window to a PNG. |
 | `-snapshotSettings <png>` | Renders Settings (⌘,) to a PNG without opening its window. |

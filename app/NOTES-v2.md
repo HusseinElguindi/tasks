@@ -110,7 +110,7 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
    the only "New Task" (pressing the empty area still does what §6 says: caret back to the title, or write it). Checked
    live after ⌘N, the header +, a press on the empty area, a titled draft, in an empty list and in Today, and after
    the draft is written, dropped with Esc, or dropped by hiding the pane (the ghost comes back on hover). The
-   prototype had the same bug (`ghostShow`, dc:1924); fixed there too, in the source only (the published canvas
+   prototype had the same bug (`ghostShow`, dc:1963); fixed there too, in the source only (the published canvas
    wasn't republished).
 
 2. **A click on empty space no longer adds a task.** It clears the selection, as in Rex and Finder; with a task being
@@ -184,7 +184,7 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
      and out again, a drop on no target, a drop on Home (moved) and Esc (back in its slot). The prototype had the
      same dead band and got the same fix, checked in Chrome. Its Esc also left the gap at the last target while the
      copy flew home, so the row snapped back when the drag ended; the gap now reopens at the row's own slot
-     (`homeSlot`, dc:2166–2173), as in the app. Mid-file line numbers are unchanged.
+     (`homeSlot`, dc:2211–2217), as in the app. Mid-file line numbers are unchanged.
 
 8. **Settings ▸ Edit tasks.** A pop-up in a new "Behavior" section (Rex's settings have a behavior page whose rows are
    a title and a one-line description, as this one is): "Open in detail pane", the default, or "Rename in the list".
