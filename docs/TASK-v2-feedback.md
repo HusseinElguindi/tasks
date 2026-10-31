@@ -210,3 +210,23 @@ The user approved this. Today the app sees a CLI change only at its next sync: u
 - **Verify:** with the scratch app open against `wrangler dev`, a CLI write appears in the app within about 1 s, not 30 s. A burst of 20 writes causes one or two syncs.
 
 Commit, rebuild Release and report back. Install the CLI only when the coordinator says so.
+
+## 15. Today's Completed group can be collapsed
+
+The user's words: "allow me to collapse today's completed."
+
+- Today's "Completed" group, the tasks completed today at the bottom, gets the same chevron collapse as a list's Completed section and the headings: the same hover reveal, a 12pt chevron, Space, the same animation, and a count when collapsed.
+- Collapse state is local only, like headings, and survives a relaunch.
+- Check the other views for a Completed group that should behave the same, and keep them consistent.
+
+## 16. Long list names overlap the row at narrow widths
+
+The user's words: "with very long list names and short widths, things start overlapping." Screenshot: `docs/feedback/v2-long-list-name-overlap.png`.
+
+In Today's Completed group, the trailing list name ("SE 463 — Software Project Management, Requirements, and Analysis") is laid out at its full width. It runs left over the checkbox, the title and the notes hint, and past the row's leading edge.
+
+- **The rule:** the row's leading content (checkbox, title, hint) keeps its place, and the trailing label gets whatever room is left. It truncates with the same end fade as titles, never overlapping or extending beyond the row. The title also has to give way, so decide the priority: the title gets a minimum width, then the label truncates, then the title.
+- **Audit every trailing element for the same bug:** list names in Today, Completed, Upcoming and Trash; date chips; the relative date; counts in the sidebar; the header band title; long heading names; long list titles in the large title and the sidebar; and the "Put Back in ▸" menu.
+- **Test** with very long names, in a window and panes at their minimum widths.
+
+Commit, rebuild Release and report back. These two items can run in parallel in worktree subagents.
