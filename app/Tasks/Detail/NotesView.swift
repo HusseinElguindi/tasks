@@ -570,7 +570,7 @@ struct NotesField: NSViewRepresentable {
             let tk = palette
             v.insertionPointColor = tk.ink
             v.selectedTextAttributes = [.backgroundColor: tk.textSel]
-            v.placeholder = NotesStyle.placeholder(tk)
+            refreshPlaceholder()
             v.typingAttributes = NotesStyle.base(tk)
             let themeChanged = shown?.dark != tk.isDark
             if session != nil {
@@ -589,6 +589,27 @@ struct NotesField: NSViewRepresentable {
             host.onLayoutChange()
         }
 
+        /// In the list pane an empty editor shows nothing at rest (§23): the title block fades its own "Notes" in on
+        /// hover, and a heading's shows it, in `ink-quaternary`, only with the caret in it (css:448–450).
+        private func refreshPlaceholder() {
+            guard let v = view else { return }
+            let tk = palette
+            let ph: NSAttributedString?
+            if host.inDetail {
+                ph = NotesStyle.placeholder(tk)
+            } else if case .task = host.target, session != nil {
+                let a = NSMutableAttributedString(attributedString: NotesStyle.placeholder(tk))
+                a.addAttribute(.foregroundColor, value: tk.inkQ, range: NSRange(location: 0, length: a.length))
+                ph = a
+            } else {
+                ph = nil
+            }
+            if v.placeholder != ph {
+                v.placeholder = ph
+                v.needsDisplay = true
+            }
+        }
+
         // MARK: The session
 
         /// A press in the notes, or Return / Tab in the title: the caret, and the session begins.
@@ -603,6 +624,7 @@ struct NotesField: NSViewRepresentable {
         func sessionBegan() {
             guard session == nil, let v = view else { return }
             session = (host.target, v.string)
+            refreshPlaceholder()
             v.clearUndo()
             let w = host.window
             if host.inDetail {
@@ -621,6 +643,7 @@ struct NotesField: NSViewRepresentable {
             guard let s = session, let v = view else { return }
             session = nil
             let text = v.string
+            refreshPlaceholder()
             let w = host.window
             if host.inDetail {
                 if w.detailEditing == .notes { w.detailEditing = nil }
