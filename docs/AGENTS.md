@@ -25,10 +25,10 @@ There are two ways to use it:
 |---|---|
 | `tasks today` | Today: open tasks with When today or earlier, or due today or overdue, by list in sidebar order; then those completed today |
 | `tasks lists` | The sidebar: active lists with their open counts |
-| `tasks ls School [--done]` | One list's open tasks in order (`--done` adds the completed ones). No list means the first |
+| `tasks ls School [--done]` | One list: its notes, then its rows in order, headings as `# 4f2a1c  Labs` lines with their tasks indented under them (`--done` adds the completed tasks). In `--json`, `open` holds the rows in order and a heading has `kind: "heading"`. No list means the first |
 | `tasks archive` | Archived lists |
 | `tasks show 3f9a2c [--history]` | Every field and the notes (Markdown); `--history` adds who changed it and when |
-| `tasks find milk [--list L] [--done \| --open] [--deleted]` | Tasks whose title or notes contain the text, in any list |
+| `tasks find milk [--list L] [--done \| --open] [--deleted]` | Tasks whose title or notes contain the text, in any list (never headings: `tasks ls` lists them) |
 | `tasks date "next fri"` | What a date phrase means today, without writing |
 | `tasks log [--actor 'agent:*'] [--since 2h] [--task T]` | What changed, newest first, with who did it and the undo command |
 
@@ -39,14 +39,17 @@ Every read pulls first, so it's current. `--cached` reads the replica without th
 | Command | Does |
 |---|---|
 | `tasks add "Buy milk" [--list L] [--today] [--when D] [--deadline D] [--notes TEXT\|-] [--top \| --after R \| --before R] [--key K]` | A new task at the bottom of the list (no list: the first list) |
-| `tasks rename 3f9a2c "Buy oat milk"` | Retitle |
-| `tasks notes 3f9a2c - < notes.md` / `tasks notes 3f9a2c "- [ ] call back" --append` | Replace or extend the notes |
+| `tasks rename 3f9a2c "Buy oat milk"` | Retitle a task or a heading |
+| `tasks notes 3f9a2c - < notes.md` / `tasks notes 3f9a2c "- [ ] call back" --append` | Replace or extend the notes of a task or a heading |
 | `tasks done 3f9a2c 77b0e1` / `tasks undone …` / `tasks toggle …` | Complete, mark not done, or ⌘K's toggle |
 | `tasks when fri 3f9a2c …` / `tasks when none …` | Set or remove When (the day it shows in Today) |
 | `tasks deadline "nov 9" 3f9a2c …` / `tasks deadline none …` | Set or remove the Deadline |
 | `tasks move 3f9a2c … --to School` | To another list, at the bottom, in the order given |
-| `tasks move 3f9a2c --top \| --bottom \| --up \| --down \| --after R \| --before R` | Reorder (`--after`/`--before` an open task, in its list) |
-| `tasks delete 3f9a2c …` / `tasks restore …` | Delete, or bring back |
+| `tasks move 3f9a2c --top \| --bottom \| --up \| --down \| --after R \| --before R` | Reorder (`--after`/`--before` an open task or a heading, in its list; `--after` a heading is the top of its section) |
+| `tasks move 4f2a1c --before H \| --after R \| --top \| --bottom \| --up \| --down` | Move a heading with its section (below) |
+| `tasks delete 3f9a2c …` / `tasks restore …` | Delete, or bring back. Deleting a heading keeps its tasks |
+| `tasks heading add Labs [--list L] [--notes TEXT\|-] [--before R \| --after R \| --top]` | A new heading, at the bottom of the list or the place given (below) |
+| `tasks list notes School "Lectures **MWF**"` / `tasks list notes School - < notes.md` / `--append` | Replace or extend a list's notes: the Markdown under its title |
 | `tasks list add School [--top \| --after L]`, `tasks list rename School "School 2026"`, `tasks list move School --after Work`, `tasks list archive School`, `tasks list unarchive School` | Lists. Archiving is the app's "delete list": the tasks come back with it |
 | `tasks sync` | Sync now |
 
@@ -59,6 +62,17 @@ Every read pulls first, so it's current. `--cached` reads the replica without th
 - **Safe to repeat:** everything except `toggle`; `add` too with `--key` (same key, same task).
 - **Limits** fail rather than clamp: titles 1,000 characters, notes 20,000, list names 200. Moving into an archived
   list is refused.
+- **Headings:** a heading is a row in a list that groups the tasks under it, down to the next heading (its
+  section); tasks above the first heading have none. It's a task with `kind: "heading"`: it has a ref, a title and
+  notes, and `rename`, `notes`, `delete` and `restore` take it. It has no completion, dates or other list, so `done`,
+  `undone`, `toggle`, `when`, `deadline` and `move --to` on one fail ("Labs is a heading") and write nothing. Only
+  `tasks ls` shows headings: `today`, `find`, the counts and a task's own output never mention them.
+  - `heading add --before R` puts it above row R (R becomes its first task); `--after R` right after task R, or after
+    heading R's whole section; `--top` is the top of the list; the default is the bottom.
+  - `move <heading>` moves it with its section, completed tasks included, and lands only before another heading or
+    at the end: `--before H` (another heading), `--after R` (after the section R is in), `--top` (before the first
+    heading, never above the tasks without one), `--bottom`, `--up` / `--down` (past one section). It moves alone.
+  - A task `--after` a heading goes to the top of that section, `--before` one to the end of the section above.
 
 ## Output and exit codes
 
@@ -99,8 +113,10 @@ The API, all awaited:
 - Tasks: `add({ title, list, notes, when, deadline, place, key })`, `rename(task, title)`, `setNotes(task, notes)`,
   `complete(tasks)`, `uncomplete(tasks)`, `toggle(tasks)`, `setWhen(tasks, date)`, `setDeadline(tasks, date)`,
   `move(tasks, { list, place })`, `delete(tasks)`, `restore(tasks)`.
-- Lists: `addList(name, place)`, `renameList(list, name)`, `moveList(list, place)`, `archiveList(list)`,
-  `unarchiveList(list)`.
+- Headings: `addHeading({ name, list, notes, place })`; `rename`, `setNotes`, `move`, `delete` and `restore` take
+  one. `list(ref).open` holds the rows in order, headings with `kind: "heading"`.
+- Lists: `addList(name, place)`, `renameList(list, name)`, `setListNotes(list, notes)`, `moveList(list, place)`,
+  `archiveList(list)`, `unarchiveList(list)`.
 - `undo(batch)`, as the only change in a script.
 
 Rules:

@@ -311,12 +311,23 @@ the `TasksCore` code each one runs.
 | Reorder in a Today group | `tasks move 3f9a2c --before 9c1d0f` | `await tasks.move(a, { place: { before: b } })` | `reorder`, with the anchor relative to the full list (SPEC §4) |
 | Move into another list at a spot (two gestures in the app) | `tasks move 3f9a2c --to School --top` | `await tasks.move(t.id, { list: "School", place: "top" })` | `reorder(in: School, at:)`, writing `list` and `order` together |
 
+**Headings** (INTERACTIONS-v2 §23: a heading is a task with `kind: "heading"`; only `ls` shows them)
+
+| UI operation | CLI | Code mode | `TasksCore` |
+|---|---|---|---|
+| New Heading: ⌥⌘N, New Heading Above, above the first selected row | `tasks heading add Labs --list "PHYS 122" --before 3f9a2c` | `await tasks.addHeading({ name: "Labs", list: "PHYS 122", place: { before: id } })` | `createHeading(in:at:)` |
+| Rename a heading, edit its notes | `tasks rename 4f2a1c "Lab work"`; `tasks notes 4f2a1c -` | `await tasks.rename(h, "Lab work")` | `setTitle`, `setNotes` |
+| Drag a heading, ⌥⌘↑ ⌥⌘↓: its section moves, completed tasks too | `tasks move 4f2a1c --before 9c1d0f`; `--after R`, `--up`, `--bottom` | `await tasks.move(h, { place: "bottom" })` | `moveSection(_:at:)`, one op per row, only before another heading or at the end |
+| Delete Heading: its tasks stay | `tasks delete 4f2a1c` | `await tasks.delete(h)` | `delete` |
+| Complete, dates, Move to on a heading | fail: "Labs is a heading", nothing written | throws `Invalid` | skipped by `toggleComplete`, `setWhen`, `setDeadline`, `move(to:)` |
+
 **Lists**
 
 | UI operation | CLI | Code mode | `TasksCore` |
 |---|---|---|---|
 | New list: ⇧⌘N, the Lists +, the sidebar menu (§12) | `tasks list add School` | `await tasks.addList("School")` | `createList`, at the bottom of the sidebar; a place adds `reorderLists` |
 | Rename a list | `tasks list rename School "School 2026"` | `await tasks.renameList("School", "School 2026")` | `rename(list:to:)` |
+| A list's notes, under its title (§23) | `tasks list notes School "Lectures **MWF**"`; `-` reads stdin; `--append` | `await tasks.setListNotes("School", md)` | `setNotes(list:)`, "Edit List Notes" |
 | Reorder lists: drag, ⌥⌘↑ ⌥⌘↓, Move Up / Down | `tasks list move School --after Work`; `--up` | `await tasks.moveList("School", "top")` | `reorderLists` |
 | Archive ("delete list") | `tasks list archive School` | `await tasks.archiveList("School")` | `archive(list:)` |
 | Unarchive (button, menu) | `tasks list unarchive School` | `await tasks.unarchiveList("School")` | `unarchive(list:)` |
@@ -326,8 +337,8 @@ the `TasksCore` code each one runs.
 | UI view | CLI | Code mode | `TasksCore` |
 |---|---|---|---|
 | Today: groups in sidebar order, then Completed today (§13) | `tasks today` | `const { groups } = await tasks.today()` | `activeLists`, `todayTasks(in:)`, `todayDone` |
-| The sidebar with its counts | `tasks lists` | `await tasks.lists()` | `activeLists`, `openTasks(in:).count` |
-| A list: open tasks in order, then Completed newest first | `tasks ls School`; `--done` adds Completed | `(await tasks.list("School")).open` | `openTasks(in:)`, `completedTasks(in:)` |
+| The sidebar with its counts (headings not counted) | `tasks lists` | `await tasks.lists()` | `activeLists`, `openTaskCount(in:)` |
+| A list: its notes, its rows in order (headings as section lines), then Completed newest first | `tasks ls School`; `--done` adds Completed | `(await tasks.list("School")).open`, headings with `kind: "heading"` | `openTasks(in:)`, `completedTasks(in:)` |
 | The Archive group: archived lists, newest first | `tasks archive` | `await tasks.archive()` | `archivedLists` |
 | An archived list ("Archived Oct 28", still editable) | `tasks ls School` (shows the banner line) | as a list; `list.archivedAt` is set | as a list |
 | The detail pane: fields, raw notes, Created / Completed | `tasks show 3f9a2c` | `await tasks.task(id)` | `projection.task` |
@@ -638,10 +649,10 @@ type DateInput = string | null;
 type Ref = string;
 type Place = "top" | "bottom" | "up" | "down" | { after: Ref } | { before: Ref };
 
-interface Task { id: string; ref: string; list: string; listName: string; title: string; notes: string /* Markdown */;
-  when: CalendarDate | null; deadline: CalendarDate | null; done: boolean; completedAt: number | null;
-  deleted: boolean; createdAt: number; updatedAt: number }
-interface List { id: string; ref: string; name: string; archivedAt: number | null; open: number }
+interface Task { id: string; ref: string; kind?: "heading"; list: string; listName: string; title: string;
+  notes: string /* Markdown */; when: CalendarDate | null; deadline: CalendarDate | null; done: boolean;
+  completedAt: number | null; deleted: boolean; createdAt: number; updatedAt: number }
+interface List { id: string; ref: string; name: string; notes: string; archivedAt: number | null; open: number }
 interface Change { batch: string; summary: string; tasks: Task[]; lists: List[] }
 
 declare const tasks: {
@@ -665,8 +676,10 @@ declare const tasks: {
   move(tasks: Ref | Ref[], to: { list?: Ref; place?: Place }): Promise<Change>;
   delete(tasks: Ref | Ref[]): Promise<Change>;
   restore(tasks: Ref | Ref[]): Promise<Change>;
+  addHeading(h: { name: string; list?: Ref; notes?: string; place?: Place }): Promise<Task>;
   addList(name: string, place?: Place): Promise<List>;
   renameList(list: Ref, name: string): Promise<Change>;
+  setListNotes(list: Ref, notes: string): Promise<Change>;
   moveList(list: Ref, place: Place): Promise<Change>;
   archiveList(list: Ref): Promise<Change>;
   unarchiveList(list: Ref): Promise<Change>;

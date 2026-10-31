@@ -140,6 +140,36 @@ final class CodeModeTests: CLITestCase {
         XCTAssertTrue(server.ops.contains { $0.set.title == "From MCP" })
     }
 
+    /// Headings and a list's notes (§23): addHeading and setListNotes; a heading in complete() throws and the run
+    /// writes nothing.
+    func testHeadingsAndListNotes() async throws {
+        await tasks("list", "add", "PHYS 122")
+        for t in ["Lab 1", "Midterm"] { await tasks("add", t, "--list", "PHYS 122") }
+        let r = try await script("""
+        const lab = (await tasks.find({ text: "Lab 1" }))[0];
+        const h = await tasks.addHeading({ name: "Labs", list: "PHYS 122", place: { before: lab.id } });
+        await tasks.setListNotes("PHYS 122", "Lectures **MWF**");
+        const l = await tasks.list("PHYS 122");
+        return { kind: h.kind, rows: l.open.map((t) => (t.kind ? "# " : "") + t.title), notes: l.list.notes, open: l.list.open };
+        """)
+        XCTAssertEqual(r.code, 0, r.json.text)
+        XCTAssertEqual(r.json["result"]?["kind"]?.stringValue, "heading")
+        XCTAssertEqual(r.json["result"]?["rows"], .array(["# Labs", "Lab 1", "Midterm"].map(JSON.string)))
+        XCTAssertEqual(r.json["result"]?["notes"]?.stringValue, "Lectures **MWF**")
+        XCTAssertEqual(r.json["result"]?["open"]?.intValue, 2)
+
+        let before = server.ops.count
+        let failed = try await script("""
+        const l = await tasks.list("PHYS 122");
+        await tasks.rename(l.open[1].id, "Lab one");
+        await tasks.complete(l.open.map((t) => t.id));
+        """)
+        XCTAssertEqual(failed.code, 1)
+        XCTAssertEqual(failed.json["error"]?["type"]?.stringValue, "Invalid")
+        XCTAssertTrue(failed.json["error"]?["message"]?.stringValue?.contains("Labs is a heading") == true, failed.json.text)
+        XCTAssertEqual(server.ops.count, before, "a run that throws writes nothing")
+    }
+
     /// tasks.d.ts is generated from the table; this golden copy makes any change show up in review.
     /// `TASKS_WRITE_GOLDEN=1 swift test --filter testDeclarationsGolden` rewrites it.
     func testDeclarationsGolden() throws {

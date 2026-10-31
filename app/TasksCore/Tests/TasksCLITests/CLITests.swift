@@ -111,7 +111,7 @@ final class CLITests: CLITestCase {
     func testAddTodayAndTheJSONShapes() async throws {
         await tasks("list", "add", "School")
         let milk = try await json("add", "Buy milk", "--today")
-        XCTAssertEqual(Set(milk.keys).subtracting(["synced"]), Set(Shapes.task.map(\.name)))
+        XCTAssertEqual(Set(milk.keys).subtracting(["synced"]), Set(Shapes.task.filter { !$0.optional }.map(\.name)), "no kind on a task")
         XCTAssertEqual(milk["listName"]?.stringValue, "Inbox", "no list means the first list")
         XCTAssertEqual(milk["when"]?.stringValue, "2026-10-31")
         await tasks("add", "Essay", "--list", "school", "--deadline", "2026-10-30")
@@ -363,15 +363,18 @@ final class CLITests: CLITestCase {
         _ = held
     }
 
-    /// Output keys come in the order tasks.d.ts declares them.
+    /// Output keys come in the order tasks.d.ts declares them; `kind` only on a heading.
     func testRenderedKeysMatchTheDeclarations() {
         let t = TaskItem(id: "t1", list: "l1", order: "a0", title: "x")
+        let h = TaskItem(id: "h1", list: "l1", order: "a1", title: "Labs", isHeading: true)
         let l = TaskList(id: "l1", name: "Inbox", order: "a0")
         var s = AppState()
         s.tasks["t1"] = t
+        s.tasks["h1"] = h
         s.lists["l1"] = l
         let r = Render(Projection(confirmed: s, day: Day(containing: now, calendar: calendar)))
-        XCTAssertEqual(r.task(t).keys, Shapes.task.map(\.name))
+        XCTAssertEqual(r.task(t).keys, Shapes.task.filter { !$0.optional }.map(\.name))
+        XCTAssertEqual(r.task(h).keys, Shapes.task.map(\.name))
         XCTAssertEqual(r.list(l).keys, Shapes.list.map(\.name))
     }
 

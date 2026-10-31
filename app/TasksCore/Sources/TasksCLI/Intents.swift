@@ -282,36 +282,54 @@ extension Context {
         try writable().setNotes(t.id, text)
     }
 
+    /// Completing, dates and Move to don't apply to a heading (§23): name it and write nothing.
+    func refuseHeadings(_ tasks: [TaskItem], field: String = "tasks") throws {
+        if let h = tasks.first(where: \.isHeading) {
+            throw CLIError.invalid("\(h.title.isEmpty ? "(untitled)" : h.title) is a heading; headings have no completion or dates and stay in their list.",
+                                   field: field)
+        }
+    }
+
     func complete(_ refs: [String]) throws {
         try requireUnfixed()
-        let open = try resolve.tasks(refs).filter { $0.completedAt == nil }.map(\.id)
+        let tasks = try resolve.tasks(refs)
+        try refuseHeadings(tasks)
+        let open = tasks.filter { $0.completedAt == nil }.map(\.id)
         if !open.isEmpty { try writable().toggleComplete(open) }
     }
 
     func uncomplete(_ refs: [String]) throws {
         try requireUnfixed()
-        let done = try resolve.tasks(refs).filter { $0.completedAt != nil }.map(\.id)
+        let tasks = try resolve.tasks(refs)
+        try refuseHeadings(tasks)
+        let done = tasks.filter { $0.completedAt != nil }.map(\.id)
         if !done.isEmpty { try writable().toggleComplete(done) }
     }
 
     /// ⌘K: completes all unless all are done, then uncompletes all.
     func toggle(_ refs: [String]) throws {
         try requireUnfixed()
-        let ids = try resolve.tasks(refs).map(\.id)
+        let tasks = try resolve.tasks(refs)
+        try refuseHeadings(tasks)
+        let ids = tasks.map(\.id)
         try writable().toggleComplete(ids)
     }
 
     func setWhen(_ refs: [String], _ date: DateArg?) throws {
         try requireUnfixed()
         guard let date else { throw CLIError.invalid("Give a date, or none to remove When.", field: "date") }
-        let ids = try resolve.tasks(refs).map(\.id)
+        let tasks = try resolve.tasks(refs)
+        try refuseHeadings(tasks)
+        let ids = tasks.map(\.id)
         try writable().setWhen(ids, date.value)
     }
 
     func setDeadline(_ refs: [String], _ date: DateArg?) throws {
         try requireUnfixed()
         guard let date else { throw CLIError.invalid("Give a date, or none to remove the deadline.", field: "date") }
-        let ids = try resolve.tasks(refs).map(\.id)
+        let tasks = try resolve.tasks(refs)
+        try refuseHeadings(tasks)
+        let ids = tasks.map(\.id)
         try writable().setDeadline(ids, date.value)
     }
 
@@ -339,6 +357,10 @@ extension Context {
             throw CLIError.invalid("Say where: a list (--to) or a place (--top, --after REF, --up…).", field: "to")
         }
         let target = try list.map(r.list)
+        if tasks.contains(where: \.isHeading) {
+            try moveHeading(tasks, to: target, place: place)
+            return
+        }
         func refuseArchived(_ listID: EntityID) throws {
             if let l = try p.list(listID), l.archivedAt != nil, tasks.contains(where: { $0.list != listID }) {
                 throw CLIError.invalid("\(l.name) is archived; unarchive it first.", field: "to")
@@ -381,6 +403,124 @@ extension Context {
             try refuseArchived(listID)
             try writable().reorder(ids, in: listID, at: place == .top ? .top : .bottom)
         }
+    }
+
+    /// `move <heading>`: its section moves with it (§23). It lands only before another heading or at the end, never
+    /// inside a section or above the tasks that have no heading:
+    /// - `--before H`: before heading H (a task as the anchor is an error);
+    /// - `--after R`: after the whole section R is in (R's own if it's a heading), so before the next heading or at
+    ///   the end; after a task above the first heading, that's before the first heading;
+    /// - `--top`: before the first heading; `--bottom`: the end; `--up` / `--down`: past the previous / next section.
+    private func moveHeading(_ tasks: [TaskItem], to target: TaskList?, place: Place?) throws {
+        guard tasks.count == 1, let h = tasks.first else {
+            throw CLIError.invalid("Move a heading on its own: its tasks go with it.", field: "tasks")
+        }
+        if let target, target.id != h.list { try refuseHeadings([h], field: "to") }
+        guard let place else { return }
+        let p = try self.p
+        let others = p.headings(in: h.list).ids.filter { $0 != h.id }
+        let mine = p.headings(in: h.list).ids.firstIndex(of: h.id) ?? 0
+        /// Before the first heading after `section` (nil: the tasks above the first heading), or the end.
+        func after(section: EntityID?) -> Ordering.Anchor {
+            guard let section else { return others.first.map { .before($0) } ?? .bottom }
+            let all = p.headings(in: h.list).ids
+            let i = all.firstIndex(of: section) ?? all.count
+            return all[(i + 1)...].first { $0 != h.id }.map { .before($0) } ?? .bottom
+        }
+        let anchor: Ordering.Anchor?
+        switch place {
+        case .top: anchor = others.first.map { .before($0) }
+        case .bottom: anchor = .bottom
+        case .up: anchor = mine > 0 ? .before(others[mine - 1]) : nil
+        case .down: anchor = mine < others.count ? (mine + 1 < others.count ? .before(others[mine + 1]) : .bottom) : nil
+        case .after(let ref), .before(let ref):
+            let r = try resolve.task(ref)
+            guard r.list == h.list else {
+                throw CLIError.invalid("\(ref) is in \(p.list(r.list)?.name ?? "another list"); a heading stays in its list.", field: "place")
+            }
+            if case .before = place {
+                guard r.isHeading else {
+                    throw CLIError.invalid("A heading goes before another heading, or --after a row (it lands after that row's section).",
+                                           field: "place")
+                }
+                anchor = r.id == h.id ? nil : .before(r.id)
+            } else {
+                anchor = after(section: r.isHeading ? r.id : p.heading(of: r.id))
+            }
+        }
+        guard let anchor, !isWhere(h.id, anchor, p) else { return }
+        try writable().moveSection(h.id, at: anchor)
+    }
+
+    /// Whether a heading's section already ends right before `anchor`'s heading (or at the end, for `.bottom`).
+    private func isWhere(_ heading: EntityID, _ anchor: Ordering.Anchor, _ p: Projection) -> Bool {
+        guard let t = p.task(heading) else { return true }
+        let all = p.orderedTasksIncludingCompleted(in: t.list).map(\.id)
+        guard let last = p.section(of: heading).last, let i = all.firstIndex(of: last) else { return false }
+        let next = i + 1 < all.count ? all[i + 1] : nil
+        switch anchor {
+        case .bottom: return next == nil
+        case .before(let id): return next == id
+        default: return false
+        }
+    }
+
+    // MARK: Headings and a list's notes (§23)
+
+    /// A heading: above `--before R`, after `--after R` (after R's section when R is a heading), at the top, or at
+    /// the bottom (the default). No list means the place's list, else the first list.
+    func addHeading(name: String, list: String?, notes: String?, place: Place?) throws -> TaskItem {
+        try requireUnfixed()
+        let name = try Self.text(name, field: "name", max: 1000, nonEmpty: true)
+        let notes = try Self.text(notes ?? "", field: "notes", max: 20000, nonEmpty: false)
+        let r = try resolve
+        var anchorRow: TaskItem?
+        switch place {
+        case .up, .down: throw CLIError.invalid("A new heading can't move up or down.", field: "place")
+        case .after(let a), .before(let a):
+            anchorRow = try r.task(a)
+            guard anchorRow?.completedAt == nil else { throw CLIError.invalid("Place it next to an open task or a heading.", field: "place") }
+        default: break
+        }
+        let explicit = try list.map(r.list)
+        if let explicit, let anchorRow, anchorRow.list != explicit.id {
+            throw CLIError.invalid("The place is in \(try p.list(anchorRow.list)?.name ?? "another list"), not \(explicit.name).", field: "place")
+        }
+        let s = try writable()
+        guard let listID = explicit?.id ?? anchorRow?.list ?? s.defaultListID else {
+            throw CLIError(kind: .noActiveList, message: "There's no active list to add to. Add one with tasks list add NAME.")
+        }
+        if let l = s.projection.list(listID), l.archivedAt != nil {
+            throw CLIError.invalid("\(l.name) is archived; unarchive it first.", field: "list")
+        }
+        let anchor: Ordering.Anchor
+        switch place {
+        case .top: anchor = .top
+        case .before: anchor = .before(anchorRow!.id)
+        case .after:
+            // After a heading means after its section: before the next heading, or the end.
+            if anchorRow!.isHeading {
+                let all = s.projection.headings(in: listID).ids
+                let i = all.firstIndex(of: anchorRow!.id) ?? all.count
+                anchor = i + 1 < all.count ? .before(all[i + 1]) : .bottom
+            } else {
+                anchor = .after(anchorRow!.id)
+            }
+        default: anchor = .bottom
+        }
+        guard let id = s.createHeading(title: name, notes: notes, in: listID, at: anchor) else {
+            throw CLIError(kind: .noActiveList, message: "There's no active list to add to.")
+        }
+        return s.projection.task(id)!
+    }
+
+    func setListNotes(_ ref: String, _ notes: String, append: Bool) throws {
+        try requireUnfixed()
+        let l = try resolve.list(ref)
+        var text = notes
+        if append, !l.notes.isEmpty { text = l.notes + (l.notes.hasSuffix("\n") ? "" : "\n") + notes }
+        text = try Self.text(text, field: "notes", max: 20000, nonEmpty: false)
+        try writable().setNotes(list: l.id, text)
     }
 
     // MARK: Lists
@@ -494,7 +634,8 @@ extension Context {
         let open = r.tasks(p.openTasks(in: l.id).ids)
         let completed = r.tasks(p.completedTasks(in: l.id).ids)
         var text = [l.name + (l.archivedAt.map { " · Archived \(r.archivedDate($0))" } ?? "")]
-        text += open.isEmpty ? ["  No open tasks."] : r.rows(open)
+        if !l.notes.isEmpty { text += l.notes.split(separator: "\n", omittingEmptySubsequences: false).map { "  " + $0 } }
+        text += open.isEmpty ? ["  No open tasks."] : r.sections(open)
         if done, !completed.isEmpty {
             text.append("Completed")
             text += r.rows(completed)
@@ -511,7 +652,7 @@ extension Context {
         let rank = Dictionary(uniqueKeysWithValues: (p.activeLists.ids + p.archivedLists.ids).enumerated().map { ($1, $0) })
         let needle = text?.trimmingCharacters(in: .whitespaces) ?? ""
         let matches = p.allTaskIDs.compactMap(p.task).filter { t in
-            (deleted || !t.deleted) && (listID == nil || t.list == listID) && (done == nil || (t.completedAt != nil) == done)
+            !t.isHeading && (deleted || !t.deleted) && (listID == nil || t.list == listID) && (done == nil || (t.completedAt != nil) == done)
                 && (needle.isEmpty || t.title.range(of: needle, options: [.caseInsensitive, .diacriticInsensitive]) != nil
                     || t.notes.range(of: needle, options: [.caseInsensitive, .diacriticInsensitive]) != nil)
         }.sorted { a, b in
