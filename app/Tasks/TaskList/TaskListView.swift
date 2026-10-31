@@ -742,7 +742,7 @@ final class TaskListView: NSView {
                     if let task = store.projection.task(id), task.completedAt == nil, id != state.draft?.id {
                         let local = rows[id].map { CGPoint(x: p.x - $0.frame.minX, y: p.y - $0.frame.minY) } ?? p
                         let caret = rows[id]?.caretIndex(at: local)
-                        a.startRename(id, caret: caret.map { .at($0) } ?? .end)
+                        a.editTask(id, caret: caret.map { .at($0) } ?? .end)
                     }
                     press = nil
                     return
@@ -899,7 +899,7 @@ final class TaskListView: NSView {
         case 36, 76: // Return
             let ids = a.targetIDs
             a.focus(.list)
-            if ids.count == 1 { a.startRename(ids[0], caret: .all) } else if ids.isEmpty { a.moveSelection(.by(1), extend: false) }
+            if ids.count == 1 { a.editTask(ids[0], caret: .all) } else if ids.isEmpty { a.moveSelection(.by(1), extend: false) }
             return true
         case 49 where !cmd: // Space
             a.toggleComplete()

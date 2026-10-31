@@ -92,11 +92,11 @@ struct DetailPane: View {
         }
     }
 
-    // MARK: Focusing the title (a new task, ⌘N again, §6)
+    // MARK: Focusing the title (a new task, ⌘N again, §6; editing a task from the list, §7)
 
     private func takeTitleRequest() {
         guard let r = window.titleFocusRequest else { return }
-        refs.focusTitle(r.selection)
+        refs.focusTitle(r.selection, of: r.id)
         DispatchQueue.main.async { if window.titleFocusRequest?.token == r.token { window.titleFocusRequest = nil } }
     }
 
@@ -183,10 +183,11 @@ struct DetailPane: View {
             return true
         }
         if (k == 36 || k == 76) && plain {
-            // Return renames the selected task in its row (the list takes the keys).
+            // Return edits the selected task as Settings ▸ Edit tasks says: its title here, or renamed in its row (the
+            // list takes the keys).
             let ids = a.targetIDs
             if ids.count == 1 {
-                a.startRename(ids[0], caret: .all)
+                a.editTask(ids[0], caret: .all)
             } else if ids.isEmpty {
                 a.focus(.list)
                 a.moveSelection(.by(1), extend: false)

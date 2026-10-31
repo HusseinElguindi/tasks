@@ -119,11 +119,15 @@ final class WindowState {
     @ObservationIgnored var layoutCache: (inputs: TaskLayout.Inputs, layout: TaskLayout)?
     @ObservationIgnored var typeBuffer = ""
     @ObservationIgnored var typeAt: TimeInterval = 0
-    /// The detail pane asks for the caret in its title (a new task, ⇧Tab from the notes): `.end` or `.all`.
+    /// The detail pane asks for the caret in its title (a new task, ⇧Tab from the notes, editing a task from the list):
+    /// `.end` or `.all`.
     var titleFocusRequest: TitleFocus?
     struct TitleFocus: Equatable {
         enum Selection: Equatable { case end, all }
         var selection: Selection
+        /// Only this task's title takes it, so a request made as the selection changes waits for the new title instead
+        /// of landing in the old one (nil: whichever title is showing).
+        var id: EntityID?
         var token = UUID()
     }
 

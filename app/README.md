@@ -28,7 +28,8 @@ Sync: Settings (⌘,) → Server URL (the Worker's base URL) and Token. The toke
 both are set the sidebar footer says "Sync off".
 
 Data lives in `~/Library/Application Support/Tasks/`. For testing, `-dataDirectory <path>` points an instance at
-another folder, and `-serverURL` / `-syncToken` override the settings without saving them.
+another folder, and `-serverURL` / `-syncToken` / `-taskEditing detail|inline` (Settings ▸ Edit tasks) override the
+settings without saving them.
 
 ## Tests
 
@@ -63,6 +64,7 @@ Compiled out of Release builds.
 | `-demoData YES` | Fills an empty data folder with the prototype's seed (`design/prototype-v2/Main.dc.html` dc:426), for side-by-side checks. `-demoBulk N` adds a list "Big" with N tasks. |
 | `-debugRoute today\|list:<name>`, `-debugSelect <title>`, `-debugDetail YES`, `-debugAdd YES`, `-debugThenRoute …` | Sets up the window. |
 | `-snapshotTo <png>` (`-snapshotQuit YES`, `-snapshotDelay`, `-debugWindowSize WxH`) | Renders the window to a PNG. |
+| `-snapshotSettings <png>` | Renders Settings (⌘,) to a PNG without opening its window. |
 | `-debugScript "<steps>"` | Posts clicks and keys inside the app, then quits (see `Support/DebugScript.swift`). |
 | `-debugRenderTimes <file>` | Logs each task-list render's duration and phases. |
 | `-debugMeasureSwitch <file>` | The list-switch benchmark (`Scripts/switch-bench.sh`). |

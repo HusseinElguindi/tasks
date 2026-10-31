@@ -13,6 +13,20 @@ final class AppModel {
         var id: String { rawValue }
     }
 
+    /// Settings ▸ Edit tasks (v2 feedback 8, INTERACTIONS-v2 §7): what double-click and Return do to a task. Lists in the
+    /// sidebar rename in place either way.
+    enum TaskEditing: String, CaseIterable, Identifiable {
+        /// Open it in the detail pane with the caret in its title (the default).
+        case detail
+        /// Rename its title in place in the row.
+        case inline
+        var id: String { rawValue }
+
+        /// The saved choice, read where a gesture needs it (the window's actions have no model). A `-taskEditing inline`
+        /// launch argument overrides it without saving (UserDefaults' argument domain).
+        static var current: TaskEditing { TaskEditing(rawValue: UserDefaults.standard.string(forKey: Keys.taskEditing) ?? "") ?? .detail }
+    }
+
     private(set) var store: Store?
     let dataDirectory: URL
 
@@ -35,6 +49,10 @@ final class AppModel {
         didSet { UserDefaults.standard.set(interfaceStyle == .glass ? "glass" : "classic", forKey: Keys.interfaceStyle) }
     }
 
+    var taskEditing: TaskEditing {
+        didSet { UserDefaults.standard.set(taskEditing.rawValue, forKey: Keys.taskEditing) }
+    }
+
     @ObservationIgnored private var periodic: Task<Void, Never>?
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
 
@@ -42,6 +60,7 @@ final class AppModel {
         static let serverURL = "serverURL"
         static let theme = "theme"
         static let interfaceStyle = "interfaceStyle"
+        static let taskEditing = "taskEditing"
         /// Testing only: data directory and token from launch arguments (spec §10 end-to-end check).
         static let dataDirectory = "dataDirectory"
         static let syncToken = "syncToken"
@@ -63,6 +82,7 @@ final class AppModel {
         serverURL = defaults.string(forKey: Keys.serverURL) ?? ""
         theme = ThemeChoice(rawValue: defaults.string(forKey: Keys.theme) ?? "") ?? .system
         interfaceStyle = defaults.string(forKey: Keys.interfaceStyle) == "glass" ? .glass : .classic
+        taskEditing = TaskEditing.current
         hasToken = defaults.string(forKey: Keys.syncToken) != nil || Keychain.token() != nil
         Task { await load() }
     }
