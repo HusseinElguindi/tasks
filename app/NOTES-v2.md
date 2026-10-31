@@ -278,6 +278,21 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
 
     Settings keeps its opaque ground.
 
+11. **The Keychain prompt after every install.** Ad-hoc builds have a new signature each time, and the sync token's
+    "Always Allow" is tied to it. Builds now sign with a local identity when this Mac has one
+    (`Scripts/make-signing-identity.sh`, README "Signing"), so the designated requirement stays the same.
+    - Checked: two Release builds with different code (`-Onone`, then the normal build) both have
+      `identifier "com.elguindi.Tasks" and certificate leaf = H"cf1bb96c…"`, with different cdhashes. Both pass
+      `codesign --verify --strict`. Debug signs the same way.
+    - The ad-hoc fallback still builds without the identity. A second run of the script changes nothing.
+    - The certificate is untrusted (self-signed); codesign doesn't need trust for this.
+    - A pending Keychain prompt anywhere in the login keychain (here, the installed app asking for the token on a
+      locked screen) holds up every codesign that uses this key until someone answers it, so builds hang meanwhile.
+      A codesign killed mid-sign leaves `Contents/MacOS/Tasks.cstemp`, which the next signature seals in; delete the
+      product and build again.
+    - Not checked: that "Always Allow" on the next install holds for the build after it. That needs the real app and
+      its token item.
+
 ## Notes for whoever drives the UI next
 
 - Scratch tools (not committed) are in the session scratchpad's `tools/`: `ui` (window-relative HID input that only
