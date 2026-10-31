@@ -54,6 +54,8 @@ class CLITestCase: XCTestCase {
     var now = Date(timeIntervalSince1970: 1_793_462_400)
     var stdinIsTTY = false
     var keychainReads = 0
+    /// The servers the CLI nudged the app about (`SyncNudge`), in order.
+    var nudges: [URL] = []
 
     override func setUp() async throws {
         dir = FileManager.default.temporaryDirectory.appendingPathComponent("tasks-cli-tests-\(UUID().uuidString)")
@@ -75,7 +77,8 @@ class CLITestCase: XCTestCase {
         let date = now
         return Environment(vars: vars, home: dir, transport: server, clock: StoreClock(now: { date }, calendar: calendar),
                            stdinIsTTY: stdinIsTTY, readStdin: { stdin }, out: out, err: err,
-                           keychainToken: { [unowned self] in keychainReads += 1; return "keychain-token" }, sleep: { _ in })
+                           keychainToken: { [unowned self] in keychainReads += 1; return "keychain-token" }, sleep: { _ in },
+                           nudge: { [unowned self] in nudges.append($0) })
     }
 
     @discardableResult
@@ -249,6 +252,29 @@ final class CLITests: CLITestCase {
         let next = await tasks("lists")
         XCTAssertEqual(next.code, 0)
         XCTAssertTrue(server.ops.contains { $0.set.title == "Bread" })
+    }
+
+    /// Feedback item 14: the app is nudged after a push the server took, and only then: not after a read, a dry run,
+    /// a `--cached` write or a write that couldn't reach the server (it nudges when a later command pushes it).
+    func testNudgesTheAppOnlyAfterAPush() async throws {
+        let url = URL(string: "http://127.0.0.1:1")!
+        await tasks("add", "Milk")
+        XCTAssertEqual(nudges, [url])
+        await tasks("lists")
+        await tasks("add", "Eggs", "--dry-run")
+        XCTAssertEqual(nudges.count, 1)
+        server.offline = true
+        let r = await tasks("add", "Bread")
+        XCTAssertEqual(r.code, 75)
+        XCTAssertEqual(nudges.count, 1)
+        server.offline = false
+        await tasks("lists")
+        XCTAssertEqual(nudges.count, 2, "the queued write went out with the next command")
+        await tasks("add", "Jam", "--cached")
+        XCTAssertEqual(nudges.count, 2)
+        await tasks("sync")
+        XCTAssertEqual(nudges.count, 3)
+        XCTAssertEqual(Set(nudges), [url])
     }
 
     /// A read that pulled leaves the log on disk: the next command starts from there, even offline.

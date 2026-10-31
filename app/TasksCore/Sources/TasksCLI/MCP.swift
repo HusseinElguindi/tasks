@@ -78,7 +78,10 @@ enum MCP {
             let server = try Server.resolve(env, override: options.server)
             let actor = try Session.actor(env, override: options.actor)
             let session = try await Session(env: env, server: server, actor: actor)
-            defer { session.store.persistNow() }
+            defer {
+                session.store.persistNow()
+                session.nudgeIfPushed()
+            }
             _ = try await session.sync()
             var o = options
             o.dryRun = dryRun
