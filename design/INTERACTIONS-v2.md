@@ -1212,7 +1212,7 @@ From Trash, a list puts the tasks back into that list; Today and Completed don't
 | Upcoming | Open, in active lists, whose **earlier date is after today**. Each sits on the day it will reach Today (SPEC §4: either date brings it in), so every dated open task is in exactly one of Today and Upcoming. A task with both dates shows **once**, on the earlier date | **The next seven days, always**: "Tomorrow", then weekday names, each with its date after it in 400 `ink-quiet` ("Monday  Nov 2"). An empty day's label is `ink-quiet` and still takes +, a double-click and a drop. **Then one group per month**: "Later in November" (the rest of the seventh day's month), "December", "January 2027". Within a group: by date, then the list's sidebar order, then the list's order | The list's name after the title (12pt `ink-tertiary`, as Today's Completed rows). In a day group the day's own date isn't repeated: When on that day shows no chip, and a deadline on that day reads "Due" (neutral flag chip). The other date shows as its usual chip | `dc:3225–3252`, `dc:3275`, `dc:3278–3284` |
 | Undated | Open, in active lists, with **no When and no Deadline** | By list, in sidebar order, each list's name as the label with its +; rows in the list's order. Exactly Today's grouping | none | `dc:3218–3224` |
 | Completed | Completed, in active lists, **newest first, all of them**: it's the logbook (kept forever, SPEC §2; the app draws only what's on screen) | A group per local day for the last 7 days ("Today", "Yesterday", weekday names, with the date), then per month | The list's name; in a month group also the day ("School · Oct 22") | `dc:3253–3269` |
-| Trash | Deleted, in active lists (a deleted task in an archived list shows once the list is unarchived), newest-deleted first | As Completed, by the day it was deleted | The list's name (and the day, in a month group). Titles `ink-secondary` (completed ones keep their struck `ink-tertiary`); the checkbox at 60% and, with the chips, deaf to the pointer | `dc:3253–3269`, `css:427–430` |
+| Trash | Deleted, in active lists (a deleted task in an archived list shows once the list is unarchived), newest-deleted first | As Completed, by the day it was deleted | The list's name (and the day, in a month group). Titles `ink-secondary` (completed ones keep their struck `ink-tertiary`); the checkbox at 60% and deaf to the pointer; no When, no Deadline and no ring (§24) | `dc:3253–3269`, `css:427–430` |
 
 Label metrics are Today's (`css:131`, `css:236–239`); the date part is `css:421`, an empty day `css:422`. Group labels
 keep one node per id while the view is open, so they move with their rows (`dc:3286–3310`).
@@ -1633,7 +1633,7 @@ combination.
   nothing, and nothing combines.
 - **Upcoming:** none for today, and an overdue task isn't there.
 - **Undated:** no dates, so no ring.
-- **Completed and Trash:** no ring. Checking a task clears its ring at once: done is done.
+- **Completed and Trash:** no ring, and Trash rows show no When or Deadline either (the detail pane still shows them). Checking a task clears its ring at once: done is done.
 - **The detail pane's checkbox:** the same ring as the row (`dc:2944`).
 
 **Told apart from everything else.**
