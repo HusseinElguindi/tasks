@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Token inventory</title>
+<script src="./support.js"></script>
+<script src="themes.js"></script>
+<link rel="stylesheet" href="tasks-v2.css">
+<link rel="stylesheet" href="markdown.css">
+<link rel="stylesheet" href="themes.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.tv-card{background:var(--base);border-radius:10px;box-shadow:inset 0 0 0 1px var(--line-pane);padding:14px 16px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tv-h{font:600 11px/14px var(--font);color:var(--ink-3);margin-bottom:6px;display:flex;gap:8px}
+.tv-h .n{margin-left:auto;font-weight:400;color:var(--ink-q)}
+.tv-row{display:flex;align-items:center;gap:10px;min-height:30px}
+.tv-sw{width:26px;height:20px;border-radius:5px;flex:none;position:relative;overflow:hidden;box-shadow:inset 0 0 0 0.5px var(--line-sep)}
+.tv-sw i{position:absolute;inset:0}
+.tv-nm{width:112px;flex:none;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tv-use{flex:1;min-width:0;color:var(--ink-2);font-size:12px;line-height:15px}
+.tv-val{width:86px;flex:none;font:11px/14px var(--mono);color:var(--ink-2);text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tv-src{width:150px;flex:none;font-size:11px;line-height:14px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tv-src.in{color:var(--accent-text);font-weight:500}
+.tv-cr{width:46px;flex:none;font:500 11px/14px var(--font);font-variant-numeric:tabular-nums;color:var(--ink-3);text-align:right}
+.tv-cr.fixed{color:var(--attn)}
+.tv-pill{height:22px;padding:0 10px;border-radius:11px;display:inline-flex;align-items:center;font-size:12px;color:var(--ink-2);background:var(--fill-control)}
+.tv-pill.on{background:var(--accent);color:var(--on-accent)}
+.tv-pill:hover{color:var(--ink)}
+.tv-pill.on:hover{color:var(--on-accent)}
+.tv-k{display:flex;gap:10px;font-size:12px;line-height:16px;color:var(--ink-2)}
+.tv-k b{font-weight:500;color:var(--ink);width:150px;flex:none}
+.tv-bad{display:flex;gap:10px;font-size:12px;line-height:16px;color:var(--ink-2);padding:5px 0;border-top:1px solid var(--line-sep)}
+.tv-bad:first-of-type{border-top:0}
+.tv-bad code{font:11px/16px var(--mono);color:var(--ink);width:250px;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+</helmet>
+<div class="{{rootCls}}" style="{{rootStyle}}">
+<div style="padding: 36px 40px; display: flex; flex-direction: column; gap: 20px; color: var(--ink);">
+<div style="display: flex; align-items: baseline; gap: 14px;">
+<span style="font: 600 26px/32px var(--font); letter-spacing: -0.3px;">Tokens</span>
+<span style="color: var(--ink-2);">{{themeName}} · {{appName}}. Every swatch is the live token; the board itself is drawn in it.</span>
+</div>
+<div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+<sc-for list="{{themePills}}" as="p" hint-placeholder-count="7"><button class="{{p.cls}}" type="button" onClick="{{p.pick}}">{{p.label}}</button></sc-for>
+<span style="width: 14px;"></span>
+<sc-for list="{{appPills}}" as="p" hint-placeholder-count="2"><button class="{{p.cls}}" type="button" onClick="{{p.pick}}">{{p.label}}</button></sc-for>
+<span style="width: 14px;"></span>
+<span style="font-size: 12px; color: var(--ink-3);">Source: <span style="color: var(--accent-text); font-weight: 500;">input</span> is one of the theme’s own colours; a rule is derived; pinned is a measured Rex value; “raised” met a contrast floor.</span>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start;">
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="9">
+<div class="tv-card">
+<div class="tv-h"><span>{{g.title}}</span><span class="n">{{g.note}}</span></div>
+<sc-for list="{{g.rows}}" as="r" hint-placeholder-count="4">
+<div class="tv-row"><span class="tv-sw" style="{{r.under}}"><i style="{{r.sw}}"></i></span><span class="tv-nm" title="{{r.css}}">{{r.name}}</span><span class="tv-use">{{r.use}}</span><span class="{{r.srcCls}}" title="{{r.src}}">{{r.src}}</span><span class="tv-val">{{r.val}}</span><span class="{{r.crCls}}" title="{{r.crTip}}">{{r.cr}}</span></div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start;">
+<div class="tv-card">
+<div class="tv-h"><span>CHIPS, CHECKBOXES AND MARKDOWN, DRAWN</span></div>
+<div style="display: flex; gap: 6px; flex-wrap: wrap; padding: 6px 0 10px;"><span class="chip">Tomorrow</span><span class="chip due">Due today</span><span class="chip late">2 days late</span><span class="chip open-picker">Fri, Nov 6</span><span class="chip ghost">Deadline</span></div>
+<div style="display: flex; align-items: center; gap: 14px; padding-bottom: 10px;"><span class="check"></span><span class="check on"><svg class="ck" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 5.2l2 2 4-4.4"></path></svg></span><span style="color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-q);">Lab 2 report</span><span class="tile c-yellow" style="margin-left: auto;">P</span><span class="tile c-blue">S</span><span class="tile c-green">H</span><span class="tile c-magenta">T</span></div>
+<div class="mded" style="min-height: 0; flex: none;"><div class="ml h2">Report</div><div class="ml">Period vs length for <span class="s-b">five</span> lengths, <span class="s-c">T = 2π√(L/g)</span>.</div><div class="ml q q-first q-last">Priya does the intro.</div><div class="ml"><span class="s-a">Lab manual, section 3</span><span class="mk"> ·  **marks**</span></div></div>
+</div>
+<div class="tv-card">
+<div class="tv-h"><span>FIXED: NOT IN A THEME</span></div>
+<sc-for list="{{fixed}}" as="k" hint-placeholder-count="12"><div class="tv-k" style="padding: 3px 0;"><b>{{k.k}}</b><span>{{k.v}}</span></div></sc-for>
+</div>
+<div class="tv-card">
+<div class="tv-h"><span>HARD-CODED TODAY: BYPASS THE TOKENS</span><span class="n">THEMES.md §1.3</span></div>
+<sc-for list="{{bypass}}" as="b" hint-placeholder-count="10"><div class="tv-bad"><code>{{b.at}}</code><span>{{b.what}}</span></div></sc-for>
+</div>
+</div>
+
+<div class="tv-card">
+<div class="tv-h"><span>CONTRAST CHECK · {{checkSummary}}</span><span class="n">reject: a base colour fails, the theme doesn’t load · raised: a derived token is moved toward ink until it passes</span></div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 24px;">
+<sc-for list="{{checks}}" as="c" hint-placeholder-count="20"><div class="tv-row" style="min-height: 24px; font-size: 12px;"><span style="width: 92px; flex: none; color: var(--ink);">{{c.t}}</span><span style="flex: 1; color: var(--ink-3);">on {{c.on}}</span><span style="width: 44px; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2);">{{c.ratio}}</span><span style="width: 40px; text-align: right; color: var(--ink-q);">≥ {{c.min}}</span><span class="{{c.cls}}" style="width: 54px; text-align: right;">{{c.result}}</span></div></sc-for>
+</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"themeId":{"editor":"enum","options":["default","paper","contrast","dusk","harbor","iris","moss"],"default":"default"},"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1880,"height":1720}}'>
+const TOKEN_GROUPS = [
+  ['SURFACES', 'opaque, one per layer', [
+    ['ground', 'Window, sidebar, gutters, the top band'], ['base', 'The focused pane; a list’s large title sits on it'], ['dim', 'An unfocused pane; a pane alone in the window'],
+    ['popover', 'Menus, the date popover, notices, tooltips'], ['lift', 'The dragged row']]],
+  ['INK', 'four levels, each with a floor', [
+    ['ink', 'Titles, task text, headings, the brand'], ['ink-2', 'Sidebar titles at rest, labels, values, a list’s notes'], ['ink-3', 'Group labels, counts, placeholders, done titles'], ['ink-q', 'Header icons at rest, strike-through, Markdown marks']]],
+  ['LINES AND EDGES', '', [
+    ['line-pane', 'The focused pane’s 1pt inset edge'], ['line-pane-dim', 'An unfocused pane’s edge'], ['line-sep', 'Hairlines, a heading’s rule, the ghost chip'], ['line-field', 'The checkbox ring, a checklist box'],
+    ['edge-outer', 'The current sidebar row: 0.5pt outer'], ['edge-inner', 'and its 1pt inner edge']]],
+  ['FILLS', 'hover and selection come from base and ink', [
+    ['sel', 'Selected task rows'], ['sel-dim', 'Selected rows in an unfocused pane'], ['hover', 'Behind a hovered icon button, day, ghost chip'], ['press', 'Behind a pressed icon button'],
+    ['fill-control', 'Chips, the date field, inline code, the banner'], ['fill-track', 'Toolbar hover, capsule buttons, segmented tracks'], ['fill-strong', 'The current sidebar row, a quote’s bar'], ['fill-thumb', 'A segmented control’s thumb']]],
+  ['ACCENT AND STATE', 'no success colour: done is ink-3', [
+    ['accent', 'The checked box, the highlighted day and menu item'], ['accent-text', 'Links, today’s date, drop targets, tinted buttons'], ['accent-tint', 'A chip with its popover open, a drop target'], ['on-accent', 'The checkmark, text on the accent'],
+    ['focus', 'Editing rings, drop rings (= accent)'], ['text-sel', 'Selected text in fields'], ['danger', 'The overdue chip'], ['danger-tint', 'its fill'], ['attention', 'The due-today chip, the other date’s dot'], ['attn-tint', 'its fill']]],
+  ['LISTS AND TILES', 'a list’s slot comes from its id', [
+    ['list-blue', 'Slot 0'], ['list-magenta', 'Slot 1'], ['list-green', 'Slot 2'], ['list-cyan', 'Slot 3'], ['list-yellow', 'Slot 4'], ['list-red', 'Slot 5'], ['list-ink', 'Slot 6 (= ink)'],
+    ['tile-fill', 'A list’s tile behind its monogram'], ['tile-ring', 'its 0.5pt ring']]],
+  ['DRAG AND BRAND', '', [
+    ['lift-chip', 'A chip on the dragged copy'], ['mark-head', 'The sidebar mark’s head (= accent)'], ['mark-bar', 'its bar (= ink)'], ['mark-rings', 'its rings (= ink-2)'], ['mark-trail', 'its trail']]],
+];
+const CSS = { attention: '--attn', 'list-blue': '--ansi-blue', 'list-magenta': '--ansi-magenta', 'list-green': '--ansi-green', 'list-cyan': '--ansi-cyan', 'list-yellow': '--ansi-yellow', 'list-red': '--ansi-red', 'list-ink': '--ansi-ink' };
+const FIXED = [
+  ['Metrics', '30pt rows on a 32pt pitch, the 50pt band, 34pt headers, 8pt gutters, sidebar 230 (180–400), detail 420'],
+  ['Type', 'SF Pro 13/16; labels 11/14 semibold; chips 11/14 medium; detail title 15/20; list title 20/26; notes 13/19; SF Mono for tiles and code'],
+  ['Radii', 'window 12, pane 10, row 8, sidebar capsule 15, chip 9, menu 10, popover 12, icon buttons 6, tile 4, code 4'],
+  ['Motion', 'hover in 60 ms, out 85 ms, icon 100 ms, focus 60 ms, sidebar 300 ms, springs natural / layout / snappy'],
+  ['Shadows', 'popover 0 12 32, lift 0 8 24: black 50% dark, ink 16–18% light; only the 0.5pt ring takes ink'],
+  ['Opacities', 'unfocused header icons 55%, inert 45%, disabled menu item 40%, link underline 40%, the menu’s shortcut on accent 78%'],
+  ['Glass', 'ground at 60% over the sidebar material, panes at 88%, edges and popovers opaque'],
+  ['Brightness', 'chip hover 1.18 dark / 0.96 light, buttons 1.12 / 0.97, press 0.86'],
+  ['Floors', 'ink 7:1, ink-2 and ink-3 4.5:1, chips 4.5:1, ink-q, field, accent 3:1'],
+  ['Window controls', 'the traffic lights: the system’s, by appearance'],
+];
+const BYPASS = [
+  ['tasks-v2.css:124', 'the light tile fill #E3E3E4 and ring: now tile-fill, tile-ring'],
+  ['tasks-v2.css:249', 'the dark dragged chip #3A3A3A: now lift-chip'],
+  ['tasks-v2.css:313', 'the menu’s shortcut on accent, white 78%: now on-accent at 78%'],
+  ['tasks-v2.css:405–413', 'the sidebar mark’s four fills, per appearance: now mark-*'],
+  ['SidebarHeader.swift:60–64', 'the same mark fills as hex literals in the app'],
+  ['TK.swift:36', 'Palette == compares isDark only: a theme switch in the same appearance wouldn’t redraw'],
+  ['TasksApp.swift:34–37', 'two palettes: PaneColors (derived) and TK.Palette (literal), picked separately'],
+  ['PaneTheme.swift:343–356', 'the Pane card ring and shadow: white 8%, ink 6–18% literals'],
+  ['PaneComponents.swift:412', 'a hover fill: white 7 / 12%, black 5 / 9% literals'],
+  ['DatePopover.swift:280–562', 'eight .system(size:) fonts outside TK.Font'],
+  ['HeadingViews.swift:48, 193', 'the heading and list-title fonts outside TK.Font'],
+];
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { themeId: props.themeId || 'default', theme: props.theme === 'light' ? 'light' : 'dark' };
+  }
+  renderVals() {
+    const T = window.TasksThemes, s = this.state;
+    const p = T.derive(T.byId(s.themeId), s.theme);
+    const crOf = {};
+    p.checks.forEach((c) => { const prev = crOf[c.t]; if (!prev || c.ratio < prev.ratio) crOf[c.t] = c; });
+    const groups = TOKEN_GROUPS.map(([title, note, rows]) => ({
+      title, note,
+      rows: rows.map(([k, use]) => {
+        const val = p.v[k] || '';
+        const src = p.src[k] || (k === 'ink' || k === 'accent' || k === 'base' ? 'input' : '');
+        const c = crOf[k];
+        return {
+          name: k, css: CSS[k] || '--' + k, use, val: val.startsWith('rgba') ? val.replace(/rgba\((\d+), (\d+), (\d+), ([\d.]+)\)/, (m, r, g, b, a) => '#' + [r, g, b].map((x) => (+x).toString(16).padStart(2, '0')).join('').toUpperCase() + ' ' + Math.round(a * 100) + '%') : val,
+          sw: 'background: ' + val, under: 'background: ' + p.v.base,
+          src: src.replace('input', 'input'), srcCls: 'tv-src' + (src === 'input' ? ' in' : ''),
+          cr: c ? c.ratio.toFixed(1) : '', crCls: 'tv-cr' + (c && c.result === 'fixed' ? ' fixed' : ''), crTip: c ? 'Lowest: on ' + c.on + ', floor ' + c.min : '',
+        };
+      }),
+    }));
+    const checks = p.checks.map((c) => ({ t: c.t, on: c.on, ratio: c.ratio.toFixed(2), min: c.min, result: c.result === 'fixed' ? 'raised' : c.result, cls: c.result === 'pass' ? '' : c.result === 'fixed' ? 'tv-cr fixed' : 'tv-cr' }));
+    const fixedN = p.checks.filter((c) => c.result === 'fixed').length;
+    const pill = (on, label, pick) => ({ label, cls: 'tv-pill' + (on ? ' on' : ''), pick });
+    return {
+      rootCls: 'tk ' + s.theme,
+      rootStyle: T.styleFor(s.themeId, s.theme) + '; width: 1880px; min-height: 1720px; background: var(--ground);',
+      themeName: p.name, appName: s.theme === 'dark' ? 'Dark' : 'Light',
+      themePills: T.THEMES.map((t) => pill(t.id === s.themeId, t.name, () => this.setState({ themeId: t.id }))),
+      appPills: [['dark', 'Dark'], ['light', 'Light']].map(([v, l]) => pill(v === s.theme, l, () => this.setState({ theme: v }))),
+      groups, checks,
+      checkSummary: p.ok ? (fixedN ? 'passes, ' + fixedN + ' raised' : 'passes as drawn') : 'REJECTED',
+      fixed: FIXED.map(([k, v]) => ({ k, v })), bypass: BYPASS.map(([at, what]) => ({ at, what })),
+    };
+  }
+}
+</script>
+</body>
+</html>

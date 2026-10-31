@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Theme card</title>
+<script src="./support.js"></script>
+<script src="themes.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="{{rootStyle}}" aria-hidden="true">
+<sc-for list="{{layers}}" as="L" hint-placeholder-count="2">
+<div style="{{L.style}}">
+<div style="{{L.capsule}}"></div>
+<div style="{{L.sb1}}"></div>
+<div style="{{L.sb2}}"></div>
+<div style="{{L.sb3}}"></div>
+<div style="{{L.pane}}">
+<div style="display: flex; align-items: center; gap: 5px; height: 12px;"><div style="{{L.ring}}"></div><div style="{{L.bar1}}"></div><div style="{{L.chip}}"></div></div>
+<div style="display: flex; align-items: center; gap: 5px; height: 12px; margin-top: 4px;"><div style="{{L.ring}}"></div><div style="{{L.bar2}}"></div></div>
+<div style="{{L.selrow}}"><div style="{{L.on}}"></div><div style="{{L.bar3}}"></div></div>
+</div>
+</div>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"themeId":{"editor":"enum","options":["default","paper","contrast","dusk","harbor","iris","moss"],"default":"default"},"appearance":{"editor":"enum","options":["split","dark","light"],"default":"split"},"w":{"editor":null,"default":148},"h":{"editor":null,"default":96},"$preview":{"width":148,"height":96}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const T = window.TasksThemes;
+    const th = T.byId(this.props.themeId || 'default');
+    const w = Number(this.props.w) || 148, h = Number(this.props.h) || 96;
+    const mode = this.props.appearance || 'split';
+    const sides = mode === 'split' ? ['dark', 'light'] : [mode];
+    const layers = sides.map((a, i) => {
+      const v = T.derive(th, a).v;
+      const clip = mode === 'split' && i === 1 ? 'clip-path: polygon(62% 0, 100% 0, 100% 100%, 38% 100%);' : '';
+      const k = w / 148;
+      const px = (n) => Math.round(n * k * 10) / 10 + 'px';
+      return {
+        style: 'position: absolute; inset: 0; background: ' + v.ground + '; ' + clip,
+        capsule: 'position: absolute; left: ' + px(6) + '; top: ' + px(12) + '; width: ' + px(30) + '; height: ' + px(9) + '; border-radius: 99px; background: ' + v['fill-strong'] + ';',
+        sb1: 'position: absolute; left: ' + px(10) + '; top: ' + px(15) + '; width: ' + px(18) + '; height: ' + px(3) + '; border-radius: 2px; background: ' + v.ink + ';',
+        sb2: 'position: absolute; left: ' + px(10) + '; top: ' + px(28) + '; width: ' + px(20) + '; height: ' + px(3) + '; border-radius: 2px; background: ' + v['ink-2'] + ';',
+        sb3: 'position: absolute; left: ' + px(10) + '; top: ' + px(38) + '; width: ' + px(14) + '; height: ' + px(3) + '; border-radius: 2px; background: ' + v['ink-3'] + ';',
+        pane: 'position: absolute; left: ' + px(42) + '; top: ' + px(6) + '; right: ' + px(6) + '; bottom: ' + px(6) + '; border-radius: ' + px(6) + '; background: ' + v.base + '; box-shadow: inset 0 0 0 1px ' + v['line-pane'] + '; padding: ' + px(12) + ' ' + px(8) + '; box-sizing: border-box; transform-origin: top left;',
+        ring: 'width: 8px; height: 8px; border-radius: 50%; box-shadow: inset 0 0 0 1.25px ' + v['line-field'] + '; flex: none;',
+        on: 'width: 8px; height: 8px; border-radius: 50%; background: ' + v.accent + '; flex: none;',
+        bar1: 'height: 3px; width: ' + px(38) + '; border-radius: 2px; background: ' + v.ink + ';',
+        bar2: 'height: 3px; width: ' + px(50) + '; border-radius: 2px; background: ' + v.ink + ';',
+        bar3: 'height: 3px; width: ' + px(30) + '; border-radius: 2px; background: ' + v['ink-3'] + ';',
+        chip: 'height: 7px; width: ' + px(16) + '; border-radius: 4px; background: ' + v['attn-tint'] + '; box-shadow: inset 0 0 0 0.5px ' + v.attention + '; margin-left: auto; flex: none;',
+        selrow: 'display: flex; align-items: center; gap: 5px; height: 12px; margin: 4px -4px 0; padding: 0 4px; border-radius: 3px; background: ' + v.sel + ';',
+      };
+    });
+    return {
+      rootStyle: 'position: relative; width: ' + w + 'px; height: ' + h + 'px; border-radius: 8px; overflow: hidden;',
+      layers,
+    };
+  }
+}
+</script>
+</body>
+</html>

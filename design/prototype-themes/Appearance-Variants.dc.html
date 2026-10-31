@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Themes and appearance</title>
+<script src="./support.js"></script>
+<script src="themes.js"></script>
+<link rel="stylesheet" href="tasks-v2.css">
+<link rel="stylesheet" href="markdown.css">
+<link rel="stylesheet" href="themes.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.av-col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.av-h{display:flex;align-items:center;gap:10px;font:600 15px/20px var(--font);color:var(--ink)}
+.av-rec{font:500 11px/14px var(--font);height:18px;padding:0 7px;border-radius:9px;display:inline-flex;align-items:center;background:var(--accent-tint);color:var(--accent-text)}
+.av-p{background:var(--base);border-radius:10px;box-shadow:inset 0 0 0 1px var(--line-pane);padding:18px;display:flex;flex-direction:column;gap:16px;height:300px;box-sizing:border-box}
+.av-r{display:flex;align-items:center;gap:12px}
+.av-l{width:96px;flex:none;color:var(--ink-2)}
+.av-seg{display:inline-flex;padding:2px;gap:2px;border-radius:999px;background:var(--fill-track)}
+.av-seg span{height:22px;padding:0 11px;border-radius:999px;color:var(--ink-2);font-size:12px;display:inline-flex;align-items:center}
+.av-seg span.on{background:var(--base);color:var(--ink);box-shadow:0 0 0 0.5px var(--line-pane),0 1px 2px rgba(0,0,0,0.2)}
+.av-cards{display:flex;gap:12px}
+.av-card{display:flex;flex-direction:column;gap:6px;font:500 12px/16px var(--font);color:var(--ink-2)}
+.av-card .cw{border-radius:8px;display:block}
+.av-card.on{color:var(--ink)}
+.av-card.on .cw{box-shadow:0 0 0 2px var(--base),0 0 0 4px var(--accent)}
+.av-pop{height:24px;padding:0 8px 0 10px;border-radius:6px;background:var(--fill-control);display:inline-flex;align-items:center;gap:8px;color:var(--ink)}
+.av-cap{color:var(--ink-2);font-size:13px;line-height:19px}
+.av-cap b{color:var(--ink);font-weight:600}
+</style>
+</helmet>
+<div class="tk dark" style="{{rootStyle}}">
+<div style="padding: 32px 36px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; color: var(--ink);">
+
+<div class="av-col">
+<div class="av-h">A · A theme is a pair<span class="av-rec">Recommended</span></div>
+<div class="av-p">
+<div class="av-r"><span class="av-l">Appearance</span><span class="av-seg"><span class="on">System</span><span>Light</span><span>Dark</span></span></div>
+<div class="av-r" style="align-items: flex-start;"><span class="av-l" style="margin-top: 2px;">Theme</span>
+<div class="av-cards">
+<span class="av-card on"><span class="cw"><dc-import name="ThemeCard" theme-id="default" appearance="split" w="104" h="68" hint-size="104px,68px"></dc-import></span>Default</span>
+<span class="av-card"><span class="cw"><dc-import name="ThemeCard" theme-id="paper" appearance="split" w="104" h="68" hint-size="104px,68px"></dc-import></span>Paper</span>
+<span class="av-card"><span class="cw"><dc-import name="ThemeCard" theme-id="dusk" appearance="split" w="104" h="68" hint-size="104px,68px"></dc-import></span>Dusk</span>
+</div></div>
+</div>
+<div class="av-cap"><b>Two independent choices.</b> The theme is the colours; Appearance picks its light or dark side, and System flips it with the Mac. Every theme defines both sides, so nothing breaks at sunset. The card shows both, split on the diagonal.</div>
+</div>
+
+<div class="av-col">
+<div class="av-h">B · A theme is one appearance</div>
+<div class="av-p">
+<div class="av-r"><span class="av-l">Appearance</span><span class="av-seg"><span class="on">System</span><span>Light</span><span>Dark</span></span></div>
+<div class="av-r" style="align-items: flex-start;"><span class="av-l" style="margin-top: 4px;">Light theme</span><span style="display: flex; flex-direction: column; gap: 8px;"><span class="av-pop">Paper<svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 6.5L8 10l3.5-3.5"></path></svg></span><dc-import name="ThemeCard" theme-id="paper" appearance="light" w="104" h="68" hint-size="104px,68px"></dc-import></span></div>
+<div class="av-r" style="align-items: flex-start;"><span class="av-l" style="margin-top: 4px;">Dark theme</span><span style="display: flex; flex-direction: column; gap: 8px;"><span class="av-pop">Dusk<svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 6.5L8 10l3.5-3.5"></path></svg></span><dc-import name="ThemeCard" theme-id="dusk" appearance="dark" w="104" h="68" hint-size="104px,68px"></dc-import></span></div>
+</div>
+<div class="av-cap"><b>Day and night themes, chosen apart.</b> Mix any light with any dark. It’s twice the choosing, two menus where A has one, and an unmatched pair (warm by day, cold by night) is the easy result.</div>
+</div>
+
+<div class="av-col">
+<div class="av-h">C · Pairs, and one-sided themes allowed</div>
+<div class="av-p">
+<div class="av-r"><span class="av-l">Appearance</span><span class="av-seg" style="opacity: 0.45;"><span>System</span><span>Light</span><span class="on">Dark</span></span></div>
+<div style="margin: -8px 0 0 108px; font-size: 12px; line-height: 16px; color: var(--ink-3);">Dusk Night is dark only, so it shows dark.</div>
+<div class="av-r" style="align-items: flex-start;"><span class="av-l" style="margin-top: 2px;">Theme</span>
+<div class="av-cards">
+<span class="av-card"><span class="cw"><dc-import name="ThemeCard" theme-id="default" appearance="split" w="104" h="68" hint-size="104px,68px"></dc-import></span>Default</span>
+<span class="av-card"><span class="cw"><dc-import name="ThemeCard" theme-id="paper" appearance="split" w="104" h="68" hint-size="104px,68px"></dc-import></span>Paper</span>
+<span class="av-card on"><span class="cw"><dc-import name="ThemeCard" theme-id="dusk" appearance="dark" w="104" h="68" hint-size="104px,68px"></dc-import></span>Dusk Night</span>
+</div></div>
+</div>
+<div class="av-cap"><b>A, plus files with one side.</b> A theme someone imports may only have a dark side; choosing it pins the appearance and dims the control. Built-ins stay pairs. Worth adding only if imported themes turn out to matter.</div>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1500,"height":640}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { rootStyle: window.TasksThemes.styleFor('default', 'dark') + '; width: 1500px; height: 640px; background: var(--ground);' };
+  }
+}
+</script>
+</body>
+</html>

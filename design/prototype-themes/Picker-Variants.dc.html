@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Picker forms</title>
+<script src="./support.js"></script>
+<script src="themes.js"></script>
+<link rel="stylesheet" href="tasks-v2.css">
+<link rel="stylesheet" href="markdown.css">
+<link rel="stylesheet" href="themes.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.pv-col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.pv-h{display:flex;align-items:center;gap:10px;font:600 15px/20px var(--font);color:var(--ink)}
+.pv-rec{font:500 11px/14px var(--font);height:18px;padding:0 7px;border-radius:9px;display:inline-flex;align-items:center;background:var(--accent-tint);color:var(--accent-text)}
+.pv-p{background:var(--base);border-radius:10px;box-shadow:inset 0 0 0 1px var(--line-pane);padding:16px;height:400px;box-sizing:border-box;position:relative;overflow:hidden}
+.pv-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px 10px}
+.pv-card{display:flex;flex-direction:column;gap:5px;font:500 11px/14px var(--font);color:var(--ink-2)}
+.pv-card .cw{display:block;border-radius:8px}
+.pv-card.on{color:var(--ink)}
+.pv-card.on .cw{box-shadow:0 0 0 2px var(--base),0 0 0 4px var(--accent)}
+.pv-row{height:36px;display:flex;align-items:center;gap:10px;padding:0 10px;border-radius:8px}
+.pv-row.on{background:var(--sel)}
+.pv-row .nm{width:72px;flex:none;color:var(--ink)}
+.pv-row .md{flex:1;min-width:0;color:var(--ink-3);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pv-dots{display:flex;gap:3px;flex:none}
+.pv-dots i{width:10px;height:10px;border-radius:50%;display:block;box-shadow:inset 0 0 0 0.5px rgba(127,127,127,0.4)}
+.pv-cap{color:var(--ink-2);font-size:13px;line-height:19px}
+.pv-cap b{color:var(--ink);font-weight:600}
+.pv-bar{height:24px;display:flex;align-items:center;gap:18px;padding:0 14px;margin:-16px -16px 0;background:var(--ground);box-shadow:inset 0 -1px 0 var(--line-sep);font-size:13px;color:var(--ink)}
+.pv-bar .on{background:var(--accent);color:var(--on-accent);border-radius:4px;padding:1px 7px;margin:0 -7px}
+</style>
+</helmet>
+<div class="tk dark" style="{{rootStyle}}">
+<div style="padding: 32px 36px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; color: var(--ink);">
+
+<div class="pv-col">
+<div class="pv-h">A · Cards in Settings<span class="pv-rec">Recommended</span></div>
+<div class="pv-p">
+<div style="color: var(--ink-2); margin-bottom: 10px;">Theme</div>
+<div class="pv-grid">
+<sc-for list="{{cards}}" as="c" hint-placeholder-count="7"><span class="{{c.cls}}"><span class="cw"><dc-import name="ThemeCard" theme-id="{{c.id}}" appearance="split" w="94" h="61" hint-size="94px,61px"></dc-import></span>{{c.name}}</span></sc-for>
+</div>
+</div>
+<div class="pv-cap"><b>A live card per theme.</b> Each draws its own derived tokens, so a theme reads at a glance and a broken one can’t hide. Clicking applies it at once; there’s no OK.</div>
+</div>
+
+<div class="pv-col">
+<div class="pv-h">B · A list with swatches</div>
+<div class="pv-p">
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="7"><div class="{{r.cls}}"><svg class="i i--sm" viewBox="0 0 16 16" aria-hidden="true" style="{{r.chk}}"><path d="M3.5 8.5l3 3 6-7"></path></svg><span class="nm">{{r.name}}</span><span class="md">{{r.mood}}</span><span class="pv-dots"><sc-for list="{{r.dots}}" as="d" hint-placeholder-count="6"><i style="{{d}}"></i></sc-for></span></div></sc-for>
+</div>
+<div class="pv-cap"><b>Denser, wordier.</b> Names, moods and six dots in a list. It scales to many imported themes, but six dots say little about how the window will feel, and it reads like a preference list rather than a look.</div>
+</div>
+
+<div class="pv-col">
+<div class="pv-h">C · And a View ▸ Theme menu<span class="pv-rec">Recommended, with A</span></div>
+<div class="pv-p">
+<div class="pv-bar"><span style="font-weight: 600;">Tasks</span><span>File</span><span>Edit</span><span class="on">View</span><span>Window</span><span>Help</span></div>
+<div class="menu" style="left: 116px; top: 30px; width: 214px; animation: none;">
+<div class="mi">Show Sidebar<span class="mk">⌃⌘S</span></div>
+<div class="mi">Show Details<span class="mk">⌘D</span></div>
+<div class="msep"></div>
+<div class="mi hot">Theme<span class="sub"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"></path></svg></span></div>
+<div class="mi">Appearance<span class="sub"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 4l4 4-4 4"></path></svg></span></div>
+</div>
+<div class="menu" style="left: 326px; top: 96px; width: 150px; animation: none;">
+<sc-for list="{{menu}}" as="m" hint-placeholder-count="7"><div class="mi"><span class="chk"><sc-if value="{{m.on}}" hint-placeholder-val="{{false}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"></path></svg></sc-if></span>{{m.name}}</div></sc-for>
+<div class="msep"></div>
+<div class="mi"><span class="chk"></span>Theme Settings…</div>
+</div>
+</div>
+<div class="pv-cap"><b>Switching without Settings.</b> The same list as a submenu, checked like Appearance. No shortcut: themes change rarely, and a key that repaints the window by accident is worse than none.</div>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1500,"height":640}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const T = window.TasksThemes, cur = 'paper';
+    const cards = T.THEMES.map((t) => ({ id: t.id, name: t.name, cls: 'pv-card' + (t.id === cur ? ' on' : '') }));
+    const rows = T.THEMES.map((t) => {
+      const d = T.derive(t, 'dark').v, l = T.derive(t, 'light').v;
+      const dots = [d.base, d.accent, l.base, l.accent, l['list-yellow'], l['list-green']].map((c) => 'background: ' + c);
+      return { name: t.name, mood: t.mood, dots, cls: 'pv-row' + (t.id === cur ? ' on' : ''), chk: 'color: var(--accent-text);' + (t.id === cur ? '' : ' visibility: hidden;') };
+    });
+    const menu = T.THEMES.map((t) => ({ name: t.name, on: t.id === cur }));
+    return { rootStyle: T.styleFor('default', 'dark') + '; width: 1500px; height: 640px; background: var(--ground);', cards, rows, menu };
+  }
+}
+</script>
+</body>
+</html>

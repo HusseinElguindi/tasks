@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shape and type</title>
+<script src="./support.js"></script>
+<script src="themes.js"></script>
+<link rel="stylesheet" href="tasks-v2.css">
+<link rel="stylesheet" href="markdown.css">
+<link rel="stylesheet" href="themes.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.st-l{display:flex;align-items:center;gap:10px;height:24px;font:600 14px/20px var(--font);color:var(--ink)}
+.st-l span{font-weight:400;color:var(--ink-2);font-size:13px}
+.st-rec{font:500 11px/14px var(--font);height:18px;padding:0 7px;border-radius:9px;display:inline-flex;align-items:center;background:var(--accent-tint);color:var(--accent-text)}
+.st-w{width:500px;height:310px;overflow:hidden;border-radius:8px}
+.st-w > div{width:1000px;height:620px;transform:scale(0.5);transform-origin:top left}
+</style>
+</helmet>
+<div class="tk dark" style="{{rootStyle}}">
+<div style="padding: 28px 40px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 30px;">
+<div class="st-l">Tight<span>every radius a step down</span></div>
+<div class="st-l">Default<span>Rex’s radii</span><span class="st-rec">Recommended: fixed</span></div>
+<div class="st-l">Round<span>a step up, circular buttons</span></div>
+<div class="st-w"><div><dc-import name="Main" start="today" theme="dark" shape="tight" strip="off" w="1000" h="620" hint-size="1000px,620px"></dc-import></div></div>
+<div class="st-w"><div><dc-import name="Main" start="today" theme="dark" strip="off" w="1000" h="620" hint-size="1000px,620px"></dc-import></div></div>
+<div class="st-w"><div><dc-import name="Main" start="today" theme="dark" shape="round" strip="off" w="1000" h="620" hint-size="1000px,620px"></dc-import></div></div>
+<div class="st-l" style="margin-top: 26px;">System<span>SF Pro, 13/16</span><span class="st-rec">Recommended: fixed</span></div>
+<div class="st-l" style="margin-top: 26px;">Serif<span>New York, the same sizes</span></div>
+<div class="st-l" style="margin-top: 26px;">Mono<span>SF Mono, the same sizes</span></div>
+<div class="st-w"><div><dc-import name="Main" start="list:phys" theme="dark" strip="off" w="1000" h="620" hint-size="1000px,620px"></dc-import></div></div>
+<div class="st-w"><div><dc-import name="Main" start="list:phys" theme="dark" font="serif" strip="off" w="1000" h="620" hint-size="1000px,620px"></dc-import></div></div>
+<div class="st-w"><div><dc-import name="Main" start="list:phys" theme="dark" font="mono" strip="off" w="1000" h="620" hint-size="1000px,620px"></dc-import></div></div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1640,"height":820}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { rootStyle: window.TasksThemes.styleFor('default', 'dark') + '; width: 1640px; height: 820px; background: var(--ground);' };
+  }
+}
+</script>
+</body>
+</html>

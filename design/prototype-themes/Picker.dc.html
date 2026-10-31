@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Theme picker</title>
+<script src="./support.js"></script>
+<script src="themes.js"></script>
+<link rel="stylesheet" href="tasks-v2.css">
+<link rel="stylesheet" href="markdown.css">
+<link rel="stylesheet" href="themes.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.pk-card{display:flex;flex-direction:column;gap:7px;align-items:flex-start;padding:0;border-radius:10px}
+.pk-card .cw{border-radius:8px;transition:box-shadow 100ms cubic-bezier(0,0,0.2,1)}
+.pk-card:hover .cw{box-shadow:0 0 0 1px var(--line-pane)}
+.pk-card.on .cw{box-shadow:0 0 0 2px var(--base),0 0 0 4px var(--accent)}
+.pk-card .nm{font:500 12px/16px var(--font);color:var(--ink-2)}
+.pk-card.on .nm,.pk-card:hover .nm{color:var(--ink)}
+.pk-seg{display:inline-flex;padding:2px;gap:2px;border-radius:999px;background:var(--fill-track)}
+.pk-seg button{height:22px;padding:0 11px;border-radius:999px;color:var(--ink-2);font-size:12px}
+.pk-seg button:hover{color:var(--ink)}
+.pk-seg button.on{background:var(--base);color:var(--ink);box-shadow:0 0 0 0.5px var(--line-pane),0 1px 2px rgba(0,0,0,0.2)}
+.pk-tab{display:flex;flex-direction:column;align-items:center;gap:3px;width:78px;padding:5px 0 4px;border-radius:7px;color:var(--ink-2);font-size:11px}
+.pk-tab.on{background:var(--fill-strong);color:var(--ink)}
+</style>
+</helmet>
+<div class="{{rootCls}}" style="{{rootStyle}}">
+<div style="position: absolute; left: 40px; top: 32px; width: 560px; height: 708px; border-radius: 12px; overflow: hidden; background: var(--base); box-shadow: var(--win-edge); display: flex; flex-direction: column;">
+<div style="height: 84px; flex: none; background: var(--ground); box-shadow: inset 0 -1px 0 var(--line-sep); position: relative; display: flex; justify-content: center; align-items: flex-end; gap: 4px; padding-bottom: 8px; box-sizing: border-box;">
+<div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
+<div style="position: absolute; top: 17px; left: 0; right: 0; text-align: center; font-weight: 600; color: var(--ink);">Appearance</div>
+<span class="pk-tab"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.2"></circle><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M3.6 12.4L5 11M11 5l1.4-1.4"></path></svg>General</span>
+<span class="pk-tab on"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"></circle><path d="M8 2a6 6 0 0 0 0 12z"></path></svg>Appearance</span>
+</div>
+<div style="flex: 1; padding: 20px 24px 0; display: flex; flex-direction: column; gap: 18px; min-height: 0;">
+<div style="display: flex; align-items: center; gap: 12px;"><span style="width: 120px; color: var(--ink-2);">Appearance</span><span class="pk-seg"><sc-for list="{{appOpts}}" as="o" hint-placeholder-count="3"><button class="{{o.cls}}" type="button" onClick="{{o.pick}}">{{o.label}}</button></sc-for></span></div>
+<div style="display: flex; flex-direction: column; gap: 10px;">
+<span style="color: var(--ink-2);">Theme</span>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 14px;">
+<sc-for list="{{cards}}" as="c" hint-placeholder-count="7">
+<button class="{{c.cls}}" type="button" onClick="{{c.pick}}" aria-label="{{c.name}}"><span class="cw"><dc-import name="ThemeCard" theme-id="{{c.id}}" appearance="{{c.look}}" w="148" h="96" hint-size="148px,96px"></dc-import></span><span class="nm">{{c.name}}</span></button>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; align-items: center; gap: 12px;"><span style="width: 120px; color: var(--ink-2);">Interface style</span><span class="pk-seg"><sc-for list="{{glassOpts}}" as="o" hint-placeholder-count="2"><button class="{{o.cls}}" type="button" onClick="{{o.pick}}">{{o.label}}</button></sc-for></span></div>
+<div style="height: 1px; background: var(--line-sep);"></div>
+<div style="display: flex; align-items: center; gap: 10px;">
+<span style="flex: 1; color: var(--ink-3); font-size: 12px; line-height: 16px;">Themes are kept on this Mac. Add one by putting its file in the Themes folder.</span>
+<button class="btn" type="button">Show Themes Folder</button>
+</div>
+<div style="display: flex; align-items: flex-start; gap: 8px; font-size: 12px; line-height: 16px; color: var(--ink-2);"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--danger); margin-top: 5px; flex: none;"></span><span><b style="font-weight: 600; color: var(--ink);">Lagoon.json</b> wasn’t loaded: its ink is 5.8:1 on its base, and a theme’s ink needs 7:1.</span></div>
+</div>
+</div>
+<div style="position: absolute; left: 648px; top: 32px; width: 820px; height: 525px; overflow: hidden; border-radius: 10px;">
+<div style="width: 1000px; height: 640px; transform: scale(0.82); transform-origin: top left;">
+<dc-import name="Main" start="list:phys" theme="{{appTheme}}" theme-id="{{themeId}}" glass="{{glassOn}}" strip="off" w="1000" h="640" hint-size="1000px,640px"></dc-import>
+</div>
+</div>
+<div style="position: absolute; left: 648px; top: 580px; width: 820px; font-size: 13px; line-height: 19px; color: var(--stage-ink);">Choosing a card applies it at once: the window, its menus, popover and notices change in the same frame. Each card draws its theme’s real derived tokens, dark and light on either side of the diagonal.</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1508,"height":780}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { themeId: 'paper', appearance: 'system', glass: false };
+  }
+  renderVals() {
+    const T = window.TasksThemes, s = this.state;
+    const sysDark = typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)').matches : true;
+    const appTheme = s.appearance === 'system' ? (sysDark ? 'dark' : 'light') : s.appearance;
+    const cards = T.THEMES.map((t) => ({
+      id: t.id, name: t.name, look: 'split',
+      cls: 'pk-card' + (t.id === s.themeId ? ' on' : ''),
+      pick: () => this.setState({ themeId: t.id }),
+    }));
+    const appOpts = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']].map(([v, label]) => ({ label, cls: s.appearance === v ? 'on' : '', pick: () => this.setState({ appearance: v }) }));
+    const glassOpts = [[false, 'Classic'], [true, 'Glass']].map(([v, label]) => ({ label, cls: s.glass === v ? 'on' : '', pick: () => this.setState({ glass: v }) }));
+    return {
+      rootCls: 'tk ' + appTheme,
+      rootStyle: T.styleFor(s.themeId, appTheme) + '; position: relative; width: 1508px; height: 780px; overflow: hidden;',
+      cards, appOpts, glassOpts, appTheme, themeId: s.themeId, glassOn: s.glass ? 'on' : 'off',
+    };
+  }
+}
+</script>
+</body>
+</html>

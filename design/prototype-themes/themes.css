@@ -1,0 +1,64 @@
+/* Tasks · themes (design/THEMES.md). Loaded after tasks-v2.css and markdown.css, which are prototype-v2's, unchanged.
+   A theme is applied as CSS variables on the root (themes.js, styleFor); this file adds the tokens that were
+   hard-coded, the prototype's Glass, the shape and type variants, and the cross-fade variant. */
+
+/* ---------- Tokens that bypassed the palette (THEMES.md §1.3) ---------- */
+.tk.dark { --tile-fill: var(--fill-strong); --tile-ring: rgba(255, 255, 255, 0.10); --lift-chip: #3A3A3A; --focus: var(--accent); --on-accent-2: rgba(255, 255, 255, 0.78);
+  --mark-trail: #6D7072; --mark-rings: #A8ADB1; --mark-bar: #E6EDF3; --mark-head: #2F81F7; }
+.tk.light { --tile-fill: #E3E3E4; --tile-ring: rgba(31, 35, 40, 0.10); --lift-chip: var(--fill-track); --focus: var(--accent); --on-accent-2: rgba(255, 255, 255, 0.78);
+  --mark-trail: #A9ACAF; --mark-rings: #626568; --mark-bar: #1F2328; --mark-head: #0969DA; }
+.tk .tile, .tk.light .tile { background: var(--tile-fill); box-shadow: inset 0 0 0 0.5px var(--tile-ring); }      /* css:123–124 */
+.tk .lifted .chip, .tk.dark .lifted .chip { background: var(--lift-chip); }                                        /* css:248–249 */
+.tk .lifted .chip.late { background: var(--danger-tint); }
+.tk .lifted .chip.due { background: var(--attn-tint); }
+.tk .mi.hot .mk, .tk .mi.hot .sub { color: var(--on-accent-2); }                                                     /* css:313 */
+.tk .mk-trail, .tk.light .mk-trail { fill: var(--mark-trail); }                                                      /* css:406–413 */
+.tk .mk-rings, .tk.light .mk-rings { fill: var(--mark-rings); }
+.tk .mk-bar, .tk.light .mk-bar { fill: var(--mark-bar); }
+.tk .mk-head, .tk.light .mk-head { fill: var(--mark-head); }
+
+/* ---------- Glass (INTERACTIONS-v2 §4): the ground at 60% over the blurred desktop, panes at 88% ---------- */
+.tk.glass { background:
+    radial-gradient(60% 70% at 18% 30%, #C9743F 0%, transparent 70%),
+    radial-gradient(55% 60% at 80% 20%, #3E6FB0 0%, transparent 70%),
+    radial-gradient(70% 70% at 70% 90%, #4F8F6A 0%, transparent 70%),
+    #5A4E6E; }
+.tk.glass .win { background: color-mix(in srgb, var(--ground) 60%, transparent); -webkit-backdrop-filter: blur(36px) saturate(1.5); backdrop-filter: blur(36px) saturate(1.5); }
+.tk.glass .pane { background: color-mix(in srgb, var(--dim) 88%, transparent); }
+.tk.glass .pane.focused { background: color-mix(in srgb, var(--base) 88%, transparent); }
+.tk.glass .stage { background: var(--ground); }
+
+/* ---------- Shape variants (not part of a theme, §2.2): every radius, one step tighter or rounder ---------- */
+.tk.shape-tight .win { border-radius: 8px; }
+.tk.shape-tight .pane { border-radius: 6px; }
+.tk.shape-tight .row, .tk.shape-tight .crow, .tk.shape-tight .lifted { border-radius: 4px; }
+.tk.shape-tight .srow { border-radius: 5px; }
+.tk.shape-tight .chip { border-radius: 4px; }
+.tk.shape-tight .chip.lg, .tk.shape-tight .qb, .tk.shape-tight .btn { border-radius: 5px; }
+.tk.shape-tight .menu, .tk.shape-tight .notice { border-radius: 6px; }
+.tk.shape-tight .picker, .tk.shape-tight .keys { border-radius: 8px; }
+.tk.shape-tight .cal .d { border-radius: 5px; }
+.tk.shape-tight .hb, .tk.shape-tight .open, .tk.shape-tight .gbtn, .tk.shape-tight .hbtn, .tk.shape-tight .nb, .tk.shape-tight .clr { border-radius: 4px; }
+.tk.shape-tight .tile { border-radius: 2.5px; }
+.tk.shape-round .win { border-radius: 16px; }
+.tk.shape-round .pane { border-radius: 14px; }
+.tk.shape-round .row, .tk.shape-round .crow, .tk.shape-round .lifted { border-radius: 12px; }
+.tk.shape-round .menu, .tk.shape-round .notice { border-radius: 14px; }
+.tk.shape-round .picker, .tk.shape-round .keys { border-radius: 18px; }
+.tk.shape-round .mi { border-radius: 8px; }
+.tk.shape-round .hb, .tk.shape-round .open, .tk.shape-round .gbtn, .tk.shape-round .hbtn, .tk.shape-round .nb, .tk.shape-round .clr { border-radius: 50%; }
+.tk.shape-round .tile { border-radius: 6px; }
+.tk.shape-round .pf { border-radius: 14px; }
+
+/* ---------- Type variants (not part of a theme, §2.2): the same sizes and metrics ---------- */
+.tk.font-serif { --font: "New York", "Iowan Old Style", Charter, Georgia, serif; }
+.tk.font-mono { --font: "SF Mono", ui-monospace, Menlo, monospace; }
+.tk.font-mono .row .tt, .tk.font-mono .srow .tl { letter-spacing: -0.3px; }
+
+/* ---------- Switching (§4.3): the cross-fade variant. Instant is the recommendation. ---------- */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 180ms; animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+
+/* The strip's theme menu: a native-looking select in the strip's own colours. */
+.tk .stage select { height: 22px; padding: 0 22px 0 8px; border-radius: 999px; border: 0; background: var(--fill-track); color: var(--stage-ink-strong); font: 11px/14px var(--font); appearance: none; -webkit-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--stage-ink) 50%), linear-gradient(135deg, var(--stage-ink) 50%, transparent 50%);
+  background-position: calc(100% - 12px) 9px, calc(100% - 8px) 9px; background-size: 4px 4px; background-repeat: no-repeat; outline: none; }
