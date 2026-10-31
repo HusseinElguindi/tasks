@@ -1949,9 +1949,10 @@ The indicator reads the store's `SyncState` (`Store.swift:5–16`), `store.recov
 
 ---
 
-## 27. A sidebar footer (proposed)
+## 27. A sidebar footer
 
-Status: **proposed, 2026-11-01** (`docs/TASK-design-sidebar-footer.md`). Nothing here is built. The user's words:
+Status: **final, 2026-10-31**: the user picked direction A, and it's built (`docs/TASK-build-sidebar-footer.md`;
+`app/NOTES-v2.md`). The design brief was `docs/TASK-design-sidebar-footer.md`. The user's words:
 "you know what, start something on a sidebar footer design." It's a mock-up of the sidebar alone, on its own canvas:
 https://claude.ai/artifact/NHtjhN5ihASTqJR2Yd4dAC. The component is `Foot.dc.html` with `foot.css` in `design/prototype-v2/`
 (props `dir` = actions | status | band | none, `theme`, `sync`, `hover`, `tip`, `scroll`, `sbw`, `glass`); the boards
@@ -1970,17 +1971,11 @@ show where Rex keeps its global actions: in the title band beside the sidebar to
 | The Archive toggle | No. Archive is a group in the list with its own label and chevron (§12); a second control for it in the foot would be two ways to do one thing. |
 | The brand mark and name | No. They head the sidebar (§12), and the foot is for doing, not naming. |
 
-### Three directions (all on the canvas, dark and light)
+### The direction: A · Actions
 
-- **A · Actions (recommended).** A pinned 36pt foot: **+ New List** at the left, **Settings** at the right. The sync
-  cloud stays in the header row, exactly as §26 says.
-- **B · Status.** The foot carries the sync state in §26's place: the cloud and, only when hovered or when something's
-  wrong, its words ("Synced 2 min ago", "Offline · 3 waiting", "Sync stopped"). At rest it's an empty foot but for + and
-  Settings, as icons. It answers "Synced all day", but it moves §26 to a worse place, and the header row loses the cue
-  it was designed around.
-- **C · In the band.** No foot. + and Settings join the title band beside the sidebar toggle (x 125 and 157), as Rex
-  keeps its actions. It's the most Rex-like, but it puts three icons in a row in the band, and it takes the spot that
-  §26 uses for its problems when the sidebar is collapsed.
+A pinned 36pt foot: **+ New List** at the left, **Settings** at the right. The sync cloud stays in the header row,
+exactly as §26 says. (The canvas also shows B, the sync state in the foot, and C, + and Settings in the title band;
+the user chose A.)
 
 ### A in detail
 
