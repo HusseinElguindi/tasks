@@ -230,3 +230,20 @@ In Today's Completed group, the trailing list name ("SE 463 — Software Project
 - **Test** with very long names, in a window and panes at their minimum widths.
 
 Commit, rebuild Release and report back. These two items can run in parallel in worktree subagents.
+
+## 17. One set of semantic colour tokens (themes tabled)
+
+The user's words: "Let's table themes. Though I think it might be good to think of the tokens/theming params (even if we have 1 theme) for consistency reasons."
+
+Themes themselves are tabled: no picker, no theme files and no sample themes. Do the groundwork from `design/THEMES.md` (§1, §2.1–2.4 and §6) so the app has **one consistent token system with one theme, Rex**.
+
+- **One palette.** Merge `PaneColors` and `TK.Palette` (`TasksApp.swift:34–37`) into a single palette built from the semantic tokens in THEMES.md §1, with Rex's measured values pinned, as the Default theme does.
+  - Every drawing site reads a named token.
+  - Use the THEMES.md names, so a later theme only has to supply base colours.
+- **Remove the hard-coded colours** that THEMES.md §1.3 lists: the brand mark in `SidebarHeader.swift:59–66`, the literal hover and shadow colours in the Pane components, and anything else you find. Each becomes a named token.
+- **Palette equality is about values, not light/dark** (`TK.swift:36`). A future theme switch, and today's appearance switch, must redraw rows correctly. Build the palette once per appearance change and cache it, with no per-frame cost.
+- **The derivation rules (§2.4):** implement them only if cheap. Pinned values are fine for now, but structure the code so derived tokens have one obvious place to live.
+- **No visual change.** The app has to render pixel-identical before and after, in Light, Dark, Classic and Glass. Check it with in-app render diffs of the main screens (Today, a list with headings, the detail pane with notes, the date popover, Upcoming, Trash) and the §9 benchmarks.
+- **Mark THEMES.md** with "tabled: tokens adopted in the app; picker, files and samples deferred".
+
+Commit, rebuild Release and report back.
