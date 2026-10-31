@@ -178,6 +178,13 @@ final class TextLayer: CATextLayer {
     override init(layer: Any) { super.init(layer: layer) }
     required init?(coder: NSCoder) { fatalError() }
 
+    /// New text shows at once. A new string, font or colour redraws the layer's contents during the commit, after the
+    /// transaction that set them has closed, and Core Animation would crossfade the old text into the new over 0.25 s:
+    /// the date chips, the large title and the sidebar's names did on every list switch (v2 feedback 20).
+    override class func defaultAction(forKey event: String) -> (any CAAction)? {
+        event == "contents" ? NSNull() : super.defaultAction(forKey: event)
+    }
+
     func set(_ text: String, font: NSFont, color: NSColor) {
         if self.text != text || textFont != font {
             self.text = text

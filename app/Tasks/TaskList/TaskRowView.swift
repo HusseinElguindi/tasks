@@ -317,6 +317,19 @@ final class TaskRowView: NSView {
     }
     #endif
 
+    #if DEBUG
+    /// Debug (v2 feedback 20): the row as drawn: title, hint, list name, dates and their frames, the box.
+    var debugFrameState: String {
+        guard let m = model else { return "-" }
+        func chip(_ c: ChipLayer) -> String {
+            c.isHidden ? "-" : "'\(c.content.text)'@\(Int(c.frame.minX))w\(Int(c.frame.width))"
+        }
+        return "'\(m.title)' hint=\(hintGlyph.isHidden ? "-" : hintCount.isHidden ? "notes" : hintCount.text) "
+            + "where=\(whereLabel.isHidden ? "-" : whereLabel.text) when=\(chip(whenChip)) deadline=\(chip(deadlineChip)) "
+            + "check=\(check.isHidden ? "-" : String(format: "%.1f", check.opacity)) \(debugDates)"
+    }
+    #endif
+
     /// A date's tooltip (§24), while its chip is shown.
     func chipTip(_ field: Overlays.Picker.Field) -> String? {
         guard chipFrame(field) != nil else { return nil }

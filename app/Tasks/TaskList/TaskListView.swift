@@ -847,11 +847,22 @@ final class TaskListView: NSView {
         titleView.showPlaceholder(on, animated: animated)
     }
 
-    /// The band's tile and title show once the large title has scrolled 24pt (§23 On scroll).
+    /// The band's tile and title show once the large title has scrolled 24pt (§23 On scroll). They fade as you scroll;
+    /// a list switch shows the new list's band as it is, at once (v2 feedback 20: the new name faded out of the band
+    /// over 150 ms when leaving a scrolled list).
     private func updateTitleScrolled() {
         let s = scroll.contentView.bounds.minY >= 24
-        if state.titleScrolled != s { state.titleScrolled = s }
+        defer { titleScrolledRoute = state.route }
+        guard state.titleScrolled != s else { return }
+        if titleScrolledRoute == state.route {
+            state.titleScrolled = s
+        } else {
+            var t = Transaction()
+            t.disablesAnimations = true
+            withTransaction(t) { state.titleScrolled = s }
+        }
     }
+    private var titleScrolledRoute: WindowState.Route?
 
     /// The list's title renames in place: 20/26, 30 tall, radius 6, `fill-control`, a 1.5pt `accent` ring (css:443).
     private func updateTitleField(_ rename: WindowState.Rename?) {
@@ -1756,6 +1767,13 @@ final class TaskListView: NSView {
     }
 
     /// Debug (§24): every row on screen, top to bottom, with what it shows of its dates.
+    /// Debug (v2 feedback 20): the large title and every visible row as drawn, top to bottom.
+    func debugFrameRows() -> String {
+        let r: [(CGFloat, String)] = rows.values.filter { !$0.isHidden && $0.model != nil }.map { ($0.frame.minY, $0.debugFrameState) }
+        let h: [(CGFloat, String)] = heads.values.filter { !$0.isHidden && $0.model != nil }.map { ($0.frame.minY, $0.debugFrameState) }
+        return "  title='\(titleView.debugTitle)'\n" + (r + h).sorted { $0.0 < $1.0 }.map { "  \(Int($0.0)) \($0.1)" }.joined(separator: "\n")
+    }
+
     func debugDates() -> String {
         rows.values.filter { !$0.isHidden && $0.model != nil }.sorted { $0.frame.minY < $1.frame.minY }
             .map { "  \($0.model!.title): \($0.debugDates)" }.joined(separator: "\n")

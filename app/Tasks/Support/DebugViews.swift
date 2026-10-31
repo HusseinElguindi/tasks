@@ -34,6 +34,8 @@ enum DebugViews {
             if let n = Int(rest) { a.goNumber(n) }
             else if let r = WindowState.Route.sidebarOrder(p).first(where: { a.routeName($0).lowercased() == rest.lowercased() }) { a.go(r) }
         case "hints": w.cmdHints = rest == "on"
+        case "frames": DebugFrames.start(rest, window: w)
+        case "collapse": if let h = task(rest) { a.toggleCollapse([h]) }
         case "detail": a.toggleDetail()
         case "rename": if let t = task(rest) { a.startRename(t) }
         case "renamelist": if let l = list(rest) { a.startListRename(l) }

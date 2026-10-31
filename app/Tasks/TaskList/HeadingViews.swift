@@ -75,6 +75,14 @@ final class HeadingRowView: NSView {
     /// The list handles the pointer (it selects on mouse-down and drags); the row only draws.
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
+    #if DEBUG
+    /// Debug (v2 feedback 20): the heading as drawn.
+    var debugFrameState: String {
+        "heading '\(name.text)' count=\(count.isHidden ? "-" : count.text) chevron=\(chevronDown.map { $0 ? "down" : "right" } ?? "-")"
+            + " revealed=\(chevron.revealed ? 1 : 0)"
+    }
+    #endif
+
     func configure(_ m: HeadingModel, palette: TK.Palette, width: CGFloat, animated: Bool) {
         let paletteChanged = palette != self.palette || model == nil
         self.palette = palette
@@ -189,6 +197,9 @@ final class ListTitleView: NSView {
     private(set) var titleFrame: CGRect = .zero
     var onDoubleClickTitle: (() -> Void)?
     var onHover: ((Bool) -> Void)?
+    #if DEBUG
+    var debugTitle: String { title.text + (sub.text.isEmpty ? "" : " | " + sub.text) }
+    #endif
 
     nonisolated(unsafe) static let font: NSFont = NSFont.systemFont(ofSize: 20, weight: .semibold)   // .lhn 600 20/26
     static let kern: CGFloat = -0.2
