@@ -1,0 +1,41 @@
+{
+  "name": "12-push-heading-and-list-notes",
+  "spec": "§5 op schema, kind and a list's notes",
+  "description": "A list.update with notes (Markdown, up to 20,000 characters) and a task.create with kind \"heading\": a heading is a task with that kind, set once at create.",
+  "setup": {
+    "log": [
+      {"id":"00000000-0000-0000-0000-000000000002","at":1761811200000,"type":"list.create","target":"00000000-0000-0000-0000-000000000001","set":{"name":"Inbox","order":"a0"}},
+      {"id":"5b0c6c1e-3f0a-4c8e-9d61-0f4f6f1a2b3c","at":1761811260000,"type":"task.create","target":"9f8e7d6c-5b4a-4321-8fed-cba987654321","set":{"list":"00000000-0000-0000-0000-000000000001","order":"a0","title":"Buy milk","when":"2026-10-30"}}
+    ]
+  },
+  "request": {
+    "method": "POST",
+    "path": "/v1/sync",
+    "headers": {
+      "Authorization": "Bearer test-token",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "from": 2,
+      "base": "184ceb4c3d11bd53025385963c25f50298c2d652f84d5989941d2ec13a66fd79",
+      "ops": [
+        {"id":"b1e4c7a2-9d3f-4e8b-8c1a-5f6e7d8c9b0a","at":1761811330000,"type":"list.update","target":"00000000-0000-0000-0000-000000000001","set":{"notes":"Things to sort.\n- [ ] **Monday**: groceries"}},
+        {"id":"c2f5d8b3-0e4a-4f9c-9d2b-6a7b8c9d0e1f","at":1761811331000,"type":"task.create","target":"4c2b8e1d-6f3a-4b7c-9d0e-2a1b3c4d5e6f","set":{"list":"00000000-0000-0000-0000-000000000001","order":"Zz","title":"Errands","kind":"heading"}}
+      ]
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "body": {
+      "entries": [
+        {"seq":2,"received":1761811261234,"hash":"a1888e63445c0017882546ae083aa456adc3065833109faebcf90ca7d5072ce5","op":{"id":"b1e4c7a2-9d3f-4e8b-8c1a-5f6e7d8c9b0a","at":1761811330000,"type":"list.update","target":"00000000-0000-0000-0000-000000000001","set":{"notes":"Things to sort.\n- [ ] **Monday**: groceries"}}},
+        {"seq":3,"received":1761811261234,"hash":"e80619f6727148e172dd477ee8cf604a34f82fe2ee9385654d7fb71a3fed0043","op":{"id":"c2f5d8b3-0e4a-4f9c-9d2b-6a7b8c9d0e1f","at":1761811331000,"type":"task.create","target":"4c2b8e1d-6f3a-4b7c-9d0e-2a1b3c4d5e6f","set":{"list":"00000000-0000-0000-0000-000000000001","order":"Zz","title":"Errands","kind":"heading"}}}
+      ],
+      "head": 4,
+      "more": false
+    }
+  }
+}

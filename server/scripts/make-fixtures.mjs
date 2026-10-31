@@ -29,6 +29,13 @@ const SPEC_HASH_1 = "184ceb4c3d11bd53025385963c25f50298c2d652f84d5989941d2ec13a6
 // Example 11: an agent's op, with the optional attribution keys.
 const opC = { id: "3a7f2c1e-8b4d-4e6a-9c5f-1d2e3f4a5b6c", at: 1761811320000, type: "task.update", target: TASK, set: { when: "2026-11-06" }, actor: "agent:claude-code", batch: "2c1f9e0a-7b3d-4c5e-8f6a-9b0c1d2e3f4a" };
 
+// Example 12 (SPEC §2, §5): a heading is a task.create with kind "heading", and a list carries Markdown notes.
+const HEADING = "4c2b8e1d-6f3a-4b7c-9d0e-2a1b3c4d5e6f";
+const opD = { id: "b1e4c7a2-9d3f-4e8b-8c1a-5f6e7d8c9b0a", at: 1761811330000, type: "list.update", target: INBOX, set: { notes: "Things to sort.\n- [ ] **Monday**: groceries" } };
+const opE = { id: "c2f5d8b3-0e4a-4f9c-9d2b-6a7b8c9d0e1f", at: 1761811331000, type: "task.create", target: HEADING, set: { list: INBOX, order: "Zz", title: "Errands", kind: "heading" } };
+// Example 13: kind is set once, at create; an update can't carry it.
+const opF = { id: "d3a6e9c4-1f5b-4a0d-8e3c-7b8c9d0e1f2a", at: 1761811340000, type: "task.update", target: TASK, set: { kind: "heading" } };
+
 const opText = (op) => JSON.stringify({ id: op.id, at: op.at, type: op.type, target: op.target, set: op.set, actor: op.actor, batch: op.batch });
 const sha256 = (s) => createHash("sha256").update(s).digest("hex");
 
@@ -69,6 +76,7 @@ const logAXB = log([opA, opX, opB]);
 const log2345 = log([opA, opB, ...filler]);
 const after3 = log([opA, opB, op3a]);
 const afterC = log([opA, opB, opC]);
+const afterDE = log([opA, opB, opD, opE]);
 
 if (logAB[0].hash !== SPEC_HASH_0 || logAB[1].hash !== SPEC_HASH_1) throw new Error("hash vectors disagree with SPEC §5");
 // Example 5's recovery response, entries 1 and 2.
@@ -193,6 +201,20 @@ const fixtures = {
     setup: { log: [opA, opB] },
     request: request({ from: 2, base: hash1, ops: [opC] }),
     response: response(200, page(afterC, 2)),
+  },
+  "12-push-heading-and-list-notes": {
+    spec: "§5 op schema, kind and a list's notes",
+    description: "A list.update with notes (Markdown, up to 20,000 characters) and a task.create with kind \"heading\": a heading is a task with that kind, set once at create.",
+    setup: { log: [opA, opB] },
+    request: request({ from: 2, base: hash1, ops: [opD, opE] }),
+    response: response(200, page(afterDE, 2)),
+  },
+  "13-kind-on-update": {
+    spec: "§5 validation table, kind",
+    description: "kind is allowed only on task.create: a task.update that carries it is rejected, and nothing is appended.",
+    setup: { log: [opA, opB] },
+    request: request({ from: 2, base: hash1, ops: [opF] }),
+    response: error(400, "invalid_op", "ops[0].set.kind is not allowed for task.update", { index: 0, field: "set.kind" }),
   },
 };
 

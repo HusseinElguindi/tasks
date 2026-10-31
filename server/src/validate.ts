@@ -64,14 +64,16 @@ const VALUES: Record<string, [Check, string]> = {
   completedAt: [nullable(isNat), "must be null or an integer >= 0"],
   archivedAt: [nullable(isNat), "must be null or an integer >= 0"],
   deleted: [(v) => typeof v === "boolean", "must be a boolean"],
+  kind: [(v) => v === "heading", 'must be "heading"'],
 };
 
 const TASK_KEYS = ["list", "order", "title", "notes", "when", "deadline", "completedAt"];
+// `kind` is set once, at create, and never changes (a heading is a task with kind "heading", SPEC §2).
 const TYPES: Record<string, { allowed: Set<string>; required: string[] }> = {
-  "task.create": { allowed: new Set(TASK_KEYS), required: ["list", "order"] },
+  "task.create": { allowed: new Set([...TASK_KEYS, "kind"]), required: ["list", "order"] },
   "task.update": { allowed: new Set([...TASK_KEYS, "deleted"]), required: [] },
-  "list.create": { allowed: new Set(["name", "order"]), required: ["name", "order"] },
-  "list.update": { allowed: new Set(["name", "order", "archivedAt"]), required: [] },
+  "list.create": { allowed: new Set(["name", "order", "notes"]), required: ["name", "order"] },
+  "list.update": { allowed: new Set(["name", "order", "notes", "archivedAt"]), required: [] },
 };
 // `actor` and `batch` are optional attribution keys (SPEC §5): who wrote the op, and the change it belongs to.
 const ENVELOPE = new Set(["id", "at", "type", "target", "set", "actor", "batch"]);
