@@ -242,6 +242,13 @@ Every op has the same shape: an envelope, a type, a target id and a `set` patch.
 
 `set` semantics: a key that's present overwrites the field (`null` clears it), and a missing key leaves it unchanged.
 
+**Attribution (optional):** the envelope may also carry `actor`, who wrote the op (`"agent:claude-code"`, `"cli"`; absent means the Mac app), and `batch`, an id shared by every op of one change (one CLI command or one code-mode run, `docs/SDK-PLAN.md` §4). The reducer never reads them. They exist for review (`tasks log`) and for undoing a whole change later.
+
+```jsonc
+{ "id": "3a7f…", "at": 1761811320000, "type": "task.update", "target": "9f8e…", "set": { "when": "2026-11-06" },
+  "actor": "agent:claude-code", "batch": "2c1f…" }
+```
+
 **Ids** (op `id`, `target`, `list`) are opaque, case-sensitive strings to the server: `"ABC"` and `"abc"` are different ops for dedup and different entities for the reducer. Clients generate lowercase UUIDs, the form every fixture uses, and store and compare ids as `String`. In Swift that means `UUID().uuidString.lowercased()`, and never round-tripping an id through `UUID`, whose `uuidString` is uppercase. The Inbox seed ids (§2) are all digits, so they're the same either way.
 
 Stored by the server, the log entry adds `seq` (its index) and `received` (server ms).
@@ -313,7 +320,8 @@ So a client with a stale cursor and a bad request gets the `400` or `413` it nee
 | `type`: one of `task.create`, `task.update`, `list.create`, `list.update`. | `type` |
 | `target`: a string of 1–64 characters. | `target` |
 | `set`: present, and an object. | `set` |
-| No envelope keys besides `id`, `at`, `type`, `target`, `set`. | the extra key, e.g. `seq` |
+| `actor`, `batch`: absent, or a string of 1–64 characters. | `actor` / `batch` |
+| No envelope keys besides `id`, `at`, `type`, `target`, `set`, `actor`, `batch`. | the extra key, e.g. `seq` |
 | Each `set` key, in the order received: allowed for its `type` (§5 op schema), and its value valid (below). | `set.<key>` |
 | Required keys on a create: `list` and `order` for a task, `name` and `order` for a list. | `set.<key>` |
 
@@ -336,9 +344,9 @@ So a client with a stale cursor and a bad request gets the `400` or `413` it nee
 - **Every string must be well-formed Unicode.** A JSON `\ud800`-style escape can carry an unpaired surrogate; that's rejected (`invalid_op`), because a stored entry a client can't decode would stop every Mac's sync at that `seq` for good. Swift strings can't hold one, so a Swift client never sends it.
 - **Duplicate op ids** inside one request: only the first is appended. An op id already in the log is skipped too, whatever its content (dedup is by id only).
 
-**Validation may only loosen, never tighten.** A `409` recovery re-pushes ops that are already in the log, verbatim, and validation runs before dedup. So a rule that rejects an op the log already holds would turn a harmless re-push into `invalid_op`, and the client would move that op to `rejected.jsonl`: the discard the recovery rule forbids. Rolling the Worker back to a version with stricter rules has the same effect. Allowing a new `set` key is a loosening and fine. A rule that must tighten needs a migration plan for the ops already stored before it ships.
+**Validation may only loosen, never tighten.** A `409` recovery re-pushes ops that are already in the log, verbatim, and validation runs before dedup. So a rule that rejects an op the log already holds would turn a harmless re-push into `invalid_op`, and the client would move that op to `rejected.jsonl`: the discard the recovery rule forbids. Rolling the Worker back to a version with stricter rules has the same effect. Allowing a new `set` key is a loosening and fine; so was allowing `actor` and `batch`, which is why the Worker must never be rolled back past that change. A rule that must tighten needs a migration plan for the ops already stored before it ships.
 
-The server stores each op as `JSON.stringify({id, at, type, target, set})`: top-level keys in that order, `set` keys in the order received. That exact text is what gets hashed (§6). The client never re-hashes, so this is only a server-internal rule, but the worked examples below are test vectors for it.
+The server stores each op as `JSON.stringify({id, at, type, target, set, actor, batch})`: top-level keys in that order, `set` keys in the order received. `JSON.stringify` omits an absent `actor` or `batch`, so an op without them is stored as `{id, at, type, target, set}`, exactly as before the keys existed. That exact text is what gets hashed (§6). The client never re-hashes, so this is only a server-internal rule, but the worked examples below are test vectors for it.
 
 #### Success: `200`
 
@@ -718,7 +726,7 @@ CREATE TABLE log (
   seq      INTEGER PRIMARY KEY,   -- 0-based, dense, assigned as head
   id       TEXT NOT NULL UNIQUE,  -- client op id (idempotency)
   received INTEGER NOT NULL,      -- server ms
-  op       TEXT NOT NULL,         -- JSON.stringify({id, at, type, target, set}), hashed as stored (§5 API contract)
+  op       TEXT NOT NULL,         -- JSON.stringify({id, at, type, target, set, actor, batch}), hashed as stored (§5)
   hash     TEXT NOT NULL          -- SHA-256(prev hash + "\n" + op), hex (§6)
 );
 ```
