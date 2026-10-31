@@ -118,3 +118,26 @@ Add a setting in Settings (⌘,) with two options:
 - Update the spec with the setting and both behaviours, and the prototype too if that's cheap. Then commit, rebuild Release and report back.
 
 The default was the coordinator's reading of "I think one option should be the one"; the user can flip it.
+
+## 9. Switching appearance breaks things, including the window controls
+
+The user's words: "i think there's a problem when switching between dark and light modes and system. the close and minimize and expand controls get all messed up too. check it out."
+
+**Reproduce:**
+- Switch the app's appearance setting between Light, Dark and System, in every order, while the window is open.
+- Do it with one pane and with two, with the sidebar collapsed, and in full screen.
+- Find everything that doesn't update, or updates wrongly: layers with baked-in `CGColor`s, cached row renders, the traffic lights (position, appearance, hover glyphs), the popover, tooltips and notices.
+
+The window controls get "all messed up". Find out how: whether they lose their custom position, are drawn twice, show the wrong appearance, or lose their hover state. Fix it at the cause.
+
+**Don't change the system-wide appearance setting**, because it affects the user's screen. Simulate "System" following in the scratch app. If a real system flip is truly needed, ask the coordinator.
+
+## 10. The glass setting makes no visible difference
+
+The user's words: "I also dont see a difference with and without glass. investigate these"
+
+- Find out what the glass setting is meant to do, and what it actually changes in code.
+- Compare captures with it on and off, in both appearances, over a busy desktop or wallpaper behind the window.
+- If it's wired to nothing, or the effect is hidden under an opaque surface, either make it show the intended translucency or report that it should be removed, and why. Then check how it looks.
+
+For both items: if item 10 is independent of item 9, hand it to a worktree subagent. Commit, make one Release build and report back.
