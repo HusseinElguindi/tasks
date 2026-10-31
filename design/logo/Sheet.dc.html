@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Icon direction sheet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1920px; height: 1160px; box-sizing: border-box; padding: 44px 56px 48px; background: #111111; color: #E6EDF3; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif; -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; gap: 28px;">
+
+<header style="display: flex; align-items: baseline; gap: 14px; height: 34px;">
+<span style="font: 600 13px/16px 'SF Mono', ui-monospace, Menlo, monospace; color: #7F8386;">{{info.num}}</span>
+<h1 style="margin: 0; font-size: 28px; line-height: 34px; font-weight: 600;">{{info.name}}</h1>
+<p style="margin: 0; font-size: 15px; line-height: 20px; color: #A8ADB1;">{{info.line}}</p>
+<sc-if value="{{info.rec}}" hint-placeholder-val="{{false}}"><span style="align-self: center; height: 22px; padding: 0 10px; border-radius: 11px; background: #1E2938; color: #5799F6; font-size: 12px; line-height: 22px; font-weight: 600;">{{info.recLabel}}</span></sc-if>
+</header>
+
+<div style="display: flex; gap: 24px; height: 560px;">
+<section style="width: 432px; box-sizing: border-box; padding: 20px; border-radius: 16px; background: #181818; box-shadow: inset 0 0 0 1px #262728; display: flex; flex-direction: column;">
+<h2 style="margin: 0; font-size: 11px; line-height: 14px; font-weight: 600; color: #7F8386;">1024 on the construction grid · shown at 37%</h2>
+<div style="flex-grow: 1; display: flex; align-items: center; justify-content: center;">
+<dc-import name="Icon" mark="{{mark}}" look="dark" size="{{n380}}" grid="{{yes}}" hint-size="380px,380px"></dc-import>
+</div>
+</section>
+
+<section style="width: 340px; box-sizing: border-box; padding: 20px; border-radius: 16px; background: #E9E9EA; display: flex; flex-direction: column;">
+<h2 style="margin: 0; font-size: 11px; line-height: 14px; font-weight: 600; color: #626568;">Light · 256 to 16 at 1×</h2>
+<div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+<dc-import name="Icon" mark="{{mark}}" look="light" size="{{n256}}" hint-size="256px,256px"></dc-import>
+<span style="font: 500 11px/14px 'SF Mono', ui-monospace, Menlo, monospace; color: #626568;">256</span>
+</div>
+<div style="display: flex; align-items: flex-end; gap: 20px;">
+<sc-for list="{{ladder}}" as="s" hint-placeholder-count="4">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+<dc-import name="Icon" mark="{{mark}}" look="light" size="{{s.n}}" hint-size="{{s.hint}}"></dc-import>
+<span style="font: 500 11px/14px 'SF Mono', ui-monospace, Menlo, monospace; color: #626568;">{{s.label}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+</section>
+
+<section style="width: 340px; box-sizing: border-box; padding: 20px; border-radius: 16px; background: #181818; box-shadow: inset 0 0 0 1px #262728; display: flex; flex-direction: column;">
+<h2 style="margin: 0; font-size: 11px; line-height: 14px; font-weight: 600; color: #7F8386;">Dark · 256 to 16 at 1×</h2>
+<div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px;">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+<dc-import name="Icon" mark="{{mark}}" look="dark" size="{{n256}}" hint-size="256px,256px"></dc-import>
+<span style="font: 500 11px/14px 'SF Mono', ui-monospace, Menlo, monospace; color: #7F8386;">256</span>
+</div>
+<div style="display: flex; align-items: flex-end; gap: 20px;">
+<sc-for list="{{ladder}}" as="s" hint-placeholder-count="4">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+<dc-import name="Icon" mark="{{mark}}" look="dark" size="{{s.n}}" hint-size="{{s.hint}}"></dc-import>
+<span style="font: 500 11px/14px 'SF Mono', ui-monospace, Menlo, monospace; color: #7F8386;">{{s.label}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+</section>
+
+<div style="width: 300px; display: flex; flex-direction: column; gap: 24px;">
+<section style="flex-grow: 1; box-sizing: border-box; padding: 20px; border-radius: 16px; background: #181818; box-shadow: inset 0 0 0 1px #262728; display: flex; flex-direction: column;">
+<h2 style="margin: 0; font-size: 11px; line-height: 14px; font-weight: 600; color: #7F8386;">Mark · dark</h2>
+<div style="flex-grow: 1; display: flex; align-items: center; justify-content: center;">
+<dc-import name="Icon" mark="{{mark}}" look="dark" size="{{n160}}" bare="{{yes}}" hint-size="160px,160px"></dc-import>
+</div>
+</section>
+<section style="flex-grow: 1; box-sizing: border-box; padding: 20px; border-radius: 16px; background: #F5F5F5; display: flex; flex-direction: column;">
+<h2 style="margin: 0; font-size: 11px; line-height: 14px; font-weight: 600; color: #626568;">Mark · light</h2>
+<div style="flex-grow: 1; display: flex; align-items: center; justify-content: center;">
+<dc-import name="Icon" mark="{{mark}}" look="light" size="{{n160}}" bare="{{yes}}" hint-size="160px,160px"></dc-import>
+</div>
+</section>
+</div>
+
+<div style="width: 300px; display: flex; flex-direction: column; gap: 24px;">
+<section style="flex-grow: 1; box-sizing: border-box; padding: 20px; border-radius: 16px; background: #1A1A1A; box-shadow: inset 0 0 0 1px #262728; display: flex; flex-direction: column;">
+<h2 style="margin: 0; font-size: 11px; line-height: 14px; font-weight: 600; color: #7F8386;">Tinted</h2>
+<div style="flex-grow: 1; display: flex; align-items: flex-end; justify-content: center; gap: 24px; padding-bottom: 28px;">
+<dc-import name="Icon" mark="{{mark}}" look="tinted" tint="{{tint}}" size="{{n128}}" hint-size="128px,128px"></dc-import>
+<dc-import name="Icon" mark="{{mark}}" look="tinted" tint="{{tint}}" size="{{n32}}" hint-size="32px,32px"></dc-import>
+</div>
+</section>
+<section style="flex-grow: 1; box-sizing: border-box; padding: 20px; border-radius: 16px; background: #56606E; display: flex; flex-direction: column;">
+<h2 style="margin: 0; font-size: 11px; line-height: 14px; font-weight: 600; color: rgba(255, 255, 255, 0.86);">Clear</h2>
+<div style="flex-grow: 1; display: flex; align-items: flex-end; justify-content: center; gap: 24px; padding-bottom: 28px;">
+<dc-import name="Icon" mark="{{mark}}" look="clear" size="{{n128}}" hint-size="128px,128px"></dc-import>
+<dc-import name="Icon" mark="{{mark}}" look="clear" size="{{n32}}" hint-size="32px,32px"></dc-import>
+</div>
+</section>
+</div>
+</div>
+
+<div style="display: flex; gap: 24px; flex-grow: 1;">
+<section style="width: 560px; box-sizing: border-box; padding: 20px; border-radius: 16px; background: #181818; box-shadow: inset 0 0 0 1px #262728; display: flex; flex-direction: column; gap: 14px;">
+<h2 style="margin: 0; font-size: 11px; line-height: 14px; font-weight: 600; color: #7F8386;">Dock</h2>
+<div style="flex-grow: 1; border-radius: 12px; background: #2B2F36; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 14px;">
+<div style="position: relative; display: flex; gap: 6px; padding: 8px 8px 10px; border-radius: 22px; background: rgba(255, 255, 255, 0.14); box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.30), 0 8px 24px rgba(0, 0, 0, 0.28);">
+<span style="position: absolute; left: 224px; bottom: 96px; width: 52px; height: 24px; border-radius: 7px; background: rgba(40, 40, 42, 0.92); box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.18); color: #F2F2F2; font-size: 12px; line-height: 24px; text-align: center;">Tasks</span>
+<span style="width: 64px; height: 64px; display: grid; place-items: center;"><span style="width: 52px; height: 52px; border-radius: 12px; background: #5A5F67;"></span></span>
+<span style="width: 64px; height: 64px; display: grid; place-items: center;"><span style="width: 52px; height: 52px; border-radius: 12px; background: #767B83;"></span></span>
+<span style="width: 64px; height: 64px; display: grid; place-items: center;"><span style="width: 52px; height: 52px; border-radius: 12px; background: #454950;"></span></span>
+<dc-import name="Icon" mark="{{mark}}" look="dark" size="{{n64}}" hint-size="64px,64px"></dc-import>
+<span style="width: 64px; height: 64px; display: grid; place-items: center;"><span style="width: 52px; height: 52px; border-radius: 12px; background: #62676F;"></span></span>
+<span style="width: 64px; height: 64px; display: grid; place-items: center;"><span style="width: 52px; height: 52px; border-radius: 12px; background: #50545B;"></span></span>
+<span style="position: absolute; left: 248px; bottom: 3px; width: 4px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.78);"></span>
+</div>
+</div>
+<div style="flex-grow: 1; border-radius: 12px; background: #C9CFD7; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 14px;">
+<div style="position: relative; display: flex; gap: 6px; padding: 8px 8px 10px; border-radius: 22px; background: rgba(255, 255, 255, 0.42); box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.70), 0 8px 24px rgba(0, 0, 0, 0.12);">
+<span style="width: 64px; height: 64px; display: grid; place-items: center;"><span style="width: 52px; height: 52px; border-radius: 12px; background: #A3A9B1;"></span></span>
+<span style="width: 64px; height: 64px; display: grid; place-items: center;"><span style="width: 52px; height: 52px; border-radius: 12px; background: #8E949C;"></span></span>
+<span style="width: 64px; height: 64px; display: grid; place-items: center;"><span style="width: 52px; height: 52px; border-radius: 12px; background: #B5BAC1;"></span></span>
+<dc-import name="Icon" mark="{{mark}}" look="light" size="{{n64}}" hint-size="64px,64px"></dc-import>
+<span style="width: 64px; height: 64px; display: grid; place-items: center;"><span style="width: 52px; height: 52px; border-radius: 12px; background: #9AA0A8;"></span></span>
+<span style="width: 64px; height: 64px; display: grid; place-items: center;"><span style="width: 52px; height: 52px; border-radius: 12px; background: #AEB3BA;"></span></span>
+<span style="position: absolute; left: 248px; bottom: 3px; width: 4px; height: 4px; border-radius: 2px; background: rgba(0, 0, 0, 0.55);"></span>
+</div>
+</div>
+</section>
+
+<section style="width: 560px; box-sizing: border-box; padding: 20px; border-radius: 16px; background: #E9E9EA; display: flex; flex-direction: column; gap: 14px;">
+<h2 style="margin: 0; font-size: 11px; line-height: 14px; font-weight: 600; color: #626568;">Finder</h2>
+<div style="flex-grow: 1; border-radius: 10px; background: #FFFFFF; box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.18), 0 10px 30px rgba(0, 0, 0, 0.12); overflow: hidden; display: flex; flex-direction: column; color: #1F2328;">
+<div style="height: 40px; flex: none; position: relative; display: flex; align-items: center; justify-content: center; background: #F3F3F4; box-shadow: inset 0 -1px 0 #E2E2E3;">
+<span style="position: absolute; left: 14px; top: 14px; display: flex; gap: 8px;"><span style="width: 12px; height: 12px; border-radius: 6px; background: #FF5F57;"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #FEBC2E;"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #28C840;"></span></span>
+<span style="font-size: 13px; line-height: 16px; font-weight: 600;">Applications</span>
+</div>
+<div style="display: flex; gap: 12px; padding: 18px 22px 14px;">
+<div style="width: 96px; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+<span style="padding: 4px; border-radius: 8px; background: #DCDCDE;"><dc-import name="Icon" mark="{{mark}}" look="light" size="{{n64}}" hint-size="64px,64px"></dc-import></span>
+<span style="height: 18px; padding: 0 7px; border-radius: 5px; background: #0969DA; color: #FFFFFF; font-size: 12px; line-height: 18px;">Tasks</span>
+</div>
+<div style="width: 96px; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+<span style="width: 72px; height: 72px; display: grid; place-items: center;"><span style="width: 52px; height: 52px; border-radius: 12px; background: #D3D5D8;"></span></span>
+<span style="width: 52px; height: 10px; margin-top: 4px; border-radius: 5px; background: #E4E5E7;"></span>
+</div>
+<div style="width: 96px; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+<span style="width: 72px; height: 72px; display: grid; place-items: center;"><span style="width: 52px; height: 52px; border-radius: 12px; background: #C6C9CD;"></span></span>
+<span style="width: 60px; height: 10px; margin-top: 4px; border-radius: 5px; background: #E4E5E7;"></span>
+</div>
+<div style="width: 96px; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+<span style="width: 72px; height: 72px; display: grid; place-items: center;"><span style="width: 52px; height: 52px; border-radius: 12px; background: #DADCDF;"></span></span>
+<span style="width: 44px; height: 10px; margin-top: 4px; border-radius: 5px; background: #E4E5E7;"></span>
+</div>
+</div>
+<div style="margin: 0 14px; box-shadow: inset 0 -1px 0 #E7E8E8; display: flex; height: 24px; align-items: center; padding: 0 8px; font-size: 11px; line-height: 14px; color: #6C6F72;">
+<span style="flex-grow: 1;">Name</span><span style="width: 110px;">Kind</span>
+</div>
+<div style="margin: 4px 14px 0; height: 24px; border-radius: 5px; background: #0969DA; color: #FFFFFF; display: flex; align-items: center; gap: 6px; padding: 0 8px; font-size: 13px; line-height: 16px;">
+<dc-import name="Icon" mark="{{mark}}" look="light" size="{{n16}}" hint-size="16px,16px"></dc-import>
+<span style="flex-grow: 1;">Tasks</span><span style="width: 110px;">Application</span>
+</div>
+<div style="margin: 0 14px; height: 24px; display: flex; align-items: center; gap: 6px; padding: 0 8px;">
+<span style="width: 16px; height: 16px; display: grid; place-items: center;"><span style="width: 13px; height: 13px; border-radius: 3px; background: #D3D5D8;"></span></span>
+<span style="flex-grow: 1;"><span style="display: block; width: 88px; height: 8px; border-radius: 4px; background: #E4E5E7;"></span></span><span style="width: 110px;"><span style="display: block; width: 70px; height: 8px; border-radius: 4px; background: #E4E5E7;"></span></span>
+</div>
+</div>
+</section>
+
+<section style="width: 640px; box-sizing: border-box; padding: 20px; border-radius: 16px; background: #181818; box-shadow: inset 0 0 0 1px #262728; display: flex; flex-direction: column; gap: 14px;">
+<h2 style="margin: 0; font-size: 11px; line-height: 14px; font-weight: 600; color: #7F8386;">Sidebar header</h2>
+<div style="flex-grow: 1; display: flex; gap: 16px;">
+
+<div style="width: 292px; position: relative; border-radius: 12px; background: #181818; box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.9), inset 0 0 0 0.5px rgba(255, 255, 255, 0.14); overflow: hidden; color: #E6EDF3; font-size: 13px; line-height: 16px;">
+<span style="position: absolute; left: 16px; top: 16px; display: flex; gap: 8px;"><span style="width: 12px; height: 12px; border-radius: 6px; background: #FF5F57;"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #FEBC2E;"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #28C840;"></span></span>
+<span style="position: absolute; left: 238px; top: 8px; bottom: 8px; width: 80px; border-radius: 10px; background: #1C1C1C; box-shadow: inset 0 0 0 1px #323334;"></span>
+<div style="position: absolute; left: 10px; top: 46px; width: 218px; display: flex; flex-direction: column;">
+<div style="height: 34px; display: flex; align-items: center; gap: 8px; padding-left: 10px;">
+<dc-import name="Icon" mark="{{mark}}" look="dark" size="{{n18}}" bare="{{yes}}" hint-size="18px,18px"></dc-import>
+<span style="font-weight: 600;">Tasks</span>
+</div>
+<div style="height: 30px; display: flex; align-items: center; gap: 7px; padding: 0 10px; border-radius: 15px; background: #444444; box-shadow: inset 0 0 0 0.5px #5E5E5E, inset 0 0 0 1px #535353; margin-top: 6px;">
+<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" style="color: #D29922;"><circle cx="8" cy="8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.5"></circle><path d="M8 1.9v1.3M8 12.8v1.3M1.9 8h1.3M12.8 8h1.3M3.7 3.7l.9.9M11.4 11.4l.9.9M3.7 12.3l.9-.9M11.4 4.6l.9-.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>
+<span style="flex-grow: 1;">Today</span><span style="color: #A8ADB1;">4</span>
+</div>
+<div style="height: 32px; padding: 10px 0 0 12px; box-sizing: border-box; font-size: 11px; line-height: 14px; font-weight: 600; color: #7F8386;">Lists</div>
+<div style="height: 30px; display: flex; align-items: center; gap: 7px; padding: 0 10px; color: #A8ADB1;">
+<span style="width: 20px; height: 16px; border-radius: 4px; display: grid; place-items: center; background: #444444; font: 700 10px/1 'SF Mono', ui-monospace, Menlo, monospace; color: #E6EDF3;">I</span>
+<span style="flex-grow: 1;">Inbox</span><span style="color: #7F8386;">3</span>
+</div>
+<div style="height: 30px; display: flex; align-items: center; gap: 7px; padding: 0 10px; color: #A8ADB1;">
+<span style="width: 20px; height: 16px; border-radius: 4px; display: grid; place-items: center; background: #444444; font: 700 10px/1 'SF Mono', ui-monospace, Menlo, monospace; color: #58A6FF;">S</span>
+<span style="flex-grow: 1;">School</span><span style="color: #7F8386;">7</span>
+</div>
+<div style="height: 30px; display: flex; align-items: center; gap: 7px; padding: 0 10px; color: #A8ADB1;">
+<span style="width: 20px; height: 16px; border-radius: 4px; display: grid; place-items: center; background: #444444; font: 700 10px/1 'SF Mono', ui-monospace, Menlo, monospace; color: #3FB950;">E</span>
+<span style="flex-grow: 1;">Errands</span><span style="color: #7F8386;">2</span>
+</div>
+</div>
+</div>
+
+<div style="width: 292px; position: relative; border-radius: 12px; background: #F5F5F5; box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.22); overflow: hidden; color: #1F2328; font-size: 13px; line-height: 16px;">
+<span style="position: absolute; left: 16px; top: 16px; display: flex; gap: 8px;"><span style="width: 12px; height: 12px; border-radius: 6px; background: #FF5F57;"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #FEBC2E;"></span><span style="width: 12px; height: 12px; border-radius: 6px; background: #28C840;"></span></span>
+<span style="position: absolute; left: 238px; top: 8px; bottom: 8px; width: 80px; border-radius: 10px; background: #FFFFFF; box-shadow: inset 0 0 0 1px #D4D5D6;"></span>
+<div style="position: absolute; left: 10px; top: 46px; width: 218px; display: flex; flex-direction: column;">
+<div style="height: 34px; display: flex; align-items: center; gap: 8px; padding-left: 10px;">
+<dc-import name="Icon" mark="{{mark}}" look="light" size="{{n18}}" bare="{{yes}}" hint-size="18px,18px"></dc-import>
+<span style="font-weight: 600;">Tasks</span>
+</div>
+<div style="height: 30px; display: flex; align-items: center; gap: 7px; padding: 0 10px; border-radius: 15px; background: #E0E0E1; box-shadow: inset 0 0 0 0.5px #CFCFD0, inset 0 0 0 1px #D6D6D7; margin-top: 6px;">
+<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" style="color: #9A6700;"><circle cx="8" cy="8" r="2.6" fill="none" stroke="currentColor" stroke-width="1.5"></circle><path d="M8 1.9v1.3M8 12.8v1.3M1.9 8h1.3M12.8 8h1.3M3.7 3.7l.9.9M11.4 11.4l.9.9M3.7 12.3l.9-.9M11.4 4.6l.9-.9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg>
+<span style="flex-grow: 1;">Today</span><span style="color: #626568;">4</span>
+</div>
+<div style="height: 32px; padding: 10px 0 0 12px; box-sizing: border-box; font-size: 11px; line-height: 14px; font-weight: 600; color: #6C6F72;">Lists</div>
+<div style="height: 30px; display: flex; align-items: center; gap: 7px; padding: 0 10px; color: #626568;">
+<span style="width: 20px; height: 16px; border-radius: 4px; display: grid; place-items: center; background: #E3E3E4; font: 700 10px/1 'SF Mono', ui-monospace, Menlo, monospace; color: #1F2328;">I</span>
+<span style="flex-grow: 1;">Inbox</span><span style="color: #6C6F72;">3</span>
+</div>
+<div style="height: 30px; display: flex; align-items: center; gap: 7px; padding: 0 10px; color: #626568;">
+<span style="width: 20px; height: 16px; border-radius: 4px; display: grid; place-items: center; background: #E3E3E4; font: 700 10px/1 'SF Mono', ui-monospace, Menlo, monospace; color: #0969DA;">S</span>
+<span style="flex-grow: 1;">School</span><span style="color: #6C6F72;">7</span>
+</div>
+<div style="height: 30px; display: flex; align-items: center; gap: 7px; padding: 0 10px; color: #626568;">
+<span style="width: 20px; height: 16px; border-radius: 4px; display: grid; place-items: center; background: #E3E3E4; font: 700 10px/1 'SF Mono', ui-monospace, Menlo, monospace; color: #116329;">E</span>
+<span style="flex-grow: 1;">Errands</span><span style="color: #6C6F72;">2</span>
+</div>
+</div>
+</div>
+
+</div>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"mark":{"editor":"enum","options":["row","split","rise","log","tile","cursor","gap"],"default":"cursor"},"tint":{"editor":"color","default":"#9CC3FF","options":["#9CC3FF","#F2B45C","#9BE2A8","#D9A6FF"]},"$preview":{"width":1920,"height":1160}}'>
+class Component extends DCLogic {
+renderVals() {
+const INFO = {
+row: { num: '01', name: 'Row', line: 'The selected capsule is the app’s one strong state: a single task, picked and checked.' },
+split: { num: '02', name: 'Split', line: 'The detail pane sliding open beside the list, the move the whole window is built on.' },
+rise: { num: '03', name: 'Rise', line: 'Today’s sun coming up behind a task row: the view you open first each morning.' },
+log: { num: '04', name: 'Log', line: 'Sync is a hash-chained, append-only log; the newest op at its head is a checked task.' },
+tile: { num: '05', name: 'Tile', line: 'The list monogram tile, scaled up. Its letter follows the name, so it changes if Tasks does.' },
+cursor: { num: '06', name: 'Cursor', line: 'A check, then the block cursor waiting for the next task, in Rex’s cursor blue.', rec: true, recLabel: 'Recommended' },
+gap: { num: '07', name: 'Gap', line: 'Drag-to-reorder’s insertion line and ring, parting two rows to make room.', rec: true, recLabel: 'Runner-up' }
+};
+const mark = INFO[this.props.mark] ? this.props.mark : 'cursor';
+return {
+mark,
+tint: this.props.tint ?? '#9CC3FF',
+info: { rec: false, recLabel: '', ...INFO[mark] },
+yes: true,
+ladder: [128, 64, 32, 16].map((n) => ({ n, label: String(n), hint: n + 'px,' + n + 'px' })),
+n380: 380, n256: 256, n160: 160, n128: 128, n64: 64, n32: 32, n18: 18, n16: 16
+};
+}
+}
+</script>
+</body>
+</html>

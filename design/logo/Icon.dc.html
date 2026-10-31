@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tasks app icon</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<svg width="{{size}}" height="{{size}}" viewBox="{{vb}}" role="img" aria-label="{{label}}" style="{{svgStyle}}">
+<defs>
+<linearGradient id="{{gid}}" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="{{c.bodyTop}}"></stop>
+<stop offset="1" stop-color="{{c.bodyBot}}"></stop>
+</linearGradient>
+</defs>
+
+<!-- Body: the macOS squircle, 824 on the 1024 canvas, continuous corners. -->
+<g display="{{bodyD}}">
+<path d="M383.4 100H640.6C722.2 100 763 100 806.9 113.9C854.9 131.3 892.7 169.1 910.1 217.1C924 261 924 301.8 924 383.4V640.6C924 722.2 924 763 910.1 806.9C892.7 854.9 854.9 892.7 806.9 910.1C763 924 722.2 924 640.6 924H383.4C301.8 924 261 924 217.1 910.1C169.1 892.7 131.3 854.9 113.9 806.9C100 763 100 722.2 100 640.6V383.4C100 301.8 100 261 113.9 217.1C131.3 169.1 169.1 131.3 217.1 113.9C261 100 301.8 100 383.4 100Z" fill="{{bodyFill}}"></path>
+<path d="M384 102H640C721.2 102 761.8 102 805.5 115.8C853.2 133.2 890.8 170.8 908.2 218.5C922 262.2 922 302.8 922 384V640C922 721.2 922 761.8 908.2 805.5C890.8 853.2 853.2 890.8 805.5 908.2C761.8 922 721.2 922 640 922H384C302.8 922 262.2 922 218.5 908.2C170.8 890.8 133.2 853.2 115.8 805.5C102 761.8 102 721.2 102 640V384C102 302.8 102 262.2 115.8 218.5C133.2 170.8 170.8 133.2 218.5 115.8C262.2 102 302.8 102 384 102Z" fill="none" stroke="{{c.rim}}" stroke-width="4"></path>
+</g>
+
+<!-- 01 Row -->
+<g display="{{show.row}}">
+<g display="{{fineD}}">
+<circle cx="300" cy="300" r="34" fill="none" stroke="{{c.ink3}}" stroke-width="14"></circle>
+<rect x="372" y="286" width="300" height="28" rx="14" fill="{{c.ink3}}"></rect>
+<circle cx="300" cy="724" r="34" fill="none" stroke="{{c.ink3}}" stroke-width="14"></circle>
+<rect x="372" y="710" width="236" height="28" rx="14" fill="{{c.ink3}}"></rect>
+</g>
+<rect x="180" y="420" width="664" height="184" rx="92" fill="{{c.cap}}" stroke="{{c.capEdge}}" stroke-width="{{edgeW}}"></rect>
+<circle cx="300" cy="512" r="{{g.row.boxR}}" fill="{{c.accent}}"></circle>
+<path d="{{g.row.chk}}" fill="none" stroke="{{c.onAccent}}" stroke-width="{{g.row.chkW}}" stroke-linecap="round" stroke-linejoin="round"></path>
+<rect x="{{g.row.barX}}" y="{{g.row.barY}}" width="{{g.row.barW}}" height="{{g.row.barH}}" rx="{{g.row.barRx}}" fill="{{c.ink}}"></rect>
+</g>
+
+<!-- 02 Split -->
+<g display="{{show.split}}">
+<rect x="164" y="200" width="404" height="624" rx="48" fill="{{g.split.lFill}}" stroke="{{c.paneEdge}}" stroke-width="{{edgeW}}"></rect>
+<rect x="600" y="200" width="260" height="624" rx="48" fill="{{g.split.rFill}}" stroke="{{c.paneEdge}}" stroke-width="{{edgeW}}"></rect>
+<g display="{{fineD}}">
+<rect x="196" y="236" width="340" height="88" rx="44" fill="{{c.cap}}"></rect>
+<circle cx="244" cy="280" r="20" fill="none" stroke="{{c.ink2}}" stroke-width="10"></circle>
+<rect x="282" y="268" width="200" height="24" rx="12" fill="{{c.ink}}"></rect>
+<circle cx="244" cy="392" r="20" fill="none" stroke="{{c.ink3}}" stroke-width="10"></circle>
+<rect x="282" y="380" width="170" height="24" rx="12" fill="{{c.ink3}}"></rect>
+<circle cx="244" cy="504" r="25" fill="{{c.accent}}"></circle>
+<path d="M233 505 L240.5 512.5 L255 497" fill="none" stroke="{{c.onAccent}}" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"></path>
+<rect x="282" y="492" width="220" height="24" rx="12" fill="{{c.ink3}}"></rect>
+<circle cx="244" cy="616" r="20" fill="none" stroke="{{c.ink3}}" stroke-width="10"></circle>
+<rect x="282" y="604" width="140" height="24" rx="12" fill="{{c.ink3}}"></rect>
+<rect x="636" y="248" width="168" height="32" rx="16" fill="{{c.ink}}"></rect>
+<rect x="636" y="314" width="188" height="18" rx="9" fill="{{c.ink3}}"></rect>
+<rect x="636" y="350" width="160" height="18" rx="9" fill="{{c.ink3}}"></rect>
+<rect x="636" y="386" width="120" height="18" rx="9" fill="{{c.ink3}}"></rect>
+<rect x="636" y="744" width="110" height="40" rx="20" fill="{{c.cap}}"></rect>
+</g>
+</g>
+
+<!-- 03 Rise -->
+<g display="{{show.rise}}">
+<path d="{{g.rise.rays}}" display="{{fineD}}" fill="none" stroke="{{c.yellow}}" stroke-width="36" stroke-linecap="round"></path>
+<circle cx="512" cy="{{g.rise.cy}}" r="{{g.rise.r}}" fill="{{c.yellow}}"></circle>
+<rect x="{{g.rise.capX}}" y="{{g.rise.capY}}" width="{{g.rise.capW}}" height="{{g.rise.capH}}" rx="{{g.rise.capRx}}" fill="{{c.cap}}" stroke="{{c.capEdge}}" stroke-width="{{edgeW}}"></rect>
+<g display="{{fineD}}">
+<circle cx="250" cy="688" r="38" fill="none" stroke="{{c.ink2}}" stroke-width="14"></circle>
+<rect x="316" y="674" width="380" height="28" rx="14" fill="{{c.ink2}}"></rect>
+</g>
+</g>
+
+<!-- 04 Log -->
+<g display="{{show.log}}">
+<path d="{{g.log.spine}}" fill="none" stroke="{{c.ink3}}" stroke-width="{{g.log.spineW}}"></path>
+<g display="{{fineD}}">
+<circle cx="330" cy="540" r="44" fill="none" stroke="{{c.ink2}}" stroke-width="22"></circle>
+<circle cx="330" cy="744" r="44" fill="none" stroke="{{c.ink2}}" stroke-width="22"></circle>
+</g>
+<g display="{{smallD}}">
+<circle cx="330" cy="540" r="56" fill="{{c.ink3}}"></circle>
+<circle cx="330" cy="744" r="56" fill="{{c.ink3}}"></circle>
+</g>
+<circle cx="330" cy="320" r="{{g.log.headR}}" fill="{{c.accent}}"></circle>
+<path d="{{g.log.chk}}" fill="none" stroke="{{c.onAccent}}" stroke-width="{{g.log.chkW}}" stroke-linecap="round" stroke-linejoin="round"></path>
+<rect x="{{g.log.barX}}" y="{{g.log.b0y}}" width="{{g.log.b0w}}" height="{{g.log.b0h}}" rx="{{g.log.b0r}}" fill="{{c.ink}}"></rect>
+<rect x="{{g.log.barX}}" y="{{g.log.b1y}}" width="{{g.log.b1w}}" height="{{g.log.b1h}}" rx="{{g.log.b1r}}" fill="{{c.ink3}}"></rect>
+<rect x="{{g.log.barX}}" y="{{g.log.b2y}}" width="{{g.log.b2w}}" height="{{g.log.b1h}}" rx="{{g.log.b1r}}" fill="{{c.ink3}}"></rect>
+</g>
+
+<!-- 05 Tile -->
+<g display="{{show.tile}}">
+<rect x="{{g.tile.x}}" y="{{g.tile.y}}" width="{{g.tile.w}}" height="{{g.tile.h}}" rx="{{g.tile.rx}}" fill="{{c.cap}}" stroke="{{c.capEdge}}" stroke-width="{{edgeW}}"></rect>
+<rect x="{{g.tile.cbX}}" y="{{g.tile.cbY}}" width="{{g.tile.cbW}}" height="{{g.tile.cbH}}" rx="{{g.tile.tr}}" fill="{{c.cyan}}"></rect>
+<rect x="{{g.tile.stX}}" y="{{g.tile.cbY}}" width="{{g.tile.stW}}" height="{{g.tile.stH}}" rx="{{g.tile.tr}}" fill="{{c.cyan}}"></rect>
+</g>
+
+<!-- 06 Cursor -->
+<g display="{{show.cursor}}">
+<path d="{{g.cursor.d}}" fill="none" stroke="{{c.ink}}" stroke-width="{{g.cursor.sw}}" stroke-linecap="round" stroke-linejoin="round"></path>
+<rect x="{{g.cursor.x}}" y="{{g.cursor.y}}" width="{{g.cursor.w}}" height="{{g.cursor.h}}" rx="{{g.cursor.rx}}" fill="{{c.accent}}"></rect>
+</g>
+
+<!-- 07 Gap -->
+<g display="{{show.gap}}">
+<rect x="180" y="{{g.gap.r1Y}}" width="664" height="{{g.gap.rowH}}" rx="{{g.gap.rx}}" fill="{{c.cap}}" stroke="{{c.capEdge}}" stroke-width="{{edgeW}}"></rect>
+<rect x="180" y="{{g.gap.r2Y}}" width="664" height="{{g.gap.rowH}}" rx="{{g.gap.rx}}" fill="{{c.cap}}" stroke="{{c.capEdge}}" stroke-width="{{edgeW}}"></rect>
+<g display="{{fineD}}">
+<circle cx="280" cy="318" r="36" fill="none" stroke="{{c.ink2}}" stroke-width="12"></circle>
+<rect x="340" y="304" width="340" height="28" rx="14" fill="{{c.ink2}}"></rect>
+<circle cx="280" cy="706" r="36" fill="none" stroke="{{c.ink2}}" stroke-width="12"></circle>
+<rect x="340" y="692" width="280" height="28" rx="14" fill="{{c.ink2}}"></rect>
+</g>
+<path d="{{g.gap.line}}" fill="none" stroke="{{c.accent}}" stroke-width="{{g.gap.lineW}}" stroke-linecap="round"></path>
+<circle cx="{{g.gap.ringCx}}" cy="512" r="{{g.gap.ringR}}" fill="none" stroke="{{c.accent}}" stroke-width="{{g.gap.ringW}}"></circle>
+</g>
+
+<!-- Construction grid -->
+<g display="{{gridD}}" fill="none" stroke="#BC8CFF" opacity="0.7">
+<rect x="0.5" y="0.5" width="1023" height="1023" vector-effect="non-scaling-stroke"></rect>
+<rect x="100" y="100" width="824" height="824" vector-effect="non-scaling-stroke"></rect>
+<rect x="188" y="188" width="648" height="648" vector-effect="non-scaling-stroke"></rect>
+<rect x="252" y="140" width="520" height="744" vector-effect="non-scaling-stroke"></rect>
+<rect x="140" y="252" width="744" height="520" vector-effect="non-scaling-stroke"></rect>
+<circle cx="512" cy="512" r="412" vector-effect="non-scaling-stroke"></circle>
+<circle cx="512" cy="512" r="320" vector-effect="non-scaling-stroke"></circle>
+<circle cx="512" cy="512" r="192" vector-effect="non-scaling-stroke"></circle>
+<path d="M100 100L924 924M924 100L100 924M512 0V1024M0 512H1024" vector-effect="non-scaling-stroke"></path>
+</g>
+</svg>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"mark":{"editor":"enum","options":["row","split","rise","log","tile","cursor","gap"],"default":"cursor"},"look":{"editor":"enum","options":["dark","light","tinted","clear"],"default":"dark"},"size":{"editor":"int","min":16,"max":1024,"default":512},"bare":{"editor":"boolean","default":false},"grid":{"editor":"boolean","default":false},"tint":{"editor":"color","default":"#9CC3FF"},"$preview":{"width":512,"height":512}}'>
+class Component extends DCLogic {
+renderVals() {
+const NAMES = { row: 'Row', split: 'Split', rise: 'Rise', log: 'Log', tile: 'Tile', cursor: 'Cursor', gap: 'Gap' };
+const mark = NAMES[this.props.mark] ? this.props.mark : 'cursor';
+const look = ['dark', 'light', 'tinted', 'clear'].includes(this.props.look) ? this.props.look : 'dark';
+const size = Number(this.props.size ?? 512) || 512;
+const flag = (v) => v === true || v === 'true';
+const bare = flag(this.props.bare);
+const grid = flag(this.props.grid);
+const tint = /^#[0-9a-fA-F]{6}$/.test(this.props.tint || '') ? this.props.tint : '#9CC3FF';
+// Below 60px the mark drops its hairlines and fine contents and thickens what is left.
+const fine = size >= 60;
+
+const a = (hex, al) => {
+const n = parseInt(hex.slice(1), 16);
+return 'rgba(' + ((n >> 16) & 255) + ', ' + ((n >> 8) & 255) + ', ' + (n & 255) + ', ' + al + ')';
+};
+const W = (al) => 'rgba(255, 255, 255, ' + al + ')';
+const P = {
+dark: { bodyTop: '#2A2A2A', bodyBot: '#161616', rim: W(0.10), ink: '#E6EDF3', ink2: '#A8ADB1', ink3: '#5F6366', cap: '#444444', capEdge: '#5D5D5D', paneDim: '#1F1F1F', pane: '#2A2A2A', paneEdge: '#3A3B3C', accent: '#2F81F7', onAccent: '#1C1C1C', yellow: '#D29922', cyan: '#39C5CF' },
+light: { bodyTop: '#FFFFFF', bodyBot: '#ECECED', rim: 'rgba(0, 0, 0, 0.08)', ink: '#1F2328', ink2: '#626568', ink3: '#B4B6B8', cap: '#DCDCDE', capEdge: '#C6C6C8', paneDim: '#F3F3F4', pane: '#FFFFFF', paneEdge: '#D4D5D6', accent: '#0969DA', onAccent: '#FFFFFF', yellow: '#BF8700', cyan: '#1B7C83' },
+tinted: { bodyTop: '#2B2B2D', bodyBot: '#18181A', rim: W(0.10), ink: tint, ink2: a(tint, 0.62), ink3: a(tint, 0.32), cap: a(tint, 0.20), capEdge: a(tint, 0.32), paneDim: a(tint, 0.06), pane: a(tint, 0.14), paneEdge: a(tint, 0.28), accent: tint, onAccent: '#1A1A1A', yellow: tint, cyan: tint },
+clear: { bodyTop: W(0.30), bodyBot: W(0.12), rim: W(0.55), ink: '#FFFFFF', ink2: W(0.72), ink3: W(0.38), cap: W(0.22), capEdge: W(0.40), paneDim: W(0.08), pane: W(0.20), paneEdge: W(0.35), accent: '#FFFFFF', onAccent: 'rgba(30, 34, 40, 0.75)', yellow: '#FFFFFF', cyan: '#FFFFFF' }
+};
+const c = P[look];
+
+const r1 = (v) => Math.round(v * 10) / 10;
+const chk = (cx, cy, s) => 'M' + r1(cx - 26 * s) + ' ' + r1(cy + 2 * s) + ' L' + r1(cx - 8 * s) + ' ' + r1(cy + 20 * s) + ' L' + r1(cx + 26 * s) + ' ' + r1(cy - 18 * s);
+const rays = (cy) => [-150, -120, -90, -60, -30].map((deg) => {
+const t = deg * Math.PI / 180;
+return 'M' + r1(512 + 252 * Math.cos(t)) + ' ' + r1(cy + 252 * Math.sin(t)) + ' L' + r1(512 + 300 * Math.cos(t)) + ' ' + r1(cy + 300 * Math.sin(t));
+}).join(' ');
+
+const g = fine ? {
+row: { boxR: 52, chk: chk(300, 512, 1), chkW: 16, barX: 390, barY: 495, barW: 360, barH: 34, barRx: 17 },
+split: { lFill: c.paneDim, rFill: c.pane },
+rise: { cy: 548, r: 196, capX: 150, capY: 604, capW: 724, capH: 168, capRx: 84, rays: rays(548) },
+log: { spine: 'M330 404V485M330 595V689', spineW: 22, headR: 84, chk: chk(330, 320, 1.45), chkW: 22, barX: 460, b0y: 296, b0w: 330, b0h: 48, b0r: 24, b1y: 522, b1w: 260, b1h: 36, b1r: 18, b2y: 726, b2w: 200 },
+tile: { x: 212, y: 272, w: 600, h: 480, rx: 100, cbX: 352, cbY: 372, cbW: 320, cbH: 76, stX: 474, stW: 76, stH: 288, tr: 8 },
+cursor: { d: 'M270 516 L390 636 L600 388', sw: 96, x: 668, y: 368, w: 140, h: 316, rx: 18 },
+gap: { r1Y: 236, r2Y: 624, rowH: 164, rx: 82, line: 'M332 512H812', lineW: 28, ringCx: 268, ringR: 34, ringW: 24 }
+} : {
+row: { boxR: 68, chk: chk(300, 512, 1.3), chkW: 24, barX: 404, barY: 478, barW: 330, barH: 68, barRx: 34 },
+split: { lFill: c.cap, rFill: c.ink2 },
+rise: { cy: 560, r: 236, capX: 136, capY: 596, capW: 752, capH: 208, capRx: 104, rays: '' },
+log: { spine: 'M330 420V484M330 596V688', spineW: 36, headR: 100, chk: chk(330, 320, 1.75), chkW: 30, barX: 470, b0y: 280, b0w: 340, b0h: 80, b0r: 40, b1y: 508, b1w: 280, b1h: 64, b1r: 32, b2y: 712, b2w: 220 },
+tile: { x: 172, y: 240, w: 680, h: 544, rx: 116, cbX: 322, cbY: 340, cbW: 380, cbH: 104, stX: 460, stW: 104, stH: 344, tr: 10 },
+cursor: { d: 'M258 520 L378 640 L582 400', sw: 132, x: 662, y: 374, w: 168, h: 332, rx: 22 },
+gap: { r1Y: 196, r2Y: 632, rowH: 196, rx: 98, line: 'M348 512H820', lineW: 48, ringCx: 258, ringR: 46, ringW: 36 }
+};
+
+const show = {};
+Object.keys(NAMES).forEach((k) => { show[k] = k === mark ? 'inline' : 'none'; });
+const gid = 'tk-body-' + look + (look === 'tinted' ? '-' + tint.slice(1) : '');
+const shadow = (bare || look === 'clear' || size < 24) ? '' : ' filter: drop-shadow(0 ' + r1(size * 0.012) + 'px ' + r1(size * 0.02) + 'px rgba(0, 0, 0, 0.28));';
+
+return {
+size, c, g, show,
+vb: bare ? '150 150 724 724' : '0 0 1024 1024',
+label: NAMES[mark] + (bare ? ' mark, ' : ' app icon, ') + look,
+svgStyle: 'display: block; overflow: visible;' + shadow,
+gid,
+bodyFill: 'url(#' + gid + ')',
+bodyD: bare ? 'none' : 'inline',
+gridD: grid ? 'inline' : 'none',
+fineD: fine ? 'inline' : 'none',
+smallD: fine ? 'none' : 'inline',
+edgeW: fine && look !== 'tinted' ? 6 : 0
+};
+}
+}
+</script>
+</body>
+</html>
