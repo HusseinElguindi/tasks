@@ -428,9 +428,3 @@
 .tk .row.trashed .check { opacity: 0.6; }
 .tk .dp .ro { pointer-events: none; }
 .tk .dp .check.ro { opacity: 0.6; }
-/* "Both dates: twice": the later date shows a quiet echo of the task; pressing it selects the task. */
-.tk .row.echo { z-index: 1; }
-.tk .row.echo .tt { color: var(--ink-3); }
-.tk .row.echo.lit .tt { color: var(--ink-2); }
-.tk .check.echo-ring { box-shadow: inset 0 0 0 1.5px var(--line-sep); }
-.tk .check.echo-ring::after { display: none; }

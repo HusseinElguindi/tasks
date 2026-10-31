@@ -14,7 +14,7 @@
     }
   ],
   "boards": {
-    "Main.dc.html": { "x": 0, "y": 0, "w": 1180, "h": 764, "radius": 12, "is_interactive": true, "title": "Prototype · Today and the four new views (the strip flips Light and the three choices)" },
+    "Main.dc.html": { "x": 0, "y": 0, "w": 1180, "h": 764, "radius": 12, "is_interactive": true, "title": "Prototype · Today, Upcoming, Undated, Completed and Trash, the reference for the build (the strip switches Light)" },
     "Upcoming-Dark.dc.html": { "x": 0, "y": 1260, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "Upcoming · dark" },
     "Upcoming-Light.dc.html": { "x": 1080, "y": 1260, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "Upcoming · light" },
     "Undated-Dark.dc.html": { "x": 0, "y": 2000, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "Undated · dark" },
@@ -23,14 +23,8 @@
     "Completed-Light.dc.html": { "x": 1080, "y": 2740, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "Completed · light" },
     "Trash-Dark.dc.html": { "x": 0, "y": 3480, "w": 1180, "h": 620, "radius": 12, "is_interactive": true, "title": "Trash · dark, a deleted task in the details (read-only, Put Back)" },
     "Trash-Light.dc.html": { "x": 1260, "y": 3480, "w": 1180, "h": 620, "radius": 12, "is_interactive": true, "title": "Trash · light" },
-    "Choice-Sidebar-Split.dc.html": { "x": 0, "y": 4600, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "Sidebar A · Split (recommended): Upcoming and Undated under Today, Completed and Trash after the lists" },
-    "Choice-Sidebar-Stacked.dc.html": { "x": 1080, "y": 4600, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "Sidebar B · Stacked: all four under Today, with counts on Upcoming and Undated" },
-    "Choice-Upcoming-Week.dc.html": { "x": 0, "y": 5340, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "Upcoming A · Week (recommended): the next seven days always, then months" },
-    "Choice-Upcoming-Compact.dc.html": { "x": 1080, "y": 5340, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "Upcoming B · Compact: only days with tasks, through next week, then months" },
-    "Choice-Both-Once.dc.html": { "x": 0, "y": 6080, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "Both dates A · Once (recommended): on the earlier date, the day it reaches Today" },
-    "Choice-Both-Twice.dc.html": { "x": 1080, "y": 6080, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "Both dates B · Twice: also a quiet echo on the later date" },
-    "Add.dc.html": { "x": 0, "y": 7200, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "Adding · ⌘N opens the new task in the details" },
-    "Dates.dc.html": { "x": 1080, "y": 7200, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "Dates · the calendar popover" }
+    "Add.dc.html": { "x": 0, "y": 4600, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "Adding · ⌘N opens the new task in the details" },
+    "Dates.dc.html": { "x": 1080, "y": 4600, "w": 1000, "h": 620, "radius": 12, "is_interactive": true, "title": "Dates · the calendar popover" }
   },
   "order": [
     "Main.dc.html",
@@ -42,28 +36,18 @@
     "Completed-Light.dc.html",
     "Trash-Dark.dc.html",
     "Trash-Light.dc.html",
-    "Choice-Sidebar-Split.dc.html",
-    "Choice-Sidebar-Stacked.dc.html",
-    "Choice-Upcoming-Week.dc.html",
-    "Choice-Upcoming-Compact.dc.html",
-    "Choice-Both-Once.dc.html",
-    "Choice-Both-Twice.dc.html",
     "Add.dc.html",
     "Dates.dc.html"
   ],
-  "noteOrder": ["title", "howto", "views_title", "upcoming", "undated", "completed", "trash", "choices_title", "c_sidebar", "c_upcoming", "c_both", "starts_title"],
+  "noteOrder": ["title", "howto", "views_title", "upcoming", "undated", "completed", "trash", "starts_title"],
   "notes": {
     "title": { "kind": "title1", "x": 0, "y": -300, "maxW": 2440, "text": "Tasks · Upcoming, Undated, Completed, Trash" },
-    "howto": { "x": -560, "y": 0, "w": 480, "size": 24, "text": "How to try it\n\n• Press Play, then click inside once so it has the keys.\n• The sidebar now has Upcoming, Undated, Completed and Trash. ⌃1–9 here (⌘ in the app) open its first nine rows.\n• Upcoming: drag a row onto another day, or ⌥⌘↑ ⌥⌘↓ to move it a day. A day's + adds for that day.\n• Delete a task, then find it in Trash; ⌘⌫ there puts it back.\n• The strip's Sidebar, Upcoming and Both dates switches flip the three choices. ? lists every key." },
+    "howto": { "x": -560, "y": 0, "w": 480, "size": 24, "text": "How to try it\n\n• Press Play, then click inside once so it has the keys.\n• The sidebar has Upcoming and Undated under Today, Completed and Trash after the lists. ⌃1–9 here (⌘ in the app) open its first nine rows.\n• Upcoming: drag a row onto another day, or ⌥⌘↑ ⌥⌘↓ to move it a day. A day's + adds for that day.\n• Delete a task, then find it in Trash; ⌘⌫ there puts it back.\n• ? lists every key." },
     "views_title": { "kind": "title1", "x": 0, "y": 1000, "maxW": 2440, "text": "Each view, dark and light" },
-    "upcoming": { "x": -560, "y": 1260, "w": 480, "size": 24, "text": "Upcoming · each open task on the day it reaches Today, the earlier of its When and Deadline. A deadline on its own day reads “Due”. A day's + (or double-clicking its label) adds for that day. Drag a row onto a day to set When, never past its deadline." },
+    "upcoming": { "x": -560, "y": 1260, "w": 480, "size": 24, "text": "Upcoming · each open task once, on the day it reaches Today: the earlier of its When and Deadline. The next seven days always show, then months. A deadline on its own day reads “Due”. Drag a row onto a day to set When, never past its deadline." },
     "undated": { "x": -560, "y": 2000, "w": 480, "size": 24, "text": "Undated · open tasks with no When and no Deadline, grouped by list like Today. Drag reorders within a list; a group's + adds to that list. Giving a task a date takes it out, with a notice and Undo." },
-    "completed": { "x": -560, "y": 2740, "w": 480, "size": 24, "text": "Completed · every completed task, newest first: a group per day for the past week, then per month, kept forever. Unchecking puts it back in its list after 1.5 s. No +: ⌘N adds in the default list." },
-    "trash": { "x": -560, "y": 3480, "w": 480, "size": 24, "text": "Trash · deleted tasks, newest first, read-only. Put Back (⌘⌫, the menu, the details' ↶) returns a task to its list at its old place. No “delete forever”: hard deletes are deferred (SPEC §11)." },
-    "choices_title": { "kind": "title1", "x": 0, "y": 4340, "maxW": 2080, "text": "Three choices for you" },
-    "c_sidebar": { "x": -560, "y": 4600, "w": 480, "size": 24, "text": "Where the views live. A keeps the views you plan from (⌘1–3) on top and puts history after the lists. B puts all five on top and shows counts; lists start at ⌘6." },
-    "c_upcoming": { "x": -560, "y": 5340, "w": 480, "size": 24, "text": "How Upcoming groups. A always shows the coming week, empty days as quiet targets for + and drag. B shows only days with tasks, a little further out." },
-    "c_both": { "x": -560, "y": 6080, "w": 480, "size": 24, "text": "A task with When and Deadline. A shows it once, on the earlier date, with the other as a chip. B also shows a quiet echo on the later date; pressing it selects the task." },
-    "starts_title": { "kind": "title1", "x": 0, "y": 6940, "maxW": 2080, "text": "Starting points (v2)" }
+    "completed": { "x": -560, "y": 2740, "w": 480, "size": 24, "text": "Completed · the logbook: every completed task, newest first, a group per day for the past week, then per month. Unchecking puts it back in its list after 1.5 s. No +: ⌘N adds in the default list." },
+    "trash": { "x": -560, "y": 3480, "w": 480, "size": 24, "text": "Trash · deleted tasks, newest first, read-only. Put Back (⌘⌫, the menu, the details' ↶) returns a task to its list at its old place. No delete forever." },
+    "starts_title": { "kind": "title1", "x": 0, "y": 4340, "maxW": 2080, "text": "Starting points (v2)" }
   }
 }

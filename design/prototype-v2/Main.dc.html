@@ -87,7 +87,7 @@ body{margin:0}
 </span>
 <button class="open" type="button" data-id="{{r.id}}" aria-label="Show details" data-tip="Show Details" data-keys="⌘D" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onPointerDown="{{stopPD}}" onClick="{{onOpen}}"><svg class="i i--sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4l4 4-4 4"></path></svg></button>
 </div>
-</sc-for><sc-for list="{{echoes}}" as="x" hint-placeholder-count="0"><div class="{{x.cls}}" style="{{x.style}}" data-id="{{x.id}}" onPointerDown="{{onEchoDown}}"><span class="check echo-ring"></span><span class="tt">{{x.title}}</span><span class="where">{{x.where}}</span><span class="chips"><span class="chip"><sc-if value="{{x.due}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 14V2.5M4 3h7.5L10 5.75 11.5 8.5H4"></path></svg></sc-if><sc-if value="{{x.plan}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg></sc-if>{{x.chip}}</span></span></div></sc-for>
+</sc-for>
 <sc-if value="{{lp.crow}}">
 <button class="{{lp.crowCls}}" type="button" style="{{lp.crowStyle}}" aria-label="Completed tasks" onPointerDown="{{stopPD}}" onClick="{{onToggleCompleted}}"><svg class="i i--sm {{lp.chevCls}}" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4l4 4-4 4"></path></svg><span class="cl">Completed</span><span class="cn">{{lp.crowCount}}</span></button>
 </sc-if>
@@ -216,7 +216,7 @@ body{margin:0}
 <sc-if value="{{stage.show}}">
 <div class="stage" aria-label="Prototype controls">
 <span class="sl">Prototype</span>
-<span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Edit tasks</span><span class="seg"><sc-for list="{{stage.editTasks}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Sidebar</span><span class="seg"><sc-for list="{{stage.sidebar}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Upcoming</span><span class="seg"><sc-for list="{{stage.upcoming}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Both dates</span><span class="seg"><sc-for list="{{stage.both}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
+<span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Edit tasks</span><span class="seg"><sc-for list="{{stage.editTasks}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
 <span class="sn">The browser keeps ⌘N, ⌘T and ⌘1–9, so ⌥N, ⌥T and ⌃1–9 also work here.</span>
 <span style="flex: 1;"></span>
 <button class="lnk" type="button" data-k="reset" data-v="1" onClick="{{onStage}}">Reset</button>
@@ -248,7 +248,7 @@ body{margin:0}
 </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"sidebar":{"editor":"enum","options":["split","stacked"],"default":"split"},"upcoming":{"editor":"enum","options":["week","compact"],"default":"week"},"both":{"editor":"enum","options":["once","twice"],"default":"once"},"select":{"editor":null,"default":""},"detail":{"editor":null,"default":"closed"},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"select":{"editor":null,"default":""},"detail":{"editor":null,"default":"closed"},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
 // ---------- Calendar dates: "YYYY-MM-DD" strings, never instants (SPEC §2). ----------
 const DAY_MS = 86400000;
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -412,11 +412,9 @@ const DRAG_SLOP = 4;           // points a press moves before it becomes a drag
 const SCROLL_EDGE = 24, SCROLL_STEP = 8;   // drag autoscroll: within 24pt of an edge, 8pt per 16 ms
 const COLOR_CLASS = { ink: 'c-ink', blue: 'c-blue', magenta: 'c-magenta', green: 'c-green', cyan: 'c-cyan', yellow: 'c-yellow', red: 'c-red' };
 const COLORS = ['blue', 'magenta', 'green', 'cyan', 'yellow', 'red', 'ink'];
-// The four views beside Today (INTERACTIONS-v2 §22): their names and tiles, their empty states, and the three choices
-// the user is picking between (props, and the strip's switches).
+// The four views beside Today (INTERACTIONS-v2 §22): their names and tiles, and their empty states.
 const VIEWS = { upcoming: { name: 'Upcoming', tile: 'c-magenta' }, undated: { name: 'Undated', tile: 'c-cyan' }, completed: { name: 'Completed', tile: 'c-green' }, trash: { name: 'Trash', tile: 'c-mute' } };
 const VIEW_KEYS = ['upcoming', 'undated', 'completed', 'trash'];
-const VIEW_DEFAULTS = { sidebar: 'split', upcoming: 'week', both: 'once' };
 const VIEW_EMPTY = {
   upcoming: { e1: 'Nothing upcoming', e2: 'Tasks with a date after today show up here, on the day they reach Today.', top: '34%', icon: 'cal' },
   undated: { e1: 'Every task has a date', e2: 'Open tasks with no When and no Deadline show up here, by list.', top: '34%', icon: 'layers' },
@@ -714,8 +712,7 @@ class Component extends DCLogic {
     const S = { ys: new Map(), height: 0, rows: [] };
     let y = SB_HEAD;
     const row = (key) => { S.ys.set(key, y); S.rows.push({ key, y }); y += PITCH; };
-    const stacked = this.variant('sidebar') === 'stacked';   // where the four views sit (§22)
-    for (const k of stacked ? ['today'].concat(VIEW_KEYS) : ['today', 'upcoming', 'undated']) row(k);
+    for (const k of ['today', 'upcoming', 'undated']) row(k);   // the views you plan from, under Today (§22)
     S.ys.set('lbl-lists', y); y += PITCH;
     const act = this.activeLists();
     S.listTop = y;
@@ -726,7 +723,7 @@ class Component extends DCLogic {
     if (d) S.ys.set(d.id, y + target * PITCH);
     y += act.length * PITCH;
     S.listEnd = y;
-    if (!stacked) { y += 8; row('completed'); row('trash'); }
+    y += 8; row('completed'); row('trash');   // the logbook and the Trash, after the lists (§22)
     const arch = this.archivedLists();
     if (arch.length) {
       y += 8;
@@ -1831,7 +1828,7 @@ class Component extends DCLogic {
   // Prototype strip
   onStage = (e) => {
     const k = e.currentTarget.dataset.k, v = e.currentTarget.dataset.v;
-    if (k === 'theme') this.instant({ theme: v }); else if (k === 'editTasks') this.setEditTasks(v); else if (VIEW_DEFAULTS[k]) this.instant({ [k]: v });
+    if (k === 'theme') this.instant({ theme: v }); else if (k === 'editTasks') this.setEditTasks(v);
     else if (k === 'reset') { const seed = makeSeed(this.today); this.undoStack = []; this.redoStack = []; this.instant({ lists: seed.lists, tasks: seed.tasks, sel: [], edit: null, picker: null, menu: null, pins: {}, route: this.routeFromProp(this.props.start, seed.lists), detail: 'closed', notice: null, sbVisible: true }); }
     else if (k === 'keys') this.setState({ keysOpen: !this.state.keysOpen });
     this.focusRoot();
@@ -2104,7 +2101,6 @@ class Component extends DCLogic {
     const seg = (k, opts) => opts.map(([v, label]) => ({ k, v, label, cls: s[k] === v ? 'on' : '' }));
     const stage = { show: stageOn,
       theme: seg('theme', [['dark', 'Dark'], ['light', 'Light']]), editTasks: [['detail', 'Open in detail pane'], ['list', 'Rename in the list']].map(([v, label]) => ({ k: 'editTasks', v, label, cls: this.editTasksMode() === v ? 'on' : '' })),
-      ...this.stripVariants(),
     };
 
     return {
@@ -2115,7 +2111,7 @@ class Component extends DCLogic {
       sb: { contentStyle: 'height: ' + S.height + 'px', items: sbItems },
       sbTip: s.sbVisible ? 'Hide Sidebar' : 'Show Sidebar', sbStyle: 'width: ' + s.sbW + 'px', dv: this.dividerVM(detailOpen),
       lp, rows, labels, dp: dpo, drag, sbLift, menu, pk, notice, tip: tipv, stage, keysOpen: s.keysOpen,
-      echoes: this.echoVMs(L), onLabelDbl: this.onLabelDbl, onEchoDown: this.onEchoDown,
+      onLabelDbl: this.onLabelDbl,
       onKey: this.onKey, onKeyUp: this.onKeyUp, onRootMouseDown: this.onRootMouseDown, onRootPointerDownCapture: this.onRootPointerDownCapture, onRootClickCapture: this.onRootClickCapture, onRootContextMenu: this.onRootContextMenu, onRootFocusCapture: this.onRootFocusCapture,
       onRowDown: this.onRowDown, onRowMove: this.onRowMove, onRowUp: this.onRowUp, onRowDbl: this.onRowDbl, onRowCtx: this.onRowCtx,
       onCheck: this.onCheck, stopPD: this.stopPD, onChip: this.onChip, onOpen: this.onOpen, onListPaneDown: this.onListPaneDown, onScrollAreaDown: this.onScrollAreaDown,
@@ -2223,10 +2219,9 @@ class Component extends DCLogic {
   // ======================================================================
   // The four views: Upcoming, Undated, Completed, Trash (docs/TASK-design-views.md, INTERACTIONS-v2 §22)
   // ======================================================================
-  // Each is a list pane like Today: the same rows, group labels, header and detail pane. Three choices are open for the
-  // user and are props here (the strip's switches flip them): `sidebar` split | stacked, `upcoming` week | compact,
-  // `both` once | twice.
-  variant(k) { return this.state[k] || this.props[k] || VIEW_DEFAULTS[k]; }
+  // Each is a list pane like Today: the same rows, group labels, header and detail pane. The user's picks: Upcoming and
+  // Undated under Today, Completed and Trash after the lists, no counts; Upcoming shows the next seven days, then
+  // months; a task with both dates shows once, on the earlier.
   inTrash() { return this.state.route.kind === 'trash'; }
   noAdd() { const k = this.state.route.kind; return k === 'completed' || k === 'trash'; }
   flatDone() { return this.noAdd(); }   // views whose rows aren't split into open and done
@@ -2236,34 +2231,22 @@ class Component extends DCLogic {
   doneStamp(t) { return t.completedAt || t.doneAt || 0; }
   keyName(k) { return k === 'today' ? 'Today' : VIEWS[k] ? VIEWS[k].name : (this.list(k) || { name: '' }).name; }
 
-  // The sidebar, top to bottom. Split: Today, Upcoming, Undated · Lists · Completed, Trash · Archive.
-  // Stacked: Today, Upcoming, Undated, Completed, Trash · Lists · Archive. ⌘1–9 open its first nine rows.
+  // The sidebar, top to bottom: Today, Upcoming, Undated · Lists · Completed, Trash · Archive. ⌘1–9 open its first
+  // nine rows.
   sidebarOrder(withArchived) {
     const lists = this.activeLists().filter((l) => !l.draft).map((l) => l.id);
     const arch = withArchived && this.state.archiveOpen ? this.archivedLists().map((l) => l.id) : [];
-    if (this.variant('sidebar') === 'stacked') return ['today'].concat(VIEW_KEYS, lists, arch);
     return ['today', 'upcoming', 'undated'].concat(lists, ['completed', 'trash'], arch);
   }
   numberKeys() { return this.sidebarOrder(false).slice(0, 9); }
-  viewRowOpts(k) {
-    const s = this.state, T = this.today, end = addDays(T, 7);
-    const open = (t) => !t.deleted && !t.draft && t.completedAt == null && this.isActive(t.list);
-    let n = 0;   // counts only in the stacked variant: Upcoming's next seven days, and Undated
-    if (this.variant('sidebar') === 'stacked' && k === 'upcoming') n = s.tasks.filter((t) => { const d = this.upDay(t); return open(t) && d && d > T && d <= end; }).length;
-    if (this.variant('sidebar') === 'stacked' && k === 'undated') n = s.tasks.filter((t) => open(t) && !t.when && !t.deadline).length;
-    return { name: VIEWS[k].name, count: n ? String(n) : '', tileCls: 'tile ' + VIEWS[k].tile, mono: '' };
-  }
+  viewRowOpts(k) { return { name: VIEWS[k].name, count: '', tileCls: 'tile ' + VIEWS[k].tile, mono: '' }; }   // no counts
   glyphFlags(k) { return { isUp: k === 'upcoming', isUnd: k === 'undated', isDone: k === 'completed', isTrash: k === 'trash' }; }
   viewHead() { const k = this.state.route.kind; return { ...this.glyphFlags(k), addCls: 'hb' + (this.noAdd() ? ' gone' : '') }; }
-  stripVariants() {
-    const seg = (k, opts) => opts.map(([v, label]) => ({ k, v, label, cls: this.variant(k) === v ? 'on' : '' }));
-    return { sidebar: seg('sidebar', [['split', 'Split'], ['stacked', 'Stacked']]), upcoming: seg('upcoming', [['week', 'Week'], ['compact', 'Compact']]), both: seg('both', [['once', 'Once'], ['twice', 'Twice']]) };
-  }
 
   // ---------- Layout: each view's groups, on Today's grid (a 32pt label slot, then 32pt rows) ----------
   layoutView(L, live) {
     const s = this.state, T = this.today, k = s.route.kind;
-    L.labelInfo = new Map(); L.gmap = new Map(); L.echoYs = new Map();
+    L.labelInfo = new Map(); L.gmap = new Map();
     const rank = new Map(this.activeLists().map((l, i) => [l.id, i]));
     const byList = (a, b) => (rank.get(a.list) - rank.get(b.list)) || byOrder(a, b);
     let y = L.top;
@@ -2271,7 +2254,6 @@ class Component extends DCLogic {
       L.labels.set(id, y); L.labelInfo.set(id, info); y += PITCH;
       const g = { listId: id, kind, day: day || null, top: y, ids: [] };
       for (const it of items) {
-        if (it.echo) { L.echoYs.set(it.t.id, y); y += PITCH; continue; }
         g.ids.push(it.t.id); L.ys.set(it.t.id, y); L.order.push(it.t.id); L.groupOf.set(it.t.id, id); y += PITCH;
       }
       L.groups.push(g); L.gmap.set(id, g);
@@ -2288,21 +2270,17 @@ class Component extends DCLogic {
       // Each open task on the day it reaches Today. A drag shows its rows at the day under the pointer (toDay).
       const d = s.drag && s.drag.mode === 'days' && !s.drag.cancel ? s.drag : null;
       const dayOf = (t) => (d && d.toDay && d.ids.includes(t.id) ? d.toDay : this.upDay(t));
-      const twice = this.variant('both') === 'twice';
       const items = [];
       for (const t of live) {
         if (!this.isActive(t.list) || !this.placedOpen(t)) continue;
         const day = dayOf(t);
         if (!day || day <= T) continue;
         items.push({ t, day });
-        // "Twice": the later of its two dates gets a quiet echo row too.
-        if (twice && t.when && t.deadline && t.when !== t.deadline && !(d && d.ids.includes(t.id))) items.push({ t, day: t.when < t.deadline ? t.deadline : t.when, echo: true });
       }
-      items.sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0) || byList(a.t, b.t) || (a.echo ? 1 : 0) - (b.echo ? 1 : 0));
-      const week = this.variant('upcoming') !== 'compact';
-      // Week: the next seven days always, then months. Compact: only days with tasks, through the end of next week,
-      // then months.
-      const horizon = week ? addDays(T, 7) : addDays(nextWeekStart(T), 6);
+      items.sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0) || byList(a.t, b.t));
+      // The next seven days always (an empty one is a quiet label that still takes +, a double-click and a drop), then
+      // a group per month.
+      const horizon = addDays(T, 7);
       const bucketOf = (day) => {
         if (day <= horizon) {
           const n = diffDays(T, day), name = n === 1 ? 'Tomorrow' : WDL[weekdayIdx(day)];
@@ -2312,10 +2290,10 @@ class Component extends DCLogic {
         return { id: 'm:' + m, kind: 'month', info: { name: (m === horizon.slice(0, 7) ? 'Later in ' : '') + monthName(m) } };
       };
       const buckets = new Map();
-      if (week) for (let i = 1; i <= 7; i++) { const b = bucketOf(addDays(T, i)); buckets.set(b.id, { ...b, items: [] }); }
+      for (let i = 1; i <= 7; i++) { const b = bucketOf(addDays(T, i)); buckets.set(b.id, { ...b, items: [] }); }
       for (const it of items) { const b = bucketOf(it.day); if (!buckets.has(b.id)) buckets.set(b.id, { ...b, items: [] }); buckets.get(b.id).items.push(it); }
       for (const b of buckets.values()) group(b.id, { ...b.info, quiet: !b.items.length }, b.items, b.kind, b.day);
-      if (!items.length) { L.empty = 'upcoming'; if (week) L.emptyTop = y + 24; }
+      if (!items.length) { L.empty = 'upcoming'; L.emptyTop = y + 24; }
     } else {
       // Completed and Trash: newest first, a group per day for the last week, then per month.
       const trash = k === 'trash';
@@ -2373,17 +2351,6 @@ class Component extends DCLogic {
     const l = this.list(id);
     return l ? { name: l.name, plus: true, list: l.id, tip: 'New Task in ' + l.name } : { name: '' };
   }
-  echoVMs(L) {
-    const ys = L.echoYs || new Map(), T = this.today;
-    return this.state.tasks.map((t) => {
-      const y = ys.get(t.id);
-      if (y == null) return { id: t.id, cls: 'row echo hidden', style: '', title: '', where: '', chip: '', due: false, plan: false };
-      const due = t.deadline > t.when;
-      return { id: t.id, cls: 'row echo' + (this.state.sel.includes(t.id) ? ' lit' : ''), style: 'transform: translateY(' + y + 'px)', title: t.title, where: (this.list(t.list) || { name: '' }).name,
-        chip: due ? 'Due' : 'Planned', due, plan: !due, day: due ? t.deadline : t.when, today: T };
-    });
-  }
-  onEchoDown = (e) => { const id = e.currentTarget.dataset.id; this.setState({ sel: [id], anchor: id, cursor: id, focus: 'list' }); this.scrollToId = id; };
   onLabelDbl = (e) => {
     const day = e.currentTarget.dataset.day;
     if (!day || this.state.route.kind !== 'upcoming' || (e.target.closest && e.target.closest('button'))) return;
