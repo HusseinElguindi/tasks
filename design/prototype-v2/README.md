@@ -26,6 +26,11 @@ Its boards: `Sections` (the prototype on that list), `Title-Large` and `Title-Sc
 title once it has scrolled under), `Heading-*` (adding, collapsed, mid-drag, from `demo="newhead|collapse|dragsec"`)
 and the light ones. The code is the block at the end of the component, after the four views'.
 
+**§27, a sidebar footer (`docs/TASK-design-sidebar-footer.md`): proposed, a mock-up only.** Three directions for a
+foot under the sidebar, drawn as the sidebar alone: the component is `Foot.dc.html` (props `dir` = actions|status|band|none,
+`theme`, `sync`, `hover`, `tip`, `scroll`, `sbw`, `glass`) with `foot.css`; its boards are `Foot-*.dc.html`, laid out by
+`canvas-foot.json` on https://claude.ai/artifact/NHtjhN5ihASTqJR2Yd4dAC.
+
 **§26, a sync indicator (`docs/TASK-design-sync-indicator.md`): proposed, a mock-up only.** A small cloud at the right
 end of the sidebar's header row, shown only when there's something to say. It's not in the main prototype: the component
 is `Sync.dc.html` (props `state`, `place` = header|collapsed|footer|demo, `theme`, `tip`, `hover`, `still`, `zoom`) with

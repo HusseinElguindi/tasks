@@ -40,6 +40,9 @@ The sidebar (§12) gains their rows, and ⌘1–⌘9 now open the sidebar's firs
 list's notes, and a large list title, with the user's picks (§23, final). Its canvas is
 https://claude.ai/artifact/9dQ4fC46yZLLhf61gLiELx. Where §1–§22 disagree, §23 wins; its last part lists where.
 
+**A sidebar footer (`docs/TASK-design-sidebar-footer.md`): proposed, not built (§27).** Three directions for a foot
+under the sidebar; the recommendation (+ New List and Settings) leaves §26 where it is.
+
 **A sync indicator (`docs/TASK-design-sync-indicator.md`): proposed, not built (§26).** A small cloud at the right end
 of the sidebar's header row that shows only when there's something to say; a mock-up on its own canvas.
 
@@ -1942,5 +1945,67 @@ The indicator reads the store's `SyncState` (`Store.swift:5–16`), `store.recov
 - **The rejected-change case** isn't amber (above). Should it be?
 - **Server errors** read as offline (grey) until they fix themselves. Should a long one, say 10 minutes, turn amber?
 - **Sync off** shows nothing at rest. Should a person without a server see the crossed cloud all the time?
+
+---
+
+## 27. A sidebar footer (proposed)
+
+Status: **proposed, 2026-11-01** (`docs/TASK-design-sidebar-footer.md`). Nothing here is built. The user's words:
+"you know what, start something on a sidebar footer design." It's a mock-up of the sidebar alone, on its own canvas:
+https://claude.ai/artifact/NHtjhN5ihASTqJR2Yd4dAC. The component is `Foot.dc.html` with `foot.css` in `design/prototype-v2/`
+(props `dir` = actions | status | band | none, `theme`, `sync`, `hover`, `tip`, `scroll`, `sbw`, `glass`); the boards
+are `Foot-*.dc.html`.
+
+Rex was not driven for this. The saved captures (`.uitools/rex-*.png`) don't show the bottom of its sidebar, but they
+show where Rex keeps its global actions: in the title band beside the sidebar toggle (eye, ⌘, +), not at the foot.
+
+### What could go in a foot
+
+| Candidate | Verdict |
+|---|---|
+| **New List** | **Yes.** Today it's ⇧⌘N, the menu on the sidebar's empty space, or a + that only appears when you hover "Lists". The foot makes it visible without adding anything to the list. |
+| **Settings** | **Yes**, as an icon. ⌘, and the app menu stay; the foot is the one place in the window that opens it. |
+| **Sync status** | **No: it stays in the header row (§26).** A line at the foot either says "Synced" all day, or is empty at rest and appears only when something's wrong, at the bottom corner, the last place anyone looks. The header row is where the eye starts and is already built for this. |
+| The Archive toggle | No. Archive is a group in the list with its own label and chevron (§12); a second control for it in the foot would be two ways to do one thing. |
+| The brand mark and name | No. They head the sidebar (§12), and the foot is for doing, not naming. |
+
+### Three directions (all on the canvas, dark and light)
+
+- **A · Actions (recommended).** A pinned 36pt foot: **+ New List** at the left, **Settings** at the right. The sync
+  cloud stays in the header row, exactly as §26 says.
+- **B · Status.** The foot carries the sync state in §26's place: the cloud and, only when hovered or when something's
+  wrong, its words ("Synced 2 min ago", "Offline · 3 waiting", "Sync stopped"). At rest it's an empty foot but for + and
+  Settings, as icons. It answers "Synced all day", but it moves §26 to a worse place, and the header row loses the cue
+  it was designed around.
+- **C · In the band.** No foot. + and Settings join the title band beside the sidebar toggle (x 125 and 157), as Rex
+  keeps its actions. It's the most Rex-like, but it puts three icons in a row in the band, and it takes the spot that
+  §26 uses for its problems when the sidebar is collapsed.
+
+### A in detail
+
+- **The foot** is 36pt, pinned to the sidebar's bottom, outside its scroll view. It has no fill of its own (the
+  sidebar's `ground` shows through) and **no divider**. The scroll view ends at its top.
+- **Over a scrolled list.** When there's more below, the scroll view's last 20pt fade out. It's a mask on the scroll
+  view (alpha), not a painted gradient, so it works the same on Glass. Scrolled to the end, the fade goes (100 ms).
+- **+ New List.** A 26pt button, radius 6, 10pt in, like the rows. It holds a 14pt + and "New List" in 12pt,
+  `ink-tertiary`. On hover, `ink` on the `hover` fill (`--icon`, 100 ms), and on press the `press` fill. Its tooltip is
+  "New List ⇧⌘N". It does what ⇧⌘N does: a new row at the bottom of Lists, in the renaming state (§12), with the
+  sidebar scrolled to show it.
+- **Settings.** A 26 × 26 icon button, radius 6, 11pt from the right edge. Its 14pt glyph is SF Symbols'
+  `slider.horizontal.3`, in `ink-quiet` (the header icons' rest colour), and `ink` on the `hover` fill on hover.
+  Its tooltip is "Settings ⌘,", and it opens the Settings window.
+- **Resizing.** At 180pt, the narrowest the sidebar goes, both fit with room to spare. Below 150, which the divider
+  doesn't allow, "New List" would drop to the + alone.
+- **Collapsed.** The foot belongs to the sidebar, so the panes cover it with everything else (§4). Nothing moves to
+  the band.
+- **Glass:** no change. The foot has no fill, so the sidebar's glass shows through it.
+- **Keys and VoiceOver:** both are real buttons: "New List" and "Settings". Tab doesn't stop on them; the sidebar's
+  keys are unchanged (§12).
+- **The "Lists" +** stays as it is: it's where a new list appears.
+
+### For the §26 build
+
+A keeps the sync indicator in the header row: **nothing in §26 moves, and its build doesn't need to wait.** Only B
+would move it.
 
 ---

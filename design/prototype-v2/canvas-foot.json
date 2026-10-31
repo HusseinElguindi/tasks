@@ -1,0 +1,219 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-11-01T00:10:00Z"
+  },
+  "title": "Tasks · Sidebar footer (§27, proposed)",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "designSystems": [
+    {
+      "title": "Pane",
+      "namespace": "pane",
+      "artifact": "https://claude.ai/artifact/MS3VdrN9VHU7A7pTUTzpm8",
+      "version": null,
+      "copiedAt": "2026-10-31T23:00:00Z"
+    }
+  ],
+  "boards": {
+    "Foot-Today.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 618,
+      "h": 888,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Today: no foot; the list runs off the bottom"
+    },
+    "Foot-Actions.dc.html": {
+      "x": 698,
+      "y": 0,
+      "w": 618,
+      "h": 888,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "A · Actions (recommended): + New List, Settings"
+    },
+    "Foot-Status.dc.html": {
+      "x": 1396,
+      "y": 0,
+      "w": 618,
+      "h": 888,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "B · Status: offline, in the foot"
+    },
+    "Foot-Band.dc.html": {
+      "x": 2094,
+      "y": 0,
+      "w": 618,
+      "h": 888,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "C · In the band, beside the toggle"
+    },
+    "Foot-Today-Light.dc.html": {
+      "x": 0,
+      "y": 1308,
+      "w": 618,
+      "h": 888,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Today: no foot; the list runs off the bottom · light"
+    },
+    "Foot-Actions-Light.dc.html": {
+      "x": 698,
+      "y": 1308,
+      "w": 618,
+      "h": 888,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "A · Actions (recommended): + New List, Settings · light"
+    },
+    "Foot-Status-Light.dc.html": {
+      "x": 1396,
+      "y": 1308,
+      "w": 618,
+      "h": 888,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "B · Status: offline, in the foot · light"
+    },
+    "Foot-Band-Light.dc.html": {
+      "x": 2094,
+      "y": 1308,
+      "w": 618,
+      "h": 888,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "C · In the band, beside the toggle · light"
+    },
+    "Foot-Actions-Scrolled.dc.html": {
+      "x": 0,
+      "y": 2616,
+      "w": 618,
+      "h": 888,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Scrolled to the end: the fade goes"
+    },
+    "Foot-Actions-Narrow.dc.html": {
+      "x": 698,
+      "y": 2616,
+      "w": 618,
+      "h": 888,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "At 180pt, the narrowest"
+    },
+    "Foot-Actions-Glass.dc.html": {
+      "x": 1396,
+      "y": 2616,
+      "w": 618,
+      "h": 888,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "On Glass: no fill; a mask, not a gradient"
+    },
+    "Foot-Actions-Offline.dc.html": {
+      "x": 2094,
+      "y": 2616,
+      "w": 618,
+      "h": 888,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Offline: the cloud stays in the header row"
+    },
+    "Foot-Status-Rest.dc.html": {
+      "x": 0,
+      "y": 3924,
+      "w": 618,
+      "h": 888,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "At rest: an empty foot but for + and Settings"
+    },
+    "Foot-Status-Hover.dc.html": {
+      "x": 698,
+      "y": 3924,
+      "w": 618,
+      "h": 888,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Hovered: “Synced 2 min ago”"
+    },
+    "Foot.dc.html": {
+      "x": 2792,
+      "y": 0,
+      "w": 618,
+      "h": 888,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "The component (A): hover + New List and Settings"
+    }
+  },
+  "order": [
+    "Foot-Today.dc.html",
+    "Foot-Actions.dc.html",
+    "Foot-Status.dc.html",
+    "Foot-Band.dc.html",
+    "Foot-Today-Light.dc.html",
+    "Foot-Actions-Light.dc.html",
+    "Foot-Status-Light.dc.html",
+    "Foot-Band-Light.dc.html",
+    "Foot-Actions-Scrolled.dc.html",
+    "Foot-Actions-Narrow.dc.html",
+    "Foot-Actions-Glass.dc.html",
+    "Foot-Actions-Offline.dc.html",
+    "Foot-Status-Rest.dc.html",
+    "Foot-Status-Hover.dc.html",
+    "Foot.dc.html"
+  ],
+  "noteOrder": [
+    "title",
+    "howto",
+    "t_light",
+    "t_a",
+    "t_b"
+  ],
+  "notes": {
+    "title": {
+      "kind": "title1",
+      "x": 0,
+      "y": -300,
+      "maxW": 2720,
+      "text": "Tasks · A sidebar footer: three directions"
+    },
+    "howto": {
+      "x": -560,
+      "y": 0,
+      "w": 480,
+      "size": 24,
+      "text": "The sidebar alone, at 1.5×. Today’s sidebar first, then three directions:\n\nA · Actions (recommended): a pinned 36pt foot with + New List and Settings. The sync cloud stays in the header row (§26).\n\nB · Status: the foot carries sync instead, as text only when hovered or when something’s wrong.\n\nC · In the band: no foot; + and Settings beside the sidebar toggle, as Rex keeps its actions."
+    },
+    "t_light": {
+      "kind": "title1",
+      "x": 0,
+      "y": 1008,
+      "maxW": 2720,
+      "text": "Light"
+    },
+    "t_a": {
+      "kind": "title1",
+      "x": 0,
+      "y": 2316,
+      "maxW": 2720,
+      "text": "A, in detail"
+    },
+    "t_b": {
+      "kind": "title1",
+      "x": 0,
+      "y": 3624,
+      "maxW": 1400,
+      "text": "B, at rest and hovered"
+    }
+  }
+}
