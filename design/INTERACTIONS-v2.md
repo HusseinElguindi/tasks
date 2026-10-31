@@ -792,7 +792,7 @@ archived list shows no empty state.
 
 One model for task rows and sidebar lists. **No grip; the whole row is the handle.** The rows part to open a gap where
 the drop will land; there is no insertion line. Source: `dc:1162–1177`,
-`dc:1178–1213`, `dc:1225–1259`, `dc:655–676`,
+`dc:1178–1213`, `dc:1225–1259`, `dc:655–676`, `dc:2166–2173`,
 `css:240–250`.
 
 | Phase | Behavior |

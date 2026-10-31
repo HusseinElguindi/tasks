@@ -182,7 +182,9 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
      The title keeps its `hover-out` ease; it needs that redraw, and without it the title froze partway to grey.
    - Checked frame by frame: slow and fast sweeps, Today in the Today view, the archive group, back into the list
      and out again, a drop on no target, a drop on Home (moved) and Esc (back in its slot). The prototype had the
-     same dead band and got the same fix, checked in Chrome.
+     same dead band and got the same fix, checked in Chrome. Its Esc also left the gap at the last target while the
+     copy flew home, so the row snapped back when the drag ended; the gap now reopens at the row's own slot
+     (`homeSlot`, dc:2166–2173), as in the app. Mid-file line numbers are unchanged.
 
 8. **Settings ▸ Edit tasks.** A pop-up in a new "Behavior" section (Rex's settings have a behavior page whose rows are
    a title and a one-line description, as this one is): "Open in detail pane", the default, or "Rename in the list".

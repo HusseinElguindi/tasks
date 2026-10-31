@@ -1180,15 +1180,12 @@ class Component extends DCLogic {
     if (!d || d.phase !== 'drag') return;
     const p = this.winXY(e);
     const x = p.x - d.offX, y = p.y - d.offY;
-    let over = null;
-    // Anywhere over the sidebar the copy stays a tag and the group stays closed up, target or not, so passing a row that
-    // takes no drop never snaps it back into the list. Each row takes half the 2px gap either side (v2 feedback 7).
-    const sb = this.state.sbVisible && p.x < this.state.sbW - 4;
+    let over = null; const sb = this.state.sbVisible && p.x < this.state.sbW - 4;   // on a target or not (v2 feedback 7)
     if (sb) {
       const sc = this.sbScrollRef.current ? this.sbScrollRef.current.scrollTop : 0;
       const sy = p.y - SB_TOP + sc;
       const S = this.lastSidebar;
-      const hit = S.rows.find((r) => sy >= r.y - 1 && sy < r.y + 31);
+      const hit = S.rows.find((r) => sy >= r.y - 1 && sy < r.y + 31);   // each row takes half the 2px gap either side
       if (hit) {
         if (hit.key === 'today') over = this.state.route.kind === 'today' ? null : { kind: 'today', key: 'today' };
         else { const l = this.list(hit.key); if (l && !l.archivedAt && !l.draft && l.id !== d.group) over = { kind: 'list', key: l.id }; }
@@ -1205,7 +1202,7 @@ class Component extends DCLogic {
       cy = clamp(y, top - 6, top + others * PITCH + 6);
       target = clamp(Math.round((cy - top) / PITCH), 0, others);
     }
-    // Over the sidebar the copy turns into a small tag at the pointer, so the target row stays readable.
+    // Over the sidebar the copy is a small tag at the pointer, target or not, so the target row stays readable.
     const px = sb ? p.x + 12 : x, py = sb ? p.y + 8 : cy;
     const el = this.liftRef.current;
     if (el) el.style.transform = 'translate(' + px + 'px,' + py + 'px)';
@@ -1230,11 +1227,8 @@ class Component extends DCLogic {
     clearTimeout(this.scrollTimer);
     if (!d || d.phase !== 'drag') return;
     const L = this.lastLayout;
-    if (cancel || (d.sb && !d.over)) {
-      // A drop on the sidebar where no row takes it is a cancel too: the copy flies home and the gap reopens there.
-      const g0 = L.groups.find((x) => x.listId === d.group);
-      const home = g0 ? g0.ids.slice(0, g0.ids.indexOf(d.ids[0])).filter((id) => !d.ids.includes(id)).length : d.target;
-      this.setState({ drag: { ...d, phase: 'fly', target: home, over: null, sb: false, flyTo: { x: d.left, y: d.startTop }, cancel: true } });
+    if (cancel || (d.sb && !d.over)) {   // a drop on the sidebar where no row takes it is a cancel too (v2 feedback 7)
+      this.setState({ drag: { ...d, phase: 'fly', target: this.homeSlot(d), over: null, sb: false, flyTo: { x: d.left, y: d.startTop }, cancel: true } });
       setTimeout(() => { this.setState({ drag: { ...this.state.drag, phase: 'done' } }); setTimeout(() => this.setState({ drag: null }), LAND_MS); }, 200);
       return;
     }
@@ -2168,6 +2162,14 @@ class Component extends DCLogic {
     this.setState({ sel: [id], anchor: id, cursor: id, focus: 'detail' });
     this.openDetail();
     this.focusTitle();
+  }
+
+  // ---------- Cancelling a task drag (v2 feedback 7) ----------
+  // The slot the dragged rows came from: on Esc, or a drop on the sidebar where no row takes it, the copy flies home and
+  // the gap reopens there (it stayed at the last target, so the row snapped back when the drag ended).
+  homeSlot(d) {
+    const g = this.lastLayout.groups.find((x) => x.listId === d.group);
+    return g ? g.ids.slice(0, g.ids.indexOf(d.ids[0])).filter((id) => !d.ids.includes(id)).length : d.target;
   }
 }
 
