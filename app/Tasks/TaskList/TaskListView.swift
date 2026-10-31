@@ -1766,7 +1766,6 @@ final class TaskListView: NSView {
         pointerMoved(at: doc.convert(inWin, from: nil))
     }
 
-    /// Debug (§24): every row on screen, top to bottom, with what it shows of its dates.
     /// Debug (v2 feedback 20): the large title and every visible row as drawn, top to bottom.
     func debugFrameRows() -> String {
         let r: [(CGFloat, String)] = rows.values.filter { !$0.isHidden && $0.model != nil }.map { ($0.frame.minY, $0.debugFrameState) }
@@ -1774,6 +1773,7 @@ final class TaskListView: NSView {
         return "  title='\(titleView.debugTitle)'\n" + (r + h).sorted { $0.0 < $1.0 }.map { "  \(Int($0.0)) \($0.1)" }.joined(separator: "\n")
     }
 
+    /// Debug (§24): every row on screen, top to bottom, with what it shows of its dates.
     func debugDates() -> String {
         rows.values.filter { !$0.isHidden && $0.model != nil }.sorted { $0.frame.minY < $1.frame.minY }
             .map { "  \($0.model!.title): \($0.debugDates)" }.joined(separator: "\n")

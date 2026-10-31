@@ -826,7 +826,6 @@ rejected change isn't amber, server errors read as offline, and the dot waits 3 
   - **The tooltip on screen.** Hover can't be posted; its text was read from the model.
   - **VoiceOver itself.** The labels and values were read back, not heard.
   - **A real network drop and a real recovery.** The failures were made by the debug transport.
-||||||| parent of 9116f12 (notes: v2 feedback 20, list switches instant again)
 
 ## List switches are instant again (v2 feedback 20)
 
