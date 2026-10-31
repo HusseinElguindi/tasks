@@ -111,7 +111,8 @@ struct NoticeView: View {
         ZStack(alignment: .bottomTrailing) {
             if let n = overlays.notice {
                 HStack(spacing: 10) {
-                    Text(n.text).foregroundStyle(tk.ink.swiftUI).lineLimit(1).fixedSize()
+                    // A long list name ("Moved to …") is cut to fit the pane; Undo keeps its size (v2 feedback 16).
+                    Text(n.text).foregroundStyle(tk.ink.swiftUI).lineLimit(1).truncationMode(.tail)
                     if n.undo {
                         CapsuleButton(tinted: true) {
                             overlays.hideNotice()
@@ -122,6 +123,7 @@ struct NoticeView: View {
                                 Text("⌘Z").font(Font(TK.Font.small)).foregroundStyle(tk.ink3.swiftUI)
                             }
                         }
+                        .fixedSize()
                     }
                 }
                 .font(Font(TK.Font.body))

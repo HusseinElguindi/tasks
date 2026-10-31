@@ -23,6 +23,19 @@ enum Menus {
     /// A Return key equivalent shown as ↩ (Rename).
     static let returnKey = "\r"
 
+    /// A name as a menu item shows it: cut with an ellipsis at 280pt in the menu's font, so a 200-character list name
+    /// doesn't make the menu as wide as the screen (v2 feedback 16).
+    static func fit(_ s: String, width: CGFloat = 280, font: NSFont = NSFont.menuFont(ofSize: 0)) -> String {
+        func w(_ t: String) -> CGFloat { (t as NSString).size(withAttributes: [.font: font]).width }
+        guard w(s) > width else { return s }
+        var lo = 0, hi = s.count
+        while lo < hi {
+            let mid = (lo + hi + 1) / 2
+            if w(String(s.prefix(mid)).trimmingCharacters(in: .whitespaces) + "…") <= width { lo = mid } else { hi = mid - 1 }
+        }
+        return String(s.prefix(lo)).trimmingCharacters(in: .whitespaces) + "…"
+    }
+
     static func menu(_ items: [NSMenuItem]) -> NSMenu {
         let m = NSMenu()
         m.autoenablesItems = false
@@ -44,7 +57,7 @@ enum Menus {
             items.append(Item("Show Details", key: "d") { a.select([t.id]); a.openDetail() })
             items.append(Item("Rename", key: returnKey, modifiers: []) { a.editTask(t.id, caret: .all) })
             if a.window.route.listID == nil {
-                items.append(Item("Show in \(a.listName(t.list))") { a.go(.list(t.list), select: [t.id]) })
+                items.append(Item(fit("Show in \(a.listName(t.list))")) { a.go(.list(t.list), select: [t.id]) })
             }
         }
         if a.window.route.listID != nil {
@@ -92,7 +105,7 @@ enum Menus {
         if one {
             items.append(Item("Rename", key: returnKey, modifiers: []) { a.startHeadingRename(h.id) })
             items.append(Item(h.notes.isEmpty ? "Add Notes" : "Edit Notes") { a.editHeadingNotes(h.id) })
-            items.append(Item("New Task in \(name)") { a.newTask(in: h.list, under: h.id) })
+            items.append(Item(fit("New Task in \(name)")) { a.newTask(in: h.list, under: h.id) })
             items.append(.separator())
         }
         let collapse = !heads.allSatisfy { a.window.collapsed.contains($0.id) }
@@ -124,7 +137,7 @@ enum Menus {
         items.append(Item(n == 1 ? "Put Back" : "Put Back \(n) Tasks", key: "\u{8}") { a.putBack(ids) })
         let into = NSMenuItem(title: "Put Back in", action: nil, keyEquivalent: "")
         into.submenu = menu([header("Put back in")] + p.activeLists.ids.map { listID in
-            let item = Item(a.listName(listID)) { a.putBack(ids, in: listID) }
+            let item = Item(fit(a.listName(listID))) { a.putBack(ids, in: listID) }
             if let m = p.listModel(listID) { item.image = tileImage(monogram: m.monogram, slot: m.colorSlot, palette: a.window.palette) }
             if n == 1 && tasks[0].list == listID { item.state = .on }
             return item
@@ -139,7 +152,7 @@ enum Menus {
         let tasks = ids.compactMap(p.task)
         return p.activeLists.ids.enumerated().map { i, listID in
             let all = !tasks.isEmpty && tasks.allSatisfy { $0.list == listID }
-            let item = Item(a.listName(listID), key: i < 9 ? "\(i + 1)" : "", enabled: !all) { a.move(ids, to: listID) }
+            let item = Item(fit(a.listName(listID)), key: i < 9 ? "\(i + 1)" : "", enabled: !all) { a.move(ids, to: listID) }
             if let m = p.listModel(listID) {
                 item.image = tileImage(monogram: m.monogram, slot: m.colorSlot, palette: a.window.palette)
             }
@@ -171,7 +184,7 @@ enum Menus {
     /// The detail pane's List pop-up: the same lists, under the pop-up (dc:1088–1093).
     static func popListMenu(_ ids: [EntityID], current: EntityID?, at point: NSPoint, in view: NSView, actions a: WindowActions) {
         let items = a.p.activeLists.ids.enumerated().map { i, listID -> NSMenuItem in
-            let item = Item(a.listName(listID), key: i < 9 ? "\(i + 1)" : "") { a.move(ids, to: listID) }
+            let item = Item(fit(a.listName(listID)), key: i < 9 ? "\(i + 1)" : "") { a.move(ids, to: listID) }
             if let m = a.p.listModel(listID) { item.image = tileImage(monogram: m.monogram, slot: m.colorSlot, palette: a.window.palette) }
             if listID == current { item.state = .on }
             return item
@@ -193,7 +206,7 @@ enum Menus {
         let lists = p.activeLists.ids
         let i = lists.firstIndex(of: id) ?? 0
         return menu([
-            Item("New Task in \(a.listName(id))") {
+            Item(fit("New Task in \(a.listName(id))")) {
                 a.go(.list(id))
                 DispatchQueue.main.async { a.newTask(in: id) }
             },

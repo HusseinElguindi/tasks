@@ -263,7 +263,12 @@ final class Overlays {
 
     func hoverTip(_ text: String, keys: String = "", for rect: CGRect, windowWidth: CGFloat) {
         tipTimer?.invalidate()
-        let origin = CGPoint(x: min(max(rect.midX - 60, 6), windowWidth - 160), y: rect.maxY + 6)
+        // A long name ("New Task in" a 200-character list) is cut at 300pt, and the tip stays inside the window, by
+        // its measured width (v2 feedback 16).
+        let text = Menus.fit(text, width: 300, font: TK.Font.tooltip)
+        func w(_ s: String) -> CGFloat { s.isEmpty ? 0 : ceil((s as NSString).size(withAttributes: [.font: TK.Font.tooltip]).width) }
+        let width = w(text) + (keys.isEmpty ? 0 : 6 + w(keys)) + 14
+        let origin = CGPoint(x: max(6, min(max(rect.midX - 60, 6), windowWidth - width - 6)), y: rect.maxY + 6)
         let tip = Tip(text: text, keys: keys, origin: origin)
         if Date.timeIntervalSinceReferenceDate - lastTipClosed < TK.Timer.tipWarm || self.tip != nil {
             self.tip = tip

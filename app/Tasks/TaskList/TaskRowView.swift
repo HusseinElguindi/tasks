@@ -19,6 +19,8 @@ struct RowModel: Equatable {
     var notes = NotesSummary()
     /// Today's Completed group: the list's name at the right (css:172).
     var whereText: String?
+    /// Kept whole after `whereText` when it's cut: a month row's " · Oct 22" (§22).
+    var whereSuffix: String?
     var selected = false
     var joinTop = false
     var joinBottom = false
@@ -55,6 +57,8 @@ final class TaskRowView: NSView {
     private let hintCount = TextLayer()
     private let strike = CALayer()
     private let whereLabel = TextLayer()
+    private let whereMask = FadeMask()
+    private let whereSuffixLabel = TextLayer()
     private var chipLayers: [ChipLayer] = []
     private var chipFrames: [(Overlays.Picker.Field, CGRect)] = []
     let open = IconButtonLayer(.chevronRight, size: TK.M.openButton, glyphSize: 12)
@@ -86,10 +90,14 @@ final class TaskRowView: NSView {
         layer.addSublayer(hintCount)
         layer.addSublayer(strike)
         layer.addSublayer(whereLabel)
+        layer.addSublayer(whereSuffixLabel)
+        whereLabel.mask = whereMask
         layer.addSublayer(open)
         open.setInstant { open.opacity = 0 }
         open.reveal(false, animated: false)
-        for l in [selection, ring, check, title, hintGlyph, hintCount, strike, whereLabel, open] as [CALayer] { l.actions = Self.noActions }
+        for l in [selection, ring, check, title, hintGlyph, hintCount, strike, whereLabel, whereSuffixLabel, open, whereMask, titleMask] as [CALayer] {
+            l.actions = Self.noActions
+        }
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -164,14 +172,31 @@ final class TaskRowView: NSView {
             layer?.addSublayer(c)
             chipLayers.append(c)
         }
-        var chipsWidth: CGFloat = 0
-        for (i, c) in m.chips.enumerated() {
-            chipsWidth += ChipLayer.width(c.content) + (i > 0 ? TK.M.chipSpacing : 0)
+        // Who gives way when the row is short (v2 feedback 16): the title keeps up to `titleKeep` (all of a shorter
+        // one) and its notes hint; the chips keep their size, dropped from the first (When before Deadline) rather
+        // than cut the title below that; the list name after the title keeps up to `whereKeep` and then truncates
+        // with the title's end fade; space beyond the keeps goes to the title first, then to the list name. Nothing
+        // is drawn over the leading content or past the row.
+        let titleX = m.heading ? TK.M.rowPadLeft : TK.M.rowPadLeft + TK.M.check + TK.M.titleGap
+        let color = (m.done || m.untitled) ? palette.ink3 : m.trashed ? palette.ink2 : palette.ink
+        let text = m.untitled ? "New Task" : m.title
+        title.set(text, font: m.heading ? HeadingRowView.font : TK.Font.body,
+                  color: same ? (title.foregroundColor.flatMap(NSColor.init(cgColor:)) ?? color) : color)
+        let hintW = layoutHint(m, palette)
+        let hintSpace = hintW > 0 ? hintW + 6 : 0
+        let titleNat = ceil(title.textWidth) + 1
+        let leadKeep = min(titleNat, Self.titleKeep) + hintSpace
+        let leadNat = titleNat + hintSpace
+        var shown = Array(m.chips.indices)
+        func chipsWidth(_ ix: [Int]) -> CGFloat {
+            ix.enumerated().reduce(0) { $0 + ChipLayer.width(m.chips[$1.element].content) + ($1.offset > 0 ? TK.M.chipSpacing : 0) }
         }
+        while !shown.isEmpty, right - chipsWidth(shown) - TK.M.chipsGap - titleX < leadKeep { shown.removeFirst() }
+        let chipsWidth = chipsWidth(shown)
         var x = right - chipsWidth
         chipFrames = []
         for (i, layer) in chipLayers.enumerated() {
-            guard i < m.chips.count else { layer.isHidden = true; continue }
+            guard i < m.chips.count, shown.contains(i) else { layer.isHidden = true; continue }
             let c = m.chips[i]
             layer.isHidden = false
             layer.lifted = style == .lifted
@@ -185,26 +210,42 @@ final class TaskRowView: NSView {
         }
         // `.chips` keeps its 8pt margin even when empty.
         right -= chipsWidth + TK.M.chipsGap
+        // The list name (and a month row's date, kept whole), 8 after the title's slot.
+        let avail = max(0, right - titleX)
+        var whereW: CGFloat = 0
         if let w = m.whereText {
-            whereLabel.isHidden = false
             whereLabel.set(w, font: TK.Font.small, color: palette.ink3)
-            let ww = TextLayer.width(w, font: TK.Font.small)
-            whereLabel.place(x: right - ww, lineTop: (TK.M.row - 16) / 2, lineHeight: 16, width: ww + 2)
-            right -= ww + 8
-        } else {
-            whereLabel.isHidden = true
+            let suffix = m.whereSuffix ?? ""
+            whereSuffixLabel.set(suffix, font: TK.Font.small, color: palette.ink3)
+            let suffixW = suffix.isEmpty ? 0 : TextLayer.width(suffix, font: TK.Font.small)
+            let nameNat = TextLayer.width(w, font: TK.Font.small)
+            let whereNat = 8 + nameNat + suffixW
+            if leadNat + whereNat <= avail {
+                whereW = whereNat
+            } else {
+                let whereKeep = 8 + min(nameNat, Self.whereKeep) + suffixW
+                whereW = min(whereNat, max(whereKeep, avail - leadNat), max(0, avail - leadKeep))
+                // Less than a few letters of the name reads as noise: then it goes.
+                if whereW - 8 - suffixW < min(nameNat, Self.whereMin) { whereW = 0 }
+            }
+            if whereW > 0 {
+                let nameW = whereW - 8 - suffixW
+                let cut = nameW < nameNat - 0.5
+                let x0 = right - whereW + 8
+                whereLabel.place(x: x0, lineTop: (TK.M.row - 16) / 2, lineHeight: 16, width: cut ? nameW : nameNat + 2)
+                whereMask.update(width: cut ? nameW : nameNat + 2, height: whereLabel.bounds.height,
+                                 fade: cut ? min(TK.M.titleFade, nameW / 2) : 0)
+                whereSuffixLabel.place(x: x0 + (cut ? nameW : nameNat), lineTop: (TK.M.row - 16) / 2, lineHeight: 16, width: suffixW + 2)
+            }
         }
+        whereLabel.isHidden = whereW == 0
+        whereSuffixLabel.isHidden = whereW == 0 || (m.whereSuffix ?? "").isEmpty
+        right -= whereW
 
         // The title: flex 1, nudged up 0.5. With notes, their hint follows the text 6 later and stays whole: the title
         // shrinks first. Its last 24pt fade out only when it's cut off (css:166–168, md:67–77).
         // A heading's copy has no checkbox: its name starts at the checkbox's edge, semibold (css:480–481).
-        let titleX = m.heading ? TK.M.rowPadLeft : TK.M.rowPadLeft + TK.M.check + TK.M.titleGap
         let slot = max(0, right - titleX)
-        let color = (m.done || m.untitled) ? palette.ink3 : m.trashed ? palette.ink2 : palette.ink
-        let text = m.untitled ? "New Task" : m.title
-        title.set(text, font: m.heading ? HeadingRowView.font : TK.Font.body,
-                  color: same ? (title.foregroundColor.flatMap(NSColor.init(cgColor:)) ?? color) : color)
-        let hintW = layoutHint(m, palette)
         let room = hintW > 0 ? max(0, slot - hintW - 6) : slot
         let clipped = title.textWidth > room + 0.5
         let titleW = clipped ? room : min(room, ceil(title.textWidth) + 1)
@@ -239,7 +280,8 @@ final class TaskRowView: NSView {
             }
         }
         let notesLabel = !m.notes.hasNotes ? nil : m.notes.total > 0 ? "\(m.notes.checked) of \(m.notes.total) checked" : "Has notes"
-        setAccessibilityLabel(([text, notesLabel].compactMap { $0 } + m.chips.map(\.content.text) + [m.whereText].compactMap { $0 }).joined(separator: ", "))
+        let whereFull = m.whereText.map { $0 + (m.whereSuffix ?? "") }
+        setAccessibilityLabel(([text, notesLabel].compactMap { $0 } + m.chips.map(\.content.text) + [whereFull].compactMap { $0 }).joined(separator: ", "))
         setAccessibilitySelected(m.selected)
     }
 
@@ -284,6 +326,13 @@ final class TaskRowView: NSView {
     }
 
     nonisolated(unsafe) static let hintFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)   // .ncount 500 11/14
+
+    /// What the title keeps before chips are dropped or the list name is cut (all of a shorter title), and what the
+    /// list name after it keeps before the title gives up more; a list name shorter than `whereMin` after cutting is
+    /// left out (v2 feedback 16).
+    static let titleKeep: CGFloat = 120
+    static let whereKeep: CGFloat = 72
+    static let whereMin: CGFloat = 32
 
     /// Sets the hint's glyph, count and colors, and returns its width (0 without notes): the glyph alone in a 14pt
     /// box (`ink-quaternary`), or the box glyph, 4, and "2/5" in `ink-tertiary`, `ink-quaternary` once all are checked

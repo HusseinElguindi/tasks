@@ -48,6 +48,7 @@ struct ListPaneHeader: View {
             if let list {
                 TileView(monogram: list.monogram, color: tk.listColor(slot: list.colorSlot), size: .small)
                 Text(list.name.isEmpty ? "New List" : list.name)
+                    .layoutPriority(1)
                     .font(Font(TK.Font.bodyMedium))
                     .foregroundStyle((lit ? tk.ink : tk.ink2).swiftUI)
                     .lineLimit(1)
@@ -64,6 +65,7 @@ struct ListPaneHeader: View {
             } else {
                 GlyphView(glyph: .sun, size: 14, color: tk.ansiYellow.swiftUI)
                 Text("Today")
+                    .layoutPriority(1)
                     .font(Font(TK.Font.bodyMedium))
                     .foregroundStyle((lit ? tk.ink : tk.ink2).swiftUI)
                 Text(DateLabel.long(p.dayModel.day.date, today: p.dayModel.day.date))

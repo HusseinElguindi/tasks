@@ -118,6 +118,7 @@ enum DemoData {
             let big = store.createList(name: "Big")
             for i in 0..<n { store.createTask(title: "Bulk task \(i) with a title of a realistic length", in: big) }
         }
+        if d.bool(forKey: "demoLongNames") { DemoLongNames.add(store, doneAt: doneAt) }
     }
 
     /// `-debugRoute today|list:<name>`, `-debugSelect <title>[|<title>…]`, `-debugDetail YES`, `-debugAdd YES`,

@@ -336,7 +336,7 @@ final class TaskListView: NSView {
                     }
                 }
                 if inToday && L.isDone(id) { m.whereText = actions.listName(t.list) }
-                if state.route.isView { m.whereText = viewWhere(L, id: id, list: t.list) }
+                if state.route.isView, let w = viewWhere(L, id: id, list: t.list) { m.whereText = w.name; m.whereSuffix = w.suffix }
                 m.trashed = t.deleted
             } else {
                 continue
@@ -581,16 +581,17 @@ final class TaskListView: NSView {
         }
     }
 
-    /// The list's name after the title in Upcoming, Completed and Trash; in a month group, the day too (dc:2321–2327).
-    private func viewWhere(_ L: TaskLayout, id: EntityID, list: EntityID) -> String? {
+    /// The list's name after the title in Upcoming, Completed and Trash; in a month group, the day too (dc:2321–2327),
+    /// kept whole when the name is cut (v2 feedback 16).
+    private func viewWhere(_ L: TaskLayout, id: EntityID, list: EntityID) -> (name: String, suffix: String?)? {
         let name = actions.listName(list)
         switch state.route {
-        case .upcoming: return name
+        case .upcoming: return (name, nil)
         case .completed, .trash:
-            guard L.groupKind(id) == .month, let t = store.projection.task(id) else { return name }
+            guard L.groupKind(id) == .month, let t = store.projection.task(id) else { return (name, nil) }
             let at = state.route == .trash ? ViewItems.deletedAt(t) : t.completedAt
-            guard let at else { return name }
-            return name + " · " + DateLabel.monthDay(CalendarDate(Date(timeIntervalSince1970: TimeInterval(at) / 1000)))
+            guard let at else { return (name, nil) }
+            return (name, " · " + DateLabel.monthDay(CalendarDate(Date(timeIntervalSince1970: TimeInterval(at) / 1000))))
         default: return nil
         }
     }
@@ -1727,6 +1728,7 @@ final class TaskListView: NSView {
     #if DEBUG
     /// Debug: hover at a window point (top-left origin), as the tracking area would.
     func debugScroll(_ y: CGFloat) {
+        let y = min(max(0, y), max(0, doc.frame.height - scroll.contentView.bounds.height))
         scroll.contentView.scroll(to: CGPoint(x: 0, y: y))
         scroll.reflectScrolledClipView(scroll.contentView)
     }

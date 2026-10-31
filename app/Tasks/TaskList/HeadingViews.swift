@@ -247,20 +247,28 @@ final class ListTitleView: NSView {
             glyph.position = CGPoint(x: x + 9, y: lineTop + 15)
             x += 18 + 9
         }
-        let attr = TextLayer.width(c.title, font: Self.font) + abs(Self.kern) * CGFloat(c.title.count)
-        let subW = c.sub.map { TextLayer.width($0, font: TK.Font.body) + 9 } ?? 0
-        let room = max(0, width - x - TK.M.rowInset - TK.M.rowPadRight - subW)
-        let titleW = min(room, ceil(attr) + 2)
+        // The name keeps up to 160 (all of a shorter one), then the date or "Archived" after it gives way, then the
+        // name; both end in an ellipsis, as the prototype's `.lhn` and `.lhs` do (css:441–442, v2 feedback 16).
+        let titleNat = ceil(TextLayer.width(c.title, font: Self.font) + abs(Self.kern) * CGFloat(c.title.count)) + 2
+        let subNat = c.sub.map { ceil(TextLayer.width($0, font: TK.Font.body)) + 2 } ?? 0
+        let avail = max(0, width - x - TK.M.rowInset - TK.M.rowPadRight)
+        var subW: CGFloat = 0
+        if c.sub != nil {
+            subW = titleNat + 9 + subNat <= avail ? subNat : min(subNat, max(0, avail - 9 - min(titleNat, 160)))
+            if subW < min(subNat, 40) { subW = 0 }
+        }
+        let titleW = min(titleNat, max(0, avail - (subW > 0 ? subW + 9 : 0)))
+        // The layer's own font sets the line CATextLayer truncates in: the attributed string alone left it at 13pt,
+        // and a cut title lost its descenders.
+        title.set(c.title, font: Self.font, color: palette.ink)
         title.string = NSAttributedString(string: c.title, attributes: [.font: Self.font, .kern: Self.kern,
                                                                          .foregroundColor: palette.ink])
         title.place(x: x, lineTop: lineTop + 2, lineHeight: 26, width: titleW)
-        // `place` sizes for `textFont`; the attributed string carries the real font.
-        title.frame.size.height = ceil(Self.font.ascender - Self.font.descender) + 2
-        title.frame.origin.y = TextLayer.glyphTop(lineTop: lineTop + 2, lineHeight: 26, font: Self.font)
         title.isHidden = c.renaming
         titleFrame = CGRect(x: x, y: lineTop, width: titleW, height: 30)
-        if let s = c.sub {
+        if let s = c.sub, subW > 0 {
             sub.isHidden = c.renaming
+            sub.truncationMode = .end
             sub.set(s, font: TK.Font.body, color: palette.ink3)
             sub.place(x: x + titleW + 9, lineTop: lineTop + 7 + 1, lineHeight: 16, width: subW)
         } else {
