@@ -2,8 +2,8 @@
 
 Status: revised plan, 2026-10-31. Briefs: `docs/TASK-sdk-plan.md`, then `docs/TASK-sdk-plan-swift.md`. The user
 accepted every recommendation of the first version (`c54b00a`) with two changes: everything runs on this Mac, and the
-core is Swift, not a TypeScript port. Nothing here is built yet; three throwaway spikes settled the open technical
-questions (§1, §6).
+core is Swift, not a TypeScript port. Built the same day, phases 1–3 (the server change is not deployed); §14 lists
+where the build differs from this plan.
 
 The end goal is agents using Tasks. Every agent interface here is a front end on one Swift executable, `tasks`, built
 on the app's own `TasksCore`. It's just another replica of the log, like a second Mac, so the reducer, the sync loop,
@@ -855,3 +855,19 @@ These were checked in primary sources on 2026-10-31.
 
 The Dynamic Worker Loader and `@cloudflare/codemode` notes, which only mattered for remote code mode, are in the first
 version (`c54b00a`).
+
+## 14. As built (2026-10-31)
+
+Phases 1–3 are built as planned (commits `9728858` through `d1fbbcb`), with these differences:
+
+- **The Keychain is only read at a terminal.** The token comes from `TASKS_TOKEN`, then `~/.tasks-sync.env`, then
+  the app's Keychain item only when stdin is a TTY, so an agent's command never waits on a Keychain dialog.
+- **`--cached` is fully offline:** no pull and no push. Writes stay queued and exit 75 until a command syncs.
+- **An undo that keeps every later edit writes nothing,** so it can be tried again (with `--force`). An undo that
+  wrote something is final: a second one is refused as "already undone".
+- **Scripts are wrapped in an async function,** so top-level `return` works. An API error carries the line of the
+  call that failed. Values a script returns go through JSON, so their keys come back sorted.
+- **Overrides for tests and scratch runs:** `TASKS_DATA_DIR`, `TASKS_ENV_FILE`, `TASKS_RETRIES`, `TASKS_DENO`,
+  `TASKS_RUN_TIMEOUT`, `TASKS_DATE_ORDER`.
+- **Not exercised live:** the Keychain path (it would read the real token), and registering `tasks mcp` in a client
+  (it changes the user's config). The MCP protocol is tested directly, and `tasks mcp` was driven over stdio.
