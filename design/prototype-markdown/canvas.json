@@ -1,0 +1,296 @@
+{
+  "v": 3,
+  "title": "Tasks · Markdown notes",
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-10-31T06:56:46Z"
+  },
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1180,
+      "h": 764,
+      "title": "Prototype · Markdown notes in the details (the strip switches every choice)",
+      "is_interactive": true,
+      "radius": 12
+    },
+    "Edit-Live.dc.html": {
+      "x": 0,
+      "y": 1100,
+      "w": 1000,
+      "h": 620,
+      "title": "A · Live: marks show at the caret (recommended)",
+      "is_interactive": true,
+      "radius": 12
+    },
+    "Edit-Faint.dc.html": {
+      "x": 1080,
+      "y": 1100,
+      "w": 1000,
+      "h": 620,
+      "title": "B · Faint marks: always shown, quiet",
+      "is_interactive": true,
+      "radius": 12
+    },
+    "Edit-Raw.dc.html": {
+      "x": 2160,
+      "y": 1100,
+      "w": 1000,
+      "h": 620,
+      "title": "C · Raw while editing (today's spec)",
+      "is_interactive": true,
+      "radius": 12
+    },
+    "Edit-Live-Light.dc.html": {
+      "x": 0,
+      "y": 1840,
+      "w": 1000,
+      "h": 620,
+      "title": "A · Live, light",
+      "is_interactive": true,
+      "radius": 12
+    },
+    "Edit-Faint-Light.dc.html": {
+      "x": 1080,
+      "y": 1840,
+      "w": 1000,
+      "h": 620,
+      "title": "B · Faint marks, light",
+      "is_interactive": true,
+      "radius": 12
+    },
+    "Edit-Raw-Light.dc.html": {
+      "x": 2160,
+      "y": 1840,
+      "w": 1000,
+      "h": 620,
+      "title": "C · Raw while editing, light",
+      "is_interactive": true,
+      "radius": 12
+    },
+    "Check-Square.dc.html": {
+      "x": 0,
+      "y": 2820,
+      "w": 1000,
+      "h": 620,
+      "title": "Checklists · Square, neutral when checked (recommended)",
+      "is_interactive": true,
+      "radius": 12
+    },
+    "Check-Round.dc.html": {
+      "x": 1080,
+      "y": 2820,
+      "w": 1000,
+      "h": 620,
+      "title": "Checklists · Round, a small task checkbox",
+      "is_interactive": true,
+      "radius": 12
+    },
+    "Check-Square-Light.dc.html": {
+      "x": 2160,
+      "y": 2820,
+      "w": 1000,
+      "h": 620,
+      "title": "Checklists · Square, light",
+      "is_interactive": true,
+      "radius": 12
+    },
+    "Rows-Glyph.dc.html": {
+      "x": 0,
+      "y": 3800,
+      "w": 1000,
+      "h": 620,
+      "title": "Rows · Glyph, or the checklist's count (recommended)",
+      "is_interactive": true,
+      "radius": 12
+    },
+    "Rows-Excerpt.dc.html": {
+      "x": 1080,
+      "y": 3800,
+      "w": 1000,
+      "h": 620,
+      "title": "Rows · Excerpt: the first line after the title",
+      "is_interactive": true,
+      "radius": 12
+    },
+    "Rows-None.dc.html": {
+      "x": 2160,
+      "y": 3800,
+      "w": 1000,
+      "h": 620,
+      "title": "Rows · None",
+      "is_interactive": true,
+      "radius": 12
+    },
+    "Link-Pop.dc.html": {
+      "x": 0,
+      "y": 4780,
+      "w": 1000,
+      "h": 620,
+      "title": "⌘K on a link: the address popover",
+      "is_interactive": true,
+      "radius": 12
+    },
+    "Link-Hover.dc.html": {
+      "x": 1080,
+      "y": 4780,
+      "w": 1000,
+      "h": 620,
+      "title": "Links · Click opens, hover shows the address (recommended)",
+      "is_interactive": true,
+      "radius": 12
+    },
+    "Link-Cmd.dc.html": {
+      "x": 2160,
+      "y": 4780,
+      "w": 1000,
+      "h": 620,
+      "title": "Links · ⌘-click opens",
+      "is_interactive": true,
+      "radius": 12
+    },
+    "Long.dc.html": {
+      "x": 0,
+      "y": 5520,
+      "w": 1000,
+      "h": 620,
+      "title": "Long notes: the whole pane scrolls, light",
+      "is_interactive": true,
+      "radius": 12
+    },
+    "Code.dc.html": {
+      "x": 1080,
+      "y": 5520,
+      "w": 1000,
+      "h": 620,
+      "title": "A code block with the caret in it: fences show",
+      "is_interactive": true,
+      "radius": 12
+    },
+    "Empty.dc.html": {
+      "x": 2160,
+      "y": 5520,
+      "w": 1000,
+      "h": 620,
+      "title": "No notes yet: the placeholder",
+      "is_interactive": true,
+      "radius": 12
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Edit-Live.dc.html",
+    "Edit-Faint.dc.html",
+    "Edit-Raw.dc.html",
+    "Edit-Live-Light.dc.html",
+    "Edit-Faint-Light.dc.html",
+    "Edit-Raw-Light.dc.html",
+    "Check-Square.dc.html",
+    "Check-Round.dc.html",
+    "Check-Square-Light.dc.html",
+    "Rows-Glyph.dc.html",
+    "Rows-Excerpt.dc.html",
+    "Rows-None.dc.html",
+    "Link-Pop.dc.html",
+    "Link-Hover.dc.html",
+    "Link-Cmd.dc.html",
+    "Long.dc.html",
+    "Code.dc.html",
+    "Empty.dc.html"
+  ],
+  "notes": {
+    "title": {
+      "kind": "title1",
+      "x": 0,
+      "y": -300,
+      "text": "Tasks · Markdown notes",
+      "w": 240,
+      "maxW": 3160
+    },
+    "howto": {
+      "x": -560,
+      "y": 0,
+      "w": 480,
+      "size": 24,
+      "text": "How to try it\n\n• Press Play on the prototype, then click in the notes of “Review CS 489 lectures 10–14”.\n• Type Markdown: **bold**, _italic_, `code`, [text](url), # and ## headings, - lists, 1. lists, - [ ] checklists, > quotes, ``` code blocks.\n• ⌘B, ⌘I and ⌘K work on the selection or the word at the caret. Return continues a list; Return on an empty item ends it. Tab and ⇧Tab indent.\n• Click a checklist box: it toggles the [ ] in the text, editing or not.\n• Paste rich text from a web page: it arrives as Markdown. ⌥⇧⌘V pastes plain.\n• The strip switches Notes, Checklists, Rows and Links. Press ? for every key."
+    },
+    "t_edit": {
+      "kind": "title1",
+      "x": 0,
+      "y": 840,
+      "text": "1 · Editing and reading",
+      "w": 240,
+      "maxW": 3160
+    },
+    "n_edit": {
+      "x": -560,
+      "y": 1100,
+      "w": 480,
+      "size": 24,
+      "text": "Each board is editing the same note with the caret in “retr|ieval”.\n\nA shows the marks of the word the caret touches and of the line it's on (# and >), and hides the rest.\nB shows every mark, faintly, all the time: nothing ever moves.\nC switches to the plain source while editing: lists lose their bullets and boxes, the text reflows.\n\nAt rest, A and C read the same: fully rendered."
+    },
+    "t_chk": {
+      "kind": "title1",
+      "x": 0,
+      "y": 2560,
+      "text": "2 · Checklists",
+      "w": 240,
+      "maxW": 3160
+    },
+    "n_chk": {
+      "x": -560,
+      "y": 2820,
+      "w": 480,
+      "size": 24,
+      "text": "A box toggles [ ] ↔ [x] in the text, editing or not, without moving the caret. Outside editing it's its own undo step (“Check Item”).\n\nSquare keeps the round blue box the task's alone: notes items are smaller, square, and fill gray when checked. Checked items read like completed tasks: dimmed and struck through."
+    },
+    "t_rows": {
+      "kind": "title1",
+      "x": 0,
+      "y": 3540,
+      "text": "3 · A hint in the row",
+      "w": 240,
+      "maxW": 3160
+    },
+    "n_rows": {
+      "x": -560,
+      "y": 3800,
+      "w": 480,
+      "size": 24,
+      "text": "Glyph: a quiet lines icon before the chips when a task has notes; when the notes have a checklist, its count (2/5) instead.\nExcerpt: the first line, in tertiary ink, after the title, fading with it.\nNone: nothing.\n\nAll three keep the 30pt row."
+    },
+    "t_links": {
+      "kind": "title1",
+      "x": 0,
+      "y": 4520,
+      "text": "4 · Links, long notes, code, empty",
+      "w": 240,
+      "maxW": 3160
+    },
+    "n_links": {
+      "x": -560,
+      "y": 4780,
+      "w": 480,
+      "size": 24,
+      "text": "⌘K edits the link at the caret, or links the selection; with nothing selected it inserts the address. Return applies, Esc cancels, an empty field removes the link.\n\nPasting a URL over selected text links it. Pasting it alone inserts it, and bare https:// addresses show as links."
+    }
+  },
+  "noteOrder": [
+    "title",
+    "howto",
+    "t_edit",
+    "n_edit",
+    "t_chk",
+    "n_chk",
+    "t_rows",
+    "n_rows",
+    "t_links",
+    "n_links"
+  ],
+  "designSystems": []
+}
