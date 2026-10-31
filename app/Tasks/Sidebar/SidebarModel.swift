@@ -129,7 +129,6 @@ struct SidebarModel {
             guard hints, let i = numbered.firstIndex(of: key) else { return nil }
             return "⌘\(i + 1)"
         }
-        func countText(_ n: Int) -> String { n > 0 ? String(n) : "" }
 
         func listRow(_ id: EntityID, y: CGFloat, archived: Bool) -> Row {
             let key = Key.list(id)
@@ -153,12 +152,10 @@ struct SidebarModel {
             // While a name is typed, the tile's letter follows it (dc:2000).
             row.monogram = editing ? SB.monogram(rename?.text ?? "") : (model?.monogram ?? "·")
             row.slot = model?.colorSlot ?? ListModel.slot(for: id)
+            // Lists show no open-task count (only Today does); the slot holds just the held-⌘ hint.
             if let h = hint(key) {
                 row.count = h
                 row.hint = true
-            } else if !archived {
-                // Headings aren't counted (§23).
-                row.count = countText(p.openTaskCount(in: id))
             }
             return row
         }
@@ -171,8 +168,9 @@ struct SidebarModel {
             today.count = h
             today.hint = true
         } else {
-            // Open tasks in Today across the active lists (dc:1910).
-            today.count = countText(stored.reduce(0) { $0 + p.todayTasks(in: $1).count })
+            // Open tasks in Today across the active lists (dc:1910). Today is the only row with a count.
+            let n = stored.reduce(0) { $0 + p.todayTasks(in: $1).count }
+            today.count = n > 0 ? String(n) : ""
         }
         m.rows.append(today)
         y += pitch
