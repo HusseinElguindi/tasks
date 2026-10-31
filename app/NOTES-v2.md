@@ -322,3 +322,82 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
 - Debug flags are in `app/README.md` (`-demoData`, `-demoBulk`, `-debugRoute`, `-debugSelect`, `-debugDetail`,
   `-debugAdd`, `-debugSidebarHidden`, `-debugRenderTimes`, the sidebar's `-debugSidebarScript`, the popover's
   `-debugPicker`).
+
+## The four views: Upcoming, Undated, Completed, Trash (INTERACTIONS-v2 §22)
+
+Built from §22 and the prototype (`design/prototype-v2/`, dc:2219–2530), with the user's picks:
+- **Sidebar.** It reads Today, Upcoming, Undated, the lists, then 8pt and Completed and Trash, then the Archive group.
+  - The four have no counts, no menu, and can't be renamed or dragged.
+  - ⌘1–⌘9 (the menu and the held-⌘ hints) number the first nine rows top to bottom.
+  - Type-select tries the lists first, then Today and the views.
+- **Upcoming.**
+  - It always shows the next seven days; an empty day's label is quiet but takes +, a double-click and a drop. Then
+    one group per month: "Later in November", "December".
+  - A task with both dates shows once, on the earlier one.
+  - A row shows its list's name. Its own day isn't repeated as a chip, and a deadline on that day reads "Due".
+  - + adds for the +'s day, else the selected task's day, else tomorrow.
+  - ⌥⌘↑↓ moves a task a day, never past its deadline; a day before tomorrow is Today, with a notice.
+  - Drag-to-reschedule: the day under the copy lights and opens a gap where the task will land. A month, or a day
+    past a dragged task's deadline, doesn't take the drop. The drop sets When; the deadline is never touched.
+- **Undated.** Open tasks with neither date, grouped by list as Today groups them. Its + adds to that list. A date
+  takes a task out, with a notice.
+- **Completed.** A logbook, newest first: a group per day for the last week, then per month. A month row shows
+  "School · Oct 22". Unchecking holds the row unchecked for 1.5 s. ⌘N adds in the default list.
+- **Trash.** Newest-deleted first, read-only.
+  - Rows: titles `ink-secondary`, the checkbox at 60%; the checkbox and chips don't respond to the pointer.
+  - Detail pane: fields don't respond; the footer reads "Created … · Deleted …"; ↶ Put Back replaces Delete.
+  - Put Back: ⌘⌫, the menu, or ↶. It returns the task to its old place, with Undo "Put Back". Put Back in ▸ and a
+    drop on a list put it at the bottom of that list.
+- **Drops from a task drag.**
+  - Completed completes, and Trash deletes ("Deleted …").
+  - Upcoming and Undated don't take drops.
+  - From the Trash, a list puts the task back.
+- Empty states for all four. Upcoming's sits 24 under its seven quiet days.
+- The demo seed has the prototype's view tasks (dc:487–508), so the app and the prototype can be compared.
+
+How it's built:
+- `Route` gains the four cases, and the sidebar's key is the route (`Window/Views.swift`). Everything per view is
+  there or in `TaskList/ViewLayout.swift`.
+- No new model fields, and no TasksCore changes: Put Back is an op built in the app (`Patch(deleted: false)`).
+- **When a task was deleted.** The Trash takes it from the task's last op (`updatedAt`). Nothing in the app edits a
+  trashed task, so that's the op that set `deleted`. Two consequences:
+  - Undoing a Put Back deletes the task again now, so it moves to Today's group.
+  - An edit to a trashed task from elsewhere (the CLI) would move it too.
+- **How a render stays cheap.** Each view's rows are cached (`ViewItems.read`) under a key of what they depend on:
+  - Completed and the Trash: the lists' buckets (the Trash scans for deleted tasks only when one changes).
+  - Upcoming and Undated: a revision. One observer per window, `ViewDates`, reads every open task's dates in a single
+    tracked pass; when one changes it bumps the revision once, and the next read arms it again.
+
+How it was checked (the screen was locked, so everything is in-process):
+- Renders of all four views in the app (`snap:`), beside the prototype's in headless Chrome, both seeded the same:
+  all four in dark and in light, and the four empty states. They match, except the lists' tile colours: the app
+  derives them from the list id, as before.
+- A new script step, `act:` (`Support/DebugViews.swift`), drives the actions that menu key equivalents would (they
+  don't reach a background app). It logs the laid-out rows and labels (`act:rows`) and the context menus
+  (`act:menu`). Checked with it:
+  - ⌘1–⌘9 and the hints; type-select ("u", "t", "tr", "c");
+  - Upcoming: ⌥⌘↑↓ in all three cases; removing a date; + by selection and by day; completing (held 1.5 s);
+  - Undated: a date taking a task out; + in a list;
+  - Completed: unchecking; ⌘N;
+  - Trash: Put Back, Undo, Put Back in, ⌘⌫ as Put Back, and the guards (complete, dates and move do nothing);
+  - every view's context menu.
+- Drags: real mouse events through the script (`down:`/`move:`/`up:`), with `act:trace` sampling every row's,
+  label's and the copy's presentation position and opacity before each commit:
+  - Upcoming onto Wednesday: the gap opens at the landing slot, the label lights and unlights as the flight starts,
+    the copy lands in 110 ms, and the row shows in the same turn the copy starts to fade.
+  - Upcoming past a deadline and onto a month: nothing lights, the copy flies home, nothing is written.
+  - Esc mid-drag: the copy flies home and the row springs back.
+  - A reorder within an Undated group.
+  - Sidebar drops: Today → Completed and → Trash; Completed → Trash and → a list; Trash → a list (put back).
+- Cost with `-demoBulk 5000` (5,000 extra open, undated tasks), `-debugRenderTimes`:
+  - a selection change in Upcoming or Undated: ~0.7 ms (5.5–12 ms before the cache);
+  - switching to Upcoming: 8 ms; to Undated: 25 ms, laying out 5,006 rows;
+  - a date edit in those two: ~17 ms. The observer reads every open task again after any change. That's linear in
+    open tasks (about 2 ms at 500), so it's over SPEC §9's 1 ms for a local edit only with thousands open.
+  - The proper fix is a projection index in TasksCore (open tasks by the day they reach Today, and deleted tasks),
+    which I left alone (the SDK agent's area).
+
+Not checked:
+- Anything needing a real pointer or the screen: hover looks and tooltips ("New Task for Monday"), the menus as
+  drawn, real ⌘-key shortcuts, trackpad drags.
+- VoiceOver on the views' rows and labels.

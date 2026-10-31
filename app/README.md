@@ -113,10 +113,10 @@ Compiled out of Release builds.
 | Argument | Effect |
 |----------|--------|
 | `-demoData YES` | Fills an empty data folder with the prototype's seed (`design/prototype-v2/Main.dc.html` dc:435–509), for side-by-side checks. `-demoBulk N` adds a list "Big" with N tasks. |
-| `-debugRoute today\|list:<name>`, `-debugSelect <title>`, `-debugDetail YES`, `-debugAdd YES`, `-debugThenRoute …`, `-debugSidebarHidden YES` | Sets up the window. |
+| `-debugRoute today\|upcoming\|undated\|completed\|trash\|list:<name>`, `-debugSelect <title>`, `-debugDetail YES`, `-debugAdd YES`, `-debugThenRoute …`, `-debugSidebarHidden YES` | Sets up the window. |
 | `-snapshotTo <png>` (`-snapshotQuit YES`, `-snapshotDelay`, `-debugWindowSize WxH`) | Renders the window to a PNG. |
 | `-snapshotSettings <png>` | Renders Settings (⌘,) to a PNG without opening its window. |
-| `-debugScript "<steps>"` | Posts clicks and keys inside the app, then quits (see `Support/DebugScript.swift`). Its `glasssnap:<png>` step renders how much of the Glass ground each pixel covers (alpha), plus a `.txt` of the window and its materials. |
+| `-debugScript "<steps>"` | Posts clicks and keys inside the app, then quits (see `Support/DebugScript.swift`). Its `glasssnap:<png>` step renders how much of the Glass ground each pixel covers (alpha), plus a `.txt` of the window and its materials; `act:<action>` runs a window action by name and `act:rows`, `act:menu`, `act:trace` log the four views' rows, menus and motion (`Support/DebugViews.swift`). |
 | `-debugRenderTimes <file>` | Logs each task-list render's duration and phases. |
 | `-debugMeasureSwitch <file>` | The list-switch benchmark (`Scripts/switch-bench.sh`). |
 | `-debugActions '<json>'`, `-debugDumpTo <json>` | Performs actions through the Store, syncs, dumps state, quits (used by `Scripts/e2e.sh`). |
