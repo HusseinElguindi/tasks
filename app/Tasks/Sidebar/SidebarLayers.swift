@@ -84,14 +84,17 @@ final class SidebarRowLayer: CALayer {
         placeAcross()
     }
 
-    /// What depends on the capsule's width: its box and edges, the title's width and fade, the count's box (right-
-    /// aligned, ending 8 short of the capsule's right edge, on the row's centered 16pt line).
+    /// What depends on the capsule's width: its box and edges, the title's width and fade (clear of the count only when
+    /// there is one), the count's box (right-aligned, ending 8 short of the capsule's right edge, on the row's centered
+    /// 16pt line).
     private func placeAcross() {
         bounds = CGRect(x: 0, y: 0, width: rowWidth, height: SB.rowHeight)
         for l in [edgeInner, edgeOuter, ring] { l.frame = bounds }
         let titleWidth = rowWidth - SB.titleX
         title.place(x: SB.titleX, lineTop: SB.titleLineTop, lineHeight: 16, width: titleWidth)
-        fade.update(width: titleWidth, height: title.bounds.height, fade: SB.titleFade, end: SB.titleFadeEnd)
+        let bare = row?.count.isEmpty ?? true
+        fade.update(width: titleWidth, height: title.bounds.height, fade: SB.titleFade,
+                    end: bare ? SB.titleFadeEndBare : SB.titleFadeEnd)
         let countWidth: CGFloat = 80
         count.place(x: rowWidth - SB.countRight - countWidth, lineTop: (SB.rowHeight - 16) / 2, lineHeight: 16, width: countWidth)
     }

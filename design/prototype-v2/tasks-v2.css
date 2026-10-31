@@ -110,6 +110,7 @@
 .tk .srow.arch { color: var(--ink-3); }
 .tk .srow.arch:hover, .tk .srow.arch.cur { color: var(--ink); }
 .tk .srow .tl { flex: 1; min-width: 0; margin-left: 7px; white-space: nowrap; overflow: hidden; padding-right: 34px; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 46px), transparent calc(100% - 30px)); mask-image: linear-gradient(to right, #000 calc(100% - 46px), transparent calc(100% - 30px)); transform: translateY(-0.5px); }
+.tk .srow:not(:has(.ct:not(:empty))) .tl { padding-right: 14px; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent calc(100% - 10px)); mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent calc(100% - 10px)); }
 .tk .srow .ct { position: absolute; right: 8px; top: 0; height: 30px; display: flex; align-items: center; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .tk .srow.cur .ct { color: var(--ink-2); }
 .tk .srow .ct.hint { font-size: 12px; color: var(--ink-2); }

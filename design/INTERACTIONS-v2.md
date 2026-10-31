@@ -795,8 +795,9 @@ Clear in the popover, ⌫ in its empty field, the × beside a detail-pane chip, 
 | Holding ⌘ (450 ms) | ⌘1–⌘9 show in the count's place on the sidebar's first nine rows (Today, Upcoming, Undated, then lists; §22), Today's count giving way, in 12pt `ink-secondary` (Rex, preview.16); any key or letting go hides them |
 
 Pressing a row opens it on mouse-down (instantly) and focuses the sidebar. Only Today has a count: its open tasks
-across the active lists. Lists have none (the user, 2026-10-31). Long names fade out over 16pt before the count's
-place (Today's count, or a ⌘ hint) instead of an ellipsis (Rex) `css:112`.
+across the active lists. Lists have none (the user, 2026-10-31). Long names fade out over 16pt instead of an ellipsis
+(Rex) `css:112`: ending 30 short of the capsule's edge when the count's place holds something (Today's count, or a ⌘
+hint), and 10 short when it's empty, so a list's name uses the room the count left.
 
 **Layout**: the brand header, Today 6 below it, Upcoming and Undated, the "Lists" label, the active lists, then 8pt and
 Completed and Trash (§22), then 8pt and the "Archive" label when anything is archived (`dc:1032–1057`).

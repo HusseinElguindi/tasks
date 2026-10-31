@@ -18,9 +18,11 @@ enum SB {
     static let titleX: CGFloat = 37
     static let titleLineTop: CGFloat = 6.5
     /// css:112: `#000 calc(100% − 46px), transparent calc(100% − 30px)`: a 16pt fade ending 30 before the capsule's
-    /// right edge, clear of the count.
+    /// right edge, clear of the count. With nothing in the count's place (a list, unless ⌘ is held) it ends 10 short,
+    /// where the rename field does.
     static let titleFade: CGFloat = 16
     static let titleFadeEnd: CGFloat = 30
+    static let titleFadeEndBare: CGFloat = 10
     /// `.ct`: right-aligned 8 from the capsule's right edge, centered on the row.
     static let countRight: CGFloat = 8
     /// `.ri`: the rename field, 7 after the tile, 10 short of the capsule's end, its text centered in the row.
