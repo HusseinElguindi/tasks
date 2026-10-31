@@ -418,6 +418,32 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
     - Not checked: hover and press looks, the drag's lifted copy, menus, notices and tooltips as drawn (their sites
       were only renamed).
 
+18. **One completion press wrote Complete and then an un-complete.** Nothing re-toggles on a timer; every path to a
+    second "Mark Not Done" is a second input that was taken as a toggle, and a toggled-back row was then put in the
+    wrong place:
+    - **Key repeat.** Space (in the list, the sidebar and the detail pane) and ⌘K (the menu and the sidebar)
+      toggled on every auto-repeat. Held past the repeat delay, one press wrote Complete and then Not Done (on the
+      scratch instance, 532 ms apart with a 525 ms delay, as in the user's log; this Mac's delay is 150 ms, so a
+      Space only a little long toggles several times). They now ignore repeats: one press, one toggle, and Space on
+      headings and Today's Completed label folds once.
+    - **A double-click on a checkbox** toggled twice; its second press is now ignored, in the list and the detail
+      pane (tap to click is on here, so double taps happen).
+    - **A row toggled back before the settle was hidden.** Completing pins the row among the open ones for 1.5 s;
+      un-completing it then pinned it among the done ones, so with Completed folded (a list's, or Today's since item
+      15) it vanished for 1.5 s while the count went up, and came back unchecked after the settle. An undo in that
+      window re-completed it with nothing on screen changing, as the user saw. Toggling a pinned row back now just
+      drops its pin (`WindowActions.toggleComplete`): it stays where it is, showing the model's state.
+    - Undo stays honest: a held Space is one Complete and one undo step ("Undo Complete"); the next ⌘Z has nothing.
+    - **Regression check:** `app/Scripts/completion-check.sh` runs the Debug app in the background on demo data and
+      completes tasks with single clicks, quick clicks on three rows, double-clicks and a held Space, in a list,
+      Today, Upcoming, Undated, with the sidebar focused and the detail pane focused; it fails unless each task got
+      exactly one op, and unless a task clicked twice on purpose (two ops) kept its row and shows not done. It
+      passes on this build; the build before fails it on every held Space (four ops), both double-clicks, and both
+      rows clicked twice (hidden). New debug-script steps: `hold:CODE:N` (a key held, N repeats) and
+      `checkclick:` / `checkdbl:` (a task's checkbox by title).
+    - Not checked: ⌘K's repeat through the menu bar (menu key equivalents don't reach a background app; the guard
+      reads `NSApp.currentEvent`), and real hardware repeats and taps.
+
 ## Markdown notes (design/MARKDOWN.md)
 
 Built to the spec and the prototype (`design/prototype-markdown/`); §11 of the spec lists where the build differs.
