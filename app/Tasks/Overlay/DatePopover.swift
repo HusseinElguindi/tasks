@@ -2,13 +2,13 @@ import AppKit
 import SwiftUI
 import TasksCore
 
-// The date popover (INTERACTIONS-v2 §11 "The popover (288pt)", §16, §18.8, §21), ported 1:1 from the prototype:
-// template dc:200–211, `openPicker` dc:1114–1124, the keys dc:1737–1766, the view model dc:2032–2054, and
-// css:317–342 (with the surface css:56–58/74 and "Popover in" css:371).
+// The date popover (INTERACTIONS-v2 §11, §16, §18.8, §21, and §25's scrolling calendar at 240pt), ported 1:1 from
+// the prototype: template dc:213–233, `openPicker` dc:1515–1526, the keys dc:2605–2618, the footer fit dc:2629–2640,
+// the view model dc:3060–3080, and css:317–342 and 521–534 (with the surface css:56–58/74 and "Popover in" css:371).
 //
-// Top to bottom, inside 8pt of padding on a 288pt `surface-popover`: the field (28), the quick picks 8 below (22, then
-// 2), the month row (8 / 22 / 4), the grid (a 20pt weekday row and six 28pt weeks, 2 apart) and the footer under a
-// hairline (6 above it, 8 inside). 343pt in all; placement uses the prototype's 344.
+// Top to bottom, inside 8pt of padding on a 240pt `surface-popover`: the field (28), the quick picks 8 below (22, then
+// 2), the month row (8 / 16 / 4), the weekday initials (20), the calendar (six 30pt weeks, `WeekCalendar.swift`) and
+// the footer under a hairline (6 above it, 8 inside). 337pt in all; placement uses the prototype's 344.
 
 /// Places the popover for `picker` in the window's overlay layer (`OverlayLayer`): 6pt under its anchor, left-aligned
 /// with it and kept 8pt inside the window, flipped above the anchor when it wouldn't fit (dc:1120–1122).
@@ -18,7 +18,7 @@ struct DatePopoverHost: View {
     let picker: Overlays.Picker
     let windowSize: CGSize
 
-    static let width: CGFloat = 288
+    static let width: CGFloat = 240
     /// The prototype's `ph`, used only to place it (the drawn popover is 343).
     static let placementHeight: CGFloat = 344
 
@@ -43,7 +43,7 @@ struct DatePopoverHost: View {
 
 // MARK: - State
 
-/// What the popover shows (the prototype's `state.picker`): the text, the highlighted day, the month shown.
+/// What the popover shows (the prototype's `state.picker`): the text, the highlighted day, the calendar's header.
 @MainActor
 @Observable
 private final class DatePickModel {
@@ -60,10 +60,14 @@ private final class DatePickModel {
     var text = ""
     /// The highlighted day: what Return sets.
     var hot: CalendarDate
-    /// The 1st of the month shown.
-    var month: CalendarDate
     /// The text reads as no date: nothing is highlighted and Return does nothing.
     var none = false
+    /// Where the calendar opens: the month of the tasks' date (today's when they have none), its first week on top.
+    let opening: CalendarDate
+    /// The month in view and the Today pill, as the calendar reports them while it scrolls.
+    var header: CalendarHeader
+    /// The latest request for the calendar to move: typing, the keys, Today.
+    private(set) var reveal: CalendarReveal?
 
     init(store: Store, picker: Overlays.Picker) {
         let p = store.projection
@@ -77,45 +81,58 @@ private final class DatePickModel {
         cur = tasks.allSatisfy { value($0) == v0 } ? v0 : nil
         other = picker.field == .when ? first?.deadline : first?.when
         hot = cur ?? today
-        month = (cur ?? today).firstOfMonth
+        opening = (cur ?? today).firstOfMonth
+        let math = WeekMath(today: today)
+        header = math.header(pos: math.monthPos(opening), fallback: opening)
     }
 
-    /// Typing moves the highlighted day (and the month) to what the text means; clearing it puts it back (dc:1739–1747).
+    /// Typing moves the highlighted day to what the text means, and the calendar to its month when it's out of view;
+    /// clearing the text puts it back (dc:2594–2603).
     func typed(_ new: String) {
         text = new
         if new.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             none = false
             hot = cur ?? today
-            month = hot.firstOfMonth
         } else if let hit = DatePhrase.match(new, today: today, numericOrder: Self.order) {
             none = false
             hot = hit
-            month = hit.firstOfMonth
         } else {
             none = true
+            return
         }
+        show(hot, .typed)
     }
 
-    /// ← → a day, ↑ ↓ a week; the month follows (dc:1753).
+    /// ← → a day, ↑ ↓ a week (dc:2609–2616); the calendar scrolls the least that shows it.
     func move(days n: Int) {
-        hot = hot.adding(days: n)
-        month = hot.firstOfMonth
+        hot = CalendarDate(dayNumber: hot.dayNumber + n) ?? hot
         none = false
+        show(hot, .key)
     }
 
-    /// ‹ › change only the month shown (dc:1764).
-    func showMonth(_ delta: Int) {
-        month = DatePhrase.adding(months: delta, to: month)
+    /// Page Up and Page Down: a month, to the same day, clamped (Jan 31 → Feb 28) (dc:2617).
+    func move(months n: Int) {
+        hot = DatePhrase.adding(months: n, to: hot)
+        none = false
+        show(hot, .key)
     }
 
+    /// The Today pill: today's month, without picking today.
+    func showToday() { show(today, .today) }
+
+    private func show(_ d: CalendarDate, _ why: CalendarReveal.Why) {
+        reveal = CalendarReveal(date: d, why: why, seq: (reveal?.seq ?? 0) + 1)
+    }
+
+    /// "tom" went with Next Week's room: Tomorrow is a button (§25).
     var placeholder: String {
-        field == .when ? "When: try tom, fri, 3d, nov 9" : "Deadline: try fri, nov 9, 2w"
+        field == .when ? "When: try fri, 3d, nov 9" : "Deadline: try fri, nov 9, 2w"
     }
 
-    /// Today · Tomorrow · Next Week, and Clear when the tasks share a date (dc:2045–2046).
+    /// Today · Tomorrow, and Clear when the tasks share a date (dc:3068–3069). Next Week went for the 240pt popover;
+    /// "next" still offers it.
     var quick: [Quick] {
-        var q = [Quick(label: "Today", date: today), Quick(label: "Tomorrow", date: today.adding(days: 1)),
-                 Quick(label: "Next Week", date: DatePhrase.nextWeek(from: today))]
+        var q = [Quick(label: "Today", date: today), Quick(label: "Tomorrow", date: today.adding(days: 1))]
         if cur != nil { q.append(Quick(label: "Clear", date: nil)) }
         return q
     }
@@ -127,27 +144,27 @@ private final class DatePickModel {
         var id: String { label }
     }
 
-    /// The six weeks shown, from the locale's first weekday (the prototype starts on Sunday).
-    func days(firstWeekday: Int) -> [CalendarDate] {
-        let lead = (month.weekday - firstWeekday + 7) % 7
-        var d = month.adding(days: -lead)
-        var out = [d]
-        out.reserveCapacity(42)
-        for _ in 1..<42 {
-            d = d.nextDay
-            out.append(d)
+    /// The last line's candidates, longest first (§25 "The last line", dc:2629–2640): "Fri, Nov 6 · in 7 days" with
+    /// ↩; then without ↩; without the weekday; then the date alone. A deadline reads "Due …", a past one "… · 1 day
+    /// overdue". With a `hint`, the hint takes the relative words' place, and it always stays. Or "No date matches
+    /// “xyz”" with ↩, cut with an ellipsis when long.
+    var lines: [Line] {
+        if none { return [Line(text: "No date matches “" + text.trimmingCharacters(in: .whitespacesAndNewlines) + "”", kbd: true)] }
+        let pre = field == .deadline ? "Due " : ""
+        let date = DateLabel.monthDayYear(hot, today: today)
+        let long = DateLabel.long(hot, today: today)
+        var rel = ""
+        if hint == nil {
+            rel = " · " + (field == .deadline && hot < today ? DateLabel.deadlineWords(hot, today: today) : DateLabel.relative(hot, today: today))
         }
-        return out
+        return [Line(text: pre + long + rel, kbd: true), Line(text: pre + long + rel, kbd: false),
+                Line(text: pre + date + rel, kbd: false), Line(text: pre + date, kbd: false)]
     }
 
-    /// "Fri, Nov 6 · in 7 days"; a deadline "Due Sun, Nov 1 · tomorrow", and a past one "… · 1 day overdue"; or
-    /// "No date matches “xyz”" (§24, dc:2926). With a `hint`, the hint takes the relative words' place.
-    var preview: String {
-        if none { return "No date matches “" + text.trimmingCharacters(in: .whitespacesAndNewlines) + "”" }
-        let date = (field == .deadline ? "Due " : "") + DateLabel.long(hot, today: today)
-        if hint != nil { return date }
-        let words = field == .deadline && hot < today ? DateLabel.deadlineWords(hot, today: today) : DateLabel.relative(hot, today: today)
-        return date + " · " + words
+    struct Line {
+        let text: String
+        /// Shows ↩.
+        let kbd: Bool
     }
 
     /// A When after the deadline, or a deadline before the When: a note, not a rule (SPEC §2 has none; §24, dc:2924).
@@ -161,19 +178,13 @@ private final class DatePickModel {
 
 private extension CalendarDate {
     var firstOfMonth: CalendarDate { CalendarDate(year: year, month: month, day: 1) ?? self }
-
-    var nextDay: CalendarDate {
-        if day < CalendarDate.daysIn(month: month, year: year) { return CalendarDate(year: year, month: month, day: day + 1) ?? self }
-        if month < 12 { return CalendarDate(year: year, month: month + 1, day: 1) ?? self }
-        return CalendarDate(year: year + 1, month: 1, day: 1) ?? self
-    }
 }
 
 // MARK: - The popover
 
 private enum Metrics {
-    static let inner: CGFloat = 272          // 288 − 2 × 8
-    static let cell: CGFloat = inner / 7     // ≈ 38.9
+    static let inner: CGFloat = WeekCalendarView.width   // 240 − 2 × 8
+    static let cell: CGFloat = inner / 7                  // 32: a 28pt day and 4 between
     static let letters = ["S", "M", "T", "W", "T", "F", "S"]  // Sunday first, like `CalendarDate.weekday`
 }
 
@@ -248,6 +259,8 @@ private struct DatePopover: View {
         case .right: model.move(days: 1)
         case .up: model.move(days: -7)
         case .down: model.move(days: 7)
+        case .pageUp: model.move(months: -1)
+        case .pageDown: model.move(months: 1)
         case .deleteEmpty: if model.cur != nil { apply(nil) }
         case .returnKey: if !model.none { apply(model.hot) }
         case .escape: actions.closePicker()
@@ -285,35 +298,35 @@ private struct DatePopover: View {
         }
     }
 
-    // MARK: The month (css:326–329)
+    // MARK: The month (css:326–329, 521–524)
 
+    /// The month in view and, once today is more than two weeks out of view, the Today pill (§25). The row keeps the
+    /// title's 16pt line either way: the 20pt pill overhangs it by 2pt above and below, so the calendar never moves
+    /// when the pill comes and goes (the prototype's row grows by 4pt).
     private var monthRow: some View {
         HStack(spacing: 0) {
-            Text(DateLabel.monthTitle(year: model.month.year, month: model.month.month))
+            Text(DateLabel.monthTitle(year: model.header.month.year, month: model.header.month.month))
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(tk.ink.swiftUI)
                 .lineLimit(1)
             Spacer(minLength: 0)
-            MonthArrow(glyph: .chevronLeft, label: "Previous month") {
-                model.showMonth(-1)
-                fieldRef.focus()
-            }
-            MonthArrow(glyph: .chevronRight, label: "Next month") {
-                model.showMonth(1)
-                fieldRef.focus()
+            if let up = model.header.todayAbove {
+                TodayPill(up: up) {
+                    model.showToday()
+                    fieldRef.focus()
+                }
             }
         }
-        .frame(height: 22)
+        .frame(height: 16)
         .padding(EdgeInsets(top: 8, leading: 4, bottom: 4, trailing: 2))
     }
 
-    // MARK: The grid (css:330–337)
+    // MARK: The calendar (css:332–338, 525–534)
 
     private var grid: some View {
         let first = Calendar.current.firstWeekday
-        let days = model.days(firstWeekday: first)
         let m = model
-        return VStack(spacing: 2) {
+        return VStack(spacing: 0) {
             HStack(spacing: 0) {
                 ForEach(0..<7, id: \.self) { i in
                     Text(Metrics.letters[(first - 1 + i) % 7])
@@ -324,48 +337,51 @@ private struct DatePopover: View {
                 }
             }
             .accessibilityHidden(true)
-            ForEach(0..<6, id: \.self) { week in
-                HStack(spacing: 0) {
-                    ForEach(0..<7, id: \.self) { i in
-                        let d = days[week * 7 + i]
-                        DayCell(date: d, today: m.today,
-                                out: d.year != m.month.year || d.month != m.month.month,
-                                isToday: d == m.today, isCur: d == m.cur, isOther: d == m.other, otherIsDeadline: m.field == .when,
-                                isHot: d == m.hot && !m.none) {
-                            apply(d)
-                        }
-                    }
-                }
-            }
+            WeekCalendar(marks: CalendarMarks(today: m.today, cur: m.cur, other: m.other, otherIsDeadline: m.field == .when,
+                                              hot: m.none ? nil : m.hot),
+                         opening: m.opening, reveal: m.reveal,
+                         onPick: { apply($0) },
+                         onHeader: { h in if m.header != h { m.header = h } })
+                .frame(width: Metrics.inner, height: WeekCalendarView.height)
         }
     }
 
     // MARK: The footer (css:338–341)
 
+    /// One line, always: the first of the model's candidates that fits 224pt (§25).
     private var footer: some View {
-        VStack(spacing: 0) {
+        let lines = model.lines
+        return VStack(spacing: 0) {
             Rectangle().fill(tk.lineSeparator.swiftUI).frame(height: 1)
-            HStack(spacing: 8) {
-                HStack(spacing: 6) {
-                    Text(model.preview)
-                        .foregroundStyle((model.none ? tk.inkTertiary : tk.ink).swiftUI)
-                    // "· after the deadline": the dot in `ink-tertiary`, the note in `attention` (css:536–537).
-                    if let hint = model.hint {
-                        Text("· ").foregroundColor(tk.inkTertiary.swiftUI) + Text(hint).foregroundColor(tk.attention.swiftUI)
-                    }
-                }
-                .font(.system(size: 12))
-                .lineLimit(1)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                Text("↩")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(tk.inkTertiary.swiftUI)
-                    .accessibilityHidden(true)
+            ViewThatFits(in: .horizontal) {
+                ForEach(lines.indices, id: \.self) { i in footerLine(lines[i]) }
             }
             .frame(minHeight: 16)
             .padding(EdgeInsets(top: 8, leading: 4, bottom: 2, trailing: 4))
         }
         .padding(.top, 6)
+    }
+
+    private func footerLine(_ line: DatePickModel.Line) -> some View {
+        HStack(spacing: 8) {
+            HStack(spacing: 6) {
+                Text(line.text)
+                    .foregroundStyle((model.none ? tk.inkTertiary : tk.ink).swiftUI)
+                // "· after the deadline": the dot in `ink-tertiary`, the note in `attention` (css:536–537).
+                if let hint = model.hint {
+                    Text("· ").foregroundColor(tk.inkTertiary.swiftUI) + Text(hint).foregroundColor(tk.attention.swiftUI)
+                }
+            }
+            .font(.system(size: 12))
+            .lineLimit(1)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            if line.kbd {
+                Text("↩")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(tk.inkTertiary.swiftUI)
+                    .accessibilityHidden(true)
+            }
+        }
     }
 }
 
@@ -428,76 +444,28 @@ private struct QuickPick: View {
     }
 }
 
-/// ‹ › (css:329): 22×22, radius 6, a 12pt chevron in `ink-secondary`; hover: `hover` fill (eased on `icon`) and `ink`
-/// (at once: only the fill has a transition).
-private struct MonthArrow: View {
-    let glyph: Glyph
-    let label: String
+/// The Today pill (css:522–523): 20 tall, padding 8, `accent-tint` / `accent-text`, 11pt medium and a 10pt arrow 3pt
+/// after it, toward today. It scrolls to today's month without picking today.
+private struct TodayPill: View {
+    let up: Bool
     let action: () -> Void
     @Environment(\.tk) private var tk
-    @State private var hovered = false
 
     var body: some View {
-        GlyphView(glyph: glyph, size: 12, color: (hovered ? tk.ink : tk.inkSecondary).swiftUI)
-            .frame(width: 22, height: 22)
-            .background {
-                RoundedRectangle(cornerRadius: 6, style: .circular)
-                    .fill((hovered ? tk.hover : .clear).swiftUI)
-                    .animation(TK.Motion.icon, value: hovered)
-            }
-            .contentShape(RoundedRectangle(cornerRadius: 6, style: .circular))
-            .onHover { hovered = $0 }
-            .onTapGesture(perform: action)
-            .accessibilityElement()
-            .accessibilityLabel(label)
-            .accessibilityAddTraits(.isButton)
-            .accessibilityAction { action() }
-    }
-}
-
-/// A day (css:333–337): a 28pt capsule a seventh of the grid wide, 12pt tabular. Other months `ink-quiet`; today
-/// `accent-text` semibold; the current date a 1.5pt inset `accent` ring; the other date a 4pt dot 3pt from the
-/// bottom, by kind: a deadline `attention`, a When `ink-tertiary` (§24); the highlighted day `accent` with
-/// `on-accent` semibold and no ring. Hover: `hover`. Only the fill eases (`icon`), as in the CSS.
-private struct DayCell: View {
-    let date: CalendarDate
-    let today: CalendarDate
-    let out: Bool
-    let isToday: Bool
-    let isCur: Bool
-    let isOther: Bool
-    let otherIsDeadline: Bool
-    let isHot: Bool
-    let action: () -> Void
-    @Environment(\.tk) private var tk
-    @State private var hovered = false
-
-    var body: some View {
-        let state = isHot ? 2 : hovered ? 1 : 0
-        let fill: NSColor = state == 2 ? tk.accent : state == 1 ? tk.hover : .clear
-        let ink: NSColor = isHot ? tk.onAccent : isToday ? tk.accentText : out ? tk.inkQuiet : tk.ink
-        Text(String(date.day))
-            .font(.system(size: 12, weight: isHot || isToday ? .semibold : .regular).monospacedDigit())
-            .foregroundStyle(ink.swiftUI)
-            .frame(width: Metrics.cell, height: 28)
-            .background {
-                Capsule(style: .circular).fill(fill.swiftUI).animation(TK.Motion.icon, value: state)
-            }
-            .overlay {
-                if isCur && !isHot { Capsule(style: .circular).strokeBorder(tk.focus.swiftUI, lineWidth: 1.5) }
-            }
-            .overlay(alignment: .bottom) {
-                if isOther {
-                    Circle().fill((otherIsDeadline ? tk.attention : tk.inkTertiary).swiftUI).frame(width: 4, height: 4).padding(.bottom, 3)
-                }
-            }
-            .contentShape(Capsule(style: .circular))
-            .onHover { hovered = $0 }
-            .onTapGesture(perform: action)
-            .accessibilityElement()
-            .accessibilityLabel(DateLabel.long(date, today: today))
-            .accessibilityAddTraits(isHot ? [.isButton, .isSelected] : .isButton)
-            .accessibilityAction { action() }
+        HStack(spacing: 3) {
+            Text("Today").font(.system(size: 11, weight: .medium))
+            Text(up ? "↑" : "↓").font(.system(size: 10, weight: .medium))
+        }
+        .foregroundStyle(tk.accentText.swiftUI)
+        .padding(.horizontal, 8)
+        .frame(height: 20)
+        .background(tk.accentTint.swiftUI, in: Capsule(style: .circular))
+        .contentShape(Capsule(style: .circular))
+        .onTapGesture(perform: action)
+        .accessibilityElement()
+        .accessibilityLabel("Scroll to today")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { action() }
     }
 }
 
@@ -536,10 +504,10 @@ private struct DateFieldView: NSViewRepresentable {
 
 /// The text field (§11, §18.6): 13pt `ink` on nothing, its placeholder `ink-tertiary`. It takes the keys when it
 /// appears. It never needs its caret keys: ← → ↑ ↓ (with any modifier, as the prototype reads `e.key`) move the
-/// highlighted day; Return sets it; ⌫ in the empty field clears; Esc closes; Tab stays in the field. ⌘Z is the
-/// field's own.
+/// highlighted day, Page Up and Page Down by a month; Return sets it; ⌫ in the empty field clears; Esc closes; Tab
+/// stays in the field. ⌘Z is the field's own.
 private final class DateTypingField: NSTextField, NSTextFieldDelegate {
-    enum Key { case left, right, up, down, deleteEmpty, returnKey, escape }
+    enum Key { case left, right, up, down, pageUp, pageDown, deleteEmpty, returnKey, escape }
 
     var onText: ((String) -> Void)?
     var onKey: ((Key) -> Void)?
@@ -606,13 +574,16 @@ private final class DateTypingField: NSTextField, NSTextFieldDelegate {
         }
     }
 
-    /// From the field editor's `keyDown`: the arrows (any modifiers), and ⌫ (any modifiers) when the field is empty.
+    /// From the field editor's `keyDown`: the arrows and Page Up / Down (any modifiers), and ⌫ (any modifiers) when
+    /// the field is empty.
     private func arrowOrDelete(_ code: UInt16, empty: Bool) -> Bool {
         switch code {
         case 123: onKey?(.left)
         case 124: onKey?(.right)
         case 126: onKey?(.up)
         case 125: onKey?(.down)
+        case 116: onKey?(.pageUp)
+        case 121: onKey?(.pageDown)
         case 51 where empty: onKey?(.deleteEmpty)
         default: return false
         }
@@ -695,14 +666,74 @@ private final class DateFieldEditor: NSTextView {
 ///     -debugPickerTask "A|B"         for these task titles (default: the first open task with a deadline)
 ///     -debugPickerAnchor x,y,w,h     the anchor in window points from the top left (default: the prototype's chip)
 ///     -debugPickerSlow 20            "Popover in" this many times slower
+///     -debugPickerRec /f.txt         records the calendar's moves from the start (as `rec`)
 ///     -debugPickerSteps "type:fri;key:left;click:X,Y;open;wait:200;snap:/a.png;log:/b.txt;hit:X,Y;quit"
 ///
-/// Keys: left right up down delete return esc tab. `open` opens it again for the same tasks. `log` appends the
-/// popover's state, the first responder and the tasks' dates. Clicks work with the app in the background because the
-/// popover takes the first click; hover can't be posted (tracking areas follow the real pointer).
+/// Keys: left right up down pageup pagedown delete return esc tab. `open` opens it again for the same tasks. `log`
+/// appends the popover's state, the first responder and the tasks' dates. Clicks work with the app in the background
+/// because the popover takes the first click; hover can't be posted (tracking areas follow the real pointer).
+///
+/// The calendar (§25), with scroll events made in-process and handed to its scroll view (positions in points; + is
+/// later): `wheel:N` N notches of a wheel mouse; `drag:D[,N]` a trackpad scroll of D in N steps, with no momentum;
+/// `flick:V` a trackpad flick at V points a frame, then its momentum (×0.96 a frame; a scroll view handed these
+/// directly ignores the momentum, so this moves only the 4V of the flick itself); `rec:/f.txt` … `recstop` writes a line per
+/// move of the calendar (the clip origin, base, pos, the header, the weeks in view and whether every row shows its own
+/// week); `cal:/f.txt` appends one such line now; `hover:X,Y` hovers the day at X,Y in the calendar. `bench:open:N:/f.txt` opens the popover N times and writes the
+/// main-thread work of each (open, then the window's layout and display forced); `bench:scroll:/f.txt` writes the
+/// same for every scroll event since launch.
 @MainActor
 enum DebugPicker {
     fileprivate static weak var current: DatePickModel?
+    static weak var calendar: WeekCalendarView?
+    private static var recording: String?
+    private static var recStart: CFTimeInterval = 0
+    private static var scrollCost: [Double] = []
+
+    /// Every move of the calendar, from its bounds-change handler (`ms`: that handler's own time).
+    static func calendarMoved(_ v: WeekCalendarView, ms: Double) {
+        guard let path = recording else { return }
+        append(String(format: "%8.1f ", (CACurrentMediaTime() - recStart) * 1000) + state(v) + String(format: " %.3fms", ms), to: path)
+    }
+
+    private static func state(_ v: WeekCalendarView) -> String {
+        let h = v.header
+        let f = v.convert(v.bounds, to: nil)
+        return String(format: "clip=%.2f base=%d pos=%.2f frame=%.2f,%.2f,%.2f,%.2f", v.debugClipY, v.base, v.pos, f.minX, f.minY, f.width, f.height)
+            + " header=\(h.month.year)-\(h.month.month) pill=\(h.todayAbove.map { $0 ? "up" : "down" } ?? "-")"
+            + " anim=\(v.debugAnimating ? 1 : 0) rowsOK=\(v.debugRowsConsistent ? 1 : 0) weeks=\(v.debugWeeks)"
+    }
+
+    private static func append(_ line: String, to path: String) {
+        let l = line + "\n"
+        if let h = FileHandle(forWritingAtPath: path) { h.seekToEndOfFile(); h.write(Data(l.utf8)); h.closeFile() }
+        else { try? l.write(toFile: path, atomically: true, encoding: .utf8) }
+    }
+
+    /// One scroll event, as a trackpad (points, with its phases) or a wheel mouse (notches) would send it.
+    private static func scroll(_ v: WeekCalendarView, _ dy: Double, phase: Int64 = 0, momentum: Int64 = 0, notches: Bool = false) {
+        guard let cg = CGEvent(scrollWheelEvent2Source: nil, units: notches ? .line : .pixel, wheelCount: 1,
+                               wheel1: Int32((-dy).rounded()), wheel2: 0, wheel3: 0) else { return }
+        if !notches {
+            cg.setIntegerValueField(.scrollWheelEventIsContinuous, value: 1)
+            cg.setIntegerValueField(.scrollWheelEventPointDeltaAxis1, value: Int64((-dy).rounded()))
+            cg.setDoubleValueField(.scrollWheelEventFixedPtDeltaAxis1, value: -dy)
+            cg.setIntegerValueField(.scrollWheelEventScrollPhase, value: phase)
+            cg.setIntegerValueField(.scrollWheelEventMomentumPhase, value: momentum)
+        }
+        guard let e = NSEvent(cgEvent: cg) else { return }
+        let t0 = CACurrentMediaTime()
+        v.scrollWheel(with: e)
+        if let path = recording {
+            append(String(format: "event phase=%d momentum=%d dy=%.2f", Int(e.phase.rawValue), Int(e.momentumPhase.rawValue), e.scrollingDeltaY), to: path)
+        }
+        if let cv = v.window?.contentView {
+            cv.layoutSubtreeIfNeeded()
+            cv.displayIfNeeded()
+        }
+        scrollCost.append((CACurrentMediaTime() - t0) * 1000)
+    }
+
+    private static func frame() async { try? await Task.sleep(for: .milliseconds(16)) }
     private static var ids: [EntityID] = []
     private static var reopen: (() -> Void)?
     static var slow: Double { UserDefaults.standard.double(forKey: "debugPickerSlow") }
@@ -722,6 +753,11 @@ enum DebugPicker {
             let a = (d.string(forKey: "debugPickerAnchor") ?? "1078.9,148,52.1,18").split(separator: ",").compactMap { Double($0) }
             guard !ids.isEmpty, a.count == 4 else { NSLog("debugPicker: no task or anchor"); return }
             Self.ids = ids
+            if let path = d.string(forKey: "debugPickerRec") {
+                recording = path
+                recStart = CACurrentMediaTime()
+                try? "".write(toFile: path, atomically: true, encoding: .utf8)
+            }
             reopen = { WindowActions(store: store, window: window).openPicker(field, ids: ids, anchor: CGRect(x: a[0], y: a[1], width: a[2], height: a[3])) }
             reopen?()
             let steps = (d.string(forKey: "debugPickerSteps") ?? "").split(separator: ";").map { $0.trimmingCharacters(in: .whitespaces) }
@@ -749,7 +785,70 @@ enum DebugPicker {
             case "return": key(w, code: 36, chars: "\r")
             case "esc": key(w, code: 53, chars: "\u{1b}")
             case "tab": key(w, code: 48, chars: "\t")
+            case "pageup": key(w, code: 116, chars: String(UnicodeScalar(NSPageUpFunctionKey)!), flags: [.function])
+            case "pagedown": key(w, code: 121, chars: String(UnicodeScalar(NSPageDownFunctionKey)!), flags: [.function])
             default: break
+            }
+        case "wheel":
+            guard let v = calendar, let n = Int(arg) else { return }
+            scroll(v, Double(n), notches: true)
+        case "drag":
+            // kCGScrollPhaseBegan 1, Changed 2, Ended 4. `drag:D,N`: in N steps, one a frame (default 10).
+            let a = arg.split(separator: ",").compactMap { Double($0) }
+            guard let v = calendar, let d = a.first else { return }
+            let n = a.count > 1 ? Int(a[1]) : 10
+            scroll(v, 0, phase: 1)
+            for _ in 0..<n { await frame(); scroll(v, d / Double(n), phase: 2) }
+            await frame()
+            scroll(v, 0, phase: 4)
+        case "flick":
+            // kCGMomentumScrollPhaseBegin 1, Continue 2, End 3.
+            guard let v = calendar, var speed = Double(arg) else { return }
+            scroll(v, 0, phase: 1)
+            for _ in 0..<4 { await frame(); scroll(v, speed, phase: 2) }
+            await frame()
+            scroll(v, 0, phase: 4)
+            await frame()
+            scroll(v, speed, momentum: 1)
+            while abs(speed) >= 0.5 {
+                await frame()
+                speed *= 0.96
+                scroll(v, speed, momentum: 2)
+            }
+            await frame()
+            scroll(v, 0, momentum: 3)
+        case "rec":
+            recording = arg
+            recStart = CACurrentMediaTime()
+            try? "".write(toFile: arg, atomically: true, encoding: .utf8)
+        case "recstop":
+            recording = nil
+        case "hover":
+            let xy = arg.split(separator: ",").compactMap { Double($0) }
+            guard let v = calendar, xy.count == 2 else { return }
+            v.debugHover(xy[0], xy[1])
+        case "cal":
+            guard let v = calendar else { return }
+            append(state(v), to: arg)
+        case "bench":
+            let b = arg.split(separator: ":", maxSplits: 2).map(String.init)
+            if b.first == "open", b.count == 3, let n = Int(b[1]) {
+                var out: [String] = []
+                for _ in 0..<n {
+                    WindowActions(store: store, window: window).closePicker()
+                    try? await Task.sleep(for: .milliseconds(250))
+                    let t0 = CACurrentMediaTime()
+                    reopen?()
+                    if let cv = w.contentView {
+                        cv.layoutSubtreeIfNeeded()
+                        cv.displayIfNeeded()
+                    }
+                    out.append(String(format: "%.3f", (CACurrentMediaTime() - t0) * 1000))
+                    try? await Task.sleep(for: .milliseconds(400))
+                }
+                try? out.joined(separator: "\n").write(toFile: b[2], atomically: true, encoding: .utf8)
+            } else if b.first == "scroll", b.count == 2 {
+                try? scrollCost.map { String(format: "%.3f", $0) }.joined(separator: "\n").write(toFile: b[1], atomically: true, encoding: .utf8)
             }
         case "click":
             let xy = arg.split(separator: ",").compactMap { Double($0) }
@@ -782,7 +881,9 @@ enum DebugPicker {
             let p = store.projection
             var line = "key=\(w.isKeyWindow) active=\(NSApp.isActive) open=\(window.overlays.picker != nil)"
             if let m = current, window.overlays.picker != nil {
-                line += " text='\(m.text)' hot=\(m.hot) month=\(m.month.year)-\(m.month.month) none=\(m.none) cur=\(m.cur.map { "\($0)" } ?? "-") other=\(m.other.map { "\($0)" } ?? "-")"
+                line += " text='\(m.text)' hot=\(m.hot) header=\(m.header.month.year)-\(m.header.month.month) pill=\(m.header.todayAbove.map { $0 ? "up" : "down" } ?? "-") none=\(m.none) cur=\(m.cur.map { "\($0)" } ?? "-") other=\(m.other.map { "\($0)" } ?? "-")"
+                line += " footer='" + m.lines.map { $0.text + ($0.kbd ? " ↩" : "") }.joined(separator: "|") + "'"
+                if let v = calendar { line += " " + state(v) }
             }
             let responder = w.firstResponder
             let inField = (responder as? DateFieldEditor) != nil

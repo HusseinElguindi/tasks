@@ -359,7 +359,7 @@ public enum DateLabel {
     }
 
     /// "Nov 9", or "Nov 9, 2027" when the year isn't today's (prototype `mdy`).
-    private static func monthDayYear(_ d: CalendarDate, today: CalendarDate) -> String {
+    public static func monthDayYear(_ d: CalendarDate, today: CalendarDate) -> String {
         monthDay(d) + (d.year != today.year ? ", " + String(d.year) : "")
     }
 
