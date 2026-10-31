@@ -35,3 +35,23 @@ The user's words: "for future relative deadline wording, i want '13d left' (whic
 - **The tooltip** still gives the full date.
 
 Make this the default Wording on the canvas, next to the earlier options.
+
+## The user's picks, round 2
+
+- **When-today cue: the blue ring,** not the dot. Since a task can be planned for today and also overdue or due today, propose how a blue ring and a red or amber ring combine (for example, the deadline ring wins in the ring and the blue shows elsewhere, or a split or double ring) and show it.
+- **Due today:** the amber ring. The user didn't object to the recommendation.
+- **Overdue wording: "2d ago".** "left" and "late" sound too alike, so future deadlines are "Nd left" and overdue ones "Nd ago".
+- **More than 14 days left:** show the absolute date ("Nov 20", with the year when it isn't this year) instead of weeks or months. So "14d left" is the farthest relative value; drop "2w left", "2mo left" and "1y left". Make the quiet When follow the same 14-day rule.
+
+## Experiment: the When date aligned left
+
+The user's words: "I also want to experiment with putting the when date left aligned. try that"
+
+Show two or three placements side by side with the current right-aligned one:
+- the quiet When just after the title (where the notes hint is: decide the order);
+- a fixed column at the left before the title;
+- under the title as a second line, if it stays quiet.
+
+The Deadline badge stays on the right. Check narrow widths, long titles and the notes hint, and say which you recommend.
+
+Update the canvas (same URL) and §24, commit per path, and report back.
