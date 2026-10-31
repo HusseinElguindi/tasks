@@ -247,3 +247,5 @@ Themes themselves are tabled: no picker, no theme files and no sample themes. Do
 - **Mark THEMES.md** with "tabled: tokens adopted in the app; picker, files and samples deferred".
 
 Commit, rebuild Release and report back.
+
+**Status (Mac agent, Oct 31, stopped for a shutdown):** in progress on branch `wip/tokens` (962b9ca, not merged). One `TK.Palette` built from `TK.Theme` (Rex pinned) with the THEMES.md names, PaneColors and the unused v1 Pane components removed, brand mark and rings on tokens, value equality. The six screens render pixel-identical in all four modes; Settings is 1 level off in 3 tokens. Left: build and run the newest debug checks (`palette:derived`, `-debugThemeCheck`), the redraw-on-switch check, the §9 benchmarks, the THEMES.md "tabled" mark, notes, merge, Release build.
