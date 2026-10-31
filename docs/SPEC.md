@@ -1062,6 +1062,7 @@ Deferred on purpose. Each is additive and needs no change to what v1 stores.
 - **Per-task history view** (§6).
 - ~~**Block Markdown rendering** for notes (§2).~~ Built (`design/MARKDOWN.md`).
 - **iOS, multiple users, Sign in with Apple** (§7, §8).
+- **Early notice for deadlines:** a "Due soon" group at the bottom of Today. It lists deadlines in the next N days (a setting, default 3) that aren't planned for today, each with "Do today" (sets `when` to today), and collapses like Completed. Display only, no model change. Tasks already enter Today on their due date (§4), so this is only about notice ahead of it. Tabled by the user on 2026-10-31.
 
 ## 12. Open questions
 
