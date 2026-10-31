@@ -97,7 +97,11 @@ public final class TaskModel: Identifiable {
     public internal(set) var list: EntityID
     public internal(set) var order: String
     public internal(set) var title: String
-    public internal(set) var notes: String
+    public internal(set) var notes: String {
+        didSet { notesSummary = NotesSummary(notes) }
+    }
+    /// What the row shows of the notes (design/MARKDOWN.md §7), worked out once per change of `notes`.
+    public private(set) var notesSummary: NotesSummary
     public internal(set) var when: CalendarDate?
     public internal(set) var deadline: CalendarDate?
     public internal(set) var completedAt: Int?
@@ -112,6 +116,7 @@ public final class TaskModel: Identifiable {
         order = t.order
         title = t.title
         notes = t.notes
+        notesSummary = NotesSummary(t.notes)
         when = t.when
         deadline = t.deadline
         completedAt = t.completedAt
