@@ -129,11 +129,13 @@ enum DebugScript {
                 case "sync":
                     // The sync indicator (Support/DebugSync.swift).
                     guard let store = model.store else { continue }
-                    if arg == "click" {
+                    if arg == "click" || arg.hasPrefix("footclick:") {
                         // SwiftUI's button sees the press and the release in separate turns.
                         // Through the window (not straight to the view, as `mouse` does while the app is inactive): the cloud
                         // takes the first click there, as a person's would.
-                        if let c = DebugSync.cloudPoint(window: window, store: store) {
+                        let target = arg == "click" ? DebugSync.cloudPoint(window: window, store: store)
+                            : window.sidebarView?.debugFootPoint(arg.hasSuffix("settings") ? .settings : .newList)
+                        if let c = target {
                             // From the window's top (as `hit:` reads it), not the content layout rect's.
                             let p = NSPoint(x: c.x, y: (w.contentView?.superview?.bounds.height ?? w.frame.height) - c.y)
                             for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {

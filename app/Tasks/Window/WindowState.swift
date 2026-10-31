@@ -278,14 +278,17 @@ final class Overlays {
     // MARK: Tooltips (§16): 600 ms, at once within 600 ms of the last one closing; 6pt below the button, its left edge
     // 60pt left of the button's center, kept between 6 and the window's width − 160.
 
-    func hoverTip(_ text: String, detail: String = "", keys: String = "", for rect: CGRect, windowWidth: CGFloat) {
+    /// `above`: over the control rather than under it (the sidebar's foot, at the window's bottom, §27).
+    func hoverTip(_ text: String, detail: String = "", keys: String = "", for rect: CGRect, windowWidth: CGFloat, above: Bool = false) {
         tipTimer?.invalidate()
         // A long name ("New Task in" a 200-character list) is cut at 300pt, and the tip stays inside the window, by
         // its measured width (v2 feedback 16).
         let text = Menus.fit(text, width: 300, font: TK.Font.tooltip)
         func w(_ s: String) -> CGFloat { s.isEmpty ? 0 : ceil((s as NSString).size(withAttributes: [.font: TK.Font.tooltip]).width) }
         let width = max(w(text) + (keys.isEmpty ? 0 : 6 + w(keys)), w(detail)) + 14
-        let origin = CGPoint(x: max(6, min(max(rect.midX - 60, 6), windowWidth - width - 6)), y: rect.maxY + 6)
+        // One line is 22 tall (11/14 and 4 above and below); a detail adds 14.
+        let height: CGFloat = detail.isEmpty ? 22 : 36
+        let origin = CGPoint(x: max(6, min(max(rect.midX - 60, 6), windowWidth - width - 6)), y: above ? rect.minY - 6 - height : rect.maxY + 6)
         let tip = Tip(text: text, detail: detail, keys: keys, origin: origin)
         if Date.timeIntervalSinceReferenceDate - lastTipClosed < TK.Timer.tipWarm || self.tip != nil {
             self.tip = tip

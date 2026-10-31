@@ -101,11 +101,16 @@ enum DebugSync {
         case "rowhover": window.sidebarHeaderHovered = rest == "on"
         case "activate": s.activate(openSettings: window.openSettings)
         case "sidebarscroll": window.sidebarView?.debugScroll(CGFloat(Double(rest) ?? 0))
+        // The sidebar's foot (§27): foot:hover:new|settings|off, foot:probe:on|off, foot:log is `sync:log`'s line.
+        case "foothover": window.sidebarView?.debugFootHover(rest == "new" ? .newList : rest == "settings" ? .settings : nil)
+        case "fadeprobe": window.sidebarView?.debugFadeProbe(rest == "on")
+        case "sidebarwidth": window.sidebarWidth = CGFloat(Double(rest) ?? 230)
         case "sidebar": if window.sidebarVisible != (rest == "show") { WindowActions(store: store, window: window).toggleSidebar() }
         case "log":
             let t = s.tip()
             var line = describe(s) + " tip='\(t.title)' detail='\(t.detail)' keys='\(t.keys)' spoken='\(s.spoken())'"
             line += " band=\((!window.sidebarVisible || window.sidebarHeaderHidden) && s.showsInBand ? 1 : 0)"
+            if let f = window.sidebarView?.debugFoot { line += " " + f }
             line += " activations=\(activations) headerHidden=\(window.sidebarHeaderHidden ? 1 : 0) rowHover=\(window.sidebarHeaderHovered ? 1 : 0)"
             if let v = window.nsWindow?.contentView {
                 let glyphs = cloudGlyphs(in: v)

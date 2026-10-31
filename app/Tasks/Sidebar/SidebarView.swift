@@ -24,6 +24,12 @@ final class SidebarView: FlippedLayerView {
     /// Rows and labels live here, below any subview (the rename field).
     private let host = CALayer()
     private let header = SidebarHeaderLayer()
+    /// The foot (§27): + New List and Settings, pinned under the scroll view.
+    private var foot: FootHost?
+    let footState = FootState()
+    /// The scroll view's last 20pt fade out while there's more below (§27): a mask, so it works the same on Glass.
+    private let fade = CAGradientLayer()
+    private var fading: Bool?
     /// The sync cloud at the header row's right end (§26), in the scrolled content so it scrolls with the row.
     private var cloud: CloudHost?
     private let listsLabel = SidebarLabelLayer(title: "Lists", glyph: .plus)
@@ -115,7 +121,60 @@ final class SidebarView: FlippedLayerView {
         content.addSubview(c)
         content.cloud = c
         cloud = c
+        let f = FootHost(rootView: sidebarFoot())
+        f.sizingOptions = []
+        addSubview(f)
+        foot = f
         render()
+    }
+
+    // MARK: - The foot (§27 A)
+
+    private func sidebarFoot() -> SidebarFoot {
+        SidebarFoot(state: footState, palette: palette,
+                    onNewList: { [weak self] in self?.actions.newList() },
+                    onSettings: { [weak self] in self?.ui.openSettings?() },
+                    tip: { [weak self] item, r in self?.footTip(item, r) })
+    }
+
+    /// "New List ⇧⌘N" and "Settings ⌘,", over the control: under it would leave the window.
+    private func footTip(_ item: FootState.Item?, _ r: CGRect) {
+        guard let item, let f = foot, window != nil else { ui.overlays.hideTip(); return }
+        let w = f.convert(r, to: nil)
+        let rect = CGRect(x: w.minX, y: windowHeight - w.maxY, width: w.width, height: w.height)
+        let width = window?.contentView?.bounds.width ?? 1000
+        switch item {
+        case .newList: ui.overlays.hoverTip("New List", keys: "⇧⌘N", for: rect, windowWidth: width, above: true)
+        case .settings: ui.overlays.hoverTip("Settings", keys: "⌘,", for: rect, windowWidth: width, above: true)
+        }
+    }
+
+    /// The gradient's ends in the scroll view layer's own space: its bottom is y 0 unless the layer is flipped.
+    private var fadeFromBottom: (CGPoint, CGPoint) {
+        let flipped = scroll.layer.map { $0.contentsAreFlipped() != $0.isGeometryFlipped } ?? false
+        return flipped ? (CGPoint(x: 0.5, y: 1), CGPoint(x: 0.5, y: 0)) : (CGPoint(x: 0.5, y: 0), CGPoint(x: 0.5, y: 1))
+    }
+
+    /// Fades the list's last 20pt while there's more below; at the end the fade goes (100 ms).
+    private func updateFade(animated: Bool) {
+        guard let l = scroll.layer else { return }
+        let h = l.bounds.height
+        let more = scroll.contentView.bounds.maxY < content.frame.height - 0.5
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        if l.mask !== fade { l.mask = fade }
+        fade.frame = l.bounds
+        (fade.startPoint, fade.endPoint) = fadeFromBottom
+        fade.locations = [0, NSNumber(value: Double(h > 0 ? min(1, 20 / h) : 0)), 1]
+        CATransaction.commit()
+        guard more != fading else { return }
+        let colors = [(more ? NSColor.clear : NSColor.black).cgColor, NSColor.black.cgColor, NSColor.black.cgColor]
+        if animated && fading != nil {
+            fade.animate("colors", to: colors, TK.CA.Timing(duration: 0.1, curve: TK.CA.decel))
+        } else {
+            fade.setInstant { fade.colors = colors }
+        }
+        fading = more
     }
 
     // MARK: - The sync cloud (§26)
@@ -139,6 +198,47 @@ final class SidebarView: FlippedLayerView {
     }
 
     #if DEBUG
+    /// The foot's state: its frame, the fade, and where each control is in window coordinates from the top left.
+    var debugFoot: String {
+        let f = foot.map { "\($0.frame)" } ?? "-"
+        let l = scroll.layer
+        return "foot=\(f) scroll=\(scroll.frame) fading=\(fading.map { $0 ? 1 : 0 } ?? -1) contentH=\(content.frame.height) clipMaxY=\(scroll.contentView.bounds.maxY)"
+            + " layerFlipped=\(l?.isGeometryFlipped == true ? 1 : 0) contentsFlipped=\(l?.contentsAreFlipped() == true ? 1 : 0) hovered=\(footState.hovered.map { "\($0)" } ?? "-")"
+    }
+
+    /// The fade as a visible red sublayer of the scroll view, for a snapshot to show which end it's at (a mask isn't
+    /// drawn by `cacheDisplay`).
+    func debugFadeProbe(_ on: Bool) {
+        guard let l = scroll.layer else { return }
+        l.sublayers?.filter { $0.name == "fadeProbe" }.forEach { $0.removeFromSuperlayer() }
+        guard on else { return }
+        let p = CAGradientLayer()
+        p.name = "fadeProbe"
+        p.frame = l.bounds
+        (p.startPoint, p.endPoint) = fadeFromBottom
+        p.locations = fade.locations
+        p.colors = [NSColor.red.cgColor, NSColor.red.withAlphaComponent(0).cgColor, NSColor.red.withAlphaComponent(0).cgColor]
+        p.zPosition = 100
+        l.addSublayer(p)
+    }
+
+    func debugFootPoint(_ item: FootState.Item) -> CGPoint? {
+        guard let f = foot else { return nil }
+        let local = item == .newList ? CGRect(x: 10, y: 5, width: 60, height: 26) : CGRect(x: f.bounds.width - 11 - 26, y: 5, width: 26, height: 26)
+        let w = f.convert(local, to: nil)
+        return CGPoint(x: w.midX, y: windowHeight - w.midY)
+    }
+
+    func debugFootHover(_ item: FootState.Item?) {
+        footState.hovered = item
+        if let item, let f = foot {
+            let local = item == .newList ? CGRect(x: 10, y: 5, width: 85, height: 26) : CGRect(x: f.bounds.width - 11 - 26, y: 5, width: 26, height: 26)
+            footTip(item, local)
+        } else {
+            footTip(nil, .zero)
+        }
+    }
+
     func debugScroll(_ y: CGFloat) {
         scroll.contentView.scroll(to: NSPoint(x: 0, y: y))
         scroll.reflectScrolledClipView(scroll.contentView)
@@ -170,7 +270,8 @@ final class SidebarView: FlippedLayerView {
     override func layout() {
         super.layout()
         let top = TK.M.sidebarTop
-        scroll.frame = CGRect(x: 0, y: top, width: bounds.width, height: max(0, bounds.height - top))
+        scroll.frame = CGRect(x: 0, y: top, width: bounds.width, height: max(0, bounds.height - top - SidebarFoot.height))
+        foot?.frame = CGRect(x: 0, y: max(top, bounds.height - SidebarFoot.height), width: bounds.width, height: SidebarFoot.height)
         let w = SB.rowWidth(sidebar: bounds.width)
         if w != rowWidth {
             // Resized: the capsules follow at once; the rename field and the accessibility frames on the next render.
@@ -186,6 +287,7 @@ final class SidebarView: FlippedLayerView {
         sizeContent()
         placeCloud()
         noteHeaderShown()
+        updateFade(animated: false)
     }
 
     private func sizeContent() {
@@ -424,6 +526,7 @@ final class SidebarView: FlippedLayerView {
             header.setPalette(palette)
             header.setScaleDeep(scale)
             cloud?.rootView = headerCloud()
+            foot?.rootView = sidebarFoot()
             listsLabel.setPalette(palette)
             archiveLabel.setPalette(palette)
             listsLabel.setScaleDeep(scale)
@@ -639,6 +742,7 @@ final class SidebarView: FlippedLayerView {
     @objc private func clipScrolled(_ n: Notification) {
         refreshHover()
         noteHeaderShown()
+        updateFade(animated: true)
     }
 
     @objc private func windowResignedKey(_ n: Notification) {
