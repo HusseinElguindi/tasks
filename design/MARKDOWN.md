@@ -1,7 +1,8 @@
 # Tasks: Markdown notes (build spec)
 
-Status: **final, 2026-10-31.** The user picked from the variants (§1). Design only; nothing here is built yet. The
-brief is `docs/TASK-design-markdown.md`.
+Status: **final, 2026-10-31, and built** (`app/Tasks/Detail/NotesView.swift`, `NotesMarkdown.swift`, `NotesPaste.swift`,
+TasksCore `Markdown.swift`; `app/NOTES-v2.md` "Markdown notes" has how it was checked). The user picked from the
+variants (§1). The brief is `docs/TASK-design-markdown.md`. Where the build differs from the text below, §11 says so.
 
 **Canvas:** https://claude.ai/artifact/CmypwyraQx28AYcHSfb5c5 (private until shared from its Share menu). Press Play
 on the top board, then click in the notes of "Review CS 489 lectures 10–14". The boards under it start part-way
@@ -297,3 +298,30 @@ Add XCTest `measure` benchmarks for "open a 20,000-character note" and "type 100
 - Boards that start part-way through (`dc:759–781`): the caret in "retr|ieval", a link hovered, the long note
   scrolled.
 - The strip under the main board is v2's (theme, Edit tasks); it isn't part of the app.
+
+---
+
+## 11. As built
+
+Where the app does something other than the text above:
+
+- **Hidden marks** are zero-advance control glyphs, not `.null` ones. A null glyph at the start of a paragraph was laid
+  on the line before it, which moved that line's paragraph spacing and its gutter. A hidden fence line is a 0.1pt
+  line (a tiny font and line height), never with its newline hidden: a hidden newline stops breaking the paragraph.
+- **Restyling** waits until an edit is done (`textDidChange`), not `didProcessEditing`. Attributes changed while the
+  storage processes an edit widen its edited range, and NSTextView put the caret at the end of the restyled line. On
+  each edit the whole note is re-scanned (0.15 ms at 20,000 characters, optimized), and only the touched lines (to
+  the end, when a fence is involved) are restyled.
+- **Opening a 20,000-character note** takes about 25 ms: the scan 0.15 ms, styling 11.5 ms and TextKit's layout
+  13 ms. SwiftUI needs the notes' full height, so layout is the whole note, not just what's on screen. That's two
+  frames at the limit; a note of a couple of thousand characters is about 2 ms. A keystroke is 0.4 ms (median of 100
+  in that note; the session's first one is about 12 ms, once).
+- **The benchmarks** are TasksCore's `MarkdownTests.testScanBudget` (an XCTest, enforced in release: ≤ 1 ms for the
+  scan) and the app's `nbench:` debug step (open and typing, above). The app has no XCTest target for an XCTest
+  `measure` of the editor.
+- **A box toggled at rest** is its own undo step with no notice, as in the prototype (§5's "usual notice" isn't
+  there).
+- **Undoing a box toggled in a session** selects the flipped character, as NSTextView's undo does, instead of putting
+  the caret back where it was.
+- **Links** are drawn and opened by the editor (`.mdLink`), not NSTextView's `.link`, which drew its own underline.
+

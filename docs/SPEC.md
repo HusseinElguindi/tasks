@@ -98,9 +98,8 @@ No validation that `when ≤ deadline`. Either order is harmless.
 
 Notes are stored as a plain Markdown string, so sync and the server don't care about the format.
 
-- Editing is a plain-text editor showing the raw Markdown.
-- Display uses `AttributedString(markdown:)` with `.inlineOnlyPreservingWhitespace`. That gives bold, italic, code and links, and keeps line breaks. Headings and lists show as their raw text.
-- Full block rendering would need a third-party renderer. Leave it out until the inline subset proves too thin.
+- One editor shows and edits the source, rendered in place: inline styles, headings, lists, checklists, quotes and code blocks, with each mark (`**`, `#`, …) showing only near the caret. Line breaks are kept. The spec is `design/MARKDOWN.md`.
+- The app renders it with its own scanner (TasksCore `Markdown`), not `AttributedString(markdown:)`, which drops the marks and can't map back to the source. No third-party renderer.
 
 ## 3. Ordering
 
@@ -1035,7 +1034,7 @@ Deferred on purpose. Each is additive and needs no change to what v1 stores.
 - **Server snapshots / compaction:** for faster first sync on a new Mac (§5, §6).
 - **Realtime:** a WebSocket "head is now N" poke from the DO (§5).
 - **Per-task history view** (§6).
-- **Block Markdown rendering** for notes (§2).
+- ~~**Block Markdown rendering** for notes (§2).~~ Built (`design/MARKDOWN.md`).
 - **iOS, multiple users, Sign in with Apple** (§7, §8).
 
 ## 12. Open questions

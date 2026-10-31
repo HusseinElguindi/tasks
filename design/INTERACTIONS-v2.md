@@ -541,23 +541,19 @@ An existing task's row updates when the title commits (only a new task's row fol
 
 ### Notes
 
-- **Reading**: inline Markdown (bold, italic, `code`, links; SPEC §2) in 13/19 `ink`; placeholder "Notes" in
-  `ink-tertiary`. Links are `accent-text`, underlined (offset 2, 1pt). Code is 12/16 SF Mono on `fill-control`, padding
-  1 / 4, radius 4 (`css:278–281`, `dc:512–527`).
-- **Editing**: pressing anywhere in the notes (except a link, which opens) switches to the raw text **in the same font
-  and place**, caret at the end. No mono switch, no Edit/Preview control.
+**Replaced by `design/MARKDOWN.md`** (Markdown notes, final 2026-10-31, built): one always-editable view of the
+Markdown source, rendered in place, with the marks showing faintly only near the caret; checklists with square boxes
+that toggle `[ ]` / `[x]` in the text; a hint after a row's title (the notes glyph, or "2/5"); links open on a plain
+click; no link shortcut, so ⌘K completes everywhere. What stays from here:
 
 | Key | Result |
 |---|---|
-| Return | New line |
-| Tab | A tab character |
-| ⇧Tab | Commit, back to the title with its text selected |
+| ⇧Tab (outside a list) | Commit, back to the title with its text selected |
 | Esc, ⌘Return | Done: keeps the text (notes are long; Esc never throws them away); the keys go to the list |
 | A press elsewhere | Commit |
 
-One `task.update` per editing session (`dc:1692–1701`, `dc:1681–1687`).
-
-- Footer: "Created Oct 26" (and " · Completed Oct 30"), 11/14 `ink-tertiary`, 14 below the notes.
+One `task.update` per editing session. The footer is "Created Oct 26" (and " · Completed Oct 30"), 11/14
+`ink-tertiary`, 14 below the notes, plus " · 19,412 / 20,000" from 18,000 characters.
 
 ---
 
