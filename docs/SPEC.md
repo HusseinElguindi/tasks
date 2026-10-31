@@ -774,6 +774,11 @@ which accepts the optional `actor` and `batch` envelope keys (§5) for the agent
 the DO and its log were kept (166 entries, untouched by the smoke test, which only pulled). **Never roll the Worker
 back past this version** (§5 "Validation may only loosen").
 
+**Redeployed 2026-10-31** with the user's approval: version `d5f33632-50a7-48af-bb9f-0a2128102304`, commit `53dfe22`,
+which accepts `kind: "heading"` on `task.create` and `notes` on `list.create`/`list.update` (§2, §5). The secret, the
+DO and its log were kept (200 entries, unchanged by the read-only smoke test). **Never roll the Worker back past this
+version.**
+
 ### Auth: one fixed token
 
 The app is single-user:
