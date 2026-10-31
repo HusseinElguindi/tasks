@@ -10,6 +10,7 @@ import TasksCore
 ///     key:CODE[:cmd|shift]   wait:MS   snap:/path.png   log:/path.txt  (appends the selection and first responder)
 ///     hold:CODE:N[:cmd]   (the key held: its press, N auto-repeats from 525 ms, its release)
 ///     checkclick:TITLE   checkdbl:TITLE   (a click or a double-click on that task's checkbox)
+///     chiphover:TITLE:when|deadline   (the pointer over that row's date)
 ///     glasssnap:/path.png   (what covers the window's glass, as alpha, plus /path.txt: `GlassDebug`)
 ///     hit:X,Y     (prints the view AppKit hit-tests there)   size:W,H   (resizes the window, keeping its top left)
 ///     drag:X1,Y1,X2,Y2[,STEPS]   (press, move in steps 16 ms apart, release)
@@ -63,6 +64,13 @@ enum DebugScript {
                         key(w, code: code, flags: flags, phase: .repeated)
                     }
                     key(w, code: code, flags: flags, phase: .up)
+                case "chiphover":
+                    // chiphover:<title>:when|deadline — the pointer over that date (its hover look and tooltip, §24).
+                    let t = arg.split(separator: ":").map(String.init)
+                    guard t.count == 2, let store = model.store,
+                          let id = store.projection.allTaskIDs.sorted().first(where: { store.projection.task($0)?.title == t[0] }),
+                          let c = window.taskList?.debugChipPoint(id, t[1] == "when" ? .when : .deadline) else { continue }
+                    window.taskList?.debugHover(c)
                 case "checkclick", "checkdbl":
                     // checkclick:<title> — a click on that task's checkbox through the list's own mouse path;
                     // checkdbl:<title> a double-click there.

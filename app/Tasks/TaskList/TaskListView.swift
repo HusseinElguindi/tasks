@@ -347,6 +347,7 @@ final class TaskListView: NSView {
             if isNew {
                 let a = actions
                 v.onCheck = { a.toggleComplete([id]) }
+                v.onChip = { [weak self] field in self?.openChip(id, field) }
                 v.onOpen = { a.select([id]); a.openDetail() }
             }
             if v.model != m || paletteChanged || isNew || v.frame.width != rowW {
@@ -1318,11 +1319,7 @@ final class TaskListView: NSView {
             case .check:
                 a.toggleComplete([id])
             case .chip(let field):
-                let ids = state.selection.contains(id) ? a.targetIDs : [id]
-                if !state.selection.contains(id) { a.select([id]) }
-                if let v = rows[id], let chip = v.chipFrame(field) {
-                    a.openPicker(field, ids: ids, anchor: windowRect(chip, from: v))
-                }
+                openChip(id, field)
             case .open:
                 a.select([id])
                 a.focus(.list)
@@ -1747,10 +1744,28 @@ final class TaskListView: NSView {
         pointerMoved(at: doc.convert(inWin, from: nil))
     }
 
+    /// A press on a row's When or Deadline (or VoiceOver's): selects the row if it wasn't, then opens that date's
+    /// popover, for the whole selection if the row was in it.
+    private func openChip(_ id: EntityID, _ field: Overlays.Picker.Field) {
+        let a = actions
+        let ids = state.selection.contains(id) ? a.targetIDs : [id]
+        if !state.selection.contains(id) { a.select([id]) }
+        if let v = rows[id], let chip = v.chipFrame(field) {
+            a.openPicker(field, ids: ids, anchor: windowRect(chip, from: v))
+        }
+    }
+
     /// Debug (§24): every row on screen, top to bottom, with what it shows of its dates.
     func debugDates() -> String {
         rows.values.filter { !$0.isHidden && $0.model != nil }.sorted { $0.frame.minY < $1.frame.minY }
             .map { "  \($0.model!.title): \($0.debugDates)" }.joined(separator: "\n")
+    }
+
+    /// Debug: a row's When or Deadline center in window points (top-left origin), for hovering it (§24).
+    func debugChipPoint(_ id: EntityID, _ field: Overlays.Picker.Field) -> CGPoint? {
+        guard let v = rows[id], let f = v.chipFrame(field), let w = window else { return nil }
+        let c = v.convert(CGPoint(x: f.midX, y: f.midY), to: nil)
+        return CGPoint(x: c.x, y: w.contentLayoutRect.height - c.y)
     }
 
     /// Debug: a task row's checkbox center in window points (top-left origin), for clicking it (v2 feedback 18).

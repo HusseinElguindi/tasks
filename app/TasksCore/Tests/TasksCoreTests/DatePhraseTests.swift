@@ -398,14 +398,18 @@ final class DateLabelTests: XCTestCase {
         XCTAssertEqual(rel(2), "in 2 days")
         XCTAssertEqual(rel(7), "in 7 days")
         XCTAssertEqual(rel(13), "in 13 days")
-        XCTAssertEqual(rel(14), "in 2 weeks")
+        XCTAssertEqual(rel(14), "in 14 days")   // days up to 14 (§24)
+        XCTAssertEqual(rel(15), "in 2 weeks")
         XCTAssertEqual(rel(17), "in 2 weeks")   // 2.43
         XCTAssertEqual(rel(18), "in 3 weeks")   // 2.57
         XCTAssertEqual(rel(59), "in 8 weeks")   // 8.43
         XCTAssertEqual(rel(60), "in 2 months")
         XCTAssertEqual(rel(74), "in 2 months")  // 2.47
         XCTAssertEqual(rel(75), "in 3 months")  // 2.5 rounds up, like Math.round
-        XCTAssertEqual(rel(365), "in 12 months")
+        XCTAssertEqual(rel(364), "in 12 months")
+        XCTAssertEqual(rel(365), "in a year")
+        XCTAssertEqual(rel(547), "in a year")    // 1.499
+        XCTAssertEqual(rel(548), "in 2 years")
         XCTAssertEqual(rel(-2), "2 days ago")
         XCTAssertEqual(rel(-13), "13 days ago")
         XCTAssertEqual(rel(-14), "2 weeks ago")

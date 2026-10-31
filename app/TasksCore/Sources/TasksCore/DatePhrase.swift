@@ -319,17 +319,19 @@ public enum DateLabel {
         DateNames.weekdays[d.weekdayIndex] + ", " + monthDayYear(d, today: today)
     }
 
-    /// The relative date: "today", "tomorrow", "yesterday"; "in N days" under 14 days, "in N weeks" under 60,
-    /// else "in N months"; "N days ago" under 14 days, else "N weeks ago". N is rounded (prototype `relText`).
+    /// The relative date: "today", "tomorrow", "yesterday"; "in N days" up to 14 days, "in N weeks" under 60, "in N
+    /// months" under a year, then "in a year" or "in N years"; "N days ago" under 14 days, else "N weeks ago". N is
+    /// rounded (prototype `relText`, §24).
     public static func relative(_ d: CalendarDate, today: CalendarDate) -> String {
         let n = today.daysTo(d)
         switch n {
         case 0: return "today"
         case 1: return "tomorrow"
         case -1: return "yesterday"
-        case 2..<14: return "in \(n) days"
-        case 14..<60: return "in \(rounded(n, over: 7)) weeks"
-        case 60...: return "in \(rounded(n, over: 30)) months"
+        case 2...countdownDays: return "in \(n) days"
+        case 15..<60: return "in \(rounded(n, over: 7)) weeks"
+        case 60..<365: return "in \(rounded(n, over: 30)) months"
+        case 365...: let y = rounded(n, over: 365); return y == 1 ? "in a year" : "in \(y) years"
         case -13 ... -2: return "\(-n) days ago"
         default: return "\(rounded(-n, over: 7)) weeks ago"
         }

@@ -404,8 +404,12 @@ final class TaskRowView: NSView {
     /// Set by the list: what the checkbox and the › do when VoiceOver presses them.
     var onCheck: (() -> Void)?
     var onOpen: (() -> Void)?
+    /// A date's button: its tooltip is its label, and pressing it opens its popover (§24).
+    var onChip: ((Overlays.Picker.Field) -> Void)?
     private lazy var checkElement = PressElement(role: .checkBox, parent: self)
     private lazy var openElement = PressElement(role: .button, parent: self)
+    private lazy var whenElement = PressElement(role: .button, parent: self)
+    private lazy var deadlineElement = PressElement(role: .button, parent: self)
 
     override func accessibilityChildren() -> [Any]? {
         guard let m = model, style == .row else { return [] }
@@ -415,6 +419,13 @@ final class TaskRowView: NSView {
         checkElement.setAccessibilityFrameInParentSpace(CGRect(x: check.frame.minX, y: bounds.height - check.frame.maxY, width: check.frame.width, height: check.frame.height))
         checkElement.onPress = onCheck
         var children: [Any] = m.draft ? [] : [checkElement]
+        for (field, element, chip) in [(Overlays.Picker.Field.when, whenElement, m.when), (.deadline, deadlineElement, m.deadline)] {
+            guard let chip, let f = chipFrame(field), !m.trashed else { continue }
+            element.setAccessibilityLabel(chip.tip)
+            element.setAccessibilityFrameInParentSpace(CGRect(x: f.minX, y: bounds.height - f.maxY, width: f.width, height: f.height))
+            element.onPress = onChip.map { open in { open(field) } }
+            children.append(element)
+        }
         if m.openAllowed {
             openElement.setAccessibilityLabel("Show details")
             openElement.setAccessibilityFrameInParentSpace(CGRect(x: open.frame.minX, y: bounds.height - open.frame.maxY, width: open.frame.width, height: open.frame.height))
