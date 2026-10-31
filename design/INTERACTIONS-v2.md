@@ -40,6 +40,9 @@ The sidebar (§12) gains their rows, and ⌘1–⌘9 now open the sidebar's firs
 list's notes, and a large list title, with the user's picks (§23, final). Its canvas is
 https://claude.ai/artifact/9dQ4fC46yZLLhf61gLiELx. Where §1–§22 disagree, §23 wins; its last part lists where.
 
+**A sync indicator (`docs/TASK-design-sync-indicator.md`): proposed, not built (§26).** A small cloud at the right end
+of the sidebar's header row that shows only when there's something to say; a mock-up on its own canvas.
+
 **A calendar that scrolls (`docs/TASK-design-calendar-scroll.md`): final, not built yet (§25).** The date popover's
 month as one column of weeks that scrolls up and down, endless both ways, in a popover 240pt wide; the prototype opens
 it, and the dates canvas shows it before and after. Where §25 differs from §11 and §24, §25 wins.
@@ -1841,4 +1844,103 @@ prototype does the same thing in a browser (`dc:2625–2745`).
 - **§11 and §24, the past wording:** "N months ago", "N years ago" (and "… overdue"), after "N weeks ago". This changes
   the rows' tooltips and the detail pane for dates more than about two months back. The §24 tables don't change,
   because none of their rows are that far back.
+---
+
+## 26. A sync indicator (proposed)
+
+Status: **proposed, 2026-10-31** (`docs/TASK-design-sync-indicator.md`). Nothing here is built. The user's words: "i
+want a small indicator to show refreshing, like a quick cloud icon or something." It's a mock-up of the piece alone,
+on its own canvas: https://claude.ai/artifact/9mgrscG1x6wgwXtPSyGT5v. The boards are `Sync-*.dc.html` from the component
+`Sync.dc.html` and `sync.css` in `design/prototype-v2/`; the main prototype doesn't have it.
+
+### Where
+
+- **The sidebar's header row**, at its right end, opposite the mark and "Tasks": a 22pt hit area (radius 6) whose
+  right edge lines up with the sidebar rows' counts, and a 14pt glyph, the header icons' size. The row is in the
+  sidebar's scrolled content (`SidebarHeader.swift`), so it scrolls with it.
+- **In the title band**, when the sidebar is hidden or its header has scrolled out of view, only offline and stopped
+  show. They appear as a 28pt round button 4pt right of the sidebar toggle (x 125), with a 16pt glyph, like the
+  toggle. While it shows, the band's title moves from 124pt to 156pt, on the sidebar's curve (`--decel`, 300ms).
+  Syncing never shows there.
+- **Not the sidebar's foot.** That variant is on the canvas, but a line there is always visible and says "Synced"
+  all day. The sidebar has no foot today, and it would gain one for a single line.
+
+### States
+
+The indicator reads the store's `SyncState` (`Store.swift:5–16`), `store.recovery`, and whether changes are waiting.
+
+| State | From | Glyph (SF Symbol) | Colour | Tooltip | Click |
+|---|---|---|---|---|---|
+| Synced | `.idle`, nothing waiting | nothing; under the pointer, `icloud` | `ink-quiet` | "Synced 2 min ago" ⌘R | Sync now |
+| Syncing | `.syncing`, past 300 ms | `icloud`, pulsing | `ink-tertiary` | "Syncing…" | Sync now |
+| Long sync | `.syncing` past 3 s, or `recovery` | `icloud`, pulsing, with "Syncing…" (11pt `ink-tertiary`) to its left | `ink-tertiary` | "Restoring sync · 1,500 of 12,000" (Settings' words), or "Syncing…" | Sync now |
+| Changes waiting | changes waiting more than 3 s | the current glyph with a 4pt dot at its top right, the cloud cut away 1.3pt around it | dot `accent-text` | "… · 3 changes waiting" | as the state |
+| Offline | `.retrying` for 5 s without a break | `icloud.slash` | `ink-quiet` | "Can't reach the server" / "Trying again in 30 s" ⌘R | Sync now |
+| Stopped | `.failed(message)` | `exclamationmark.icloud.fill` | `attention`; hover `attention-tint` | "Sync stopped" / the message, "Click to retry." ⌘R | Sync now |
+| Bad token | `.checkToken` | `exclamationmark.icloud.fill` | `attention` | "The server didn't accept the token" / "Click to open Settings" | Opens Settings |
+| Sync off | `.off` | nothing; under the pointer, `icloud.slash` | `ink-quiet` | "Sync is off" / "Click to set it up in Settings" | Opens Settings |
+
+- **Synced and off show nothing at rest.** Hovering the header row brings the cloud in (`ink-quiet`, the header icons'
+  colour at rest), so the state is always one hover away.
+- **Changes waiting** is a modifier: it marks the syncing, offline or stopped cloud. A normal edit goes out about 1s
+  after it's made (§5's triggers), so it never shows the dot.
+- **A rejected change** (`invalid_op`) isn't a state. The store already shows its notice ("A change couldn't be
+  saved."), and sync carries on without it, so there's nothing for the cloud to hold on to. Only a stop is amber.
+- **A server error** (5xx, timeouts) is `.retrying` and fixes itself, so it reads as offline (grey), not amber. The
+  tooltip gives `reason` when it isn't the network's ("The server isn't answering (503)").
+- The tooltip is the app's (11pt on `popover`): the state, then a second line in `ink-tertiary` when there's more to
+  say, and ⌘R where a click syncs. "Synced" counts in words: "just now" under a minute, "N min ago" under an hour, then
+  "at 9:41", then "yesterday at 9:41".
+
+### Timing
+
+| Rule | Value | Why |
+|---|---|---|
+| A sync shows after | 300 ms | The 30 s polls and the ~1 s-after-an-edit syncs take ~100 ms and never show |
+| …and stays at least | 600 ms after it appears | No blink when a sync ends at 350 ms |
+| "Syncing…" joins after | 3 s of one sync | A first sync or a 409 recovery |
+| Offline shows after | 5 s of `.retrying` without a success | A wake blip or one failed request doesn't show |
+| …and goes | at the first success | By itself, no action |
+| Changes waiting, after | 3 s from the first unsent change | |
+| Stopped, bad token | at once, until the state changes | Saving a token, or a ⌘R that works |
+
+**Motion:**
+- **Appearing:** it fades in over 100 ms (`--icon`).
+- **Leaving:** it fades out over 200 ms.
+- **Changing glyph:** the glyphs crossfade over 150 ms.
+- **The pulse:** the glyph's opacity goes 1 → 0.35 → 1 over 1.6 s, ease-in-out, looping.
+- **Reduce Motion:** no pulse; the glyph stays still at `ink-tertiary`.
+- **App inactive:** no pulse either, and the cloud doesn't fade in or out, so nothing moves in a window in the
+  background. While the app is inactive, a state that changes swaps without a fade.
+
+### VoiceOver
+
+- **What it is:** one button, "Sync", whose value is the tooltip's text ("Synced 2 minutes ago", "Offline. Trying
+  again in 30 seconds"). It's there even when nothing shows at rest.
+- **Announcements:** going into stopped or bad token posts one announcement (`.announcementRequested`, medium
+  priority). Syncing never does.
+- **Activating it** does what a click does.
+
+### Building it
+
+- **A small `@Observable` model in the app.** Call it `SyncIndicator`. It watches `store.syncState`,
+  `store.recovery` and whether `projection.pending` is empty, and owns the timers above. It publishes the glyph, the
+  colour, the label, the tooltip and whether it shows. TasksCore doesn't change: the model notes when each state
+  began and when pending stopped being empty.
+- **The view.** It sits at the trailing edge of `SidebarHeader`. A second one sits in the title band, shown only for
+  offline and stopped when the sidebar is hidden or the header row's frame is outside the sidebar's visible rect.
+- **The glyphs** are SF Symbols at `.font(.system(size: 14))` (16 in the band), `.symbolRenderingMode(.monochrome)`.
+  The dot is drawn over the symbol, and the symbol is masked 1.3pt around it. The pulse is an opacity animation, not a
+  symbol effect, so Reduce Motion and the inactive rule are one check each
+  (`NSWorkspace.shared.accessibilityDisplayShouldReduceMotion`, `NSApp.isActive`).
+- **Clicking** calls `store.requestSync(force: true)`, as ⌘R does (`TasksApp.swift:158`). For off and bad token, it
+  opens Settings instead, where the server and token are.
+- **The tooltip** is the app's tooltip, not `.help`, so it can have two lines and the ⌘R key.
+
+### Choices for the user
+
+- **The rejected-change case** isn't amber (above). Should it be?
+- **Server errors** read as offline (grey) until they fix themselves. Should a long one, say 10 minutes, turn amber?
+- **Sync off** shows nothing at rest. Should a person without a server see the crossed cloud all the time?
+
 ---

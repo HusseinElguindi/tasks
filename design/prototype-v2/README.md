@@ -26,6 +26,12 @@ Its boards: `Sections` (the prototype on that list), `Title-Large` and `Title-Sc
 title once it has scrolled under), `Heading-*` (adding, collapsed, mid-drag, from `demo="newhead|collapse|dragsec"`)
 and the light ones. The code is the block at the end of the component, after the four views'.
 
+**§26, a sync indicator (`docs/TASK-design-sync-indicator.md`): proposed, a mock-up only.** A small cloud at the right
+end of the sidebar's header row, shown only when there's something to say. It's not in the main prototype: the component
+is `Sync.dc.html` (props `state`, `place` = header|collapsed|footer|demo, `theme`, `tip`, `hover`, `still`, `zoom`) with
+`sync.css`; its boards are `Sync-*.dc.html`, laid out by `canvas-sync.json` on their own canvas,
+https://claude.ai/artifact/9mgrscG1x6wgwXtPSyGT5v. `Sync-Timing` is a live demo of the show and hold rules.
+
 **§25, a calendar that scrolls (`docs/TASK-design-calendar-scroll.md`): final.** The date popover's month as one
 column of weeks that scrolls up and down, endless both ways (a window of 120 weeks that recentres under the view; only
 the rows in view and four either side exist), with the sticky month header, snapping to weeks and the Today pill, in a

@@ -1,0 +1,355 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-10-31T23:30:00Z"
+  },
+  "title": "Tasks · Sync indicator (§26, proposed)",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "designSystems": [
+    {
+      "title": "Pane",
+      "namespace": "pane",
+      "artifact": "https://claude.ai/artifact/MS3VdrN9VHU7A7pTUTzpm8",
+      "version": null,
+      "copiedAt": "2026-10-31T23:00:00Z"
+    }
+  ],
+  "boards": {
+    "Sync-Timing.dc.html": {
+      "x": 3264,
+      "y": 0,
+      "w": 700,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Pulse timing (live): 300 ms to show, 600 ms held, 5 s offline"
+    },
+    "Sync-Rest.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1008,
+      "h": 368,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Synced, at rest: nothing"
+    },
+    "Sync-Synced.dc.html": {
+      "x": 1088,
+      "y": 0,
+      "w": 1008,
+      "h": 368,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Synced, hovered: a faint cloud; “Synced 2 min ago ⌘R”"
+    },
+    "Sync-Syncing.dc.html": {
+      "x": 2176,
+      "y": 0,
+      "w": 1008,
+      "h": 368,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Syncing (after 300 ms): ink-3, pulsing"
+    },
+    "Sync-Long.dc.html": {
+      "x": 0,
+      "y": 448,
+      "w": 1008,
+      "h": 368,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Past 3 s: “Syncing…” beside it (here a 409 recovery)"
+    },
+    "Sync-Pending.dc.html": {
+      "x": 1088,
+      "y": 448,
+      "w": 1008,
+      "h": 368,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Changes waiting more than 3 s: an accent dot"
+    },
+    "Sync-Offline.dc.html": {
+      "x": 2176,
+      "y": 448,
+      "w": 1008,
+      "h": 368,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Offline for 5 s: slashed, ink-quiet"
+    },
+    "Sync-Offline-Waiting.dc.html": {
+      "x": 0,
+      "y": 896,
+      "w": 1008,
+      "h": 368,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Offline with changes waiting: slash and dot"
+    },
+    "Sync-Error.dc.html": {
+      "x": 1088,
+      "y": 896,
+      "w": 1008,
+      "h": 368,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Sync stopped: amber, filled, with “!”"
+    },
+    "Sync-Token.dc.html": {
+      "x": 2176,
+      "y": 896,
+      "w": 1008,
+      "h": 368,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Bad token: the same; a click opens Settings"
+    },
+    "Sync-Off.dc.html": {
+      "x": 0,
+      "y": 1344,
+      "w": 1008,
+      "h": 368,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Sync off, hovered: slashed; nothing at rest"
+    },
+    "Sync-Rest-Light.dc.html": {
+      "x": 0,
+      "y": 2092,
+      "w": 1008,
+      "h": 368,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Synced, at rest: nothing"
+    },
+    "Sync-Synced-Light.dc.html": {
+      "x": 1088,
+      "y": 2092,
+      "w": 1008,
+      "h": 368,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Synced, hovered: a faint cloud; “Synced 2 min ago ⌘R”"
+    },
+    "Sync-Syncing-Light.dc.html": {
+      "x": 2176,
+      "y": 2092,
+      "w": 1008,
+      "h": 368,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Syncing (after 300 ms): ink-3, pulsing"
+    },
+    "Sync-Long-Light.dc.html": {
+      "x": 0,
+      "y": 2540,
+      "w": 1008,
+      "h": 368,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Past 3 s: “Syncing…” beside it (here a 409 recovery)"
+    },
+    "Sync-Pending-Light.dc.html": {
+      "x": 1088,
+      "y": 2540,
+      "w": 1008,
+      "h": 368,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Changes waiting more than 3 s: an accent dot"
+    },
+    "Sync-Offline-Light.dc.html": {
+      "x": 2176,
+      "y": 2540,
+      "w": 1008,
+      "h": 368,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Offline for 5 s: slashed, ink-quiet"
+    },
+    "Sync-Offline-Waiting-Light.dc.html": {
+      "x": 0,
+      "y": 2988,
+      "w": 1008,
+      "h": 368,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Offline with changes waiting: slash and dot"
+    },
+    "Sync-Error-Light.dc.html": {
+      "x": 1088,
+      "y": 2988,
+      "w": 1008,
+      "h": 368,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Sync stopped: amber, filled, with “!”"
+    },
+    "Sync-Token-Light.dc.html": {
+      "x": 2176,
+      "y": 2988,
+      "w": 1008,
+      "h": 368,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Bad token: the same; a click opens Settings"
+    },
+    "Sync-Off-Light.dc.html": {
+      "x": 0,
+      "y": 3436,
+      "w": 1008,
+      "h": 368,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Sync off, hovered: slashed; nothing at rest"
+    },
+    "Sync-Collapsed-Offline.dc.html": {
+      "x": 0,
+      "y": 4184,
+      "w": 888,
+      "h": 272,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Offline, changes waiting"
+    },
+    "Sync-Collapsed-Error.dc.html": {
+      "x": 968,
+      "y": 4184,
+      "w": 888,
+      "h": 272,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Bad token"
+    },
+    "Sync-Collapsed-Light.dc.html": {
+      "x": 1936,
+      "y": 4184,
+      "w": 888,
+      "h": 272,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Light"
+    },
+    "Sync-Footer.dc.html": {
+      "x": 0,
+      "y": 4836,
+      "w": 1008,
+      "h": 368,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Always a line: “Synced 2 min ago”"
+    },
+    "Sync-Footer-Offline.dc.html": {
+      "x": 1088,
+      "y": 4836,
+      "w": 1008,
+      "h": 368,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Offline · 3 changes waiting"
+    },
+    "Sync.dc.html": {
+      "x": 3264,
+      "y": 700,
+      "w": 1008,
+      "h": 368,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "The component: hover the header row’s right end"
+    }
+  },
+  "order": [
+    "Sync-Timing.dc.html",
+    "Sync-Rest.dc.html",
+    "Sync-Synced.dc.html",
+    "Sync-Syncing.dc.html",
+    "Sync-Long.dc.html",
+    "Sync-Pending.dc.html",
+    "Sync-Offline.dc.html",
+    "Sync-Offline-Waiting.dc.html",
+    "Sync-Error.dc.html",
+    "Sync-Token.dc.html",
+    "Sync-Off.dc.html",
+    "Sync-Rest-Light.dc.html",
+    "Sync-Synced-Light.dc.html",
+    "Sync-Syncing-Light.dc.html",
+    "Sync-Long-Light.dc.html",
+    "Sync-Pending-Light.dc.html",
+    "Sync-Offline-Light.dc.html",
+    "Sync-Offline-Waiting-Light.dc.html",
+    "Sync-Error-Light.dc.html",
+    "Sync-Token-Light.dc.html",
+    "Sync-Off-Light.dc.html",
+    "Sync-Collapsed-Offline.dc.html",
+    "Sync-Collapsed-Error.dc.html",
+    "Sync-Collapsed-Light.dc.html",
+    "Sync-Footer.dc.html",
+    "Sync-Footer-Offline.dc.html",
+    "Sync.dc.html"
+  ],
+  "noteOrder": [
+    "title",
+    "howto",
+    "t_light",
+    "t_coll",
+    "n_coll",
+    "t_foot",
+    "n_foot"
+  ],
+  "notes": {
+    "title": {
+      "kind": "title1",
+      "x": 0,
+      "y": -300,
+      "maxW": 3200,
+      "text": "Tasks · A small sync indicator (§26, proposed)"
+    },
+    "howto": {
+      "x": -560,
+      "y": 0,
+      "w": 480,
+      "size": 24,
+      "text": "A cloud at the right end of the sidebar’s header row, 14pt, shown only when there’s something to say.\n\nBoards are at 2×. Each shows the state with its tooltip (hovered).\n\nThe timing board (right) is live, and the component under it shows a real hover: start a sync and watch when the cloud shows."
+    },
+    "t_light": {
+      "kind": "title1",
+      "x": 0,
+      "y": 1792,
+      "maxW": 3200,
+      "text": "Light"
+    },
+    "t_coll": {
+      "kind": "title1",
+      "x": 0,
+      "y": 3884,
+      "maxW": 3200,
+      "text": "Sidebar collapsed: problems only, beside the toggle"
+    },
+    "n_coll": {
+      "x": -560,
+      "y": 4184,
+      "w": 480,
+      "size": 24,
+      "text": "With the sidebar hidden, or the header scrolled out of view, only offline and stopped show: a 28pt round button right of the sidebar toggle, its glyph 16pt like the toggle’s. Syncing never shows there."
+    },
+    "t_foot": {
+      "kind": "title1",
+      "x": 0,
+      "y": 4536,
+      "maxW": 3200,
+      "text": "Variant, not recommended: the sidebar’s foot"
+    },
+    "n_foot": {
+      "x": -560,
+      "y": 4836,
+      "w": 480,
+      "size": 24,
+      "text": "A line at the foot of the sidebar is always there, so it says “Synced” all day. The sidebar has no foot today; this would add one for one line."
+    }
+  }
+}

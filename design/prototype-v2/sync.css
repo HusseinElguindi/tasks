@@ -1,0 +1,67 @@
+/* The sync indicator (INTERACTIONS-v2 §26, proposed). A mock-up of the piece alone: the sidebar's brand header row,
+   the title band with the sidebar collapsed, and the sidebar-footer variant. The tokens come from tasks-v2.css. */
+
+.sy { position: relative; overflow: hidden; background: var(--stage); }
+.sy .win { position: absolute; left: 0; top: 0; background: var(--ground); border-radius: 12px; box-shadow: var(--win-edge); overflow: visible; }   /* a tooltip is its own window: it may hang past the edge */
+.sy .pane { position: absolute; top: 8px; right: 8px; bottom: 8px; border-radius: 10px; background: var(--base); box-shadow: inset 0 0 0 1px var(--line-pane); }
+.sy .pane .pt { position: absolute; left: 20px; top: 9px; font-weight: 600; color: var(--ink); }
+.sy .shead { position: absolute; left: 10px; top: 50px; height: 34px; display: flex; align-items: center; gap: 8px; padding-left: 10px; font-weight: 600; color: var(--ink); }
+.sy .shead .mk { display: block; flex: none; }
+.sy .srow { position: absolute; left: 10px; height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 10px; color: var(--ink-2); }
+.sy .srow .ct { position: absolute; right: 12px; color: var(--ink-3); font-size: 12px; font-variant-numeric: tabular-nums; }
+.sy .srow .sq { width: 14px; height: 14px; border-radius: 4px; background: var(--fill-strong); }
+
+/* The indicator: a 22pt hit area, its glyph 14pt (the header icons' size), at the header row's right end. */
+.sy .sync { position: absolute; height: 22px; min-width: 22px; padding: 0 4px; border-radius: 6px; display: flex; align-items: center; justify-content: flex-end; gap: 5px;
+  color: var(--ink-q); opacity: 1; transition: opacity 200ms cubic-bezier(0, 0, 0.2, 1), background-color var(--icon), color 150ms linear; }
+.sy .sync.gone { opacity: 0; transition-duration: 200ms; }
+.sy .sync.in { transition-duration: 100ms; }
+.sy .sync:hover, .sy .sync.hov { background: var(--hover); }
+.sy .sync .g { width: 14px; height: 14px; flex: none; overflow: visible; display: block; }
+.sy .sync .g .o { fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linejoin: round; stroke-linecap: round; }
+.sy .sync .g .f { fill: currentColor; }
+.sy .sync .lbl { font-size: 11px; line-height: 14px; color: var(--ink-3); white-space: nowrap; }
+.sy .sync.s-syncing, .sy .sync.s-long { color: var(--ink-3); }
+.sy .sync.s-syncing .g, .sy .sync.s-long .g, .sy .sync.s-pending .g { animation: sy-pulse 1.6s ease-in-out infinite; }
+.sy.still .sync .g { animation: none; }                 /* Reduce Motion, or the app inactive: no pulse */
+.sy .sync.s-pending { color: var(--ink-3); }
+.sy .sync .dot { fill: var(--accent-text); }
+.sy .sync.s-offline, .sy .sync.s-off { color: var(--ink-q); }
+.sy .sync.s-error, .sy .sync.s-token { color: var(--attn); }
+.sy .sync.s-error:hover, .sy .sync.s-token:hover, .sy .sync.s-error.hov, .sy .sync.s-token.hov { background: var(--attn-tint); }
+@keyframes sy-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* In the title band with the sidebar collapsed: the toggle's 28pt circle, and the indicator beside it. */
+.sy .lights { position: absolute; left: 18px; top: 18px; display: flex; gap: 9px; }
+.sy .lights i { width: 14px; height: 14px; border-radius: 50%; display: block; box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.18); }
+.sy .lights i:nth-child(1) { background: #FF5F57; } .sy .lights i:nth-child(2) { background: #FEBC2E; } .sy .lights i:nth-child(3) { background: #28C840; }
+.sy .tb { position: absolute; top: 11px; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: var(--ink-2); }
+.sy .tb .i { width: 16px; height: 16px; }
+.sy .sync.round { width: 28px; height: 28px; padding: 0; border-radius: 50%; justify-content: center; }
+.sy .sync.round .g { width: 16px; height: 16px; }
+
+/* The footer variant: a quiet line at the sidebar's foot. */
+.sy .sfoot { position: absolute; left: 10px; height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 10px; font-size: 11px; color: var(--ink-3); }
+.sy .sfoot .g { width: 13px; height: 13px; }
+
+/* The tooltip: the app's (11pt on popover), two lines when there's a detail. */
+.sy .tip { position: absolute; padding: 4px 8px; border-radius: 6px; background: var(--popover); box-shadow: var(--shadow-popover); font-size: 11px; line-height: 14px; color: var(--ink); white-space: nowrap; }
+.sy .tip .t2 { color: var(--ink-3); }
+.sy .tip .k { color: var(--ink-3); margin-left: 8px; }
+
+/* The timing demo's controls and timeline. */
+.sy .ctl { position: absolute; display: flex; flex-wrap: wrap; gap: 6px; }
+.sy .ctl button { height: 24px; padding: 0 10px; border-radius: 12px; background: var(--fill-track); color: var(--ink); font-size: 12px; }
+.sy .ctl button:hover { filter: brightness(1.12); }
+.sy .ctl button.on { background: var(--accent-tint); color: var(--accent-text); }
+.sy .tl { position: absolute; font-size: 11px; color: var(--ink-3); }
+.sy .tl .lane { position: relative; height: 14px; margin: 4px 0 10px; border-radius: 3px; background: var(--fill-control); overflow: hidden; }
+.sy .tl .bar { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+.sy .tl .bar.work { background: var(--line-field); }
+.sy .tl .bar.show { background: var(--accent); }
+.sy .tl .bar.off { background: var(--ink-q); }
+.sy .tl .now { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--ink-2); }
+.sy .tl .ticks { position: relative; height: 12px; }
+.sy .tl .ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.sy .cap { position: absolute; font-size: 12px; line-height: 17px; color: var(--ink-2); }
+.sy .cap b { color: var(--ink); font-weight: 600; }

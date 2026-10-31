@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sync indicator</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="tasks-v2.css">
+<link rel="stylesheet" href="sync.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="{{rootCls}}" style="{{rootStyle}}">
+<div style="{{scaleStyle}}">
+<div class="win" style="{{winStyle}}">
+<sc-if value="{{hasPane}}"><div class="pane" style="{{paneStyle}}"><span class="pt" style="{{ptStyle}}">School</span></div></sc-if>
+<sc-if value="{{hasTop}}"><div class="lights"><i></i><i></i><i></i></div>
+<div class="tb" style="left: 93px"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="2"></rect><line x1="6" y1="3" x2="6" y2="13"></line></svg></div></sc-if>
+<sc-if value="{{isHeader}}"><div class="shead"><svg class="mk" width="18" height="18" viewBox="150 150 724 724" aria-hidden="true"><defs><mask id="mk-chk"><rect x="150" y="150" width="724" height="724" fill="#fff"></rect><path class="mk-chk" d="M276.5 339.5L308 371L367.5 304.5"></path></mask></defs><path class="mk-trail" d="M304 436h36v64h-36zM304 612h36v64h-36z"></path><rect class="mk-trail" x="462" y="524" width="280" height="64" rx="32"></rect><rect class="mk-trail" x="462" y="700" width="220" height="64" rx="32"></rect><circle class="mk-rings" cx="322" cy="556" r="56"></circle><circle class="mk-rings" cx="322" cy="732" r="56"></circle><rect class="mk-bar" x="462" y="296" width="340" height="80" rx="40"></rect><circle class="mk-head" cx="322" cy="336" r="100" mask="url(#mk-chk)"></circle></svg><span>Tasks</span></div>
+<div class="srow" style="top: 90px; width: 190px"><span class="sq"></span>Today<span class="ct">13</span></div>
+<div class="srow" style="top: 122px; width: 190px"><span class="sq"></span>Upcoming</div></sc-if>
+<sc-if value="{{isFooter}}"><div class="srow" style="top: 14px; width: 190px; color: var(--ink-3); font-size: 11px; font-weight: 600">Archive</div>
+<div class="sfoot" style="top: 112px"><span class="{{syncCls}}" style="position: static; padding: 0; min-width: 0; height: auto; background: none"><svg class="g" viewBox="0 0 16 16" aria-hidden="true"><defs><mask id="{{gid}}-m" maskUnits="userSpaceOnUse" x="-2" y="-2" width="20" height="20"><rect x="-2" y="-2" width="20" height="20" fill="#fff"></rect><sc-if value="{{g.slash}}"><path d="M2.5 1.75l12 12.5" stroke="#000" stroke-width="3.4" stroke-linecap="round"></path></sc-if><sc-if value="{{g.dot}}"><circle cx="13.2" cy="4" r="3.4" fill="#000"></circle></sc-if><sc-if value="{{g.excl}}"><path d="M8.25 6.1v3" stroke="#000" stroke-width="1.6" stroke-linecap="round"></path><circle cx="8.25" cy="11.05" r="0.95" fill="#000"></circle></sc-if></mask></defs><g mask="url(#{{gid}}-m)"><path class="{{g.cloud}}" d="M4.6 12.75h6.9a2.85 2.85 0 0 0 .38-5.67 3.9 3.9 0 0 0-7.55-.55A3.1 3.1 0 0 0 4.6 12.75z"></path></g><sc-if value="{{g.slash}}"><path class="o" d="M2.5 1.75l12 12.5"></path></sc-if><sc-if value="{{g.dot}}"><circle class="dot" cx="13.2" cy="4" r="2.1"></circle></sc-if></svg></span><span>{{footText}}</span></div></sc-if>
+<sc-if value="{{showSync}}"><button class="{{syncCls}}" style="{{syncStyle}}" type="button" aria-label="Sync" aria-description="{{ax}}" onMouseEnter="{{onIn}}" onMouseLeave="{{onOut}}" onClick="{{onClick}}"><sc-if value="{{label}}"><span class="lbl">{{label}}</span></sc-if><svg class="g" viewBox="0 0 16 16" aria-hidden="true"><defs><mask id="{{gid}}-m" maskUnits="userSpaceOnUse" x="-2" y="-2" width="20" height="20"><rect x="-2" y="-2" width="20" height="20" fill="#fff"></rect><sc-if value="{{g.slash}}"><path d="M2.5 1.75l12 12.5" stroke="#000" stroke-width="3.4" stroke-linecap="round"></path></sc-if><sc-if value="{{g.dot}}"><circle cx="13.2" cy="4" r="3.4" fill="#000"></circle></sc-if><sc-if value="{{g.excl}}"><path d="M8.25 6.1v3" stroke="#000" stroke-width="1.6" stroke-linecap="round"></path><circle cx="8.25" cy="11.05" r="0.95" fill="#000"></circle></sc-if></mask></defs><g mask="url(#{{gid}}-m)"><path class="{{g.cloud}}" d="M4.6 12.75h6.9a2.85 2.85 0 0 0 .38-5.67 3.9 3.9 0 0 0-7.55-.55A3.1 3.1 0 0 0 4.6 12.75z"></path></g><sc-if value="{{g.slash}}"><path class="o" d="M2.5 1.75l12 12.5"></path></sc-if><sc-if value="{{g.dot}}"><circle class="dot" cx="13.2" cy="4" r="2.1"></circle></sc-if></svg></button></sc-if>
+<sc-if value="{{tip.show}}"><div class="tip" style="{{tip.style}}">{{tip.t1}}<sc-if value="{{tip.keys}}"><span class="k">{{tip.keys}}</span></sc-if><sc-if value="{{tip.t2}}"><div class="t2">{{tip.t2}}</div></sc-if></div></sc-if>
+</div>
+</div>
+<sc-if value="{{demo.show}}">
+<div class="cap" style="left: 24px; top: 16px; width: 640px"><b>Pulse timing.</b> Start a sync and watch the header row (at 1.5×) and the timeline under it. A sync shows only after 300 ms, then stays at least 600 ms; one past 3 s adds “Syncing…”. Offline shows only after 5 s. Hover the cloud for its tooltip.</div>
+<div class="ctl" style="left: 24px; top: 70px; width: 640px"><sc-for list="{{demo.btns}}" as="b" hint-placeholder-count="0"><button type="button" class="{{b.cls}}" data-k="{{b.k}}" onClick="{{onDemo}}">{{b.label}}</button></sc-for></div>
+<div class="tl" style="left: 24px; top: 420px; width: 630px">
+<sc-for list="{{demo.lanes}}" as="ln" hint-placeholder-count="0"><div>{{ln.label}}</div><div class="lane"><sc-for list="{{ln.bars}}" as="br" hint-placeholder-count="0"><span class="{{br.cls}}" style="{{br.style}}"></span></sc-for></div></sc-for>
+<div class="ticks"><sc-for list="{{demo.ticks}}" as="tk" hint-placeholder-count="0"><span style="{{tk.style}}">{{tk.label}}</span></sc-for></div>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"state":{"editor":"enum","options":["synced","syncing","long","pending","offline","offwait","error","token","off"],"default":"synced"},"place":{"editor":"enum","options":["header","collapsed","footer","demo"],"default":"header"},"tip":{"editor":null,"default":"off"},"hover":{"editor":null,"default":"off"},"still":{"editor":null,"default":"off"},"zoom":{"editor":null,"default":2},"w":{"editor":null,"default":0},"h":{"editor":null,"default":0},"$preview":{"width":1008,"height":368}}'>
+// The sync indicator (INTERACTIONS-v2 §26, proposed). What it shows comes from the store's SyncState plus two
+// facts: how long the current state has lasted, and whether changes have waited more than 3 s to go out.
+const SHOW_AFTER = 300, HOLD_AT_LEAST = 600, LONG_AFTER = 3000, OFFLINE_AFTER = 5000, WAITING_AFTER = 3000;
+const STATES = {
+  //        glyph                                       tooltip: first line, detail, keys
+  synced:  { g: {},                       cls: 's-synced',  t1: 'Synced 2 min ago', keys: '⌘R', ax: 'Synced 2 minutes ago' },
+  syncing: { g: {},                       cls: 's-syncing', t1: 'Syncing…', ax: 'Syncing' },
+  long:    { g: {},                       cls: 's-long',    t1: 'Restoring sync · 1,500 of 12,000', label: 'Syncing…', ax: 'Restoring sync, 1,500 of 12,000' },
+  pending: { g: { dot: 1 },               cls: 's-pending', t1: 'Syncing · 3 changes waiting', ax: 'Syncing, 3 changes waiting to send' },
+  offline: { g: { slash: 1 },             cls: 's-offline', t1: 'Can’t reach the server', t2: 'Trying again in 30 s', keys: '⌘R', ax: 'Offline. Trying again in 30 seconds' },
+  offwait: { g: { slash: 1, dot: 1 },     cls: 's-offline', t1: 'Can’t reach the server', t2: '3 changes will go out when it’s back', keys: '⌘R', ax: 'Offline, 3 changes waiting to send' },
+  error:   { g: { excl: 1 },              cls: 's-error',   t1: 'Sync stopped', t2: 'The server’s log keeps changing. Click to retry.', keys: '⌘R', ax: 'Sync stopped. The server’s log keeps changing' },
+  token:   { g: { excl: 1 },              cls: 's-token',   t1: 'The server didn’t accept the token', t2: 'Click to open Settings', ax: 'Sync stopped. The server didn’t accept the token' },
+  off:     { g: { slash: 1 },             cls: 's-off',     t1: 'Sync is off', t2: 'Click to set it up in Settings', ax: 'Sync is off' },
+};
+const FOOT = { synced: 'Synced 2 min ago', offwait: 'Offline · 3 changes waiting', error: 'Sync stopped' };
+const DEMO_BTNS = [['poll', '30 s poll (100 ms)'], ['s450', 'Sync, 450 ms'], ['s1500', 'Sync, 1.5 s'], ['first', 'First sync, 5 s'], ['blip', 'Wake blip, offline 2 s'], ['net', 'Offline 8 s'], ['still', 'Reduce Motion']];
+const WINDOW_MS = 10000;
+let GID = 0;
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.gid = 'sy' + (++GID);
+    this.state = { hover: false, now: performance.now(), still: false, events: [] };
+    this.d = { work: null, shownAt: null, hideAt: null, off: null };   // the demo's live sync
+  }
+  componentWillUnmount() { cancelAnimationFrame(this.raf); for (const t of this.timers || []) clearTimeout(t); }
+  later(ms, f) { (this.timers ||= []).push(setTimeout(f, ms)); }
+  tick = () => { this.setState({ now: performance.now() }); if (performance.now() - (this.lastEvent || 0) < WINDOW_MS + 2000) this.raf = requestAnimationFrame(this.tick); else this.raf = 0; };
+  wake() { this.lastEvent = performance.now(); if (!this.raf) this.raf = requestAnimationFrame(this.tick); }
+
+  // The demo: a sync of `ms`, or `ms` offline. The indicator's rules, as the app would run them.
+  onDemo = (e) => {
+    const k = e.currentTarget.dataset.k, now = performance.now();
+    if (k === 'still') { this.setState({ still: !this.state.still }); return; }
+    const ev = this.state.events.filter((x) => now - x.end < WINDOW_MS);
+    if (k === 'blip' || k === 'net') ev.push({ kind: 'off', start: now, end: now + (k === 'blip' ? 2000 : 8000) });
+    else ev.push({ kind: 'work', start: now, end: now + { poll: 100, s450: 450, s1500: 1500, first: 5000 }[k] });
+    this.setState({ events: ev }); this.wake();
+  };
+  // What shows at `t`, from the events: a sync shows from start + 300 ms (if it's still going) until
+  // max(end, shown + 600 ms); "Syncing…" from start + 3 s; offline from start + 5 s until it's back.
+  showAt(t) {
+    for (const x of this.state.events) {
+      if (x.kind === 'off') { if (x.end - x.start > OFFLINE_AFTER && t >= x.start + OFFLINE_AFTER && t < x.end) return 'offline'; continue; }
+      if (x.end - x.start <= SHOW_AFTER) continue;
+      const from = x.start + SHOW_AFTER, to = Math.max(x.end, from + HOLD_AT_LEAST);
+      if (t >= from && t < to) return t >= x.start + LONG_AFTER && t < x.end ? 'long' : 'syncing';
+    }
+    return null;
+  }
+  spans(now, test) {   // [from, to) runs where test(t) holds, sampled every 20 ms over the window
+    const out = []; let cur = null;
+    for (let t = now - WINDOW_MS; t <= now; t += 20) { const on = test(t); if (on && !cur) cur = [t, t]; if (on) cur[1] = t + 20; if (!on && cur) { out.push(cur); cur = null; } }
+    if (cur) out.push(cur);
+    return out;
+  }
+
+  renderVals() {
+    const p = this.props, theme = p.theme === 'light' ? 'light' : 'dark', place = p.place || 'header', demo = place === 'demo';
+    const z = +(p.zoom || 2), now = this.state.now;
+    let key = p.state || 'synced', visible = true;
+    if (demo) { const s = this.showAt(now); key = s || 'synced'; visible = !!s; }
+    const st = STATES[key] || STATES.synced;
+    const hover = p.hover === 'on' || this.state.hover;
+    // Synced and Off show nothing at rest: a faint cloud only under the pointer.
+    if ((key === 'synced' || key === 'off') && !hover) visible = false;
+    const collapsed = place === 'collapsed', footer = place === 'footer';
+    const W = collapsed ? 420 : demo ? 300 : 480, H = collapsed ? 64 : 160, HB = collapsed ? 112 : H;
+    const sx = collapsed ? 125 : 196, sy = collapsed ? 11 : 56;
+    const tipOn = (p.tip === 'on' || this.state.hover) && !footer && (visible || hover);
+    const label = st.label || '';
+    return {
+      rootCls: 'tk sy ' + theme + (this.state.still || p.still === 'on' ? ' still' : ''),
+      rootStyle: 'width: ' + (p.w || W * z + 48) + 'px; height: ' + (p.h || HB * z + 48) + 'px',
+      scaleStyle: 'position: absolute; left: 24px; top: ' + (demo ? 140 : 24) + 'px; transform: scale(' + z + '); transform-origin: 0 0',
+      winStyle: 'width: ' + W + 'px; height: ' + H + 'px',
+      hasPane: true, paneStyle: collapsed ? 'left: 8px' : 'left: 230px', ptStyle: collapsed ? 'left: 150px; top: 11px' : 'opacity: 0',
+      isHeader: place === 'header' || demo, isFooter: footer, hasTop: !footer,
+      showSync: !footer, gid: this.gid, g: { ...st.g, cloud: st.g.excl ? 'f' : 'o' },
+      syncCls: 'sync ' + st.cls + (collapsed ? ' round' : '') + (visible || footer ? ' in' : ' gone') + (p.hover === 'on' ? ' hov' : ''),
+      syncStyle: 'left: ' + (label ? sx - 52 : sx) + 'px; top: ' + sy + 'px' + (collapsed ? '' : '; ' + (label ? 'width: 74px' : '')),
+      label, ax: st.ax, footText: FOOT[key] || st.t1,
+      tip: { show: tipOn, t1: st.t1, t2: st.t2 || '', keys: st.keys || '', style: 'left: ' + (sx - 6) + 'px; top: ' + (sy + (collapsed ? 32 : 26)) + 'px' },
+      onIn: () => this.setState({ hover: true }), onOut: () => this.setState({ hover: false }), onClick: () => {},
+      demo: demo ? {
+        show: true,
+        btns: DEMO_BTNS.map(([k, label]) => ({ k, label, cls: k === 'still' && this.state.still ? 'on' : '' })),
+        lanes: [
+          ['Sync running', (t) => this.state.events.some((x) => x.kind === 'work' && t >= x.start && t < x.end), 'bar work'],
+          ['Offline', (t) => this.state.events.some((x) => x.kind === 'off' && t >= x.start && t < x.end), 'bar off'],
+          ['Indicator shows', (t) => !!this.showAt(t), 'bar show'],
+        ].map(([label, f, cls]) => ({ label, bars: this.spans(now, f).map(([a, b]) => ({ cls, style: 'left: ' + ((a - (now - WINDOW_MS)) / WINDOW_MS * 100) + '%; width: ' + ((b - a) / WINDOW_MS * 100) + '%' })) })),
+        ticks: [10, 8, 6, 4, 2, 0].map((s) => ({ label: s ? '−' + s + ' s' : 'now', style: 'left: ' + (100 - s * 10) + '%' })),
+      } : { show: false },
+      onDemo: this.onDemo,
+    };
+  }
+}
+</script>
+</body>
+</html>
