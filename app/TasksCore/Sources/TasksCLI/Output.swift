@@ -11,8 +11,9 @@ struct Field: Sendable {
 
 enum Shapes {
     static let task: [Field] = [
-        Field(name: "id", ts: "string"), Field(name: "ref", ts: "string"), Field(name: "list", ts: "string"),
-        Field(name: "listName", ts: "string"), Field(name: "title", ts: "string"),
+        Field(name: "id", ts: "string"), Field(name: "ref", ts: "string"),
+        Field(name: "kind", ts: "\"heading\" /* only on a heading: a row that groups the tasks under it */", optional: true),
+        Field(name: "list", ts: "string"), Field(name: "listName", ts: "string"), Field(name: "title", ts: "string"),
         Field(name: "notes", ts: "string /* Markdown */"), Field(name: "when", ts: "CalendarDate | null"),
         Field(name: "deadline", ts: "CalendarDate | null"), Field(name: "done", ts: "boolean"),
         Field(name: "completedAt", ts: "number | null"), Field(name: "deleted", ts: "boolean"),
@@ -20,7 +21,8 @@ enum Shapes {
     ]
     static let list: [Field] = [
         Field(name: "id", ts: "string"), Field(name: "ref", ts: "string"), Field(name: "name", ts: "string"),
-        Field(name: "archivedAt", ts: "number | null"), Field(name: "open", ts: "number /* open tasks */"),
+        Field(name: "notes", ts: "string /* Markdown, under the list's title */"),
+        Field(name: "archivedAt", ts: "number | null"), Field(name: "open", ts: "number /* open tasks, headings not counted */"),
     ]
     static let change: [Field] = [
         Field(name: "batch", ts: "string | null /* null when nothing changed */"), Field(name: "summary", ts: "string"),
@@ -48,17 +50,22 @@ struct Render {
 
     // MARK: JSON
 
+    /// `kind` is there only on a heading (INTERACTIONS-v2 §23), so a task's JSON is what it was before headings.
     func task(_ t: TaskItem) -> JSON {
-        JSON(["id": .string(t.id), "ref": .string(taskRefs.ref(t.id)), "list": .string(t.list),
-              "listName": .string(listName(t.list)), "title": .string(t.title), "notes": .string(t.notes),
-              "when": .str(t.when?.string), "deadline": .str(t.deadline?.string), "done": .bool(t.completedAt != nil),
-              "completedAt": .num(t.completedAt), "deleted": .bool(t.deleted), "createdAt": .int(t.createdAt),
-              "updatedAt": .int(t.updatedAt)])
+        var m: [JSON.Member] = [.init(key: "id", value: .string(t.id)), .init(key: "ref", value: .string(taskRefs.ref(t.id)))]
+        if t.isHeading { m.append(.init(key: "kind", value: .string(Patch.heading))) }
+        let rest = JSON(["list": .string(t.list),
+                         "listName": .string(listName(t.list)), "title": .string(t.title), "notes": .string(t.notes),
+                         "when": .str(t.when?.string), "deadline": .str(t.deadline?.string), "done": .bool(t.completedAt != nil),
+                         "completedAt": .num(t.completedAt), "deleted": .bool(t.deleted), "createdAt": .int(t.createdAt),
+                         "updatedAt": .int(t.updatedAt)])
+        if case .object(let r) = rest { m += r }
+        return .object(m)
     }
 
     func list(_ l: TaskList) -> JSON {
-        JSON(["id": .string(l.id), "ref": .string(listRefs.ref(l.id)), "name": .string(l.name),
-              "archivedAt": .num(l.archivedAt), "open": .int(p.openTasks(in: l.id).count)])
+        JSON(["id": .string(l.id), "ref": .string(listRefs.ref(l.id)), "name": .string(l.name), "notes": .string(l.notes),
+              "archivedAt": .num(l.archivedAt), "open": .int(p.openTaskCount(in: l.id))])
     }
 
     func tasks(_ ids: [EntityID]) -> [TaskItem] { ids.compactMap(p.task) }
@@ -89,8 +96,31 @@ struct Render {
         }
     }
 
+    /// A list's open rows as `ls` prints them (§23): the tasks before the first heading, then each heading as a
+    /// section line ("  # 4f2a1c  Labs") with its tasks indented under it.
+    func sections(_ rows: [TaskItem]) -> [String] {
+        var out: [String] = []
+        var block: [TaskItem] = []
+        var underHeading = false
+        func flush() {
+            out += self.rows(block, indent: underHeading ? "    " : "  ")
+            block = []
+        }
+        for t in rows {
+            if t.isHeading {
+                flush()
+                out.append("  # \(taskRefs.ref(t.id))  \(t.title.isEmpty ? "(untitled)" : t.title)")
+                underHeading = true
+            } else {
+                block.append(t)
+            }
+        }
+        flush()
+        return out
+    }
+
     func listRow(_ l: TaskList) -> String {
-        let open = p.openTasks(in: l.id).count
+        let open = p.openTaskCount(in: l.id)
         var line = "  \(listRefs.ref(l.id))  \(l.name)  \(open)"
         if let a = l.archivedAt { line += "  archived \(archivedDate(a))" }
         return line
@@ -105,11 +135,18 @@ struct Render {
         func line(_ k: String, _ v: String) { out.append("  " + k.padding(toLength: 10, withPad: " ", startingAt: 0) + v) }
         line("id", t.id)
         line("list", "\(listName(t.list))\(p.list(t.list)?.archivedAt != nil ? " (archived)" : "")")
-        line("status", t.deleted ? "deleted" : t.completedAt != nil ? "done" : "open")
-        line("when", t.when.map { "\($0.string) (\(DateLabel.long($0, today: today)), \(DateLabel.relative($0, today: today)))" } ?? "—")
-        line("deadline", t.deadline.map { "\($0.string) (\(DateLabel.long($0, today: today)), \(DateLabel.relative($0, today: today)))" } ?? "—")
+        if t.isHeading {
+            // A heading has no completion and no dates (§23).
+            line("kind", "heading")
+            line("status", t.deleted ? "deleted" : "open")
+            line("open", "\(openTasks(under: t.id)) open tasks under it")
+        } else {
+            line("status", t.deleted ? "deleted" : t.completedAt != nil ? "done" : "open")
+            line("when", t.when.map { "\($0.string) (\(DateLabel.long($0, today: today)), \(DateLabel.relative($0, today: today)))" } ?? "—")
+            line("deadline", t.deadline.map { "\($0.string) (\(DateLabel.long($0, today: today)), \(DateLabel.relative($0, today: today)))" } ?? "—")
+        }
         line("created", Self.time(t.createdAt))
-        if let c = t.completedAt { line("completed", Self.time(c)) }
+        if let c = t.completedAt, !t.isHeading { line("completed", Self.time(c)) }
         if !t.notes.isEmpty {
             out.append("  notes")
             out += t.notes.split(separator: "\n", omittingEmptySubsequences: false).map { "    " + $0 }
@@ -119,6 +156,11 @@ struct Render {
             out += history.map { "    " + $0 }
         }
         return out
+    }
+
+    /// The open tasks in a heading's section.
+    func openTasks(under heading: EntityID) -> Int {
+        p.section(of: heading).dropFirst().filter { p.task($0)?.completedAt == nil }.count
     }
 
     static func time(_ ms: Int) -> String {
@@ -144,7 +186,7 @@ struct Describe {
 
     private enum Kind: Int, CaseIterable {
         case newTask, delete, restore, complete, uncomplete, move, when, removeWhen, deadline, removeDeadline,
-             rename, notes, reorder, newList, renameList, archive, unarchive, moveList
+             rename, notes, reorder, newList, renameList, listNotes, archive, unarchive, moveList
     }
 
     func summary(_ changes: [EntityChange]) -> String {
@@ -178,6 +220,7 @@ struct Describe {
         case .list(let b?, let a):
             var k: [Kind] = []
             if b.name != a.name { k.append(.renameList) }
+            if b.notes != a.notes { k.append(.listNotes) }
             if b.archivedAt == nil && a.archivedAt != nil { k.append(.archive) }
             if b.archivedAt != nil && a.archivedAt == nil { k.append(.unarchive) }
             if b.order != a.order { k.append(.moveList) }
@@ -189,7 +232,12 @@ struct Describe {
         let tasks = cs.compactMap { if case .task(_, let a) = $0 { a } else { nil } }
         let lists = cs.compactMap { if case .list(_, let a) = $0 { a } else { nil } }
         let n = tasks.count
-        func one(_ verb: String) -> String { n == 1 ? "\(verb) \(quote(tasks[0].title))" : "\(verb) \(n) Tasks" }
+        // A heading is named as one (§23); several rows with a heading among them are "items".
+        let headings = tasks.filter(\.isHeading)
+        func one(_ verb: String) -> String {
+            if n == 1 { return "\(verb)\(headings.isEmpty ? "" : " Heading") \(quote(tasks[0].title))" }
+            return headings.isEmpty ? "\(verb) \(n) Tasks" : "\(verb) \(n) Items"
+        }
         func dated(_ name: String, _ d: (TaskItem) -> CalendarDate?) -> String {
             let dates = Set(tasks.compactMap(d))
             let label = dates.count == 1 ? ": " + DateLabel.long(dates.first!, today: today) : ""
@@ -197,7 +245,9 @@ struct Describe {
         }
         let listQuote = lists.first.map { quote($0.name) } ?? ""
         switch k {
-        case .newTask: return n == 1 ? "New Task \(quote(tasks[0].title)) in \(listName(tasks[0].list))" : "New \(n) Tasks"
+        case .newTask:
+            if n == 1 { return "New \(headings.isEmpty ? "Task" : "Heading") \(quote(tasks[0].title)) in \(listName(tasks[0].list))" }
+            return headings.isEmpty ? "New \(n) Tasks" : "New \(n) Items"
         case .delete: return one("Delete")
         case .restore: return one("Restore")
         case .complete: return one("Complete")
@@ -206,15 +256,20 @@ struct Describe {
             let targets = Set(tasks.map(\.list))
             let to = targets.count == 1 ? " to \(listName(targets.first!))" : ""
             return one("Move") + to
-        case .reorder: return one("Reorder")
+        case .reorder:
+            // A section moves as its heading and its tasks: one "Move Heading" (§23).
+            if headings.count == 1 { return "Move Heading \(quote(headings[0].title))" }
+            return one("Reorder")
         case .when: return dated("Set When", \.when)
         case .removeWhen: return n == 1 ? "Remove When from \(quote(tasks[0].title))" : "Remove When (\(n) tasks)"
         case .deadline: return dated("Set Deadline", \.deadline)
         case .removeDeadline: return n == 1 ? "Remove Deadline from \(quote(tasks[0].title))" : "Remove Deadline (\(n) tasks)"
-        case .rename: return n == 1 ? "Rename Task to \(quote(tasks[0].title))" : "Rename \(n) Tasks"
+        case .rename:
+            return n == 1 ? "Rename \(headings.isEmpty ? "Task" : "Heading") to \(quote(tasks[0].title))" : "Rename \(n) Tasks"
         case .notes: return n == 1 ? "Edit Notes on \(quote(tasks[0].title))" : "Edit Notes (\(n) tasks)"
         case .newList: return lists.count == 1 ? "New List \(listQuote)" : "New \(lists.count) Lists"
         case .renameList: return lists.count == 1 ? "Rename List to \(listQuote)" : "Rename \(lists.count) Lists"
+        case .listNotes: return lists.count == 1 ? "Edit List Notes on \(listQuote)" : "Edit List Notes (\(lists.count) lists)"
         case .archive: return lists.count == 1 ? "Archive List \(listQuote)" : "Archive \(lists.count) Lists"
         case .unarchive: return lists.count == 1 ? "Unarchive List \(listQuote)" : "Unarchive \(lists.count) Lists"
         case .moveList: return lists.count == 1 ? "Move List \(listQuote)" : "Move \(lists.count) Lists"
@@ -240,6 +295,8 @@ struct Describe {
                 var f: [String] = []
                 if b == nil { f.append("new list") }
                 if let b, b.name != a.name { f.append("name: \(quote(b.name)) → \(quote(a.name))") }
+                if let b, b.notes != a.notes { f.append("notes edited") }
+                if b == nil, !a.notes.isEmpty { f.append("notes") }
                 if b?.archivedAt != a.archivedAt { f.append(a.archivedAt == nil ? "unarchived" : "archived") }
                 if let b, b.order != a.order { f.append("sidebar position") }
                 return f.isEmpty ? nil : head + "  " + f.joined(separator: "; ")
@@ -250,7 +307,7 @@ struct Describe {
     private func taskFields(_ b: TaskItem?, _ a: TaskItem) -> [String] {
         func d(_ x: CalendarDate?) -> String { x.map { "\($0.string) (\(DateLabel.whenChip($0, today: today)))" } ?? "—" }
         guard let b else {
-            var f = ["in \(listName(a.list))"]
+            var f = [a.isHeading ? "heading in \(listName(a.list))" : "in \(listName(a.list))"]
             if let w = a.when { f.append("when \(d(w))") }
             if let dl = a.deadline { f.append("deadline \(d(dl))") }
             if !a.notes.isEmpty { f.append("notes") }

@@ -203,6 +203,7 @@ extension Context {
                     if current[keyPath: k] == after[keyPath: k] || force { apply(before[keyPath: k]) } else { skip(name, ref, current.name) }
                 }
                 field("name", \.name) { set.name = $0 }
+                field("notes", \.notes) { set.notes = $0 }
                 field("position", \.order) { set.order = $0 }
                 field("archive state", \.archivedAt) { set.archivedAt = .some($0) }
                 if set != Patch() { out.append(op(.listUpdate, id, set)) }

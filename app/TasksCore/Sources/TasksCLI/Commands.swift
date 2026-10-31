@@ -48,7 +48,9 @@ enum MethodArg: Sendable {
 
 enum Needs { case nothing, replica, synced }
 
-enum Section: String, CaseIterable { case views = "Views", tasks = "Tasks", lists = "Lists", history = "History and sync", code = "Code mode", help = "Help" }
+enum Section: String, CaseIterable {
+    case views = "Views", tasks = "Tasks", headings = "Headings", lists = "Lists", history = "History and sync", code = "Code mode", help = "Help"
+}
 
 /// What a command returns: a value (JSON and its text), or a change rendered once it's committed.
 enum Reply {
@@ -125,11 +127,11 @@ enum Commands {
                 example: "tasks lists", section: .views, method: "lists", returns: "List[]") { c, _ in
             let (j, t) = try c.listsJSON(); return .value(j, t)
         },
-        Command(name: "ls", usage: "[<list>] [--done]", doc: "A list: open tasks in order, then completed ones newest first. No list means the first one.",
+        Command(name: "ls", usage: "[<list>] [--done]", doc: "A list: its notes, then its rows in order (open tasks, and headings with the tasks under them), then completed tasks newest first. No list means the first one.",
                 example: "tasks ls School --done", section: .views, method: "list",
                 params: [Param(name: "list", type: .listRef, optional: true), Param(name: "done", type: .bool, optional: true)],
                 positionals: ["list"], flags: [Flag(name: "done", param: "done", kind: .constant(.bool(true)))],
-                signature: [.param("list")], returns: "{ list: List; open: Task[]; completed: Task[] }") { c, a in
+                signature: [.param("list")], returns: "{ list: List; open: Task[] /* rows in order: headings have kind \"heading\" */; completed: Task[] }") { c, a in
             let (j, t) = try c.listJSON(a.text("list"), done: a.bool("done")); return .value(j, t)
         },
         Command(name: "archive", usage: "", doc: "Archived lists, most recently archived first.",
@@ -145,7 +147,7 @@ enum Commands {
             let r = Render(try c.p)
             return .value(r.task(t), r.detail(t, history: a.bool("history") ? try c.historyLines(t.id) : []))
         },
-        Command(name: "find", usage: "<text> [--list L] [--done | --open] [--deleted]", doc: "Tasks whose title or notes contain the text (any list; read-only). Empty text matches everything.",
+        Command(name: "find", usage: "<text> [--list L] [--done | --open] [--deleted]", doc: "Tasks whose title or notes contain the text (any list; read-only). Empty text matches everything. Headings aren't tasks: tasks ls lists them.",
                 example: "tasks find dentist --ids", section: .views, method: "find",
                 params: [Param(name: "text", type: .text, optional: true), Param(name: "list", type: .listRef, optional: true),
                          Param(name: "done", type: .bool, optional: true), Param(name: "deleted", type: .bool, optional: true)],
@@ -188,12 +190,12 @@ enum Commands {
                               place: try c.place(a["place"]), id: a.text("id"), key: a.text("key"))
             return .createdTask(t.id)
         },
-        Command(name: "rename", usage: "<task> <title>", doc: "Rename a task.", example: "tasks rename 3f9a2c \"Buy oat milk\"",
+        Command(name: "rename", usage: "<task> <title>", doc: "Rename a task or a heading.", example: "tasks rename 3f9a2c \"Buy oat milk\"",
                 section: .tasks, method: "rename", params: [Param(name: "task", type: .ref), Param(name: "title", type: .text)],
                 positionals: ["task", "title"], signature: [.param("task"), .param("title")], writes: true) { c, a in
             try c.rename(try a.required("task"), try a.required("title")); return .change
         },
-        Command(name: "notes", usage: "<task> <TEXT|-> [--append]", doc: "Replace a task's notes (Markdown), or add a line with --append. - reads stdin.",
+        Command(name: "notes", usage: "<task> <TEXT|-> [--append]", doc: "Replace a task's or a heading's notes (Markdown), or add a line with --append. - reads stdin.",
                 example: "tasks notes 3f9a2c --append \"- [ ] call back\"", section: .tasks, method: "setNotes",
                 params: [Param(name: "task", type: .ref), Param(name: "notes", type: .text), Param(name: "append", type: .bool, optional: true)],
                 positionals: ["task", "notes"], flags: [Flag(name: "append", param: "append", kind: .constant(.bool(true)))],
@@ -228,14 +230,14 @@ enum Commands {
             try c.setDeadline(try a.refs("tasks"), try c.date(a["date"] ?? .null, field: "date")); return .change
         },
         Command(name: "move", usage: "<task>… [--to L] [--top | --bottom | --up | --down | --after REF | --before REF]",
-                doc: "Move tasks to another list (they land at the bottom, in the order given), or to a place: next to an open task (in its list), the top or bottom, or one slot up or down.",
+                doc: "Move tasks to another list (they land at the bottom, in the order given), or to a place: next to an open task or a heading (in its list; --after a heading is the top of its section), the top or bottom, or one row up or down. A heading moves on its own, with its section: --before another heading, --after a row (after that row's section), --top, --bottom, --up, --down.",
                 example: "tasks move 3f9a2c 77b0e1 --to School", section: .tasks, method: "move",
                 params: [Param(name: "tasks", type: .refs), Param(name: "list", type: .listRef, optional: true), Param(name: "place", type: .place, optional: true)],
                 positionals: ["tasks"], flags: [Flag(name: "to", param: "list", kind: .value("L"))] + placeFlags,
                 signature: [.param("tasks"), .object("to", ["list", "place"])], writes: true) { c, a in
             try c.move(try a.refs("tasks"), list: a.text("list"), place: try c.place(a["place"])); return .change
         },
-        Command(name: "delete", usage: "<task>…", doc: "Delete tasks. tasks restore (or undo) brings them back.",
+        Command(name: "delete", usage: "<task>…", doc: "Delete tasks. A heading goes alone: its tasks stay, under the heading above it. tasks restore (or undo) brings them back.",
                 example: "tasks delete 3f9a2c", section: .tasks, method: "delete", params: [Param(name: "tasks", type: .refs)],
                 positionals: ["tasks"], signature: [.param("tasks")], writes: true) { c, a in
             try c.delete(try a.refs("tasks")); return .change
@@ -244,6 +246,20 @@ enum Commands {
                 section: .tasks, method: "restore", params: [Param(name: "tasks", type: .refs)], positionals: ["tasks"],
                 signature: [.param("tasks")], writes: true) { c, a in
             try c.restore(try a.refs("tasks")); return .change
+        },
+
+        // MARK: Headings
+        Command(name: "heading add", usage: "<name> [--list L] [--notes TEXT|-] [--top | --after REF | --before REF]",
+                doc: "New heading, a row that groups the tasks under it down to the next heading: at the bottom of the list, above --before REF, or after --after REF (after a heading, that's after its section). No list means the place's list, else the first list. Headings never show in today, find or counts.",
+                example: "tasks heading add Labs --list \"PHYS 122\" --before 3f9a2c", section: .headings, method: "addHeading",
+                params: [Param(name: "name", type: .text), Param(name: "list", type: .listRef, optional: true),
+                         Param(name: "notes", type: .text, optional: true), Param(name: "place", type: .place, optional: true)],
+                positionals: ["name"],
+                flags: [Flag(name: "list", param: "list", kind: .value("L")), Flag(name: "notes", param: "notes", kind: .value("TEXT"))]
+                    + placeFlags.filter { ["top", "after", "before"].contains($0.name) },
+                signature: [.object("h", ["name", "list", "notes", "place"])], returns: "Task", writes: true) { c, a in
+            let h = try c.addHeading(name: try a.required("name"), list: a.text("list"), notes: a.text("notes"), place: try c.place(a["place"]))
+            return .createdTask(h.id)
         },
 
         // MARK: Lists
@@ -258,6 +274,13 @@ enum Commands {
                 section: .lists, method: "renameList", params: [Param(name: "list", type: .listRef), Param(name: "name", type: .text)],
                 positionals: ["list", "name"], signature: [.param("list"), .param("name")], writes: true) { c, a in
             try c.renameList(try a.required("list"), try a.required("name")); return .change
+        },
+        Command(name: "list notes", usage: "<list> <TEXT|-> [--append]", doc: "Replace a list's notes (Markdown, the text under its title), or add a line with --append. - reads stdin.",
+                example: "tasks list notes School \"Lectures **MWF** 10:30\"", section: .lists, method: "setListNotes",
+                params: [Param(name: "list", type: .listRef), Param(name: "notes", type: .text), Param(name: "append", type: .bool, optional: true)],
+                positionals: ["list", "notes"], flags: [Flag(name: "append", param: "append", kind: .constant(.bool(true)))],
+                signature: [.param("list"), .param("notes")], writes: true) { c, a in
+            try c.setListNotes(try a.required("list"), try a.required("notes"), append: a.bool("append")); return .change
         },
         Command(name: "list move", usage: "<list> (--top | --bottom | --up | --down | --after L | --before L)", doc: "Move a list in the sidebar.",
                 example: "tasks list move School --after Work", section: .lists, method: "moveList",
@@ -376,7 +399,8 @@ enum Parser {
         while i < argv.count {
             let a = argv[i]
             i += 1
-            if onlyPositional || a == "-" || !a.hasPrefix("-") {
+            // "- [ ] call back" is text (a Markdown list line), not a flag.
+            if onlyPositional || a == "-" || !a.hasPrefix("-") || a.hasPrefix("- ") {
                 positionals.append(a)
                 continue
             }
@@ -397,7 +421,8 @@ enum Parser {
         }
 
         var command: Command
-        if positionals.count >= 2, positionals[0] == "list", let c = Commands.named("list " + positionals[1]) {
+        if positionals.count >= 2, ["list", "heading"].contains(positionals[0]),
+           let c = Commands.named(positionals[0] + " " + positionals[1]) {
             command = c
             positionals.removeFirst(2)
         } else if let first = positionals.first, let c = Commands.named(first) {
@@ -406,7 +431,9 @@ enum Parser {
         } else if positionals.isEmpty {
             command = Commands.named("help")!
         } else if positionals[0] == "list" {
-            throw CLIError.usage("tasks list takes add, rename, move, archive or unarchive. (The sidebar is tasks lists.)")
+            throw CLIError.usage("tasks list takes add, rename, notes, move, archive or unarchive. (The sidebar is tasks lists.)")
+        } else if positionals[0] == "heading" {
+            throw CLIError.usage("tasks heading takes add. Rename, notes, move and delete take a heading like a task.")
         } else {
             throw CLIError.usage("Unknown command \"\(positionals[0])\". tasks help lists them.")
         }
@@ -488,7 +515,7 @@ enum Parser {
 enum Help {
     static func text(_ name: String?) throws -> String {
         if let name {
-            guard let c = Commands.named(name) ?? Commands.named("list " + name) else {
+            guard let c = Commands.named(name) ?? Commands.named("list " + name) ?? Commands.named("heading " + name) else {
                 throw CLIError.usage("No command \"\(name)\". tasks help lists them.")
             }
             var lines = ["tasks \(c.name)\(c.usage.isEmpty ? "" : " " + c.usage)", "", c.doc]
@@ -541,7 +568,8 @@ enum TypeScript {
             "type DateInput = string | null;",
             "/** A task or list id, a unique id prefix (4+ chars), or for lists a name. */",
             "type Ref = string;",
-            "/** up/down: one slot among the list's open tasks. after/before: next to an open task, in its list. */",
+            "/** up/down: one row among the list's open rows. after/before: next to an open task or a heading, in its list (for a task,",
+            " *  after a heading is the top of its section; a heading moves with its section, see move). */",
             "type Place = \"top\" | \"bottom\" | \"up\" | \"down\" | { after: Ref } | { before: Ref };",
             "",
             iface("Task", Shapes.task),
