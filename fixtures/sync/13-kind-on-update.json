@@ -1,0 +1,38 @@
+{
+  "name": "13-kind-on-update",
+  "spec": "§5 validation table, kind",
+  "description": "kind is allowed only on task.create: a task.update that carries it is rejected, and nothing is appended.",
+  "setup": {
+    "log": [
+      {"id":"00000000-0000-0000-0000-000000000002","at":1761811200000,"type":"list.create","target":"00000000-0000-0000-0000-000000000001","set":{"name":"Inbox","order":"a0"}},
+      {"id":"5b0c6c1e-3f0a-4c8e-9d61-0f4f6f1a2b3c","at":1761811260000,"type":"task.create","target":"9f8e7d6c-5b4a-4321-8fed-cba987654321","set":{"list":"00000000-0000-0000-0000-000000000001","order":"a0","title":"Buy milk","when":"2026-10-30"}}
+    ]
+  },
+  "request": {
+    "method": "POST",
+    "path": "/v1/sync",
+    "headers": {
+      "Authorization": "Bearer test-token",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "from": 2,
+      "base": "184ceb4c3d11bd53025385963c25f50298c2d652f84d5989941d2ec13a66fd79",
+      "ops": [
+        {"id":"d3a6e9c4-1f5b-4a0d-8e3c-7b8c9d0e1f2a","at":1761811340000,"type":"task.update","target":"9f8e7d6c-5b4a-4321-8fed-cba987654321","set":{"kind":"heading"}}
+      ]
+    }
+  },
+  "response": {
+    "status": 400,
+    "headers": {
+      "Content-Type": "application/json; charset=utf-8"
+    },
+    "body": {
+      "error": "invalid_op",
+      "message": "ops[0].set.kind is not allowed for task.update",
+      "index": 0,
+      "field": "set.kind"
+    }
+  }
+}

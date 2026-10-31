@@ -32,6 +32,7 @@ Not in v1: iOS, recurring tasks, reminders/notifications, times of day, tags, su
 | `deadline`    | `CalendarDate?` | "This must be done by this day." |
 | `completedAt` | Epoch ms (Int)? | Null = open. Set from the device clock when the user checks it. Completed tasks are kept forever. |
 | `deleted`     | Bool            | Default false. Deleting is setting it; undo clears it (§6). |
+| `kind`        | `"heading"`?    | Absent: a task. `"heading"`: a heading, a row in its list that groups the tasks under it (`design/INTERACTIONS-v2.md` §23). Set at create and never changed. |
 
 `createdAt` and `updatedAt` are derived on the client from the `at` of the first and last op that touched the task. They are never written as fields.
 
@@ -43,6 +44,7 @@ Not in v1: iOS, recurring tasks, reminders/notifications, times of day, tags, su
 | `name`  | String      | Max 200 chars. Duplicates allowed. |
 | `order` | String      | Fractional index key in the sidebar (§3). |
 | `archivedAt` | Epoch ms (Int)? | Null = active. Set when the user archives the list. Lists are never deleted. |
+| `notes` | String      | Markdown, max 20,000 chars, shown under the list's title. Empty by default. |
 
 ### Inbox: an ordinary list, seeded once
 
@@ -234,10 +236,10 @@ Every op has the same shape: an envelope, a type, a target id and a `set` patch.
 
 | Type          | `set` keys allowed |
 |---------------|--------------------|
-| `task.create` | `list`, `order` (both required), `title`, `notes`, `when`, `deadline`, `completedAt` |
-| `task.update` | any of the above, plus `deleted` |
-| `list.create` | `name`, `order` (both required) |
-| `list.update` | `name`, `order`, `archivedAt` |
+| `task.create` | `list`, `order` (both required), `title`, `notes`, `when`, `deadline`, `completedAt`, `kind` |
+| `task.update` | any of the above except `kind`, plus `deleted` |
+| `list.create` | `name`, `order` (both required), `notes` |
+| `list.update` | `name`, `order`, `notes`, `archivedAt` |
 
 `set` semantics: a key that's present overwrites the field (`null` clears it), and a missing key leaves it unchanged.
 
@@ -333,17 +335,18 @@ So a client with a stale cursor and a bad request gets the `400` or `413` it nee
 | `list` | string, 1–64 characters |
 | `order` | `^[0-9A-Za-z]{1,128}$` |
 | `title` | string, ≤ 1,000 |
-| `notes` | string, ≤ 20,000 |
+| `notes` | string, ≤ 20,000 (a task's and a list's) |
 | `name` | string, ≤ 200 |
 | `when`, `deadline` | `null`, or `"YYYY-MM-DD"` (ASCII digits) that's a real date in the Gregorian calendar, any four-digit year |
 | `completedAt`, `archivedAt` | `null`, or an integer 0 ≤ n ≤ 2⁵³ − 1 (epoch ms) |
 | `deleted` | boolean |
+| `kind` | the string `"heading"` |
 
 - **Lengths** count **UTF-16 code units**: `String.length` in JS, `.utf16.count` in Swift. Both sides then agree exactly.
 - **Every string must be well-formed Unicode.** A JSON `\ud800`-style escape can carry an unpaired surrogate; that's rejected (`invalid_op`), because a stored entry a client can't decode would stop every Mac's sync at that `seq` for good. Swift strings can't hold one, so a Swift client never sends it.
 - **Duplicate op ids** inside one request: only the first is appended. An op id already in the log is skipped too, whatever its content (dedup is by id only).
 
-**Validation may only loosen, never tighten.** A `409` recovery re-pushes ops that are already in the log, verbatim, and validation runs before dedup. So a rule that rejects an op the log already holds would turn a harmless re-push into `invalid_op`, and the client would move that op to `rejected.jsonl`: the discard the recovery rule forbids. Rolling the Worker back to a version with stricter rules has the same effect. Allowing a new `set` key is a loosening and fine; so was allowing `actor` and `batch`, which is why the Worker must never be rolled back past that change. A rule that must tighten needs a migration plan for the ops already stored before it ships.
+**Validation may only loosen, never tighten.** A `409` recovery re-pushes ops that are already in the log, verbatim, and validation runs before dedup. So a rule that rejects an op the log already holds would turn a harmless re-push into `invalid_op`, and the client would move that op to `rejected.jsonl`: the discard the recovery rule forbids. Rolling the Worker back to a version with stricter rules has the same effect. Allowing a new `set` key is a loosening and fine; so was allowing `actor` and `batch`, which is why the Worker must never be rolled back past that change, and so is allowing `kind` on `task.create` and `notes` on `list.create` and `list.update` (headings and a list's text, `design/INTERACTIONS-v2.md` §23; built 2026-10-31 and **not deployed yet**: the Worker must be deployed before any client sends them, and never rolled back past it after). A rule that must tighten needs a migration plan for the ops already stored before it ships.
 
 The server stores each op as `JSON.stringify({id, at, type, target, set, actor, batch})`: top-level keys in that order, `set` keys in the order received. `JSON.stringify` omits an absent `actor` or `batch`, so an op without them is stored as `{id, at, type, target, set}`, exactly as before the keys existed. That exact text is what gets hashed (§6). The client never re-hashes, so this is only a server-internal rule, but the worked examples below are test vectors for it.
 
