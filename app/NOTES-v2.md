@@ -352,6 +352,30 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
     - Not checked: hover and press looks frame by frame, real pointer and keys with the app active, and VoiceOver on
       the label (it sets "Completed, collapsed, N" as its accessibility label, unheard).
 
+16. **Long list names overlapping a row.** The list name after a title was laid out at its full width from the right,
+    so a long one ran left over the title, the hint and the checkbox. A row's right side is now shared in an order
+    (`TaskRowView`): the title keeps up to 120pt (all of a shorter one) with its notes hint; the date chips keep their
+    size and are dropped from the first (When, then Deadline) rather than cut the title below that; the list name keeps
+    up to 72pt and then truncates with the title's 24pt end fade, and goes when less than 32pt of it would show; space
+    beyond those goes to the title first, then to the list name. A month row's " · Oct 22" stays whole after a cut
+    name. Nothing draws over the leading content or past the row. At the list pane's 220pt minimum that means titles
+    only, chips dropped; from about 300pt chips and cut names come back.
+    - The rest of the audit: the large title (it lost its descenders when cut: the layer's own font now sets the line,
+      and its date or "Archived" gives way first) and heading names end in an ellipsis, as the prototype's `.lhn` and
+      `.ht` do; the band's title truncates after the name's priority; sidebar names already faded into their counts;
+      the detail pane's header, List row and relative dates truncate at its 340pt minimum; menus ("Move to", "Put
+      Back in", "Show in …", "New Task in …") cut names at 280pt with an ellipsis; the undo notice ("Moved to …")
+      truncates inside the pane instead of running past it; tooltips cut at 300pt and stay inside the window by their
+      measured width.
+    - Checked with `-demoLongNames YES` (a list "SE 463 — Software Project Management, Requirements, and Analysis", a
+      200-character list name, long titles, a long heading) at list panes of 220, 320 and 492, the detail pane at 340,
+      the window at 420 tall, light and dark; before and after renders.
+    - Found here, fixed elsewhere: Today's group labels and Upcoming's day labels cut a long list name hard (item 15
+      gives `GroupLabelView` the end fade); and an empty list's notes editor drew its own "Notes" placeholder at rest,
+      where §23 wants it only on hover, while renaming or with the caret (the list pane's editors now draw none at
+      rest; the title block's fades in, and a heading's shows only with the caret in it).
+    - Not checked: the menus as drawn (their titles were logged), and tooltips on screen.
+
 ## Markdown notes (design/MARKDOWN.md)
 
 Built to the spec and the prototype (`design/prototype-markdown/`); §11 of the spec lists where the build differs.
