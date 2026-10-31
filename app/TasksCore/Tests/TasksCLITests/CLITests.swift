@@ -44,8 +44,9 @@ final class MemoryServer: SyncTransport, @unchecked Sendable {
     }
 }
 
+/// The harness: a fake server, a fixed clock (Sat, Oct 31 2026, Toronto) and a scratch replica per test.
 @MainActor
-final class CLITests: XCTestCase {
+class CLITestCase: XCTestCase {
     var server = MemoryServer()
     var dir: URL!
     var vars: [String: String] = [:]
@@ -96,7 +97,16 @@ final class CLITests: XCTestCase {
         return try XCTUnwrap(found.arrayValue?.first?["id"]?.stringValue, "no task \(title)")
     }
 
-    // MARK: -
+    func errorJSON(_ args: String...) async throws -> JSON {
+        var out: [String] = []
+        let code = await CLI.run(args + ["--json"], env: env(out: { out.append($0) }, err: { _ in }))
+        XCTAssertEqual(code, 1)
+        return try XCTUnwrap(try JSON.parse(out.joined())["error"])
+    }
+}
+
+@MainActor
+final class CLITests: CLITestCase {
 
     func testAddTodayAndTheJSONShapes() async throws {
         await tasks("list", "add", "School")
@@ -154,13 +164,6 @@ final class CLITests: XCTestCase {
         XCTAssertEqual(ambiguous["candidates"]?.arrayValue?.count, 2)
         let ok = await tasks("done", "abcd1")
         XCTAssertEqual(ok.code, 0, ok.err)
-    }
-
-    func errorJSON(_ args: String...) async throws -> JSON {
-        var out: [String] = []
-        let code = await CLI.run(args + ["--json"], env: env(out: { out.append($0) }, err: { _ in }))
-        XCTAssertEqual(code, 1)
-        return try XCTUnwrap(try JSON.parse(out.joined())["error"])
     }
 
     func testDryRunWritesNothing() async throws {

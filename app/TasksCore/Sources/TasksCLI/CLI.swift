@@ -69,7 +69,9 @@ enum CLI {
         }
 
         switch reply {
-        case .value(let json, let text): emit(env, o, json: json, ids: Self.ids(in: json), text: text)
+        case .value(let json, let text):
+            emit(env, o, json: json, ids: Self.ids(in: json), text: text)
+            if let code = c.exitCode { return code }
         case .text(let s): if !s.isEmpty { env.out(s) }
         case .change, .createdTask, .createdList: break
         }

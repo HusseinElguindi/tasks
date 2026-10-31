@@ -33,6 +33,8 @@ final class Context {
     var skipped: [String] = []
     /// Undo: "Undo: Move 3 Tasks to School" rather than a description of the inverse ops.
     var summaryOverride: String?
+    /// `tasks run`: 1 when the script failed, 75 when its change isn't synced yet.
+    var exitCode: Int32?
 
     init(env: Environment, session: Session?, options: Options) {
         self.env = env
