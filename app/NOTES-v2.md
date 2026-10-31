@@ -684,3 +684,85 @@ rule are unchanged.
   `chiphover:<title>:when|deadline`.
 - **Not checked:** the real midnight notification (the turnover was driven through the same `setDay`), hover and
   press looks frame by frame, and VoiceOver itself (the labels were read back, not heard).
+
+## The calendar that scrolls (INTERACTIONS-v2 §25)
+
+Built from the final §25 (b6332f5), `docs/TASK-build-calendar.md`. The popover only: dates, typing and the model are
+unchanged, except the past's wording (below).
+
+- **The calendar** (`Overlay/WeekCalendar.swift`): an `NSScrollView` in an `NSViewRepresentable`, as §25 says (no
+  reason found to doubt its case against SwiftUI's `ScrollView` on macOS 14). Its document is a fixed strip of 120
+  weeks of 30pt. Weeks are numbered from today's, in the locale's first weekday, and a row works out its dates from
+  its number with integer day arithmetic (`CalendarDate.dayNumber`, now public), so years 0–9999 are all a scroll
+  away. Within 30 weeks of either end of the strip, `base` moves to put the view in the middle and the clip origin
+  moves by the same amount, inside the bounds-change handler, before anything draws. The days are 15 reused week
+  layers of seven day layers (the app's `TextLayer`), given the weeks in view and four either side after every move.
+- **Opening:** on the tasks' date's month (today's without one), its first week on top, without animating.
+  - While "Popover in" scales it, SwiftUI resizes the scroll view and AppKit nudges the clip origin. Unchecked, the
+    weeks settled from half a point to 2pt off.
+  - So the calendar keeps where it last came to rest and puts itself back after any move the user didn't make.
+  - Its clip view rounds the origin to device pixels whatever the popover's place in the window (`WeekClip`).
+- **The header:** the month with the most of the 42 days nearest the view (a tie goes to the later), with the other
+  months' days in `ink-quiet`; the two change together. "Today ↑" or "Today ↓" shows once today's week is more than
+  two weeks out of view.
+- **Getting around:**
+  - **Trackpad and wheel:** native scrolling. A wheel notch is a week.
+  - **Snapping:** at rest, which for a trackpad comes after momentum and for a wheel mouse 120ms after its last
+    notch, it eases to the nearest week in 140ms.
+  - **Typed dates and the Today pill:** they go to the month, first week on top, in 260ms with the prototype's cubic
+    ease-out, on a display link. A jump of more than six weeks lands six short first. A typed date moves the calendar
+    only when it's out of view.
+  - **Keys:** ← → ↑ ↓, and Page Up / Page Down by a month (to the same day, clamped), scroll the least that shows the
+    highlighted day.
+  - **Interruptions:** a scroll during one of these moves takes over. With Reduce Motion, moves land at once.
+- **The popover** is 240pt, its days 32pt apart.
+  - The quick picks are Today and Tomorrow, plus Clear when the tasks share a date.
+  - The When hint is "When: try fri, 3d, nov 9".
+  - The last line is the first of four that fits (`ViewThatFits`): with ↩, without it, without the weekday, then the
+    date alone. The note always stays, and "No date matches “…”" ends in an ellipsis.
+- **The past** reads like the future, in TasksCore and so in the CLI and the rows' tooltips: "2 months ago", "a year
+  ago", "37 years ago"; "10 months overdue", "1 year overdue".
+- **Where this differs from the spec, and why:**
+  - **No scroll bar**, as the prototype has it (css:532–533). The spec asks for the overlay scroller, but its knob
+    would jump each time the strip recentres.
+  - **The month row stays 28pt with the pill:** the 20pt pill overhangs the title's 16pt line by 2pt either way. In
+    the prototype the row grows by 4pt when the pill shows, which moves the calendar under the pointer.
+- **Checked** (scratch Tasks Dev, demo data, the DebugPicker steps below, renders and per-move logs):
+  - **Opening:** on Oct 29 and Dec 8 the layout matches the prototype's (the pixel diff is text antialiasing only).
+    Scrolled 80 weeks on, it shows April 2028 from Apr 9 with "Today ↑", as the prototype does.
+  - **Long scrolls:** trackpad-phase scrolls of 300pt a frame (ten weeks, the prototype's fastest step) went 20
+    years down, back, 40 years up to December 1986, and back again.
+    - That's 451 moves across 172 recentres. Every move was exactly its delta, and every row showed its own week.
+    - Each scroll ended exactly where it should.
+    - A 45pt drag after them snapped to the nearest week in 140ms, at 120Hz.
+  - **Typed dates and the pill:** "jan 3 1990" lands six weeks short, then eases into January 1990 in 260ms, with
+    "Today ↓". The pill goes back to October 2026 without changing the highlighted day. Typing on to no match leaves
+    the grid alone, and deleting back jumps again.
+  - **Keys:** ↓ off the bottom and ↑ off the top scroll one row. Page Up and Down move a month. Twelve Page Ups reach
+    November 2025, with "Today ↓".
+  - **Wheel:** a wheel notch moves a week, and three notches move three.
+  - **Dark and light:** today, the ring, the dot by kind, the highlighted day, hover (set in-process), and the other
+    months dimmed. Clicking a day sets it and closes the popover.
+  - **The last line:** all five of the spec's examples read as its table does.
+  - **Tests:** TasksCore's 158 and the CLI's 34 pass.
+- **Benchmarks** (optimized builds of 1e5cb70, before §25, and this, run side by side):
+  - **§9 list switches:** 1.8–4.1ms of work and 5.0–9.8ms to first rows before; 2.1–4.0 and 5.5–10.0 now.
+  - **The 2,000-task list:** a selection change renders in 0.94ms (0.72 and 0.82 in two runs before, with the same
+    list code), a check in 1.08 (1.12), Dark/Light in 1.75 (1.60), and Big → Upcoming in 5.08 (5.13).
+  - **Opening the popover** (opening it, then forcing the window's layout and display): 17.8ms median of 30, against
+    30.2ms for the paged grid. The calendar's own share is about 3ms: 1.4 to make it, 1.6 to style its days.
+  - **A scroll event** (handling it, then forcing the window's layout and display): 0.03ms median, 0.07 p95 and 1.2
+    max over 217 events, taken through recentres, month changes and a far jump.
+- **Debug steps** (`-debugPicker`, `DatePopover.swift`):
+  - Keys: `key:pageup|pagedown`.
+  - Scrolling: `wheel:N`, `drag:D[,N]`, `flick:V`.
+  - Recording: `rec:/f` … `recstop` and `-debugPickerRec /f` (a line per move), `cal:/f` (the state now).
+  - Pointer: `hover:X,Y`.
+  - Benchmarks: `bench:open:N:/f`, `bench:scroll:/f`.
+- **Not checked:**
+  - **Real trackpad momentum.** AppKit ignores synthetic momentum events handed to the scroll view; only the flick's
+    own movement lands. Posting them through the window server needs a system permission (it prompted once, and that
+    route was dropped). The recentring was checked with gesture-phase events, which move the clip origin the same way
+    a momentum event would. A fast flick by hand, once installed, is the remaining check.
+  - **Motion by eye.** Snapping and jumps were read from the per-frame log, not watched.
+  - **VoiceOver.** The days and the pill have their labels, but they weren't read back or heard.
