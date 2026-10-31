@@ -845,3 +845,33 @@ rejected change isn't amber, server errors read as offline, and the dot waits 3 
   - **Result:** no animation in any of 80 frames, and every row, heading, date, ring, hint, count and the title
     change in one frame. In the band, the frame after the old one is the new list's final state.
   - **List-switch benchmark:** 2.0–3.6 ms of work and 5.0–9.3 ms to first rows (2.1–4.0 and 5.5–10.0 before).
+
+## The sidebar's foot (INTERACTIONS-v2 §27, direction A)
+
+Built from §27 (0b5c30c), `docs/TASK-build-sidebar-footer.md`; §27 is now marked final with A alone.
+
+- **The foot** (`Sidebar/SidebarFoot.swift`) is 36pt, pinned under the sidebar's scroll view (which now ends at its
+  top). It's SwiftUI in a host that takes the first click, and it has no fill and no divider, so the ground or the
+  glass shows through.
+  - **+ New List:** 26pt, padding 7 / 8, a 14pt + and 12pt "New List" 6 apart, in `ink-tertiary`. It does what
+    ⇧⌘N does: a new list at the bottom of Lists, in its rename, scrolled into view.
+  - **Settings:** 26 × 26, `slider.horizontal.3` at 14pt in `ink-quiet`. It opens Settings.
+  - **Both buttons:**
+    - Hover gives `ink` on the `hover` fill, on `icon`; a press gives the `press` fill at once.
+    - They're real buttons for VoiceOver ("New List", "Settings"), and Tab doesn't stop on them.
+    - Their tooltips, "New List ⇧⌘N" and "Settings ⌘,", open above the control (`hoverTip(above:)`), since below
+      would leave the window.
+- **The fade:** while there's more below, the scroll view's last 20pt fade out through a mask on its layer, so it's
+  the same on Glass. Scrolled to the end, the fade goes in 100 ms.
+- **Checked** (scratch Tasks Dev, demo data):
+  - Placement: the foot at the window's bottom, with the scroll view ending at its top.
+  - Hover and tooltips: dark, light, Glass, and the 180pt minimum (both buttons fit with room to spare).
+  - Clicks through the window: + New List gave a list in its rename, scrolled to show it; Settings opened "Tasks
+    Settings".
+  - The fade at 420pt tall: on with more below, off at the end. A probe drawing the gradient visibly shows it at the
+    list's bottom, just above the foot; snapshots don't draw masks, so the mask itself is read from its state.
+- **Debug steps:** `sync:foothover:new|settings|off`, `sync:footclick:new|settings`, `sync:fadeprobe:on|off`,
+  `sync:sidebarwidth:N`; `sync:log` includes the foot and the fade.
+- **Not checked:**
+  - The fade by eye, on screen.
+  - A real hover: it was set in-process.
