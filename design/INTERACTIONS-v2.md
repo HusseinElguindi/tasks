@@ -1849,9 +1849,10 @@ prototype does the same thing in a browser (`dc:2625–2745`).
   because none of their rows are that far back.
 ---
 
-## 26. A sync indicator (proposed)
+## 26. A sync indicator
 
-Status: **proposed, 2026-10-31** (`docs/TASK-design-sync-indicator.md`). Nothing here is built. The user's words: "i
+Status: **final, 2026-10-31**: approved as proposed, with the calls below (no amber for a rejected change, server errors
+read as offline, the dot after 3 s), and built (`docs/TASK-build-sync-indicator.md`; `app/NOTES-v2.md`). The user's words: "i
 want a small indicator to show refreshing, like a quick cloud icon or something." It's a mock-up of the piece alone,
 on its own canvas: https://claude.ai/artifact/9mgrscG1x6wgwXtPSyGT5v. The boards are `Sync-*.dc.html` from the component
 `Sync.dc.html` and `sync.css` in `design/prototype-v2/`; the main prototype doesn't have it.
