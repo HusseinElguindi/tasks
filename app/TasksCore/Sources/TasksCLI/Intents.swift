@@ -94,7 +94,7 @@ final class Context {
         if ops.count > 500 && !options.large {
             throw CLIError(kind: .limit, message: "This change is \(ops.count) ops; one change is at most 500 unless you pass --large (then it isn't atomic on the wire).")
         }
-        synced = try await replica.commit(ops, batch: batch)
+        synced = try await replica.commit(ops, batch: batch, push: !options.cached)
         return synced
     }
 

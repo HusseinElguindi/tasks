@@ -248,6 +248,23 @@ final class CLITests: XCTestCase {
         XCTAssertTrue(server.ops.contains { $0.set.title == "Bread" })
     }
 
+    /// A read that pulled leaves the log on disk: the next command starts from there, even offline.
+    func testAPullIsPersisted() async throws {
+        await tasks("add", "Milk")
+        let other = dir.appendingPathComponent("other")
+        vars["TASKS_DATA_DIR"] = other.path
+        let first = await tasks("lists")
+        XCTAssertEqual(first.code, 0)
+        // On disk by the time the command returns, not just queued for the background writer.
+        let log = try String(contentsOf: other.appendingPathComponent("127.0.0.1:1/log.jsonl"), encoding: .utf8)
+        XCTAssertEqual(log.split(separator: "\n").count, server.ops.count)
+        server.offline = true
+        let status = try await json("status", "--cached")
+        XCTAssertEqual(status["cursor"]?.intValue, server.ops.count)
+        let found = await tasks("find", "Milk", "--cached")
+        XCTAssertTrue(found.out.contains("Milk"), found.out)
+    }
+
     func testKeyMakesAddIdempotent() async throws {
         let a = try await json("add", "Pay rent", "--key", "rent-2026-11")
         let count = server.ops.count

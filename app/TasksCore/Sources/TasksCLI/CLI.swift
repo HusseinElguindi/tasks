@@ -29,7 +29,12 @@ enum CLI {
             if inv.command.needs == .synced && !o.cached { synced = try await session!.sync() }
         }
         let c = Context(env: env, session: session, options: o)
-        defer { c.cleanup() }
+        // Persistence writes on a background queue; flush it (and the snapshot) before the process exits, or
+        // a pull is lost.
+        defer {
+            c.cleanup()
+            session?.store.persistNow()
+        }
         let reply = try await inv.command.run(c, inv.args)
 
         // A write: render it against the fork (the state it produces), then commit unless it's a dry run.
@@ -58,7 +63,7 @@ enum CLI {
             var text: [String] = []
             text.append(wrote ? "\(summary) · undo: tasks undo \(c.batch.prefix(6))" : "No change.")
             text += c.skipped.map { "  " + $0 }
-            if !synced { env.err("tasks: saved locally; it syncs with the next tasks command that reaches the server.") }
+            if !synced, wrote { env.err("tasks: saved locally; it syncs with the next tasks command that reaches the server.") }
             emit(env, o, json: object(base, adding: ["synced": .bool(synced)]), ids: ids, text: text)
             return synced ? 0 : 75
         }

@@ -238,12 +238,13 @@ final class Session {
 
     /// Writes a change: the ops go through the real `Store` with this command's actor and batch, into
     /// `pending.jsonl` before anything is sent, then out (§2 "One command's life").
-    func commit(_ ops: [Op], batch: String) async throws -> Bool {
+    func commit(_ ops: [Op], batch: String, push: Bool = true) async throws -> Bool {
         store.attribution = Attribution(actor: actor, batch: batch)
         store.perform(ops)
         store.attribution = nil
         store.cancelScheduledSync()
         store.persistNow()
+        guard push else { return false }
         let synced = try await sync()
         store.persistNow()
         return synced
