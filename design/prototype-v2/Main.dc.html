@@ -214,12 +214,21 @@ body{margin:0}
 <div class="picker" style="{{pk.style}}" role="dialog" aria-label="Choose a date" onMouseDown="{{onPickerDown}}">
 <label class="pf"><sc-if value="{{pk.isWhen}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg></sc-if><sc-if value="{{pk.isDl}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 14V2.5M4 3h7.5L10 5.75 11.5 8.5H4"></path></svg></sc-if><input value="{{pk.text}}" placeholder="{{pk.placeholder}}" aria-label="Type a date" spellCheck="false" autoFocus="{{pk.autoFocus}}" onChange="{{onPickerText}}" onKeyDown="{{onPickerKey}}"></label>
 <div class="qp"><sc-for list="{{pk.quick}}" as="q" hint-placeholder-count="0"><button class="{{q.cls}}" type="button" data-date="{{q.date}}" onClick="{{onPickQuick}}">{{q.label}}</button></sc-for></div>
+<sc-if value="{{pk.paged}}">
 <div class="mon"><span class="mt">{{pk.monthTitle}}</span><button class="nb" type="button" aria-label="Previous month" data-dir="-1" onClick="{{onPickMonth}}"><svg class="i i--sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 4l-4 4 4 4"></path></svg></button><button class="nb" type="button" aria-label="Next month" data-dir="1" onClick="{{onPickMonth}}"><svg class="i i--sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4l4 4-4 4"></path></svg></button></div>
 <div class="cal">
 <sc-for list="{{pk.dows}}" as="w" hint-placeholder-count="0"><span class="dw">{{w}}</span></sc-for>
 <sc-for list="{{pk.days}}" as="c" hint-placeholder-count="0"><span class="{{c.cls}}" data-date="{{c.date}}" onClick="{{onPickDay}}">{{c.label}}</span></sc-for>
 </div>
-<div class="pv"><span class="{{pk.previewCls}}">{{pk.preview}}<sc-if value="{{pk.hint}}"><span class="pvh">{{pk.hint}}</span></sc-if></span><span class="kbd">↩</span></div>
+</sc-if>
+<sc-if value="{{pk.scroll}}"><div class="{{pk.csCls}}">
+<sc-if value="{{pk.hasHead}}"><div class="mon"><span class="mt">{{pk.monthTitle}}</span><sc-if value="{{pk.todayBtn}}"><button class="tdy" type="button" aria-label="Scroll to today" onClick="{{onCalToday}}">Today<span class="ar">{{pk.todayArrow}}</span></button></sc-if></div></sc-if>
+<div class="cal cdw"><sc-for list="{{pk.dows}}" as="w" hint-placeholder-count="0"><span class="dw">{{w}}</span></sc-for></div>
+<div class="{{pk.csvCls}}"><div class="csp" style="{{pk.spaceStyle}}">
+<sc-for list="{{pk.weeks}}" as="wk" hint-placeholder-count="0"><div class="cal wk" style="{{wk.style}}"><sc-for list="{{wk.days}}" as="c" hint-placeholder-count="0"><span class="{{c.cls}}" data-date="{{c.date}}" onClick="{{onPickDay}}"><sc-if value="{{c.ml}}"><span class="ml">{{c.mlText}}</span></sc-if><span class="dn">{{c.label}}</span></span></sc-for></div></sc-for>
+</div></div>
+</div></sc-if>
+<div class="pv"><span class="{{pk.previewCls}}">{{pk.preview}}<sc-if value="{{pk.hint}}"><span class="pvh">{{pk.hint}}</span></sc-if></span><sc-if value="{{pk.todayFloat}}"><button class="tdy fl" type="button" aria-label="Scroll to today" onClick="{{onCalToday}}">Today<span class="ar">{{pk.todayArrow}}</span></button></sc-if><span class="kbd">↩</span></div>
 </div>
 </sc-if>
 
@@ -229,7 +238,7 @@ body{margin:0}
 <sc-if value="{{stage.show}}">
 <div class="stage" aria-label="Prototype controls">
 <span class="sl">Prototype</span>
-<span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Edit tasks</span><span class="seg"><sc-for list="{{stage.editTasks}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
+<span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Edit tasks</span><span class="seg"><sc-for list="{{stage.editTasks}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><sc-for list="{{stage.vars}}" as="vg" hint-placeholder-count="0"><span class="sl">{{vg.label}}</span><span class="seg"><sc-for list="{{vg.opts}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span></sc-for>
 <span class="sn">The browser keeps ⌘N, ⌘T and ⌘1–9, so ⌥N, ⌥T and ⌃1–9 also work here.</span>
 <span style="flex: 1;"></span>
 <button class="lnk" type="button" data-k="reset" data-v="1" onClick="{{onStage}}">Reset</button>
@@ -268,7 +277,7 @@ body{margin:0}
 </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"select":{"editor":null,"default":""},"detail":{"editor":null,"default":"closed"},"pick":{"editor":null,"default":"none"},"caret":{"editor":null,"default":""},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"select":{"editor":null,"default":""},"detail":{"editor":null,"default":"closed"},"pick":{"editor":null,"default":"none"},"caret":{"editor":null,"default":""},"vCal":{"editor":null,"default":"pages"},"vSnap":{"editor":null,"default":"weeks"},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
 // ---------- Calendar dates: "YYYY-MM-DD" strings, never instants (SPEC §2). ----------
 const DAY_MS = 86400000;
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -458,6 +467,18 @@ const VIEW_EMPTY = {
 };
 // Headings, a list's notes and its title (INTERACTIONS-v2 §23).
 const HEAD_AIR = 8;   // a heading's air above its row
+// A scrolling calendar in the date popover (INTERACTIONS-v2 §25, proposed): one column of weeks, 30pt a row, six in
+// view, from five years back to ten ahead; only the rows in view and four either side are drawn. It opens where the
+// paged grid did: the selected date's (or today's) month, its first week on top. The strip switches the month labels
+// and the snapping (the default is the paged grid, as built, until the user picks); a board sets them with v-cal and
+// v-snap.
+const CAL_ROW = 30, CAL_ROWS = 6, CAL_BUF = 4, CAL_BACK = 260, CAL_FWD = 520, CAL_JUMP = 6, CAL_ANIM_MS = 260;
+const CAL_DEFAULTS = { cal: 'pages', snap: 'weeks' };   // as built, until the user picks (§25)
+const CAL_OPTS = {
+  cal: [['sticky', 'Sticky month'], ['inline', 'Inline months'], ['tints', 'Tinted months'], ['pages', 'Pages (as built)']],
+  snap: [['weeks', 'Snap to weeks'], ['free', 'Free']],
+};
+const CAL_LABEL = { cal: 'Calendar', snap: 'Scroll' };
 // The checkbox's cue classes (§24): late (a past deadline), due (a deadline today), plate (a When on or before today,
 // so it's in Today; not drawn in Today itself, where every task is). Open tasks only, never in Trash.
 // …and the same, read aloud on the checkbox's label: "Complete: ECE 358 lab report, overdue, planned for today".
@@ -846,7 +867,7 @@ class Component extends DCLogic {
     if (this.props.select) setTimeout(() => this.demoSelect(), 250);
     if (/^(notes|long|hover)$/.test(this.props.demo || '')) setTimeout(() => this.demoNotes(this.props.demo), 200);
     if (/^(scroll|newhead|collapse|dragsec)$/.test(this.props.demo || '')) setTimeout(() => this.demoSec(this.props.demo), 250);   // §23's boards
-    if (/^(narrow|pickwhen|pickdl|tipwhen|tipdl)$/.test(this.props.demo || '')) setTimeout(() => this.demoDates(this.props.demo), 250);   // §24's boards
+    if (/^(narrow|pickwhen|pickdl|tipwhen|tipdl|calopen|calfar|caltyped)$/.test(this.props.demo || '')) setTimeout(() => this.demoDates(this.props.demo), 250);   // §24's boards
     this.markClippedTitles();
     this.measureBlocks();
     document.addEventListener('selectionchange', this.onDocSel);
@@ -877,9 +898,10 @@ class Component extends DCLogic {
     this.setState({ edit: { kind: 'notes', id, text: t.notes, orig: t.notes, sel: [at, at], demo: true }, focus: 'detail' });
     this.nUndo = []; this.nRedo = [];
   }
-  componentWillUnmount() { if (this.mhRO) this.mhRO.disconnect(); document.removeEventListener('selectionchange', this.onDocSel); document.removeEventListener('mouseup', this.onDocUp); clearTimeout(this.boxPopTimer); for (const k of ['settleTimer', 'noticeTimer', 'tipTimer', 'cmdTimer', 'cleanTimer', 'detailTimer', 'animTimer', 'scrollTimer']) clearTimeout(this[k]); }
+  componentWillUnmount() { cancelAnimationFrame(this.calRaf); clearTimeout(this.calSnapTimer); if (this.mhRO) this.mhRO.disconnect(); document.removeEventListener('selectionchange', this.onDocSel); document.removeEventListener('mouseup', this.onDocUp); clearTimeout(this.boxPopTimer); for (const k of ['settleTimer', 'noticeTimer', 'tipTimer', 'cmdTimer', 'cleanTimer', 'detailTimer', 'animTimer', 'scrollTimer']) clearTimeout(this[k]); }
   componentDidUpdate() {
     this.nAfterRender();
+    this.calSync();
     this.markClippedTitles();
     this.measureBlocks();
     if (this.scrollToId) { const id = this.scrollToId; this.scrollToId = null; this.ensureVisible(id); }
@@ -1498,7 +1520,7 @@ class Component extends DCLogic {
     const pw = 288, ph = 344;
     let x = clamp(anchor.left, 8, w - pw - 8), y = anchor.bottom + 6;
     if (y + ph > h - 8) y = Math.max(8, anchor.top - ph - 6);
-    this.setState({ picker: { field, ids, text: '', hot, cur, other, month: hot.slice(0, 7), x, y }, menu: null, tip: null });
+    this.setState({ picker: { field, ids, text: '', hot, cur, other, month: hot.slice(0, 7), x, y, top: this.calMonthTop(hot), key: uid('pk') }, menu: null, tip: null });
   }
   openPickerForRows(field, ids) {
     ids = this.onlyTasks(ids);
@@ -2575,24 +2597,117 @@ class Component extends DCLogic {
     else if (text.trim()) patch.none = true;
     else { patch.none = false; patch.hot = p.cur || this.today; patch.month = patch.hot.slice(0, 7); }
     this.setState({ picker: patch });
+    if (!patch.none) this.calReveal(patch.hot, 'typed');
   };
   onPickerKey = (e) => {
     const p = this.state.picker, k = e.key;
     if (!p) return;
     e.stopPropagation();
-    const moveDay = (n) => { const hot = addDays(p.hot, n); this.setState({ picker: { ...p, hot, month: hot.slice(0, 7), none: false } }); };
+    const moveTo = (hot) => { this.setState({ picker: { ...p, hot, month: hot.slice(0, 7), none: false } }); this.calReveal(hot, 'key'); };
+    const moveDay = (n) => moveTo(addDays(p.hot, n));
     if (k === 'Escape') { e.preventDefault(); this.setState({ picker: null }); this.focusRoot(); return; }
     if (k === 'Backspace' && !p.text) { e.preventDefault(); if (p.cur) this.pickerApply(null); return; }
     if (k === 'ArrowLeft') { e.preventDefault(); moveDay(-1); return; }
     if (k === 'ArrowRight') { e.preventDefault(); moveDay(1); return; }
     if (k === 'ArrowUp') { e.preventDefault(); moveDay(-7); return; }
     if (k === 'ArrowDown') { e.preventDefault(); moveDay(7); return; }
+    if (k === 'PageUp' || k === 'PageDown') { e.preventDefault(); moveTo(addMonths(p.hot, k === 'PageUp' ? -1 : 1)); return; }   // a month, same day (clamped)
     if (k === 'Enter') { e.preventDefault(); if (!p.none) this.pickerApply(p.hot); }
   };
   onPickDay = (e) => { this.pickerApply(e.currentTarget.dataset.date); };
   onPickQuick = (e) => { const d = e.currentTarget.dataset.date; this.pickerApply(d === 'none' ? null : d); };
   onPickMonth = (e) => { const p = this.state.picker, n = +e.currentTarget.dataset.dir; const m = addMonths(p.month + '-01', n).slice(0, 7); this.setState({ picker: { ...p, month: m } }); const el = this.rootRef.current.querySelector('.picker input'); if (el) el.focus(); };
   onPickerDown = (e) => { if (!isTextTarget(e.target)) { e.preventDefault(); } };
+
+  // ---------- The scrolling calendar (§25, proposed) ----------
+  cv(k) { const o = this.state.cv && this.state.cv[k]; return o || this.props['v' + k[0].toUpperCase() + k.slice(1)] || CAL_DEFAULTS[k]; }
+  calW0() { if (this._calW0For !== this.today) { this._calW0For = this.today; this._calW0 = addDays(this.today, -weekdayIdx(this.today) - 7 * CAL_BACK); } return this._calW0; }
+  calWeek(ymd) { return Math.floor(diffDays(this.calW0(), ymd) / 7); }
+  calMonthTop(ymd) { return this.calWeek(ymd.slice(0, 8) + '01') * CAL_ROW; }   // a date's month, its first week on top
+  // The scroll view, once the runtime has written it (a frame or so after componentDidUpdate): a newly opened popover
+  // starts on the selected date's week.
+  calSync() {
+    cancelAnimationFrame(this.calSyncRaf);
+    const step = (n) => {
+      const p = this.state.picker, el = p && this.rootRef.current && this.rootRef.current.querySelector('.picker .csv');
+      this.calEl = el || null;
+      if (!p) return;
+      if (!el) { if (n < 8) this.calSyncRaf = requestAnimationFrame(() => step(n + 1)); return; }
+      if (!el.dataset.on) { el.dataset.on = '1'; el.addEventListener('scroll', this.onCalScroll, { passive: true }); }
+      if (el.dataset.k !== p.key) { el.dataset.k = p.key; el.scrollTop = p.top; }
+    };
+    step(0);
+  }
+  // Snapping to weeks happens when the scroll comes to rest, momentum included: 120ms after the last scroll event the
+  // view eases to the nearest row. (In AppKit, the clip view's constrainBoundsRect does it during the momentum.)
+  onCalScroll = (e) => {
+    const top = e.currentTarget.scrollTop, p = this.state.picker;
+    if (p && Math.abs((p.top || 0) - top) >= 1) this.setState({ picker: { ...p, top } });
+    clearTimeout(this.calSnapTimer);
+    if (this.cv('snap') === 'weeks' && !this.calAnimating) this.calSnapTimer = setTimeout(() => {
+      const el = this.calEl;
+      if (el && !this.calAnimating) { const t = Math.round(el.scrollTop / CAL_ROW) * CAL_ROW; if (Math.abs(t - el.scrollTop) >= 1) this.calScrollTo(t, 140); }
+    }, 120);
+  };
+  // Bring a date's week into view. From the keys, the least scroll that shows it; typed, its month with its first week
+  // on top, as the paged grid showed it; Today, the same for today's month. Only when it's out of view, so typing
+  // doesn't jitter the grid. A far jump lands six rows short
+  // and animates the rest, so it reads as motion without flicking through years.
+  calReveal(ymd, why) {
+    if (this.cv('cal') === 'pages') return;
+    setTimeout(() => {
+      const el = this.calEl, p = this.state.picker;
+      if (!el || !p) return;
+      const r = this.calWeek(ymd), first = el.scrollTop / CAL_ROW, last = first + CAL_ROWS - 1;
+      let target = null;
+      if (why === 'today') target = this.calMonthTop(ymd);
+      else if (r < first - 0.01 || r > last + 0.01) target = why === 'key' ? (r < first ? r : r - CAL_ROWS + 1) * CAL_ROW : this.calMonthTop(ymd);
+      if (target != null) this.calScrollTo(target);
+    }, 0);
+  }
+  calScrollTo(target, ms) {
+    const el = this.calEl;
+    if (!el || !el.isConnected) return;
+    cancelAnimationFrame(this.calRaf);
+    const dist = target - el.scrollTop;
+    if (Math.abs(dist) > CAL_JUMP * CAL_ROW) el.scrollTop = target - Math.sign(dist) * CAL_JUMP * CAL_ROW;
+    const from = el.scrollTop, t0 = performance.now(), dur = ms || CAL_ANIM_MS;
+    this.calAnimating = true;   // no snapping while it moves
+    const step = () => {
+      const k = Math.min(1, (performance.now() - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      el.scrollTop = from + (target - from) * e;
+      if (k < 1) this.calRaf = requestAnimationFrame(step); else this.calAnimating = false;
+    };
+    this.calRaf = requestAnimationFrame(step);
+  }
+  onCalToday = () => { this.calReveal(this.today, 'today'); const el = this.rootRef.current && this.rootRef.current.querySelector('.picker input'); if (el) el.focus(); };
+  calVM(p, T) {
+    const mode = this.cv('cal'), top = p.top || 0, W0 = this.calW0();
+    const first = Math.max(0, Math.floor(top / CAL_ROW) - CAL_BUF), last = Math.min(CAL_BACK + CAL_FWD, Math.ceil(top / CAL_ROW) + CAL_ROWS + CAL_BUF);
+    // The month in view: the one with the most days in the six rows showing (at a tie, the later).
+    const r0 = Math.round(top / CAL_ROW), tally = {};
+    for (let i = 0; i < CAL_ROWS * 7; i++) { const m = addDays(W0, r0 * 7 + i).slice(0, 7); tally[m] = (tally[m] || 0) + 1; }
+    const focus = Object.keys(tally).sort((a, b) => tally[b] - tally[a] || (a < b ? 1 : -1))[0];
+    const weeks = [];
+    for (let i = first; i < last; i++) {
+      const days = [];
+      for (let j = 0; j < 7; j++) {
+        const dd = addDays(W0, i * 7 + j), m = dOf(dd).getMonth(), one = dd.slice(8) === '01';
+        const cls = 'd' + (mode === 'sticky' && dd.slice(0, 7) !== focus ? ' out' : '') + (mode === 'tints' && m % 2 === 1 ? ' band' : '') + (one && mode === 'inline' ? ' first' : '')
+          + (dd === T ? ' today' : '') + (dd === p.cur ? ' val' : '') + (dd === p.other ? ' other ' + (p.field === 'when' ? 'o-dl' : 'o-when') : '') + (dd === p.hot && !p.none ? ' hot' : '');
+        days.push({ date: dd, label: String(+dd.slice(8)), cls, ml: one && mode === 'inline', mlText: m === 0 ? 'Jan \u2019' + dd.slice(2, 4) : MO[m] });
+      }
+      weeks.push({ style: 'transform: translateY(' + i * CAL_ROW + 'px)', days });
+    }
+    const tw = this.calWeek(T), inView = tw >= top / CAL_ROW - 2.5 && tw <= top / CAL_ROW + CAL_ROWS + 1.5;   // Today shows once today is more than two weeks out of view
+    const fd = dOf(focus + '-01');
+    return {
+      paged: false, scroll: true, csCls: 'cs cs-' + mode, hasHead: mode !== 'inline',
+      csvCls: 'csv', spaceStyle: 'height: ' + (CAL_BACK + CAL_FWD) * CAL_ROW + 'px', weeks,
+      monthTitle: MOL[fd.getMonth()] + ' ' + fd.getFullYear(),
+      todayBtn: !inView && mode !== 'inline', todayFloat: !inView && mode === 'inline', todayArrow: tw * CAL_ROW < top ? '\u2191' : '\u2193',
+    };
+  }
 
   // Notice
   onNoticeEnter = () => { this.noticeHover = true; clearTimeout(this.noticeTimer); };
@@ -2615,6 +2730,7 @@ class Component extends DCLogic {
   onStage = (e) => {
     const k = e.currentTarget.dataset.k, v = e.currentTarget.dataset.v;
     if (k === 'theme') this.instant({ theme: v }); else if (k === 'editTasks') this.setEditTasks(v);
+    else if (k.startsWith('cv:')) this.setState({ cv: { ...this.state.cv, [k.slice(3)]: v } });   // §25's choices
     else if (k === 'reset') { const seed = makeSeed(this.today); this.undoStack = []; this.redoStack = []; this.instant({ lists: seed.lists, tasks: seed.tasks, sel: [], edit: null, picker: null, menu: null, pins: {}, route: this.routeFromProp(this.props.start, seed.lists), detail: 'closed', notice: null, sbVisible: true, collapsed: {}, scrolled: false }); }
     else if (k === 'keys') this.setState({ keysOpen: !this.state.keysOpen });
     this.focusRoot();
@@ -2924,9 +3040,10 @@ class Component extends DCLogic {
         hint: p.none || !p.other ? '' : p.field === 'when' && hot > p.other ? 'after the deadline' : p.field === 'deadline' && hot < p.other ? 'before the When' : '',
         // With a note, it takes the relative words' place, so the line stays one line.
         preview: p.none ? 'No date matches “' + p.text.trim() + '”' : (p.field === 'deadline' ? 'Due ' : '') + longDate(hot, T) + (pkHint(p, hot) ? '' : ' · ' + (p.field === 'deadline' && hot < T ? dueRelText(hot, T) : relText(hot, T))), previewCls: 'pvt' + (p.none ? ' none' : ''),
-        isWhen: p.field === 'when', isDl: p.field === 'deadline',
+        isWhen: p.field === 'when', isDl: p.field === 'deadline', paged: true, scroll: false,
         autoFocus: !p.demo,
       };
+      if (this.cv('cal') !== 'pages') Object.assign(pk, this.calVM(p, T));
     }
 
     const notice = s.notice ? { show: true, cls: 'notice' + (s.notice.out ? ' out' : ''), text: s.notice.text, undo: s.notice.undo } : { show: false };
@@ -2936,6 +3053,7 @@ class Component extends DCLogic {
     const stage = { show: stageOn,
       theme: seg('theme', [['dark', 'Dark'], ['light', 'Light']]),
       editTasks: [['detail', 'Open in detail pane'], ['list', 'Rename in the list']].map(([v, label]) => ({ k: 'editTasks', v, label, cls: this.editTasksMode() === v ? 'on' : '' })),
+      vars: Object.keys(CAL_OPTS).map((k) => ({ label: CAL_LABEL[k], opts: CAL_OPTS[k].map(([v, label]) => ({ k: 'cv:' + k, v, label, cls: this.cv(k) === v ? 'on' : '' })) })),
     };
 
     return {
@@ -2960,7 +3078,7 @@ class Component extends DCLogic {
       onSidebarDown: this.onSidebarDown, onSidebarCtx: this.onSidebarCtx, onSbRowDown: this.onSbRowDown, onSbRowMove: this.onSbRowMove, onSbRowUp: this.onSbRowUp, onSbRowDbl: this.onSbRowDbl, onSbRowCtx: this.onSbRowCtx,
       onArchiveLabel: this.onArchiveLabel, onNewListBtn: this.onNewListBtn, onNewTaskBtn: this.onNewTaskBtn, onToggleDetail: this.onToggleDetail, onToggleSidebar: this.onToggleSidebar, onUnarchive: this.onUnarchive,
       onMenuEnter: this.onMenuEnter, onMenuLeave: this.onMenuLeave, onMenuClick: this.onMenuClick,
-      onPickerText: this.onPickerText, onPickerKey: this.onPickerKey, onPickDay: this.onPickDay, onPickQuick: this.onPickQuick, onPickSug: this.onPickSug, onSugEnter: this.onSugEnter, onPickMonth: this.onPickMonth, onPickerDown: this.onPickerDown,
+      onPickerText: this.onPickerText, onPickerKey: this.onPickerKey, onPickDay: this.onPickDay, onCalToday: this.onCalToday, onPickQuick: this.onPickQuick, onPickSug: this.onPickSug, onSugEnter: this.onSugEnter, onPickMonth: this.onPickMonth, onPickerDown: this.onPickerDown,
       onNoticeEnter: this.onNoticeEnter, onNoticeLeave: this.onNoticeLeave, onNoticeUndo: this.onNoticeUndo,
       tipIn: this.tipIn, tipOut: this.tipOut, onStage: this.onStage,
       onSbDivDown: this.onSbDivDown, onDpDivDown: this.onDpDivDown, onSbDivDbl: this.onSbDivDbl, onDpDivDbl: this.onDpDivDbl,
@@ -3730,6 +3848,18 @@ class Component extends DCLogic {
     if (kind === 'tipwhen' || kind === 'tipdl') {   // a chip's tooltip, held open
       const el = this.rootRef.current && this.rootRef.current.querySelector('.lp .chip[data-id="' + t.id + '"][data-field="' + (kind === 'tipwhen' ? 'when' : 'deadline') + '"]');
       if (el) { const r = this.rectIn(el); this.setState({ tip: { text: el.dataset.tip, keys: '', x: this.tipX(r, el.dataset.tip), y: r.bottom + 6 } }); }
+      return;
+    }
+    if (/^cal/.test(kind)) {   // §25: the When popover open; scrolled five months on; or typed "dec 24"
+      this.select([t.id]);
+      setTimeout(() => {
+        this.openPickerForRows('when', [t.id]);
+        const p = this.state.picker;
+        if (!p) return;
+        if (kind === 'calfar') { const top = p.top + 22 * CAL_ROW; this.setState({ picker: { ...p, demo: true, top } }); setTimeout(() => { if (this.calEl) this.calEl.scrollTop = top; }, 40); }
+        else if (kind === 'caltyped') { const hot = parseDate('dec 24', this.today); this.setState({ picker: { ...p, demo: true, text: 'dec 24', hot, month: hot.slice(0, 7) } }); this.calReveal(hot, 'typed'); }
+        else this.setState({ picker: { ...p, demo: true } });
+      }, 30);
       return;
     }
     const field = kind === 'pickwhen' ? 'when' : 'deadline', text = kind === 'pickwhen' ? 'fri' : 'sun';

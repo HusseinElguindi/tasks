@@ -517,3 +517,26 @@
 .tk .cal .d.other.o-when::after { background: var(--ink-3); }
 .tk .pv .pvh { margin-left: 6px; color: var(--attn); }
 .tk .pv .pvh::before { content: "· "; color: var(--ink-3); }
+
+/* ---------- A scrolling calendar in the date popover (INTERACTIONS-v2 §25, proposed) ----------
+   One column of weeks, 30pt a row, six in view (180pt, the paged grid's height). Rows are absolutely placed in a
+   spacer as tall as the whole range; only those in view and four either side exist. Snapping to weeks (the strip's
+   choice) is done in code when the scroll comes to rest. Month labels: Sticky (the header names the month under the
+   view, the one with the most days showing, and the other months' days dim, as the paged grid dims days outside its
+   month); Inline (no header: the 1st of each month carries its name, January its year; Today sits in the footer);
+   Tinted (the header, and every other month on a faint band). Today, in the header, shows when today is more than two
+   weeks out of view, with an arrow toward it. */
+.tk .cs { position: relative; }
+.tk .tdy { margin-left: auto; height: 20px; padding: 0 8px; border-radius: 10px; display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 500; color: var(--accent-text); background: var(--accent-tint); }
+.tk .tdy .ar { font-size: 10px; }
+.tk .pv .tdy.fl { margin-left: 0; }   /* Inline has no header: Today sits in the footer, before ↩ */
+.tk .csv { position: relative; height: 180px; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; overflow-anchor: none; scrollbar-width: none; }
+.tk .csv::-webkit-scrollbar { display: none; }
+.tk .csv .csp { position: relative; }
+.tk .csv .wk { position: absolute; left: 0; right: 0; top: 0; height: 30px; row-gap: 0; }
+.tk .csv .d { height: 28px; margin: 1px 0; }
+.tk .cs-tints .csv .d.band::before { content: ""; position: absolute; left: 0; right: 0; top: -1px; bottom: -1px; background: var(--hover); z-index: -1; }
+.tk .cs-inline .csv .d.first { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+.tk .cs-inline .csv .d .ml { font: 600 8.5px/9px var(--font); color: var(--accent-text); white-space: nowrap; }
+.tk .cs-inline .csv .d.first .dn { line-height: 12px; }
+.tk .cs-inline .csv .d.hot .ml { color: inherit; }
