@@ -7,7 +7,10 @@ The SwiftUI client from `docs/SPEC.md` (§8–§9) in the A1 · Split design (`d
 | `TasksCore/` | Swift package: ops and the reducer, fractional index ordering, the Today predicate, the projection (pending overlay, maintained indexes, per-entity `@Observable` models), persistence (`log.jsonl`, `pending.jsonl`, `snapshot.json`, 409 recovery) and the sync client. No UI. |
 | `Tasks/` | The macOS 14+ app: views only, rebuilt for v2 from `design/prototype-v2/` (`design/INTERACTIONS-v2.md`). `Theme/` has the prototype's tokens (`TK`) and the AppKit drawing pieces; `Window/` the window state, every action, the menus and the panes' chrome; `TaskList/` and `Sidebar/` are AppKit lists; `Detail/` and `Overlay/` (date popover, notice, tooltip, the drag copy) are SwiftUI with AppKit fields. `Pane/` is the v1 theme, still used by Settings. |
 | `project.yml` | XcodeGen spec for `Tasks.xcodeproj` (generated, not checked in). |
+| `TasksCore/Sources/TasksCLI/` | `tasks`, the agent CLI (`docs/SDK-PLAN.md`): its own replica of the log on `TasksCore`. See below. |
 | `Scripts/e2e.sh` | The end-to-end check against a local `wrangler dev`. |
+| `Scripts/e2e-cli.sh` | The same for the CLI alongside a scratch Debug app. |
+| `Scripts/install-cli.sh` | Builds `tasks` in release, signs it, and copies it to `~/.local/bin` (`--prefix` to change). |
 | `Scripts/make-signing-identity.sh` | Makes the local signing identity once per Mac (see Signing). |
 | `Signing.xcconfig` | The signing identity: ad hoc, or the local one once the script has run. |
 
@@ -86,6 +89,22 @@ swift test -c release -Xswiftc -enable-testing --filter BenchmarkTests  # §9 bu
 Benchmarks on an M5 Pro (release, 10k tasks / 100k ops): launch from snapshot 22 ms (budget 100), snapshot decode
 18 ms (60), local edit 3 µs (1 ms), 1,000 interleaved remote ops 0.9 ms (10), reorder in a 2,000-task list
 0.2 ms (1), midnight rebuild 0.5 ms (5), full replay of 100k ops 0.32 s.
+
+## The agent CLI
+
+`tasks` is another replica, like a second Mac: its own files in `~/Library/Application Support/Tasks CLI/<host>/`
+(never the app's), the app's `Store` on them, and the same sync. `tasks help` lists every command; `docs/AGENTS.md`
+is the guide for agents.
+
+```sh
+swift build --package-path TasksCore --product tasks       # debug build: only talks to localhost
+Scripts/install-cli.sh                                     # release build on PATH
+```
+
+It reads the server from `TASKS_URL` (or a `TASKS_URL=` line in `~/.tasks-sync.env`) and the token from
+`TASKS_TOKEN`, then `API_TOKEN` in that file, then the app's Keychain item (only at a terminal). `swift test` runs
+its tests (`TasksCLITests`, against an in-memory server); `Scripts/e2e-cli.sh` runs it with a Debug app against
+`wrangler dev`.
 
 ## Debug-only launch arguments
 
