@@ -18,6 +18,8 @@ import TasksCore
 ///     picker:when|deadline   (opens the date popover for the selection)
 ///     type:TEXT   (types each character as a key press; \n and \t as Return and Tab)
 ///     mktask:TITLE|NOTES   (a new task with notes, in the open list or Inbox)
+///     menukey:z|Z:/path.txt   (the main menu's ⌘z, or ⇧⌘z for Z, sent as with the window key; appends the item and
+///     who took it)   event   (a pass of NSApp's event loop, as real input makes: it closes undo groups)
 ///     ncaret:A[,B]   (the notes take the keys with A..B selected)   nbox:OFFSET   (a click on the checklist box there)
 ///     nlog:/path.txt   (appends the notes' text, selection, hidden marks, session and the task's stored notes)
 ///     watch:MS:/path.txt   (for MS ms, checks the traffic lights on every turn of the run loop, before each commit,
@@ -172,6 +174,17 @@ enum DebugScript {
                     // background app has no key window for the menu's action to find.
                     let um = w.firstResponder?.undoManager ?? w.undoManager
                     if parts[0] == "undo" { um?.undo() } else { um?.redo() }
+                case "event":
+                    // An application-defined event through NSApp's queue: a pass of the event loop, as real input makes.
+                    if let e = NSEvent.otherEvent(with: .applicationDefined, location: .zero, modifierFlags: [], timestamp: 0,
+                                                  windowNumber: w.windowNumber, context: nil, subtype: 0, data1: 0, data2: 0) {
+                        NSApp.postEvent(e, atStart: false)
+                    }
+                case "menukey":
+                    // menukey:z|Z:/path.txt: the main menu's ⌘z (⇧⌘ for Z) run as AppKit would for a key window.
+                    let a = arg.split(separator: ":", maxSplits: 1).map(String.init)
+                    guard a.count == 2 else { continue }
+                    append(menuKey(w, a[0]), to: a[1])
                 case "nfrag":
                     // Each notes line's kind, characters and line fragment rects (container coordinates).
                     guard let n = notesView(w), let lm = n.layoutManager, let tc = n.textContainer else { continue }
@@ -197,7 +210,7 @@ enum DebugScript {
                     }
                     let stored = window.selection.first.flatMap { model.store?.projection.task($0)?.notes } ?? "-"
                     let sel = n.selectedRange()
-                    let line = "notes=\(n.string.debugDescription) sel=\(sel.location),\(sel.length) hidden=\(hidden) editing=\(window.detailEditing.map { "\($0)" } ?? "-") stored=\(stored.debugDescription) responder=\(w.firstResponder === n) inert=\(n.inert)\n"
+                    let line = "notes=\(n.string.debugDescription) sel=\(sel.location),\(sel.length) hidden=\(hidden) editing=\(window.detailEditing.map { "\($0)" } ?? "-") stored=\(stored.debugDescription) responder=\(w.firstResponder === n) inert=\(n.inert) group=\(n.undoManager?.groupingLevel ?? -1)\n"
                     if let h = FileHandle(forWritingAtPath: arg) { h.seekToEndOfFile(); h.write(Data(line.utf8)); h.closeFile() }
                     else { try? line.write(toFile: arg, atomically: true, encoding: .utf8) }
                 case "sidebar":
@@ -355,6 +368,54 @@ enum DebugScript {
                 }
             }
         }
+    }
+
+    private static func append(_ s: String, to path: String) {
+        let line = s + "\n"
+        if let h = FileHandle(forWritingAtPath: path) { h.seekToEndOfFile(); h.write(Data(line.utf8)); h.closeFile() }
+        else { try? line.write(toFile: path, atomically: true, encoding: .utf8) }
+    }
+
+    /// The menu item a ⌘ key equivalent picks, sent as AppKit sends it with the window key: its own target, or the
+    /// first in the first responder's chain (then the window's delegate, the app and its delegate) that takes the
+    /// action. A background app has no key window, so the real menu can't find one. Returns what happened.
+    private static func menuKey(_ w: NSWindow, _ key: String) -> String {
+        let shift = key != key.lowercased()
+        func find(_ m: NSMenu) -> NSMenuItem? {
+            for i in m.items {
+                if let s = i.submenu, let f = find(s) { return f }
+                let mask = i.keyEquivalentModifierMask
+                let eqShift = mask.contains(.shift) || i.keyEquivalent != i.keyEquivalent.lowercased()
+                if i.keyEquivalent.lowercased() == key.lowercased(), mask.contains(.command), eqShift == shift,
+                   !mask.contains(.option), !mask.contains(.control) { return i }
+            }
+            return nil
+        }
+        guard let menu = NSApp.mainMenu, let item = find(menu) else { return "menukey \(key): no item" }
+        guard let action = item.action else { return "menukey \(key): '\(item.title)' has no action" }
+        menu.update()
+        var handler: AnyObject? = item.target
+        if handler == nil {
+            var r: NSResponder? = w.firstResponder
+            while let x = r, !x.responds(to: action) { r = x.nextResponder }
+            handler = r
+            for o in [w.delegate as AnyObject?, NSApp, NSApp.delegate as AnyObject?] where handler == nil {
+                if let o, o.responds(to: action) { handler = o }
+            }
+        }
+        var enabled = item.isEnabled
+        let itemEnabled = item.isEnabled
+        if let v = handler as? NSMenuItemValidation { enabled = enabled && v.validateMenuItem(item) }
+        else if let v = handler as? NSUserInterfaceValidations { enabled = enabled && v.validateUserInterfaceItem(item) }
+        var out = "menukey \(key): '\(item.title)' \(action) target=\(item.target.map { "\(type(of: $0))" } ?? "nil")"
+        out += " handler=\(handler.map { "\(type(of: $0))" } ?? "none") enabled=\(enabled) (item \(itemEnabled))"
+        out += " responder=\(w.firstResponder.map { "\(type(of: $0))" } ?? "none") um=\(w.firstResponder?.undoManager.map { "\($0.undoActionName)|\($0.canUndo)" } ?? "-")"
+        func id(_ o: AnyObject?) -> String { o.map { String(UInt(bitPattern: ObjectIdentifier($0).hashValue) % 100000) } ?? "nil" }
+        out += " ums: responder=\(id(w.firstResponder?.undoManager)) handler=\(id((handler as? NSResponder)?.undoManager)) window=\(id(w.undoManager))"
+        let before = (w.firstResponder as? NSTextView)?.string
+        if enabled, let handler { NSApp.sendAction(action, to: handler, from: item) }
+        if let before { out += " text=\(before.debugDescription)→\(((w.firstResponder as? NSTextView)?.string ?? "-").debugDescription)" }
+        return out
     }
 
     private static func snapshot(_ w: NSWindow, to path: String) {

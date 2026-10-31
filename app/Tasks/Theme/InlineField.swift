@@ -106,12 +106,43 @@ final class InlineField: NSTextField, NSTextFieldDelegate {
 
     func controlTextDidEndEditing(_ obj: Notification) { onEnd?(stringValue) }
 
-    // The field's own undo (§9: inside a text field ⌘Z is the field's).
-    @objc func undoManager(for view: NSTextView) -> UndoManager? { fieldUndo }
+    // The field's own undo (§9: inside a text field ⌘Z is the field's). The selector is spelled out: inferred, it's
+    // `undoManagerFor:`, which the field editor never calls, so its typing went to another undo manager (v2
+    // feedback 13).
+    @objc(undoManagerForTextView:) func undoManager(for view: NSTextView) -> UndoManager? { fieldUndo }
     override var undoManager: UndoManager? { fieldUndo }
+    @objc func undo(_ sender: Any?) { FieldUndo.undo(fieldUndo) }
+    @objc func redo(_ sender: Any?) { FieldUndo.redo(fieldUndo) }
+    override func validateUserInterfaceItem(_ item: NSValidatedUserInterfaceItem) -> Bool {
+        FieldUndo.validate(item, fieldUndo) ?? super.validateUserInterfaceItem(item)
+    }
 
     // A press inside the field moves the caret and never ends the edit (§7).
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+}
+
+/// ⌘Z and ⇧⌘Z in a text field with its own undo manager (§9: inside a text field ⌘Z is the field's own undo). The field
+/// takes `undo:` and `redo:` itself, ahead of the window in the responder chain: SwiftUI's window answers them from the
+/// app's undo manager for some first responders, and greyed Undo out in the notes and the date field while they had
+/// typing to undo (v2 feedback 13). With nothing left to undo they're off, as in the prototype's browser fields.
+@MainActor
+enum FieldUndo {
+    static func undo(_ um: UndoManager) { if um.canUndo { um.undo() } }
+    static func redo(_ um: UndoManager) { if um.canRedo { um.redo() } }
+
+    /// Undo's and Redo's state, titled as the Edit menu titles them ("Undo Typing"); nil for any other item.
+    static func validate(_ item: NSValidatedUserInterfaceItem, _ um: UndoManager) -> Bool? {
+        switch item.action {
+        case Selector(("undo:")):
+            (item as? NSMenuItem)?.title = um.undoMenuItemTitle
+            return um.canUndo
+        case Selector(("redo:")):
+            (item as? NSMenuItem)?.title = um.redoMenuItemTitle
+            return um.canRedo
+        default:
+            return nil
+        }
+    }
 }
 
 /// The labels a rename field replaces are `CATextLayer`s, which draw text without font smoothing; AppKit's field

@@ -624,9 +624,16 @@ private final class DateTypingField: NSTextField, NSTextFieldDelegate {
         onText?(stringValue)
     }
 
-    // The field's own undo (§9: inside a text field ⌘Z is the field's).
-    @objc func undoManager(for view: NSTextView) -> UndoManager? { fieldUndo }
+    // The field's own undo (§9: inside a text field ⌘Z is the field's). The selector is spelled out: inferred, it's
+    // `undoManagerFor:`, which the field editor never calls, so its typing went to another undo manager (v2
+    // feedback 13).
+    @objc(undoManagerForTextView:) func undoManager(for view: NSTextView) -> UndoManager? { fieldUndo }
     override var undoManager: UndoManager? { fieldUndo }
+    @objc func undo(_ sender: Any?) { FieldUndo.undo(fieldUndo) }
+    @objc func redo(_ sender: Any?) { FieldUndo.redo(fieldUndo) }
+    override func validateUserInterfaceItem(_ item: NSValidatedUserInterfaceItem) -> Bool {
+        FieldUndo.validate(item, fieldUndo) ?? super.validateUserInterfaceItem(item)
+    }
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }

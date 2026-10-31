@@ -22,6 +22,12 @@ final class NotesTextView: NSTextView {
     private var tracking: NSTrackingArea?
 
     override var undoManager: UndoManager? { notesUndo }
+    /// ⌘Z and ⇧⌘Z are the notes' own (`FieldUndo`), never the window's.
+    @objc func undo(_ sender: Any?) { FieldUndo.undo(notesUndo) }
+    @objc func redo(_ sender: Any?) { FieldUndo.redo(notesUndo) }
+    override func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        FieldUndo.validate(item, notesUndo) ?? super.validateMenuItem(item)
+    }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func hitTest(_ point: NSPoint) -> NSView? { inert ? nil : super.hitTest(point) }
     override var acceptableDragTypes: [NSPasteboard.PasteboardType] { [] }
@@ -648,6 +654,13 @@ struct NotesField: NSViewRepresentable {
             ts.endEditing()
             // Numbers and quote bars further down may change without their lines moving.
             v.needsDisplay = true
+            // An edit that leaves the caret in a list's prefix (undoing an indent puts it at the line's start) puts it
+            // at the item's text, as a move there would; the snap waits for this parse.
+            let sel = v.selectedRange()
+            if sel.length == 0, let l = document.line(at: sel.location), l.isListItem, sel.location >= l.start,
+               sel.location < l.textStart {
+                v.setSelectedRange(NSRange(location: l.textStart, length: 0))
+            }
             if wantReveal != document.reveal { setReveal(wantReveal) }
         }
 
@@ -719,8 +732,11 @@ struct NotesField: NSViewRepresentable {
 
         func textView(_ textView: NSTextView, willChangeSelectionFromCharacterRange old: NSRange,
                       toCharacterRange new: NSRange) -> NSRange {
-            guard new.length == 0, let l = document.line(at: new.location), l.isListItem, new.location < l.textStart,
-                  new.location >= l.start else { return new }
+            // Mid-edit the parse is a keystroke behind: typing at the end of a line put the caret one line on, at
+            // what the stale parse took for the next item's prefix, and snapped it past that (v2 feedback 13). An
+            // edit's caret is snapped in `restylePending`, against the new parse.
+            guard pending == nil, new.length == 0, let l = document.line(at: new.location), l.isListItem,
+                  new.location < l.textStart, new.location >= l.start else { return new }
             // Moving left from the item's text goes on to the line before; anything else lands at the text.
             let keyLeft = NSApp.currentEvent?.type == .keyDown && old.location >= l.textStart && old.length == 0
             if keyLeft && l.start > 0 { return NSRange(location: l.start - 1, length: 0) }

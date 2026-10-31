@@ -8,6 +8,7 @@ import TasksCore
 ///
 ///     act:go:N|<view name>   act:hints:on|off   act:detail   (Show or Hide Details)
 ///     act:select:<title>[|<title>…]   act:complete   act:delete   act:putback
+///     act:rename:<title>   act:renamelist:<list>   act:newlist   (the rename fields)
 ///     act:putbackin:<list>   act:move:<list>   act:when:+N|none   act:deadline:+N|none   act:moveby:+1|-1
 ///     act:new   act:newday:+N   act:newin:<list>   act:title:<text>   act:commit   act:undo   act:redo
 ///     act:typesel:<letters>   (type-select in the sidebar)   act:menu:/path.txt   (the selection's context menu)
@@ -32,6 +33,9 @@ enum DebugViews {
             else if let r = WindowState.Route.sidebarOrder(p).first(where: { a.routeName($0).lowercased() == rest.lowercased() }) { a.go(r) }
         case "hints": w.cmdHints = rest == "on"
         case "detail": a.toggleDetail()
+        case "rename": if let t = task(rest) { a.startRename(t) }
+        case "renamelist": if let l = list(rest) { a.startListRename(l) }
+        case "newlist": a.newList()
         case "select": a.select(rest.split(separator: "|").compactMap { task(String($0)) })
         case "complete": a.toggleComplete()
         case "delete": a.delete()

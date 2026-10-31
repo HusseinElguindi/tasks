@@ -307,6 +307,27 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
       Its line numbers are unchanged.
     - VoiceOver doesn't announce the header (it's not in the sidebar's accessibility elements).
 
+13. **⌘Z in the notes and the text fields.** Edit ▸ Undo sends `undo:` up the chain from the first responder, and
+    nothing took it before SwiftUI's window, which answered from the app's undo manager for the notes and the date
+    field: Undo was greyed out while they had typing to undo. The notes, the rename field (`InlineField`: the detail
+    title, a row's rename, a list's) and the date field now take `undo:` and `redo:` themselves (`FieldUndo`), from
+    their own undo manager, titled "Undo Typing" and off with nothing left to undo, as a browser field does. Outside a
+    field ⌘Z is the app's undo as before; when the notes commit, the session is one "Edit Notes".
+    - `InlineField` and the date field named their `undoManagerForTextView:` without the selector, so Swift exported
+      `undoManagerFor:`, the field editor never asked, and the typing went to an undo manager of AppKit's. The selector
+      is spelled out now, so it lands in the field's own.
+    - Found on the way: typing at the end of a line followed by a list item put the caret on the next line from the
+      second keystroke (the prefix snap ran on the parse from before the keystroke). The snap waits for the parse now.
+    - Checked in-process, through the menu's own path: `menukey:z` finds Edit ▸ Undo by its key equivalent, validates
+      it and sends it as AppKit does with the window key (a background app has no key window), and `event` gives
+      NSApp's event loop a pass, which closes undo groups as real input does. In the notes: Return continuing a list,
+      two typing runs 1.7 s apart, a box toggle, ⌘B and a paste undo one at a time and redo in order, and Undo is off
+      after the last; Esc then leaves one "Undo Edit Notes" that restores the original. The title, a list's rename, a
+      row's rename (`-taskEditing inline`) and the date field undo and redo their typing, none of it carries into the
+      next edit, and ⌘Z outside them undoes "Complete".
+    - Not checked: the real key events (the menu's key equivalent from the keyboard, with the app active), and the
+      Settings window's server URL field (SwiftUI's own field and undo; typing there writes the shared dev defaults).
+
 ## Markdown notes (design/MARKDOWN.md)
 
 Built to the spec and the prototype (`design/prototype-markdown/`); §11 of the spec lists where the build differs.
