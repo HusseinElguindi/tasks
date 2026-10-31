@@ -65,6 +65,9 @@ public final class Store {
 
     public private(set) var syncState: SyncState = .off
     public private(set) var recovery: RecoveryProgress?
+    /// How many changes wait to go out (`projection.pending`, which isn't observed): the sync indicator's "3 changes
+    /// waiting" (INTERACTIONS-v2 §26).
+    public private(set) var pendingCount = 0
     /// A non-blocking notice, e.g. "A change couldn't be saved."
     public var notice: String?
 
@@ -106,6 +109,12 @@ public final class Store {
         }
         if case .fullReplay = loaded.source { writeSnapshot() }
         seedInboxIfMissing()
+        countPending()
+    }
+
+    private func countPending() {
+        let n = projection.pending.count
+        if n != pendingCount { pendingCount = n }
     }
 
     /// Loads the data directory off the main thread, then builds the projection.
@@ -155,6 +164,7 @@ public final class Store {
         }
         let pending = ops.map(PendingOp.init)
         projection.perform(pending)
+        countPending()
         for p in pending { persistence.appendPending(p.json) }
         if let undoManager, !inverses.isEmpty {
             let templates = Array(inverses.reversed())
@@ -350,6 +360,7 @@ public final class Store {
         guard first.seq == cursor, last.seq == cursor + page.entries.count - 1 else { return false }
         let pendingBefore = projection.pending.count
         projection.confirm(page.entries, touchingAll: recovery != nil)
+        countPending()
         cursor = last.seq + 1
         base = last.hash
         persistence.appendLog(page.rawEntries, nextCursor: cursor)
@@ -367,6 +378,7 @@ public final class Store {
     /// `invalid_op`: move the op to rejected.jsonl, rebuild its entity, tell the user, retry without it.
     private func reject(_ p: PendingOp, _ error: ErrorBody) {
         projection.reject(opID: p.op.id)
+        countPending()
         persistence.appendRejected(p.json, error: error, at: nowMs)
         persistence.rewritePending(projection.pending.map(\.json))
         if recoveryIDs.remove(p.op.id) != nil { recovery?.total -= 1 }
@@ -383,6 +395,7 @@ public final class Store {
         var seen = Set(queue.map(\.op.id))
         let later = projection.pending.dropFirst(before.count).filter { seen.insert($0.op.id).inserted }
         projection.recover(pending: queue + later)
+        countPending()
         cursor = 0
         base = nil
         inServerLog = []
