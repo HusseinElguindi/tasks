@@ -172,7 +172,7 @@
 .tk .row .ri { flex: 1; min-width: 0; margin-left: 10px; height: 30px; color: var(--ink); }
 .tk .row.done .tt { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-q); }
 .tk .row .where { color: var(--ink-3); font-size: 12px; margin-left: 8px; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
-.tk .chips { display: flex; align-items: center; gap: 6px; flex: none; margin-left: 8px; }
+.tk .chips { position: relative; display: flex; align-items: center; gap: 6px; flex: none; margin-left: 8px; }   /* positioned: above the row's ::before hit layer, or a chip can't be pressed (§24) */
 .tk .open { position: relative; width: 22px; height: 22px; margin-left: 4px; border-radius: 6px; display: grid; place-items: center; color: var(--ink-3); opacity: 0;
   transition: opacity var(--hover-out), background-color var(--icon), color var(--icon); }
 .tk .row:hover .open { opacity: 1; transition: opacity var(--hover-in), background-color var(--icon), color var(--icon); }
@@ -479,3 +479,40 @@
 /* A heading's copy while dragged: its name and, in the badge, its open tasks (they fold into it). */
 .tk .lifted.hlift .check { display: none; }
 .tk .lifted.hlift .tt { margin-left: 0; font-weight: 600; }
+
+/* ---------- When and Deadline (proposed: INTERACTIONS-v2 §24) ---------- */
+/* Urgency is the deadline's tone, in every variant: late (past) danger, due (today) attention, soon (tomorrow) an
+   attention flag on the neutral look, later neutral. */
+.tk .chip .ct { white-space: nowrap; }
+.tk .chip.soon .i { color: var(--attn); }   /* soon: only the flag is tinted, so today stays the one amber capsule */
+.tk .chip.open-picker .i { color: inherit; }
+/* A · Pills: both dates are capsules (as before, with the tones above). */
+/* B · Quiet When: When is text (glyph and date in ink-tertiary, no capsule); only a deadline is a capsule, so a
+   capsule on a row always means something is due. Hover and an open popover still show the capsule. */
+.tk.dv-quiet .chip.when:not(.lg), .tk.dv-text .chip:not(.lg) { background: transparent; padding: 0 5px; }
+.tk.dv-quiet .chip.when:not(.lg), .tk.dv-text .chip.when:not(.lg) { color: var(--ink-3); }
+.tk.dv-quiet button.chip.when:not(.lg):hover, .tk.dv-text button.chip:not(.lg):hover { filter: none; background: var(--hover); color: var(--ink-2); }
+/* C · Text: no capsules at all; a deadline is ink-secondary, and its tone colours only its text. */
+.tk.dv-text .chip.dl.late:not(.lg) { color: var(--danger); }
+.tk.dv-text .chip.dl.due:not(.lg) { color: var(--attn); }
+.tk.dv-quiet .chip.when.open-picker:not(.lg), .tk.dv-text .chip.open-picker:not(.lg) { background: var(--accent-tint); color: var(--accent-text); }
+/* The overdue cue on the row (off by default): the checkbox's ring in danger, or a 2pt danger edge inside the row's
+   leading edge. Only a past deadline on an open task. */
+.tk .row .edge { display: none; }
+.tk.cue-check .row.overdue .check:not(.on) { box-shadow: inset 0 0 0 1.5px var(--danger); }
+.tk.cue-edge .row.overdue .edge { display: block; position: absolute; left: 3px; top: 8px; bottom: 8px; width: 2px; border-radius: 1px; background: var(--danger); }
+/* Narrow widths, as the app built v2 feedback 16 (f08ca77), approximated: the title keeps up to 120pt with its hint;
+   dates keep their size and drop from the first (the When before the deadline); the list name truncates (fading
+   when cut); only then does the title go under 120pt. A deadline always shows. Nothing overlaps. */
+.tk .lp .row .ttw { flex: 1 1 0; min-width: 120px; }
+.tk .lp .row .where { flex: 0 1 auto; min-width: 0; overflow: hidden; }
+.tk .lp .row .where[data-clip] { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 16px), transparent); }
+.tk .lp .row .chips { flex: none; }
+.tk .lp .row .chip.when[data-drop] { display: none; }
+.tk .lp .row[data-tight] .ttw { min-width: 0; }
+/* The detail pane: the relative words take the deadline's tone. The popover marks the other date by kind. */
+.tk .prow .rel.t-late { color: var(--danger); }
+.tk .prow .rel.t-due { color: var(--attn); }
+.tk .cal .d.other.o-when::after { background: var(--ink-3); }
+.tk .pv .pvh { margin-left: 6px; color: var(--attn); }
+.tk .pv .pvh::before { content: "· "; color: var(--ink-3); }

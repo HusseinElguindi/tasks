@@ -92,13 +92,13 @@ body{margin:0}
 </sc-for>
 <sc-for list="{{rows}}" as="r" hint-placeholder-count="0">
 <div class="{{r.cls}}" style="{{r.style}}" data-id="{{r.id}}" onPointerDown="{{onRowDown}}" onPointerMove="{{onRowMove}}" onPointerUp="{{onRowUp}}" onPointerCancel="{{onRowUp}}" onDoubleClick="{{onRowDbl}}" onContextMenu="{{onRowCtx}}">
-<button class="{{r.checkCls}}" type="button" data-id="{{r.id}}" aria-label="{{r.checkLabel}}" onPointerDown="{{stopPD}}" onClick="{{onCheck}}"><svg class="ck" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.8 8.4l2.7 2.7 5.7-6.2"></path></svg></button>
+<span class="edge" aria-hidden="true"></span><button class="{{r.checkCls}}" type="button" data-id="{{r.id}}" aria-label="{{r.checkLabel}}" onPointerDown="{{stopPD}}" onClick="{{onCheck}}"><svg class="ck" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.8 8.4l2.7 2.7 5.7-6.2"></path></svg></button>
 <sc-if value="{{r.editing}}"><input class="ri" data-id="{{r.id}}" value="{{r.editText}}" placeholder="New Task" spellCheck="false" autoFocus="{{r.autoFocus}}" aria-label="Task title" onChange="{{onEditChange}}" onKeyDown="{{onEditKey}}" onBlur="{{onEditBlur}}" onFocus="{{onEditFocus}}" onPointerDown="{{stopPD}}"></sc-if>
 <sc-if value="{{r.notEditing}}"><span class="ttw"><span class="{{r.titleCls}}">{{r.title}}</span><sc-if value="{{r.nGlyph}}"><span class="nglyph" role="img" aria-label="Has notes"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M3.5 8h9M3.5 11.5h5.5"></path></svg></span></sc-if><sc-if value="{{r.nCount}}"><span class="{{r.nCountCls}}" role="img" aria-label="{{r.nCountLabel}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="3"></rect><path d="M5.4 8.2l1.8 1.8 3.4-3.7"></path></svg>{{r.nCountText}}</span></sc-if></span></sc-if>
 <sc-if value="{{r.hasWhere}}"><span class="where">{{r.where}}</span></sc-if>
 <span class="chips">
 <sc-for list="{{r.chips}}" as="c" hint-placeholder-count="0">
-<button class="{{c.cls}}" type="button" data-id="{{r.id}}" data-field="{{c.field}}" onPointerDown="{{stopPD}}" onClick="{{onChip}}"><sc-if value="{{c.cal}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg></sc-if><sc-if value="{{c.flag}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 14V2.5M4 3h7.5L10 5.75 11.5 8.5H4"></path></svg></sc-if>{{c.text}}</button>
+<button class="{{c.cls}}" type="button" data-id="{{r.id}}" data-field="{{c.field}}" aria-label="{{c.tip}}" data-tip="{{c.tip}}" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onPointerDown="{{stopPD}}" onClick="{{onChip}}"><sc-if value="{{c.cal}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg></sc-if><sc-if value="{{c.flag}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 14V2.5M4 3h7.5L10 5.75 11.5 8.5H4"></path></svg></sc-if><span class="ct">{{c.text}}</span></button>
 </sc-for>
 </span>
 <button class="open" type="button" data-id="{{r.id}}" aria-label="Show details" data-tip="Show Details" data-keys="⌘D" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onPointerDown="{{stopPD}}" onClick="{{onOpen}}"><svg class="i i--sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4l4 4-4 4"></path></svg></button>
@@ -212,14 +212,14 @@ body{margin:0}
 
 <sc-if value="{{pk.show}}">
 <div class="picker" style="{{pk.style}}" role="dialog" aria-label="Choose a date" onMouseDown="{{onPickerDown}}">
-<label class="pf"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg><input value="{{pk.text}}" placeholder="{{pk.placeholder}}" aria-label="Type a date" spellCheck="false" autoFocus="{{pk.autoFocus}}" onChange="{{onPickerText}}" onKeyDown="{{onPickerKey}}"></label>
+<label class="pf"><sc-if value="{{pk.isWhen}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="10" rx="2"></rect><path d="M2.5 6.5h11M5.5 2v3M10.5 2v3"></path></svg></sc-if><sc-if value="{{pk.isDl}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 14V2.5M4 3h7.5L10 5.75 11.5 8.5H4"></path></svg></sc-if><input value="{{pk.text}}" placeholder="{{pk.placeholder}}" aria-label="Type a date" spellCheck="false" autoFocus="{{pk.autoFocus}}" onChange="{{onPickerText}}" onKeyDown="{{onPickerKey}}"></label>
 <div class="qp"><sc-for list="{{pk.quick}}" as="q" hint-placeholder-count="0"><button class="{{q.cls}}" type="button" data-date="{{q.date}}" onClick="{{onPickQuick}}">{{q.label}}</button></sc-for></div>
 <div class="mon"><span class="mt">{{pk.monthTitle}}</span><button class="nb" type="button" aria-label="Previous month" data-dir="-1" onClick="{{onPickMonth}}"><svg class="i i--sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 4l-4 4 4 4"></path></svg></button><button class="nb" type="button" aria-label="Next month" data-dir="1" onClick="{{onPickMonth}}"><svg class="i i--sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4l4 4-4 4"></path></svg></button></div>
 <div class="cal">
 <sc-for list="{{pk.dows}}" as="w" hint-placeholder-count="0"><span class="dw">{{w}}</span></sc-for>
 <sc-for list="{{pk.days}}" as="c" hint-placeholder-count="0"><span class="{{c.cls}}" data-date="{{c.date}}" onClick="{{onPickDay}}">{{c.label}}</span></sc-for>
 </div>
-<div class="pv"><span class="{{pk.previewCls}}">{{pk.preview}}</span><span class="kbd">↩</span></div>
+<div class="pv"><span class="{{pk.previewCls}}">{{pk.preview}}<sc-if value="{{pk.hint}}"><span class="pvh">{{pk.hint}}</span></sc-if></span><span class="kbd">↩</span></div>
 </div>
 </sc-if>
 
@@ -229,7 +229,7 @@ body{margin:0}
 <sc-if value="{{stage.show}}">
 <div class="stage" aria-label="Prototype controls">
 <span class="sl">Prototype</span>
-<span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Edit tasks</span><span class="seg"><sc-for list="{{stage.editTasks}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
+<span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Edit tasks</span><span class="seg"><sc-for list="{{stage.editTasks}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><sc-for list="{{stage.vars}}" as="vg" hint-placeholder-count="0"><span class="sl">{{vg.label}}</span><span class="seg"><sc-for list="{{vg.opts}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span></sc-for>
 <span class="sn">The browser keeps ⌘N, ⌘T and ⌘1–9, so ⌥N, ⌥T and ⌃1–9 also work here.</span>
 <span style="flex: 1;"></span>
 <button class="lnk" type="button" data-k="reset" data-v="1" onClick="{{onStage}}">Reset</button>
@@ -268,7 +268,7 @@ body{margin:0}
 </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"select":{"editor":null,"default":""},"detail":{"editor":null,"default":"closed"},"pick":{"editor":null,"default":"none"},"caret":{"editor":null,"default":""},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"select":{"editor":null,"default":""},"detail":{"editor":null,"default":"closed"},"pick":{"editor":null,"default":"none"},"caret":{"editor":null,"default":""},"vDates":{"editor":null,"default":"quiet"},"vCue":{"editor":null,"default":"off"},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
 // ---------- Calendar dates: "YYYY-MM-DD" strings, never instants (SPEC §2). ----------
 const DAY_MS = 86400000;
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -311,13 +311,28 @@ function whenChipText(s, today) {
   if (n < 7) return WD[weekdayIdx(s)];
   return mdy(s, today);
 }
+// A deadline always says "Due" (§24), and its tone is its urgency: late (past), due (today), soon (tomorrow), or none.
 function deadlineChip(s, today) {
   const n = diffDays(today, s);
   if (n < 0) return { text: 'Overdue · ' + -n + 'd', tone: 'late' };
   if (n === 0) return { text: 'Due today', tone: 'due' };
-  if (n === 1) return { text: 'Tomorrow', tone: '' };
-  if (n < 7) return { text: WD[weekdayIdx(s)], tone: '' };
-  return { text: mdy(s, today), tone: '' };
+  if (n === 1) return { text: 'Due tomorrow', tone: 'soon' };   // soon: only the flag is tinted
+  if (n < 7) return { text: 'Due ' + WD[weekdayIdx(s)], tone: '' };
+  return { text: 'Due ' + mdy(s, today), tone: '' };
+}
+// The relative words beside a deadline: how late, or how long until it's due.
+function dueRelText(s, today) {
+  const n = diffDays(today, s);
+  if (n < 0) return -n === 1 ? '1 day overdue' : -n < 14 ? -n + ' days overdue' : Math.round(-n / 7) + ' weeks overdue';
+  if (n === 0) return 'due today';
+  if (n === 1) return 'due tomorrow';
+  return relText(s, today);
+}
+// The popover's note on a When after the deadline, or a deadline before the When (no rule forbids either; SPEC §2).
+function pkHint(p, hot) { return !p.none && p.other && ((p.field === 'when' && hot > p.other) || (p.field === 'deadline' && hot < p.other)); }
+// A chip's tooltip: the full date and how far it is.
+function dateTip(field, s, today) {
+  return (field === 'when' ? 'When: ' : 'Deadline: ') + longDate(s, today) + ' · ' + (field === 'when' ? relText(s, today) : dueRelText(s, today));
 }
 
 // ---------- Typed dates ----------
@@ -443,6 +458,14 @@ const VIEW_EMPTY = {
 };
 // Headings, a list's notes and its title (INTERACTIONS-v2 §23).
 const HEAD_AIR = 8;   // a heading's air above its row
+// When and Deadline (proposed, INTERACTIONS-v2 §24): the open choices, with the recommendation as the default. The
+// strip switches them; a board sets them with v-dates and v-cue.
+const DATE_DEFAULTS = { dates: 'quiet', cue: 'off' };
+const DATE_OPTS = {
+  dates: [['pills', 'Pills'], ['quiet', 'Quiet When'], ['text', 'Text']],
+  cue: [['off', 'Off'], ['check', 'Checkbox'], ['edge', 'Edge']],
+};
+const DATE_LABEL = { dates: 'Dates', cue: 'Overdue cue' };
 
 let UID = 0;
 function uid(p) { UID += 1; return p + UID.toString(36) + Math.random().toString(36).slice(2, 6); }
@@ -791,6 +814,7 @@ class Component extends DCLogic {
       boxPop: null, hoverLink: null,
       // Headings (§23): collapsed headings (local, never synced); whether the large title has scrolled under the band.
       collapsed: {}, scrolled: false,
+      dv: {},   // §24's choices, from the strip
     };
     this.mh = {};   // measured heights of the list pane's text blocks (measureBlocks)
     const pickName = props.pick ?? 'none';   // a board can open on a task's notes (prototype-markdown's boards do)
@@ -821,6 +845,7 @@ class Component extends DCLogic {
     if (this.props.select) setTimeout(() => this.demoSelect(), 250);
     if (/^(notes|long|hover)$/.test(this.props.demo || '')) setTimeout(() => this.demoNotes(this.props.demo), 200);
     if (/^(scroll|newhead|collapse|dragsec)$/.test(this.props.demo || '')) setTimeout(() => this.demoSec(this.props.demo), 250);   // §23's boards
+    if (/^(narrow|pickwhen|pickdl)$/.test(this.props.demo || '')) setTimeout(() => this.demoDates(this.props.demo), 250);   // §24's boards
     this.markClippedTitles();
     this.measureBlocks();
     document.addEventListener('selectionchange', this.onDocSel);
@@ -851,7 +876,7 @@ class Component extends DCLogic {
     this.setState({ edit: { kind: 'notes', id, text: t.notes, orig: t.notes, sel: [at, at], demo: true }, focus: 'detail' });
     this.nUndo = []; this.nRedo = [];
   }
-  componentWillUnmount() { document.removeEventListener('selectionchange', this.onDocSel); document.removeEventListener('mouseup', this.onDocUp); clearTimeout(this.boxPopTimer); for (const k of ['settleTimer', 'noticeTimer', 'tipTimer', 'cmdTimer', 'cleanTimer', 'detailTimer', 'animTimer', 'scrollTimer']) clearTimeout(this[k]); }
+  componentWillUnmount() { if (this.mhRO) this.mhRO.disconnect(); document.removeEventListener('selectionchange', this.onDocSel); document.removeEventListener('mouseup', this.onDocUp); clearTimeout(this.boxPopTimer); for (const k of ['settleTimer', 'noticeTimer', 'tipTimer', 'cmdTimer', 'cleanTimer', 'detailTimer', 'animTimer', 'scrollTimer']) clearTimeout(this[k]); }
   componentDidUpdate() {
     this.nAfterRender();
     this.markClippedTitles();
@@ -2023,7 +2048,18 @@ class Component extends DCLogic {
     this.clipRaf = requestAnimationFrame(() => {
       const root = this.rootRef.current;
       if (!root) return;
-      for (const el of root.querySelectorAll('.row .ttw .tt')) {
+      // §24 and v2 feedback 16: dates never truncate. A row too narrow for its When leaves the When out (the deadline
+      // always stays); the title, at its 120pt minimum, then gets the room back. (SwiftUI: ViewThatFits over the
+      // trailing dates.) Then, only if even that doesn't fit (the list pane at its 220pt minimum), the title goes under.
+      for (const row of root.querySelectorAll('.lp .row:not(.hidden)')) {
+        const w = row.querySelector('.chip.when'), end = row.lastElementChild;
+        if (w) w.removeAttribute('data-drop');
+        row.removeAttribute('data-tight');
+        const over = () => end && end.getBoundingClientRect().right > row.getBoundingClientRect().right - 4.5;
+        if (w && over()) w.setAttribute('data-drop', '');
+        if (over()) row.setAttribute('data-tight', '');
+      }
+      for (const el of root.querySelectorAll('.row .ttw .tt, .row .where')) {
         const clip = el.scrollWidth > el.clientWidth + 0.5;
         if (clip !== el.hasAttribute('data-clip')) { if (clip) el.setAttribute('data-clip', ''); else el.removeAttribute('data-clip'); }
       }
@@ -2573,6 +2609,7 @@ class Component extends DCLogic {
   onStage = (e) => {
     const k = e.currentTarget.dataset.k, v = e.currentTarget.dataset.v;
     if (k === 'theme') this.instant({ theme: v }); else if (k === 'editTasks') this.setEditTasks(v);
+    else if (k.startsWith('dv:')) this.setState({ dv: { ...this.state.dv, [k.slice(3)]: v } });   // §24's choices
     else if (k === 'reset') { const seed = makeSeed(this.today); this.undoStack = []; this.redoStack = []; this.instant({ lists: seed.lists, tasks: seed.tasks, sel: [], edit: null, picker: null, menu: null, pins: {}, route: this.routeFromProp(this.props.start, seed.lists), detail: 'closed', notice: null, sbVisible: true, collapsed: {}, scrolled: false }); }
     else if (k === 'keys') this.setState({ keysOpen: !this.state.keysOpen });
     this.focusRoot();
@@ -2695,8 +2732,9 @@ class Component extends DCLogic {
       const chips = [], gday = this.groupDay(L, t.id);   // in Upcoming, a day group's own date isn't repeated on its rows
       if (!done) {
         const opened = (f) => (pickerFor && pickerFor.has(t.id) && s.picker.field === f ? ' open-picker' : '');
-        if (t.when && !(inToday && t.when <= T) && t.when !== gday) chips.push({ field: 'when', cal: true, flag: false, text: whenChipText(t.when, T), cls: 'chip' + opened('when') });
-        if (t.deadline) { const dc = t.deadline === gday ? { text: 'Due', tone: '' } : deadlineChip(t.deadline, T); chips.push({ field: 'deadline', cal: false, flag: true, text: dc.text, cls: 'chip ' + dc.tone + opened('deadline') }); }
+        if (t.when && !(inToday && t.when <= T) && t.when !== gday) chips.push({ field: 'when', cal: true, flag: false, text: whenChipText(t.when, T), cls: 'chip when' + opened('when'), tip: dateTip('when', t.when, T) });
+        if (t.deadline) { const dc = deadlineChip(t.deadline, T); chips.push({ field: 'deadline', cal: false, flag: true, text: t.deadline === gday ? 'Due' : dc.text, cls: 'chip dl ' + dc.tone + opened('deadline'), tip: dateTip('deadline', t.deadline, T) }); }
+        if (t.deadline && t.deadline < T) cls += ' overdue';   // the row-level cue (§24), when one is on
       }
       const where = this.whereText(L, t, inToday);
       return {
@@ -2758,7 +2796,10 @@ class Component extends DCLogic {
       if (mixed) return { has: false, mixed: true, ghost: 'Mixed', text: '', cls: 'chip lg ghost', rel: '', relCls: 'rel' };
       if (!value) return { has: false, mixed: false, ghost: 'Add date', text: '', cls: 'chip lg ghost' + (s.picker && s.picker.field === field ? ' open-picker' : ''), rel: '', relCls: 'rel' };
       const tone = field === 'deadline' ? deadlineChip(value, T).tone : '';
-      return { has: true, mixed: false, text: longDate(value, T), cls: 'chip lg ' + tone + (s.picker && s.picker.field === field ? ' open-picker' : ''), rel: relText(value, T), relCls: 'rel after-clr' };
+      // §24: a deadline reads how late or how soon, in its tone; a past When says it's still in Today.
+      const open = !(one && one.completedAt != null);
+      const rel = field === 'deadline' ? dueRelText(value, T) : relText(value, T) + (open && value < T ? ' · still in Today' : '');
+      return { has: true, mixed: false, text: longDate(value, T), cls: 'chip lg ' + (field === 'when' ? 'when ' : 'dl ') + tone + (s.picker && s.picker.field === field ? ' open-picker' : ''), rel, relCls: 'rel after-clr' + (tone ? ' t-' + tone : '') };
     };
     if (one || many) {
       const items = one ? [one] : many;
@@ -2864,7 +2905,7 @@ class Component extends DCLogic {
       for (let i = 0; i < 42; i++) {
         const dd = addDays(start, i);
         const out = dd.slice(0, 7) !== p.month;
-        days.push({ date: dd, label: String(+dd.slice(8)), cls: 'd' + (out ? ' out' : '') + (dd === T ? ' today' : '') + (dd === p.cur ? ' val' : '') + (dd === p.other ? ' other' : '') + (dd === hot && !p.none ? ' hot' : '') });
+        days.push({ date: dd, label: String(+dd.slice(8)), cls: 'd' + (out ? ' out' : '') + (dd === T ? ' today' : '') + (dd === p.cur ? ' val' : '') + (dd === p.other ? ' other ' + (p.field === 'when' ? 'o-dl' : 'o-when') : '') + (dd === hot && !p.none ? ' hot' : '') });
       }
       const mo = dOf(p.month + '-01');
       const quick = [['Today', T], ['Tomorrow', addDays(T, 1)], ['Next Week', nextWeekStart(T)]].map(([label, date]) => ({ label, date, cls: 'qb' + (date === hot && p.text ? ' hot' : '') }));
@@ -2873,7 +2914,11 @@ class Component extends DCLogic {
         show: true, style: 'left: ' + p.x + 'px; top: ' + p.y + 'px; width: 288px', text: p.text,
         placeholder: p.field === 'when' ? 'When: try tom, fri, 3d, nov 9' : 'Deadline: try fri, nov 9, 2w',
         quick, monthTitle: MOL[mo.getMonth()] + ' ' + mo.getFullYear(), days, dows: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
-        preview: p.none ? 'No date matches “' + p.text.trim() + '”' : longDate(hot, T) + ' · ' + relText(hot, T), previewCls: 'pvt' + (p.none ? ' none' : ''),
+        // §24: a deadline previews as "Due …"; a When after the deadline, or a deadline before the When, gets a quiet note.
+        hint: p.none || !p.other ? '' : p.field === 'when' && hot > p.other ? 'after the deadline' : p.field === 'deadline' && hot < p.other ? 'before the When' : '',
+        // With a note, it takes the relative words' place, so the line stays one line.
+        preview: p.none ? 'No date matches “' + p.text.trim() + '”' : (p.field === 'deadline' ? 'Due ' : '') + longDate(hot, T) + (pkHint(p, hot) ? '' : ' · ' + (p.field === 'deadline' && hot < T ? dueRelText(hot, T) : relText(hot, T))), previewCls: 'pvt' + (p.none ? ' none' : ''),
+        isWhen: p.field === 'when', isDl: p.field === 'deadline',
         autoFocus: !p.demo,
       };
     }
@@ -2885,10 +2930,11 @@ class Component extends DCLogic {
     const stage = { show: stageOn,
       theme: seg('theme', [['dark', 'Dark'], ['light', 'Light']]),
       editTasks: [['detail', 'Open in detail pane'], ['list', 'Rename in the list']].map(([v, label]) => ({ k: 'editTasks', v, label, cls: this.editTasksMode() === v ? 'on' : '' })),
+      vars: Object.keys(DATE_OPTS).map((k) => ({ label: DATE_LABEL[k], opts: DATE_OPTS[k].map(([v, label]) => ({ k: 'dv:' + k, v, label, cls: this.dv(k) === v ? 'on' : '' })) })),
     };
 
     return {
-      rootCls: 'tk ' + s.theme + (s.noAnim ? ' no-anim' : '') + (s.detail === 'open' || s.detail === 'opening' ? ' detail-open' : '') + (s.resize ? ' resizing' : '') + (Date.now() - (this.springbackAt || 0) < DETAIL_CLOSE_MS ? ' springback' : ''),
+      rootCls: 'tk ' + s.theme + ' dv-' + this.dv('dates') + ' cue-' + this.dv('cue') + (s.noAnim ? ' no-anim' : '') + (s.detail === 'open' || s.detail === 'opening' ? ' detail-open' : '') + (s.resize ? ' resizing' : '') + (Date.now() - (this.springbackAt || 0) < DETAIL_CLOSE_MS ? ' springback' : ''),
       rootStyle: 'width: ' + w + 'px; height: ' + (h + (stageOn ? 44 : 0)) + 'px',
       winStyle: 'height: ' + h + 'px',
       rootRef: this.rootRef, winRef: this.winRef, listScrollRef: this.listScrollRef, sbScrollRef: this.sbScrollRef, liftRef: this.liftRef,
@@ -3324,6 +3370,8 @@ class Component extends DCLogic {
   // heading. It has a title and notes, and never a date or a check. A list's notes are a `notes` field on the list,
   // in the same Markdown editor as a task's.
   isHead(t) { return !!t && t.kind === 'heading'; }
+  // §24's open choices: the strip's, else the board's v-dates and v-cue, else the recommendation.
+  dv(k) { const o = this.state.dv && this.state.dv[k]; return o || this.props['v' + k[0].toUpperCase() + k.slice(1)] || DATE_DEFAULTS[k]; }
   onlyTasks(ids) { return ids.filter((id) => { const t = this.task(id); return t && !this.isHead(t); }); }
   // A list's order: headings and open tasks, and the completed tasks too when asked (they keep their keys).
   listItems(listId, withDone) { return this.state.tasks.filter((t) => t.list === listId && !t.deleted && (withDone || this.isHead(t) || t.completedAt == null)).sort(byOrder); }
@@ -3514,7 +3562,11 @@ class Component extends DCLogic {
       const root = this.rootRef.current;
       if (!root || !root.querySelectorAll) return;
       let changed = false;
+      // A block's height also changes without a render, when its pane's width does (the detail pane opening, a
+      // divider drag): watch them, and measure again then.
+      if (!this.mhRO && typeof ResizeObserver !== 'undefined') this.mhRO = new ResizeObserver(() => this.measureBlocks());
       for (const el of root.querySelectorAll('[data-mh]')) {
+        if (this.mhRO) this.mhRO.observe(el);
         const k = el.dataset.mh, h = el.offsetHeight;
         if (k && h && Math.abs((this.mh[k] || 0) - h) >= 1) { this.mh[k] = h; changed = true; }
       }
@@ -3655,6 +3707,28 @@ class Component extends DCLogic {
     dpo.headTitle = hs.length > 1 ? hs.length + ' headings selected' : hs[0].title;
     dpo.headText = hs.length > 1 ? 'Select a task to see its notes and dates.' : n ? 'A heading with ' + plural(n, 'open task', 'open tasks') + ' under it.' : 'A heading with no tasks under it yet.';
   }
+  // ======================================================================
+  // When and Deadline (proposed: docs/TASK-design-dates.md, INTERACTIONS-v2 §24)
+  // ======================================================================
+  // Boards that start part-way through: long names at a narrow width; the When popover typed past the deadline; the
+  // Deadline popover on a task with a When.
+  demoDates(kind) {
+    const find = (q) => this.state.tasks.find((t) => t.title.startsWith(q));
+    if (kind === 'narrow') {
+      const long = find('Review CS 489');
+      this.instant({
+        lists: this.state.lists.map((l) => (l.id === 'school' ? { ...l, name: 'SE 463 — Software Project Management, Requirements, and Analysis' } : l)),
+        tasks: this.state.tasks.map((t) => (long && t.id === long.id ? { ...t, title: 'Review CS 489 lectures 10–14 and both retrieval papers before the quiz' } : t)),
+      });
+      return;
+    }
+    const t = find('Submit MSE 333');
+    if (!t) return;
+    const field = kind === 'pickwhen' ? 'when' : 'deadline', text = kind === 'pickwhen' ? 'fri' : 'sun';
+    this.select([t.id]);
+    setTimeout(() => { this.openPickerForRows(field, [t.id]); const p = this.state.picker; const hot = parseDate(text, this.today); if (p) this.setState({ picker: { ...p, demo: true, text, hot, month: hot.slice(0, 7) } }); }, 30);
+  }
+
 }
 
 </script>

@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The detail pane</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="tasks-v2.css">
+<link rel="stylesheet" href="markdown.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<dc-import name="Main" start="list:phys" theme="dark" strip="off" select="Lab 3 report" detail="open" w="1000" h="620" hint-size="1000px,620px"></dc-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1000,"height":620}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

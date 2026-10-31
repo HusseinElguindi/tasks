@@ -26,6 +26,15 @@ Its boards: `Sections` (the prototype on that list), `Title-Large` and `Title-Sc
 title once it has scrolled under), `Heading-*` (adding, collapsed, mid-drag, from `demo="newhead|collapse|dragsec"`)
 and the light ones. The code is the block at the end of the component, after the four views'.
 
+**Proposed (§24, `docs/TASK-design-dates.md`): When and Deadline at a glance.** Its canvas is
+https://claude.ai/artifact/2wUF9Dz2JEt8Xp2pBDahy2 (private until shared), laid out by `canvas-dates.json`. The prototype carries it
+behind the strip's Dates (Pills, Quiet When, Text) and Overdue cue (Off, Checkbox, Edge) switches; their defaults are
+the recommendations, and a board sets them with `v-dates` and `v-cue`. Its boards: `When-Deadline` (the prototype on
+the School list), `Chips-*` (each variant in Today and in a list, and light), `Cue-*`, `Upcoming-Dates`, `Narrow-*`
+(long names at narrow widths, from `demo="narrow"`), `Detail-Dates` and `Popover-*` (from `demo="pickwhen|pickdl"`).
+The code is the block at the very end of the component; the CSS is the block at the end of `tasks-v2.css`. Until the
+user picks, §11 describes the app.
+
 The user's picks (add opens in the detail pane, the calendar popover, drag opens a gap, checked rows move after 1.5 s),
 their picks for the views (Upcoming and Undated under Today, Completed and Trash after the lists; Upcoming's
 seven days, then months; a task with both dates shown once) and for §23 (the large title, bold headings, notes on a

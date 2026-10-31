@@ -1,0 +1,315 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-10-31T23:00:00Z"
+  },
+  "title": "Tasks · When and Deadline",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "designSystems": [
+    {
+      "title": "Pane",
+      "namespace": "pane",
+      "artifact": "https://claude.ai/artifact/MS3VdrN9VHU7A7pTUTzpm8",
+      "version": null,
+      "copiedAt": "2026-10-31T23:00:00Z"
+    }
+  ],
+  "boards": {
+    "When-Deadline.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1180,
+      "h": 764,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Prototype · the School list; the strip switches Dates and the Overdue cue (defaults: Quiet When, Off)"
+    },
+    "Main.dc.html": {
+      "x": 1260,
+      "y": 0,
+      "w": 1180,
+      "h": 764,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Prototype · Today; the same strip"
+    },
+    "Chips-Pills-Today.dc.html": {
+      "x": 0,
+      "y": 1200,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "A · Pills: both dates are capsules"
+    },
+    "Chips-Quiet-Today.dc.html": {
+      "x": 1080,
+      "y": 1200,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "B · Quiet When: only a deadline is a capsule (recommended)"
+    },
+    "Chips-Text-Today.dc.html": {
+      "x": 2160,
+      "y": 1200,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "C · Text: no capsules; the tone colours the text"
+    },
+    "Chips-Pills-List.dc.html": {
+      "x": 0,
+      "y": 2240,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "A · Pills, in a list"
+    },
+    "Chips-Quiet-List.dc.html": {
+      "x": 1080,
+      "y": 2240,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "B · Quiet When, in a list (recommended)"
+    },
+    "Chips-Text-List.dc.html": {
+      "x": 2160,
+      "y": 2240,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "C · Text, in a list"
+    },
+    "Cue-Checkbox.dc.html": {
+      "x": 0,
+      "y": 3280,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Overdue cue: the checkbox's ring"
+    },
+    "Cue-Edge.dc.html": {
+      "x": 1080,
+      "y": 3280,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Overdue cue: a 2pt edge"
+    },
+    "Upcoming-Dates.dc.html": {
+      "x": 0,
+      "y": 4320,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Upcoming: a deadline on its day reads “Due”"
+    },
+    "Narrow-List.dc.html": {
+      "x": 1080,
+      "y": 4320,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Long names beside the detail pane: a When that doesn't fit is left out"
+    },
+    "Narrow-Today.dc.html": {
+      "x": 2160,
+      "y": 4320,
+      "w": 520,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Today in a 520pt window: the list name gives way first"
+    },
+    "Detail-Dates.dc.html": {
+      "x": 0,
+      "y": 5360,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "The detail pane: “due tomorrow”, the flag in attention"
+    },
+    "Popover-When.dc.html": {
+      "x": 1080,
+      "y": 5360,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "When popover: a date after the deadline gets a note"
+    },
+    "Popover-Deadline.dc.html": {
+      "x": 2160,
+      "y": 5360,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Deadline popover: the flag, the When's grey dot, “before the When”"
+    },
+    "Chips-Quiet-Today-Light.dc.html": {
+      "x": 0,
+      "y": 6400,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "B · Today · light"
+    },
+    "Chips-Quiet-List-Light.dc.html": {
+      "x": 1080,
+      "y": 6400,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "B · a list · light"
+    },
+    "Popover-When-Light.dc.html": {
+      "x": 2160,
+      "y": 6400,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "When popover · light"
+    }
+  },
+  "order": [
+    "When-Deadline.dc.html",
+    "Main.dc.html",
+    "Chips-Pills-Today.dc.html",
+    "Chips-Quiet-Today.dc.html",
+    "Chips-Text-Today.dc.html",
+    "Chips-Pills-List.dc.html",
+    "Chips-Quiet-List.dc.html",
+    "Chips-Text-List.dc.html",
+    "Cue-Checkbox.dc.html",
+    "Cue-Edge.dc.html",
+    "Upcoming-Dates.dc.html",
+    "Narrow-List.dc.html",
+    "Narrow-Today.dc.html",
+    "Detail-Dates.dc.html",
+    "Popover-When.dc.html",
+    "Popover-Deadline.dc.html",
+    "Chips-Quiet-Today-Light.dc.html",
+    "Chips-Quiet-List-Light.dc.html",
+    "Popover-When-Light.dc.html"
+  ],
+  "noteOrder": [
+    "title",
+    "howto",
+    "n_weak",
+    "t_dates",
+    "n_dates",
+    "t_list",
+    "t_cue",
+    "n_cue",
+    "t_views",
+    "n_views",
+    "t_detail",
+    "t_light"
+  ],
+  "notes": {
+    "title": {
+      "kind": "title1",
+      "x": 0,
+      "y": -300,
+      "maxW": 3160,
+      "text": "Tasks · When and Deadline at a glance (proposed)"
+    },
+    "howto": {
+      "x": -560,
+      "y": 0,
+      "w": 480,
+      "size": 24,
+      "text": "How to try it\n\n• Press Play, then click inside once so it has the keys.\n• The strip's Dates and Overdue cue switch the open choices.\n• Hover a date for its full date and distance; click it for the popover.\n• Narrow the detail pane or the window: the list name gives way, then the When; a deadline always stays."
+    },
+    "n_weak": {
+      "x": 2520,
+      "y": 0,
+      "w": 520,
+      "size": 24,
+      "text": "What's weak now\n\n• When and Deadline are the same grey capsule; only an 11pt glyph tells them apart.\n• A deadline says “Due” only on the day: tomorrow's reads “Tomorrow”, like a plan.\n• Two steps of urgency; due tomorrow looks like nothing.\n• Every dated row has a capsule, so the deadline that matters doesn't stand out.\n• At narrow widths the chips never give way (feedback 16)."
+    },
+    "t_dates": {
+      "kind": "title1",
+      "x": 0,
+      "y": 900,
+      "maxW": 3160,
+      "text": "1 · Dates on a row: Today"
+    },
+    "n_dates": {
+      "x": -560,
+      "y": 1200,
+      "w": 480,
+      "size": 24,
+      "text": "Every variant: a deadline always says “Due”; overdue is red, due today amber, due tomorrow an amber flag; the tooltip has the full date and distance.\n\nB: a capsule then always means something is due. The plan (When) sits back as quiet text."
+    },
+    "t_list": {
+      "kind": "title1",
+      "x": 0,
+      "y": 1940,
+      "maxW": 3160,
+      "text": "… and in a list"
+    },
+    "t_cue": {
+      "kind": "title1",
+      "x": 0,
+      "y": 2980,
+      "maxW": 2080,
+      "text": "2 · An overdue cue on the row"
+    },
+    "n_cue": {
+      "x": -560,
+      "y": 3280,
+      "w": 480,
+      "size": 24,
+      "text": "Off (B in Today, above) is recommended: the red capsule already marks the row. If more is wanted, the checkbox beats the edge: it's on the task, not the row's chrome."
+    },
+    "t_views": {
+      "kind": "title1",
+      "x": 0,
+      "y": 4020,
+      "maxW": 2680,
+      "text": "Views and narrow widths"
+    },
+    "n_views": {
+      "x": -560,
+      "y": 4320,
+      "w": 480,
+      "size": 24,
+      "text": "Today leaves out a When on or before today. Upcoming doesn't repeat the day. Completed, Trash and done rows show no dates.\n\nNarrow (feedback 16, as built): the title keeps 120pt; dates keep their size, the When dropping first; the list name truncates. A deadline always shows."
+    },
+    "t_detail": {
+      "kind": "title1",
+      "x": 0,
+      "y": 5060,
+      "maxW": 3160,
+      "text": "The detail pane and the popover"
+    },
+    "t_light": {
+      "kind": "title1",
+      "x": 0,
+      "y": 6100,
+      "maxW": 3160,
+      "text": "Light"
+    }
+  }
+}
