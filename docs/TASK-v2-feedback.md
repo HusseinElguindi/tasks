@@ -302,3 +302,15 @@ The user's words: "when you go from one list to another, the due dates have a fl
 - **The rule:** a list switch is instant, as it was before §24. Nothing on a row animates or appears a frame late. If something was meant to animate there, say what and why; the user didn't ask for it.
 
 Fix the cause, check frames before and after, keep the list-switch benchmark within budget, then commit, rebuild Release and report back. Do this before §27 (it can go to a worktree subagent alongside §26).
+- **Addition from the user:** "might also happen with the when dates. check the other things too." Audit every element on a row and in the list pane during a list switch, not only the Deadline badge:
+  - the quiet When;
+  - the checkbox rings (red, amber, blue, double);
+  - the notes hint and checklist count;
+  - list names in Today;
+  - headings, their chevrons and collapsed counts;
+  - the large title and description;
+  - the header band;
+  - the Completed group;
+  - the sidebar's selection.
+
+  Every frame of a switch should show either the old list or the new one, with nothing in between.
