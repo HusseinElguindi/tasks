@@ -237,10 +237,10 @@ const INFO = {
 row: { num: '01', name: 'Row', line: 'The selected capsule is the app’s one strong state: a single task, picked and checked.' },
 split: { num: '02', name: 'Split', line: 'The detail pane sliding open beside the list, the move the whole window is built on.' },
 rise: { num: '03', name: 'Rise', line: 'Today’s sun coming up behind a task row: the view you open first each morning.' },
-log: { num: '04', name: 'Log', line: 'Sync is a hash-chained, append-only log; the newest op at its head is a checked task.' },
+log: { num: '04', name: 'Log', line: 'Sync is a hash-chained, append-only log; the newest op at its head is a checked task.', rec: true, recLabel: 'Chosen' },
 tile: { num: '05', name: 'Tile', line: 'The list monogram tile, scaled up. Its letter follows the name, so it changes if Tasks does.' },
-cursor: { num: '06', name: 'Cursor', line: 'A check, then the block cursor waiting for the next task, in Rex’s cursor blue.', rec: true, recLabel: 'Recommended' },
-gap: { num: '07', name: 'Gap', line: 'Drag-to-reorder’s insertion line and ring, parting two rows to make room.', rec: true, recLabel: 'Runner-up' }
+cursor: { num: '06', name: 'Cursor', line: 'A check, then the block cursor waiting for the next task, in Rex’s cursor blue.' },
+gap: { num: '07', name: 'Gap', line: 'Drag-to-reorder’s insertion line and ring, parting two rows to make room.' }
 };
 const mark = INFO[this.props.mark] ? this.props.mark : 'cursor';
 return {

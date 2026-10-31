@@ -12,10 +12,10 @@
     "D1-Row.dc.html": { "x": 0, "y": 1020, "w": 1920, "h": 1160, "radius": 16, "page": "directions", "title": "01 Row · the selected capsule is the app's one strong state: one task, picked and checked" },
     "D2-Split.dc.html": { "x": 2000, "y": 1020, "w": 1920, "h": 1160, "radius": 16, "page": "directions", "title": "02 Split · the detail pane sliding open beside the list" },
     "D3-Rise.dc.html": { "x": 0, "y": 2300, "w": 1920, "h": 1160, "radius": 16, "page": "directions", "title": "03 Rise · Today's sun coming up behind a task row" },
-    "D4-Log.dc.html": { "x": 2000, "y": 2300, "w": 1920, "h": 1160, "radius": 16, "page": "directions", "title": "04 Log · the append-only, hash-chained history; the head op is a checked task" },
+    "D4-Log.dc.html": { "x": 2000, "y": 2300, "w": 1920, "h": 1160, "radius": 16, "page": "directions", "title": "04 Log · the append-only, hash-chained history; the head op is a checked task (chosen)" },
     "D5-Tile.dc.html": { "x": 0, "y": 3580, "w": 1920, "h": 1160, "radius": 16, "page": "directions", "title": "05 Tile · the list monogram tile, scaled up" },
-    "D6-Cursor.dc.html": { "x": 2000, "y": 3580, "w": 1920, "h": 1160, "radius": 16, "page": "directions", "title": "06 Cursor · a check, then the block cursor waiting for the next task (recommended)" },
-    "D7-Gap.dc.html": { "x": 0, "y": 4860, "w": 1920, "h": 1160, "radius": 16, "page": "directions", "title": "07 Gap · drag-to-reorder's insertion line parting two rows (runner-up)" },
+    "D6-Cursor.dc.html": { "x": 2000, "y": 3580, "w": 1920, "h": 1160, "radius": 16, "page": "directions", "title": "06 Cursor · a check, then the block cursor waiting for the next task" },
+    "D7-Gap.dc.html": { "x": 0, "y": 4860, "w": 1920, "h": 1160, "radius": 16, "page": "directions", "title": "07 Gap · drag-to-reorder's insertion line parting two rows" },
     "Sheet.dc.html": { "x": 0, "y": 0, "w": 1920, "h": 1160, "radius": 16, "page": "parts", "title": "Sheet · the per-direction layout (Mark tweak picks the direction)" },
     "Icon.dc.html": { "x": 2000, "y": 0, "w": 512, "h": 512, "page": "parts", "title": "Icon · every mark, look and size (tweaks)" }
   },
@@ -35,7 +35,7 @@
     "title": { "x": 0, "y": -300, "text": "Tasks · app icon directions", "kind": "title1", "maxW": 2560, "page": "directions" },
     "rec": {
       "x": 2000, "y": 0, "w": 560, "size": "m", "fill": "blue", "page": "directions",
-      "text": "Recommendation\n\n1. 06 Cursor. The boldest silhouette at 16pt and nobody else's shape. A check followed by a block cursor says \"done, and ready for the next one\", and the cursor blue is Rex's accent.\n\n2. 07 Gap. The insertion line with its ring from drag-to-reorder: the most \"this app\" detail. Below 60pt it drops the row contents so it doesn't read as a menu glyph.\n\nWatch-outs: 01 Row can read as a toggle switch at 16pt. 02 Split is close to the system sidebar glyph. 05 Tile's letter follows the working name. 03 Rise leans towards weather apps.\n\nEvery mark has a small-size cut: below 60pt it drops hairlines and thickens strokes (see the 32 and 16)."
+      "text": "Decision (2026-10-31): 04 Log. The append-only, hash-chained history drawn like a commit graph; the head op is a checked task.\n\nEarlier recommendation, kept for the record:\n\n1. 06 Cursor. The boldest silhouette at 16pt and nobody else's shape. A check followed by a block cursor says \"done, and ready for the next one\", and the cursor blue is Rex's accent.\n\n2. 07 Gap. The insertion line with its ring from drag-to-reorder: the most \"this app\" detail. Below 60pt it drops the row contents so it doesn't read as a menu glyph.\n\nWatch-outs: 01 Row can read as a toggle switch at 16pt. 02 Split is close to the system sidebar glyph. 05 Tile's letter follows the working name. 03 Rise leans towards weather apps.\n\nEvery mark has a small-size cut: below 60pt it drops hairlines and thickens strokes (see the 32 and 16)."
     }
   },
   "designSystems": [

@@ -2,6 +2,8 @@
 
 Canvas: https://claude.ai/artifact/ScTE29QmxCwxJxfRdnrNPd (private until shared from its Share menu). Brief: `docs/TASK-logo.md`.
 
+**Decision (2026-10-31): 04 Log is the app icon.** The others are kept on the canvas for reference.
+
 Seven directions for the macOS app icon, all drawn in the Pane vocabulary (Rex colours from `design/REX-REFERENCE.md`,
 light colours from `design/prototype-v2/tasks-v2.css`).
 
@@ -10,12 +12,12 @@ light colours from `design/prototype-v2/tasks-v2.css`).
 | 01 | Row | The selected capsule is the app's one strong state: a single task, picked and checked. |
 | 02 | Split | The detail pane sliding open beside the list, the move the whole window is built on. |
 | 03 | Rise | Today's sun coming up behind a task row: the view you open first each morning. |
-| 04 | Log | Sync is a hash-chained, append-only log; the newest op at its head is a checked task. |
+| 04 | **Log** (chosen) | Sync is a hash-chained, append-only log; the newest op at its head is a checked task. |
 | 05 | Tile | The list monogram tile, scaled up. Its letter follows the name, so it changes if Tasks does. |
-| 06 | **Cursor** (recommended) | A check, then the block cursor waiting for the next task, in Rex's cursor blue. |
-| 07 | **Gap** (runner-up) | Drag-to-reorder's insertion line and ring, parting two rows to make room. |
+| 06 | Cursor | A check, then the block cursor waiting for the next task, in Rex's cursor blue. |
+| 07 | Gap | Drag-to-reorder's insertion line and ring, parting two rows to make room. |
 
-## Recommendation
+## Earlier recommendation (before the decision)
 
 1. **06 Cursor.** It has the boldest silhouette at 16pt and doesn't resemble any other app's icon. A check followed by a block
    cursor reads as "done, and ready for the next one". The blue is Rex's cursor colour, which Pane uses as its accent.
@@ -28,6 +30,16 @@ Watch-outs for the others:
 - 02 Split is close to the system sidebar glyph.
 - 03 Rise leans towards weather apps.
 - 05 Tile depends on the working name.
+
+## The chosen mark: 04 Log
+
+- **Large (60pt and up):** a vertical spine with three nodes. The head is a filled accent circle with a check cut out in
+  the body colour, and the two older ops are hollow rings. Each node has a bar for its entry: the head's in `ink`, the
+  older ones in `ink-tertiary`.
+- **Small (below 60pt):** the rings become solid dots, and the spine, bars and head get thicker.
+- **Geometry** is in `Icon.dc.html` under `g.log`, in 1024 units.
+- **Colours:** dark uses accent `#2F81F7` with the check cut out in `#1C1C1C`. Light uses accent `#0969DA` with a white
+  check.
 
 ## What each sheet shows
 

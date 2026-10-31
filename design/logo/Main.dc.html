@@ -15,7 +15,7 @@ body{margin:0}
 <div style="width: 1920px; height: 900px; box-sizing: border-box; padding: 48px 62px; background: #111111; color: #E6EDF3; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif; -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; gap: 28px;">
 <header style="display: flex; flex-direction: column; gap: 6px;">
 <h1 style="margin: 0; font-size: 28px; line-height: 34px; font-weight: 600;">Tasks · app icon directions</h1>
-<p style="margin: 0; font-size: 15px; line-height: 20px; color: #A8ADB1;">Seven marks in the Pane vocabulary, each at 160, 32 and 16 in dark and light. Recommended: 06 Cursor, then 07 Gap.</p>
+<p style="margin: 0; font-size: 15px; line-height: 20px; color: #A8ADB1;">Seven marks in the Pane vocabulary, each at 160, 32 and 16 in dark and light. Chosen: 04 Log.</p>
 </header>
 <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 24px;">
 <sc-for list="{{marks}}" as="m" hint-placeholder-count="7">
@@ -52,10 +52,10 @@ const marks = [
 { id: 'row', num: '01', name: 'Row', line: 'The selected capsule is the app’s one strong state: a single task, picked and checked.' },
 { id: 'split', num: '02', name: 'Split', line: 'The detail pane sliding open beside the list, the move the whole window is built on.' },
 { id: 'rise', num: '03', name: 'Rise', line: 'Today’s sun coming up behind a task row: the view you open first each morning.' },
-{ id: 'log', num: '04', name: 'Log', line: 'Sync is a hash-chained, append-only log; the newest op at its head is a checked task.' },
+{ id: 'log', num: '04', name: 'Log', line: 'Sync is a hash-chained, append-only log; the newest op at its head is a checked task.', rec: true, recLabel: 'Chosen' },
 { id: 'tile', num: '05', name: 'Tile', line: 'The list monogram tile, scaled up. Its letter follows the name, so it changes if Tasks does.' },
-{ id: 'cursor', num: '06', name: 'Cursor', line: 'A check, then the block cursor waiting for the next task, in Rex’s cursor blue.', rec: true, recLabel: 'Pick' },
-{ id: 'gap', num: '07', name: 'Gap', line: 'Drag-to-reorder’s insertion line and ring, parting two rows to make room.', rec: true, recLabel: 'Runner-up' }
+{ id: 'cursor', num: '06', name: 'Cursor', line: 'A check, then the block cursor waiting for the next task, in Rex’s cursor blue.' },
+{ id: 'gap', num: '07', name: 'Gap', line: 'Drag-to-reorder’s insertion line and ring, parting two rows to make room.' }
 ];
 return { marks: marks.map(m => ({ rec: false, recLabel: '', ...m })), n160: 160, n32: 32, n16: 16 };
 }
