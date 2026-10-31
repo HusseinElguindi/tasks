@@ -26,7 +26,7 @@
       "h": 764,
       "radius": 12,
       "is_interactive": true,
-      "title": "Prototype · the School list; the strip switches Dates, Wording and the Overdue cue (defaults: Quiet When, Compact, Off)"
+      "title": "Prototype · the School list. The strip switches the Wording and the two proposed cues (defaults: Nd left, amber ring, dot)"
     },
     "Main.dc.html": {
       "x": 1260,
@@ -37,81 +37,207 @@
       "is_interactive": true,
       "title": "Prototype · Today; the same strip"
     },
-    "Chips-Pills-Today.dc.html": {
+    "Cues-Compare.dc.html": {
       "x": 0,
       "y": 1200,
-      "w": 1000,
-      "h": 620,
+      "w": 1400,
+      "h": 764,
       "radius": 12,
       "is_interactive": true,
-      "title": "A · Pills: both dates are capsules"
+      "title": "Every checkbox state in each “When today” direction, and in Today"
     },
-    "Chips-Quiet-Today.dc.html": {
-      "x": 1080,
+    "Cues-Compare-Light.dc.html": {
+      "x": 1480,
       "y": 1200,
-      "w": 1000,
-      "h": 620,
+      "w": 1400,
+      "h": 764,
       "radius": 12,
       "is_interactive": true,
-      "title": "B · Quiet When: only a deadline is a capsule (recommended)"
+      "title": "The same · light"
     },
-    "Chips-Text-Today.dc.html": {
-      "x": 2160,
-      "y": 1200,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "C · Text: no capsules; the tone colours the text"
-    },
-    "Chips-Pills-List.dc.html": {
+    "Cues-Dot-List.dc.html": {
       "x": 0,
       "y": 2240,
       "w": 1000,
       "h": 620,
       "radius": 12,
       "is_interactive": true,
-      "title": "A · Pills, in a list"
+      "title": "Dot: Today's yellow inside the ring (recommended)"
     },
-    "Chips-Quiet-List.dc.html": {
+    "Cues-Ring-List.dc.html": {
       "x": 1080,
       "y": 2240,
       "w": 1000,
       "h": 620,
       "radius": 12,
       "is_interactive": true,
-      "title": "B · Quiet When, in a list (recommended)"
+      "title": "Blue ring: gives way to a deadline's ring"
     },
-    "Chips-Text-List.dc.html": {
+    "Cues-Fill-List.dc.html": {
       "x": 2160,
       "y": 2240,
       "w": 1000,
       "h": 620,
       "radius": 12,
       "is_interactive": true,
-      "title": "C · Text, in a list"
+      "title": "Fill: accent-tint inside the ring"
     },
-    "Cue-Checkbox.dc.html": {
+    "Cues-Dot-List-Light.dc.html": {
       "x": 0,
       "y": 3280,
       "w": 1000,
       "h": 620,
       "radius": 12,
       "is_interactive": true,
-      "title": "Overdue cue: the checkbox's ring"
+      "title": "Dot · light"
     },
-    "Cue-Edge.dc.html": {
+    "Cues-Ring-List-Light.dc.html": {
       "x": 1080,
       "y": 3280,
       "w": 1000,
       "h": 620,
       "radius": 12,
       "is_interactive": true,
-      "title": "Overdue cue: a 2pt edge"
+      "title": "Blue ring · light"
+    },
+    "Cues-Fill-List-Light.dc.html": {
+      "x": 2160,
+      "y": 3280,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Fill · light"
+    },
+    "Cues-Today.dc.html": {
+      "x": 0,
+      "y": 4320,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "In Today: the rings, never the dot"
+    },
+    "Cues-Today-Light.dc.html": {
+      "x": 1080,
+      "y": 4320,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "In Today · light"
+    },
+    "Cues-Selected.dc.html": {
+      "x": 2160,
+      "y": 4320,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Selected: the ring and the dot stay"
+    },
+    "Cues-Detail.dc.html": {
+      "x": 3240,
+      "y": 4320,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "The detail pane's checkbox carries the same cue"
+    },
+    "Wording-Compare.dc.html": {
+      "x": 0,
+      "y": 5660,
+      "w": 1400,
+      "h": 1000,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Every distance in each wording; how “Nd left” reads overdue"
+    },
+    "Wording-Compare-Light.dc.html": {
+      "x": 1480,
+      "y": 5660,
+      "w": 1400,
+      "h": 1000,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "The same · light"
+    },
+    "Words-Left-List.dc.html": {
+      "x": 0,
+      "y": 6940,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Nd left (the user's, recommended)"
+    },
+    "Words-Abs-List.dc.html": {
+      "x": 1080,
+      "y": 6940,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Absolute (as built)"
+    },
+    "Words-Rel-List.dc.html": {
+      "x": 2160,
+      "y": 6940,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Relative under two weeks"
+    },
+    "Words-Cmp-List.dc.html": {
+      "x": 3240,
+      "y": 6940,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Compact, “2d ago”"
+    },
+    "Words-Cmpm-List.dc.html": {
+      "x": 4320,
+      "y": 6940,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Compact, “−2d”"
+    },
+    "Words-Left-Upcoming.dc.html": {
+      "x": 0,
+      "y": 7980,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Nd left in Upcoming: it counts from today, not from the day's group"
+    },
+    "Tip-When.dc.html": {
+      "x": 1080,
+      "y": 7980,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "The tooltip gives the date: “When: Mon, Nov 2 · in 2 days”"
+    },
+    "Tip-Deadline.dc.html": {
+      "x": 2160,
+      "y": 7980,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "… “Deadline: Tue, Nov 3 · in 3 days”"
     },
     "Upcoming-Dates.dc.html": {
       "x": 0,
-      "y": 4320,
+      "y": 9320,
       "w": 1000,
       "h": 620,
       "radius": 12,
@@ -120,7 +246,7 @@
     },
     "Narrow-List.dc.html": {
       "x": 1080,
-      "y": 4320,
+      "y": 9320,
       "w": 1000,
       "h": 620,
       "radius": 12,
@@ -129,7 +255,7 @@
     },
     "Narrow-Today.dc.html": {
       "x": 2160,
-      "y": 4320,
+      "y": 9320,
       "w": 520,
       "h": 620,
       "radius": 12,
@@ -138,16 +264,16 @@
     },
     "Detail-Dates.dc.html": {
       "x": 0,
-      "y": 5360,
+      "y": 10360,
       "w": 1000,
       "h": 620,
       "radius": 12,
       "is_interactive": true,
-      "title": "The detail pane: “due tomorrow”, the flag in attention"
+      "title": "The detail pane: “1 day left”, the flag in attention"
     },
     "Popover-When.dc.html": {
       "x": 1080,
-      "y": 5360,
+      "y": 10360,
       "w": 1000,
       "h": 620,
       "radius": 12,
@@ -156,304 +282,130 @@
     },
     "Popover-Deadline.dc.html": {
       "x": 2160,
-      "y": 5360,
+      "y": 10360,
       "w": 1000,
       "h": 620,
       "radius": 12,
       "is_interactive": true,
       "title": "Deadline popover: the flag, the When's grey dot, “before the When”"
     },
-    "Chips-Quiet-Today-Light.dc.html": {
-      "x": 0,
-      "y": 6400,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "B · Today · light"
-    },
-    "Chips-Quiet-List-Light.dc.html": {
-      "x": 1080,
-      "y": 6400,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "B · a list · light"
-    },
     "Popover-When-Light.dc.html": {
-      "x": 2160,
-      "y": 6400,
+      "x": 3240,
+      "y": 10360,
       "w": 1000,
       "h": 620,
       "radius": 12,
       "is_interactive": true,
       "title": "When popover · light"
-    },
-    "Wording-Compare.dc.html": {
-      "x": 0,
-      "y": 7440,
-      "w": 1180,
-      "h": 764,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Every distance in each wording: the quiet When, then the Deadline capsule, and the tooltip"
-    },
-    "Wording-Compare-Light.dc.html": {
-      "x": 1260,
-      "y": 7440,
-      "w": 1180,
-      "h": 764,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "The same · light"
-    },
-    "Words-Abs-List.dc.html": {
-      "x": 0,
-      "y": 8540,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Absolute (now): a weekday within the week, then the date"
-    },
-    "Words-Rel-List.dc.html": {
-      "x": 1080,
-      "y": 8540,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Relative under two weeks, then the date"
-    },
-    "Words-Cmp-List.dc.html": {
-      "x": 2160,
-      "y": 8540,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Compact at any distance; overdue “2d ago” (recommended)"
-    },
-    "Words-Cmpm-List.dc.html": {
-      "x": 3240,
-      "y": 8540,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Compact; overdue “−2d”"
-    },
-    "Words-Cmp-Today.dc.html": {
-      "x": 0,
-      "y": 9580,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Compact in Today: the deadlines are a countdown"
-    },
-    "Words-Cmp-Upcoming.dc.html": {
-      "x": 1080,
-      "y": 9580,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Compact in Upcoming: it still counts from today, not from the day's group"
-    },
-    "Tip-When-Cmp.dc.html": {
-      "x": 2160,
-      "y": 9580,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "The tooltip gives back the weekday and date: “When: Mon, Nov 2 · in 2 days”"
-    },
-    "Tip-Deadline-Cmp.dc.html": {
-      "x": 3240,
-      "y": 9580,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "… and for a deadline: “Deadline: Tue, Nov 3 · in 3 days”"
-    },
-    "Words-Cmp-List-Light.dc.html": {
-      "x": 0,
-      "y": 10620,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Compact, a list · light"
-    },
-    "Words-Cmp-Today-Light.dc.html": {
-      "x": 1080,
-      "y": 10620,
-      "w": 1000,
-      "h": 620,
-      "radius": 12,
-      "is_interactive": true,
-      "title": "Compact, Today · light"
     }
   },
   "order": [
     "When-Deadline.dc.html",
     "Main.dc.html",
-    "Chips-Pills-Today.dc.html",
-    "Chips-Quiet-Today.dc.html",
-    "Chips-Text-Today.dc.html",
-    "Chips-Pills-List.dc.html",
-    "Chips-Quiet-List.dc.html",
-    "Chips-Text-List.dc.html",
-    "Cue-Checkbox.dc.html",
-    "Cue-Edge.dc.html",
+    "Cues-Compare.dc.html",
+    "Cues-Compare-Light.dc.html",
+    "Cues-Dot-List.dc.html",
+    "Cues-Ring-List.dc.html",
+    "Cues-Fill-List.dc.html",
+    "Cues-Dot-List-Light.dc.html",
+    "Cues-Ring-List-Light.dc.html",
+    "Cues-Fill-List-Light.dc.html",
+    "Cues-Today.dc.html",
+    "Cues-Today-Light.dc.html",
+    "Cues-Selected.dc.html",
+    "Cues-Detail.dc.html",
+    "Wording-Compare.dc.html",
+    "Wording-Compare-Light.dc.html",
+    "Words-Left-List.dc.html",
+    "Words-Abs-List.dc.html",
+    "Words-Rel-List.dc.html",
+    "Words-Cmp-List.dc.html",
+    "Words-Cmpm-List.dc.html",
+    "Words-Left-Upcoming.dc.html",
+    "Tip-When.dc.html",
+    "Tip-Deadline.dc.html",
     "Upcoming-Dates.dc.html",
     "Narrow-List.dc.html",
     "Narrow-Today.dc.html",
     "Detail-Dates.dc.html",
     "Popover-When.dc.html",
     "Popover-Deadline.dc.html",
-    "Chips-Quiet-Today-Light.dc.html",
-    "Chips-Quiet-List-Light.dc.html",
-    "Popover-When-Light.dc.html",
-    "Wording-Compare.dc.html",
-    "Wording-Compare-Light.dc.html",
-    "Words-Abs-List.dc.html",
-    "Words-Rel-List.dc.html",
-    "Words-Cmp-List.dc.html",
-    "Words-Cmpm-List.dc.html",
-    "Words-Cmp-Today.dc.html",
-    "Words-Cmp-Upcoming.dc.html",
-    "Tip-When-Cmp.dc.html",
-    "Tip-Deadline-Cmp.dc.html",
-    "Words-Cmp-List-Light.dc.html",
-    "Words-Cmp-Today-Light.dc.html"
+    "Popover-When-Light.dc.html"
   ],
   "noteOrder": [
     "title",
     "howto",
-    "n_weak",
-    "t_dates",
-    "n_dates",
-    "t_list",
-    "t_cue",
-    "n_cue",
-    "t_views",
-    "n_views",
-    "t_detail",
-    "t_light",
+    "t_cues",
+    "n_cues",
+    "n_cues2",
     "t_words",
     "n_words",
-    "n_words2"
+    "t_views",
+    "t_detail"
   ],
   "notes": {
     "title": {
       "kind": "title1",
       "x": 0,
       "y": -300,
-      "maxW": 3160,
-      "text": "Tasks · When and Deadline at a glance (proposed)"
+      "maxW": 4240,
+      "text": "Tasks · When and Deadline at a glance"
     },
     "howto": {
       "x": -560,
       "y": 0,
       "w": 480,
       "size": 24,
-      "text": "How to try it\n\n• Press Play, then click inside once so it has the keys.\n• The strip's Dates, Wording and Overdue cue switch the open choices. Sections 1 and 2 hold the wording at Absolute; section 3 compares the wordings.\n• Hover a date for its full date and distance; click it for the popover.\n• Narrow the detail pane or the window: the list name gives way, then the When; a deadline always stays."
+      "text": "How to try it\n\n• Press Play, then click inside once so it has the keys.\n• Picked: the When is quiet grey text and only a deadline is a capsule; an overdue task's checkbox ring is red.\n• Proposed, on the strip: Wording, Due today, When today. The defaults are the recommendations.\n• Hover a date for its full date; click it for the popover. Narrow the window: the When gives way, a deadline always stays."
     },
-    "n_weak": {
-      "x": 2520,
-      "y": 0,
-      "w": 520,
-      "size": 24,
-      "text": "What's weak now\n\n• When and Deadline are the same grey capsule; only an 11pt glyph tells them apart.\n• A deadline says “Due” only on the day: tomorrow's reads “Tomorrow”, like a plan.\n• Two steps of urgency; due tomorrow looks like nothing.\n• Every dated row has a capsule, so the deadline that matters doesn't stand out.\n• At narrow widths the chips never give way (feedback 16)."
-    },
-    "t_dates": {
+    "t_cues": {
       "kind": "title1",
       "x": 0,
       "y": 900,
-      "maxW": 3160,
-      "text": "1 · Dates on a row: Today"
+      "maxW": 2880,
+      "text": "1 · Cues on the checkbox (proposed)"
     },
-    "n_dates": {
+    "n_cues": {
       "x": -560,
       "y": 1200,
       "w": 480,
       "size": 24,
-      "text": "Every variant: a deadline says “Due” (in words; Compact lets the flag say it); overdue is red, due today amber, due tomorrow an amber flag; the tooltip has the full date and distance.\n\nB: a capsule then always means something is due. The plan (When) sits back as quiet text."
+      "text": "The ring carries the deadline: red when it's past (picked), amber when it's today. A deadline is one or the other, never both.\n\nWhen today (a task on today's plate, seen in a list) is a 4pt dot in Today's yellow, inside the ring. Recommended: it's a different shape from the rings, so it sits with either; amber already means today (the capsule, the ring, Today's sun).\n\nThe blue ring reads like the blue of a checked box and has to give way to a deadline's ring. The fill nearly vanishes in dark and reads as pressed."
     },
-    "t_list": {
-      "kind": "title1",
-      "x": 0,
-      "y": 1940,
-      "maxW": 3160,
-      "text": "… and in a list"
-    },
-    "t_cue": {
-      "kind": "title1",
-      "x": 0,
-      "y": 2980,
-      "maxW": 2080,
-      "text": "2 · An overdue cue on the row"
-    },
-    "n_cue": {
+    "n_cues2": {
       "x": -560,
-      "y": 3280,
+      "y": 4360,
       "w": 480,
       "size": 24,
-      "text": "Off (B in Today, above) is recommended: the red capsule already marks the row. If more is wanted, the checkbox beats the edge: it's on the task, not the row's chrome."
-    },
-    "t_views": {
-      "kind": "title1",
-      "x": 0,
-      "y": 4020,
-      "maxW": 2680,
-      "text": "Views and narrow widths"
-    },
-    "n_views": {
-      "x": -560,
-      "y": 4320,
-      "w": 480,
-      "size": 24,
-      "text": "Today leaves out a When on or before today. Upcoming doesn't repeat the day. Completed, Trash and done rows show no dates.\n\nNarrow (feedback 16, as built): the title keeps 120pt; dates keep their size, the When dropping first; the list name truncates. A deadline always shows."
-    },
-    "t_detail": {
-      "kind": "title1",
-      "x": 0,
-      "y": 5060,
-      "maxW": 3160,
-      "text": "The detail pane and the popover"
-    },
-    "t_light": {
-      "kind": "title1",
-      "x": 0,
-      "y": 6100,
-      "maxW": 3160,
-      "text": "Light"
+      "text": "Today shows the rings but never the dot: everything there is on today's plate. Upcoming and Undated have nothing for today. Done and Trash rows show no cue.\n\nSelection keeps both (the fill is behind them). The checkbox's label reads the cue aloud: “Complete: ECE 358 lab report, overdue, planned for today”."
     },
     "t_words": {
       "kind": "title1",
       "x": 0,
-      "y": 7140,
-      "maxW": 4240,
-      "text": "3 · Wording: absolute, relative under two weeks, or compact"
+      "y": 5360,
+      "maxW": 5320,
+      "text": "2 · Wording: “Nd left”, the user's countdown (proposed)"
     },
     "n_words": {
       "x": -560,
-      "y": 7440,
+      "y": 5660,
       "w": 480,
       "size": 24,
-      "text": "Compact is recommended: every date is its distance from today, at any range. 2d, 13d, 3w, 2mo, 1y; overdue “2d ago”.\n\n• Urgency is the number, so it's comparable down the column and across a row (“2d · 3d”: planned a day before it's due).\n• It's the narrowest, so a When drops less often at narrow widths.\n• What it gives up, the weekday and the date, is in the tooltip and the detail pane.\n• “2d ago” over “−2d”: it reads as words, and a minus sign at 11pt is easy to miss or read as a dash. The red capsule already says late.\n\nIn compact, a deadline needn't say “Due”: the flag and the capsule say it. Today stays a word, never “0d”."
+      "text": "A deadline counts the whole days left, not the deadline's own day: “13d left” … “1d left”, then “Due today”, then “1d late”.\n\nFar off, it counts in weeks from 14 days (“2w left”), months from 60 (“2mo left”), years from 365, always rounded down, so it never shows more time than there is.\n\nOverdue: “2d late” (recommended) over “2d over” (it reads as “over budget”, and as “finished”) and “2d ago” (it says when, not that you're late).\n\nThe When is a plan, not a countdown: “Today”, “Tomorrow”, then “in 2d”, “in 3w”. Never “left”."
     },
-    "n_words2": {
-      "x": -560,
-      "y": 9580,
-      "w": 480,
-      "size": 24,
-      "text": "Costs to weigh\n\n• Tomorrow is “1d”, not a word.\n• A plan this week loses its weekday (“Fri” becomes “6d”).\n• Far dates are coarse (“2mo”).\n• Upcoming already groups by day, and “3d” under Monday counts from today, not Monday. The tooltip settles it."
+    "t_views": {
+      "kind": "title1",
+      "x": 0,
+      "y": 9020,
+      "maxW": 3240,
+      "text": "Views and narrow widths"
+    },
+    "t_detail": {
+      "kind": "title1",
+      "x": 0,
+      "y": 10060,
+      "maxW": 4240,
+      "text": "The detail pane and the popover"
     }
   }
 }

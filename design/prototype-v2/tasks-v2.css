@@ -480,28 +480,27 @@
 .tk .lifted.hlift .check { display: none; }
 .tk .lifted.hlift .tt { margin-left: 0; font-weight: 600; }
 
-/* ---------- When and Deadline (proposed: INTERACTIONS-v2 §24) ---------- */
-/* Urgency is the deadline's tone, in every variant: late (past) danger, due (today) attention, soon (tomorrow) an
-   attention flag on the neutral look, later neutral. */
+/* ---------- When and Deadline (INTERACTIONS-v2 §24) ---------- */
+/* Urgency is the deadline's tone: late (past) danger, due (today) attention, soon (tomorrow) an attention flag on the
+   neutral look, later neutral. */
 .tk .chip .ct { white-space: nowrap; }
-.tk.dw-cmp .chip .ct, .tk.dw-cmpm .chip .ct { font-variant-numeric: tabular-nums; }   /* compact wording: the numbers line up down the column */
+.tk.dw-cmp .chip .ct, .tk.dw-cmpm .chip .ct, .tk.dw-left .chip .ct { font-variant-numeric: tabular-nums; }   /* compact wording: the numbers line up down the column */
 .tk .chip.soon .i { color: var(--attn); }   /* soon: only the flag is tinted, so today stays the one amber capsule */
 .tk .chip.open-picker .i { color: inherit; }
-/* A · Pills: both dates are capsules (as before, with the tones above). */
-/* B · Quiet When: When is text (glyph and date in ink-tertiary, no capsule); only a deadline is a capsule, so a
+/* Quiet When (picked): When is text (glyph and date in ink-tertiary, no capsule); only a deadline is a capsule, so a
    capsule on a row always means something is due. Hover and an open popover still show the capsule. */
-.tk.dv-quiet .chip.when:not(.lg), .tk.dv-text .chip:not(.lg) { background: transparent; padding: 0 5px; }
-.tk.dv-quiet .chip.when:not(.lg), .tk.dv-text .chip.when:not(.lg) { color: var(--ink-3); }
-.tk.dv-quiet button.chip.when:not(.lg):hover, .tk.dv-text button.chip:not(.lg):hover { filter: none; background: var(--hover); color: var(--ink-2); }
-/* C · Text: no capsules at all; a deadline is ink-secondary, and its tone colours only its text. */
-.tk.dv-text .chip.dl.late:not(.lg) { color: var(--danger); }
-.tk.dv-text .chip.dl.due:not(.lg) { color: var(--attn); }
-.tk.dv-quiet .chip.when.open-picker:not(.lg), .tk.dv-text .chip.open-picker:not(.lg) { background: var(--accent-tint); color: var(--accent-text); }
-/* The overdue cue on the row (off by default): the checkbox's ring in danger, or a 2pt danger edge inside the row's
-   leading edge. Only a past deadline on an open task. */
-.tk .row .edge { display: none; }
-.tk.cue-check .row.overdue .check:not(.on) { box-shadow: inset 0 0 0 1.5px var(--danger); }
-.tk.cue-edge .row.overdue .edge { display: block; position: absolute; left: 3px; top: 8px; bottom: 8px; width: 2px; border-radius: 1px; background: var(--danger); }
+.tk .chip.when:not(.lg) { background: transparent; padding: 0 5px; color: var(--ink-3); }
+.tk button.chip.when:not(.lg):hover { filter: none; background: var(--hover); color: var(--ink-2); }
+.tk .chip.when.open-picker:not(.lg) { background: var(--accent-tint); color: var(--accent-text); }
+/* Cues on the checkbox, open tasks only. The ring carries the deadline: late (picked) is danger; due today (proposed)
+   is attention. When today, seen outside Today (proposed): a 4pt dot inside the ring in Today's yellow, the ring in
+   accent, or the box filled with accent-tint. The dot and the fill sit with a deadline's ring; the blue ring gives way
+   to it (lower specificity, by :where). Hover keeps the cue's ring. */
+.tk .check.late:not(.on) { box-shadow: inset 0 0 0 1.5px var(--danger); }
+.tk.due-ring .check.due:not(.on) { box-shadow: inset 0 0 0 1.5px var(--attn); }
+.tk.mark-ring :where(.check.plate):not(.on) { box-shadow: inset 0 0 0 1.5px var(--accent-text); }
+.tk.mark-dot .check.plate:not(.on)::before { content: ""; position: absolute; left: 6px; top: 6px; width: 4px; height: 4px; border-radius: 50%; background: var(--ansi-yellow); }
+.tk.mark-fill .check.plate:not(.on) { background: var(--accent-tint); }
 /* Narrow widths, as the app built v2 feedback 16 (f08ca77), approximated: the title keeps up to 120pt with its hint;
    dates keep their size and drop from the first (the When before the deadline); the list name truncates (fading
    when cut); only then does the title go under 120pt. A deadline always shows. Nothing overlaps. */

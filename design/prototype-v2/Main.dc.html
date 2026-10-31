@@ -92,7 +92,7 @@ body{margin:0}
 </sc-for>
 <sc-for list="{{rows}}" as="r" hint-placeholder-count="0">
 <div class="{{r.cls}}" style="{{r.style}}" data-id="{{r.id}}" onPointerDown="{{onRowDown}}" onPointerMove="{{onRowMove}}" onPointerUp="{{onRowUp}}" onPointerCancel="{{onRowUp}}" onDoubleClick="{{onRowDbl}}" onContextMenu="{{onRowCtx}}">
-<span class="edge" aria-hidden="true"></span><button class="{{r.checkCls}}" type="button" data-id="{{r.id}}" aria-label="{{r.checkLabel}}" onPointerDown="{{stopPD}}" onClick="{{onCheck}}"><svg class="ck" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.8 8.4l2.7 2.7 5.7-6.2"></path></svg></button>
+<button class="{{r.checkCls}}" type="button" data-id="{{r.id}}" aria-label="{{r.checkLabel}}" onPointerDown="{{stopPD}}" onClick="{{onCheck}}"><svg class="ck" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.8 8.4l2.7 2.7 5.7-6.2"></path></svg></button>
 <sc-if value="{{r.editing}}"><input class="ri" data-id="{{r.id}}" value="{{r.editText}}" placeholder="New Task" spellCheck="false" autoFocus="{{r.autoFocus}}" aria-label="Task title" onChange="{{onEditChange}}" onKeyDown="{{onEditKey}}" onBlur="{{onEditBlur}}" onFocus="{{onEditFocus}}" onPointerDown="{{stopPD}}"></sc-if>
 <sc-if value="{{r.notEditing}}"><span class="ttw"><span class="{{r.titleCls}}">{{r.title}}</span><sc-if value="{{r.nGlyph}}"><span class="nglyph" role="img" aria-label="Has notes"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M3.5 8h9M3.5 11.5h5.5"></path></svg></span></sc-if><sc-if value="{{r.nCount}}"><span class="{{r.nCountCls}}" role="img" aria-label="{{r.nCountLabel}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="3"></rect><path d="M5.4 8.2l1.8 1.8 3.4-3.7"></path></svg>{{r.nCountText}}</span></sc-if></span></sc-if>
 <sc-if value="{{r.hasWhere}}"><span class="where">{{r.where}}</span></sc-if>
@@ -268,7 +268,7 @@ body{margin:0}
 </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"select":{"editor":null,"default":""},"detail":{"editor":null,"default":"closed"},"pick":{"editor":null,"default":"none"},"caret":{"editor":null,"default":""},"vDates":{"editor":null,"default":"quiet"},"vWords":{"editor":null,"default":"cmp"},"vCue":{"editor":null,"default":"off"},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"select":{"editor":null,"default":""},"detail":{"editor":null,"default":"closed"},"pick":{"editor":null,"default":"none"},"caret":{"editor":null,"default":""},"vWords":{"editor":null,"default":"left"},"vDue":{"editor":null,"default":"ring"},"vMark":{"editor":null,"default":"dot"},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
 // ---------- Calendar dates: "YYYY-MM-DD" strings, never instants (SPEC §2). ----------
 const DAY_MS = 86400000;
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -306,15 +306,21 @@ function localDayOfMs(ms) { return ymdOf(new Date(ms)); }
 // How the row chips read.
 // Compact distance, at any range (§24 wording "Compact"): 3d, 13d, 2w, 8w, 2mo, 1y.
 function cmpDist(n) { return n < 14 ? n + 'd' : n < 60 ? Math.round(n / 7) + 'w' : n < 365 ? Math.round(n / 30) + 'mo' : Math.round(n / 365) + 'y'; }
+// The countdown (§24 wording "Left", the user's): whole days left, not counting the deadline's own day, so the day
+// before reads "1d left". Days under two weeks, then whole weeks under 60 days, months under a year, then years, each
+// rounded down, so it never shows more time than there is.
+function leftDist(n) { return n < 14 ? n + 'd' : n < 60 ? Math.floor(n / 7) + 'w' : n < 365 ? Math.floor(n / 30) + 'mo' : Math.floor(n / 365) + 'y'; }
 // Relative words up to two weeks out (§24 wording "Relative"): in 3 days, 2 days.
 function relDays(n) { return n === 1 ? '1 day' : n + ' days'; }
 function relLate(n) { return n < 14 ? relDays(n) : Math.round(n / 7) + ' weeks'; }
 // How the row chips read. words is §24's wording: abs (a weekday within the week, then the date), rel (relative
-// under two weeks, then the date), cmp / cmpm (compact distance always; overdue as "2d ago" / "−2d").
+// under two weeks, then the date), cmp / cmpm (compact distance always; overdue as "2d ago" / "−2d"), left (the
+// countdown: "13d left", "Due today", "2d late"; a When "in 13d").
 function whenChipText(s, today, words) {
   const n = diffDays(today, s);
   if (n <= 0) return 'Today';
   if (words === 'cmp' || words === 'cmpm') return cmpDist(n);
+  if (words === 'left') return n === 1 ? 'Tomorrow' : 'in ' + leftDist(n);   // a plan, not a countdown: no "left"
   if (n === 1) return 'Tomorrow';
   if (words === 'rel' && n < 14) return 'In ' + n + ' days';
   if (words !== 'rel' && n < 7) return WD[weekdayIdx(s)];
@@ -325,6 +331,7 @@ function whenChipText(s, today, words) {
 function deadlineChip(s, today, words) {
   const n = diffDays(today, s), cmp = words === 'cmp' || words === 'cmpm';
   const tone = n < 0 ? 'late' : n === 0 ? 'due' : n === 1 ? 'soon' : '';   // soon: only the flag is tinted
+  if (words === 'left') return { text: n < 0 ? leftDist(-n) + ' late' : n === 0 ? 'Due today' : leftDist(n) + ' left', tone };
   if (cmp) return { text: n < 0 ? (words === 'cmpm' ? '\u2212' + cmpDist(-n) : cmpDist(-n) + ' ago') : n === 0 ? 'Today' : cmpDist(n), tone };
   if (n < 0) return { text: words === 'rel' ? 'Overdue · ' + relLate(-n) : 'Overdue · ' + -n + 'd', tone };
   if (n === 0) return { text: 'Due today', tone };
@@ -334,8 +341,12 @@ function deadlineChip(s, today, words) {
   return { text: 'Due ' + mdy(s, today), tone };
 }
 // The relative words beside a deadline: how late, or how long until it's due.
-function dueRelText(s, today) {
+function dueRelText(s, today, words) {
   const n = diffDays(today, s);
+  if (words === 'left' && n !== 0) {   // the countdown's words, in full: "13 days left", "2 days late" (rounded down, as on the row)
+    const m = Math.abs(n), u = m < 14 ? [m, 'day'] : m < 60 ? [Math.floor(m / 7), 'week'] : m < 365 ? [Math.floor(m / 30), 'month'] : [Math.floor(m / 365), 'year'];
+    return u[0] + ' ' + u[1] + (u[0] === 1 ? '' : 's') + (n < 0 ? ' late' : ' left');
+  }
   if (n < 0) return -n === 1 ? '1 day overdue' : -n < 14 ? -n + ' days overdue' : Math.round(-n / 7) + ' weeks overdue';
   if (n === 0) return 'due today';
   if (n === 1) return 'due tomorrow';
@@ -344,8 +355,8 @@ function dueRelText(s, today) {
 // The popover's note on a When after the deadline, or a deadline before the When (no rule forbids either; SPEC §2).
 function pkHint(p, hot) { return !p.none && p.other && ((p.field === 'when' && hot > p.other) || (p.field === 'deadline' && hot < p.other)); }
 // A chip's tooltip: the full date and how far it is.
-function dateTip(field, s, today) {
-  return (field === 'when' ? 'When: ' : 'Deadline: ') + longDate(s, today) + ' · ' + (field === 'when' ? relText(s, today) : dueRelText(s, today));
+function dateTip(field, s, today, words) {
+  return (field === 'when' ? 'When: ' : 'Deadline: ') + longDate(s, today) + ' · ' + (field === 'when' ? relText(s, today) : dueRelText(s, today, words));
 }
 
 // ---------- Typed dates ----------
@@ -471,15 +482,24 @@ const VIEW_EMPTY = {
 };
 // Headings, a list's notes and its title (INTERACTIONS-v2 §23).
 const HEAD_AIR = 8;   // a heading's air above its row
-// When and Deadline (proposed, INTERACTIONS-v2 §24): the open choices, with the recommendation as the default. The
-// strip switches them; a board sets them with v-dates, v-words and v-cue.
-const DATE_DEFAULTS = { dates: 'quiet', words: 'cmp', cue: 'off' };
+// When and Deadline (INTERACTIONS-v2 §24). Picked: Quiet When, and an overdue task's checkbox ring in red. Still
+// proposed: the wording, and the cues for due today and for a When of today seen in a list. The strip switches them,
+// with the recommendation as the default; a board sets them with v-words, v-due and v-mark.
+const DATE_DEFAULTS = { words: 'left', due: 'ring', mark: 'dot' };
 const DATE_OPTS = {
-  dates: [['pills', 'Pills'], ['quiet', 'Quiet When'], ['text', 'Text']],
-  words: [['abs', 'Absolute'], ['rel', 'Relative < 2 wk'], ['cmp', 'Compact · 2d ago'], ['cmpm', 'Compact · \u22122d']],
-  cue: [['off', 'Off'], ['check', 'Checkbox'], ['edge', 'Edge']],
+  words: [['left', 'Nd left'], ['abs', 'Absolute'], ['rel', 'Relative < 2 wk'], ['cmp', 'Compact · 2d ago'], ['cmpm', 'Compact · \u22122d']],
+  due: [['ring', 'Amber ring'], ['off', 'Off']],
+  mark: [['dot', 'Dot'], ['ring', 'Blue ring'], ['fill', 'Fill'], ['off', 'Off']],
 };
-const DATE_LABEL = { dates: 'Dates', words: 'Wording', cue: 'Overdue cue' };
+const DATE_LABEL = { words: 'Wording', due: 'Due today', mark: 'When today' };
+// The checkbox's cue classes (§24): late (a past deadline), due (a deadline today), plate (a When on or before today,
+// so it's in Today; not drawn in Today itself, where every task is). Open tasks only, never in Trash.
+// …and the same, read aloud on the checkbox's label: "Complete: ECE 358 lab report, overdue, planned for today".
+function cueWords(c) { return (c.includes(' late') ? ', overdue' : c.includes(' due') ? ', due today' : '') + (c.includes(' plate') ? ', planned for today' : ''); }
+function cueCls(t, T, inToday) {
+  if (t.completedAt != null || t.deleted || t.kind === 'heading') return '';
+  return (t.deadline && t.deadline < T ? ' late' : t.deadline === T ? ' due' : '') + (!inToday && t.when && t.when <= T ? ' plate' : '');
+}
 
 let UID = 0;
 function uid(p) { UID += 1; return p + UID.toString(36) + Math.random().toString(36).slice(2, 6); }
@@ -518,6 +538,8 @@ function makeSeed(T) {
   t('school', 'Email TA about midterm regrade', { when: d(0) });
   t('school', 'Review CS 489 lectures 10–14', { when: d(0), deadline: d(3), notes: "## Before Tuesday\nSlides 10–14 plus the two **retrieval** readings.\n\n- [x] Lecture 10 · tokenization\n- [x] Lecture 11 · embeddings\n- [ ] Lecture 12 · _attention_, redo the derivation\n- [ ] Lecture 13 · retrieval\n- [ ] Lecture 14 · evaluation\n\n> The midterm leans on 12 and 13.\n\n[Lecture 12 recording](https://example.com/cs489/l12) · bring `q3.py` to tutorial" });
   t('school', 'Submit MSE 333 A2', { when: d(2), deadline: d(3) });
+  t('school', 'Return the ECE 358 lab kit', { deadline: d(0) });
+  t('school', 'Pay the MSE 333 field trip fee', { when: d(0), deadline: d(0) });
   t('school', 'CS 489 final study plan', { when: d(10), notes: "# CS 489 final\nMonday Dec 14, 9:00, PAC 8. Cumulative, but **weighted to the second half**. One double-sided sheet allowed.\n\n## Week 1 · rebuild the notes\n- [x] Merge lecture notes 1–7 into one doc\n- [x] Merge lecture notes 8–14\n- [ ] Re-derive scaled dot-product attention without the slides\n- [ ] Write the BM25 formula from memory, then check it\n- [ ] One page on tokenizers: BPE vs unigram vs byte-level\n\n## Week 2 · problems\n- [ ] Assignments 1–4: redo every question I lost marks on\n- [ ] Tutorial sets 5–9\n- [ ] Past finals: 2023, 2024 (timed, 2.5 h each)\n- [ ] Mark them with the posted solutions\n\n## Week 3 · the sheet\n1. List every formula from the slides\n2. Cut it to what I can't re-derive in a minute\n3. Write it out by hand (typing it doesn't stick)\n\n## Topics, roughly by weight\n- Retrieval and ranking\n  - BM25, query likelihood\n  - Dense retrieval, the two-tower setup\n- Attention and transformers\n  - Positional encodings: sinusoidal vs learned vs RoPE\n- Evaluation\n  - nDCG, MRR, recall@k: when each one lies\n\n> From the review session: \"if you can explain why nDCG discounts by log rank, you understand the metric.\"\n\n## Things I keep getting wrong\n- Softmax is over the **keys**, not the queries\n- `sqrt(d_k)` scales the logits, not the values\n- MRR only counts the _first_ relevant result\n\n## Office hours\n- Tue 2:30–4:00, DC 2585 (the TA who runs tutorial 3)\n- Thu 11:00, the prof, by email first\n\nPractice exams are on [LEARN](https://example.com/learn/cs489) under Content › Exams. The 2022 one has no solutions; skip it.\n\n## Day before\n- [ ] Sleep before midnight\n- [ ] Pack: calculator, two pencils, WatCard, the sheet\n- [ ] Check the room on the exam schedule again" });
   t('school', 'Print ECE 358 formula sheet');
   t('school', 'Ask about co-op interview slots');
@@ -2748,17 +2770,16 @@ class Component extends DCLogic {
       const chips = [], gday = this.groupDay(L, t.id);   // in Upcoming, a day group's own date isn't repeated on its rows
       if (!done) {
         const opened = (f) => (pickerFor && pickerFor.has(t.id) && s.picker.field === f ? ' open-picker' : '');
-        if (t.when && !(inToday && t.when <= T) && t.when !== gday) chips.push({ field: 'when', cal: true, flag: false, text: whenChipText(t.when, T, this.dv('words')), cls: 'chip when' + opened('when'), tip: dateTip('when', t.when, T) });
-        if (t.deadline) { const dc = deadlineChip(t.deadline, T, this.dv('words')); chips.push({ field: 'deadline', cal: false, flag: true, text: t.deadline === gday ? 'Due' : dc.text, cls: 'chip dl ' + dc.tone + opened('deadline'), tip: dateTip('deadline', t.deadline, T) }); }
-        if (t.deadline && t.deadline < T) cls += ' overdue';   // the row-level cue (§24), when one is on
+        if (t.when && !(inToday && t.when <= T) && t.when !== gday) chips.push({ field: 'when', cal: true, flag: false, text: whenChipText(t.when, T, this.dv('words')), cls: 'chip when' + opened('when'), tip: dateTip('when', t.when, T, this.dv('words')) });
+        if (t.deadline) { const dc = deadlineChip(t.deadline, T, this.dv('words')); chips.push({ field: 'deadline', cal: false, flag: true, text: t.deadline === gday ? 'Due' : dc.text, cls: 'chip dl ' + dc.tone + opened('deadline'), tip: dateTip('deadline', t.deadline, T, this.dv('words')) }); }
       }
       const where = this.whereText(L, t, inToday);
       return {
         id: t.id, cls, style: 'transform: translateY(' + y + 'px)',
         title: t.title || 'New Task', titleCls: 'tt' + (t.title ? '' : ' untitled'),
         editing: isEd, notEditing: !isEd, editText: isEd ? ed.text : '', autoFocus: isEd && !ed.demo,
-        checkCls: 'check' + (done ? ' on' : '') + (s.pops[t.id] ? ' pop' : '') + (t.draft ? ' new' : ''),
-        checkLabel: (done ? 'Mark not done: ' : 'Complete: ') + (t.title || 'New Task'),
+        checkCls: 'check' + (done ? ' on' : '') + (s.pops[t.id] ? ' pop' : '') + (t.draft ? ' new' : '') + cueCls(t, T, inToday),
+        checkLabel: (done ? 'Mark not done: ' : 'Complete: ') + (t.title || 'New Task') + cueWords(cueCls(t, T, inToday)),
         chips, where, hasWhere: !!where,
         ...this.rowNotes(t),
       };
@@ -2814,7 +2835,7 @@ class Component extends DCLogic {
       const tone = field === 'deadline' ? deadlineChip(value, T).tone : '';
       // §24: a deadline reads how late or how soon, in its tone; a past When says it's still in Today.
       const open = !(one && one.completedAt != null);
-      const rel = field === 'deadline' ? dueRelText(value, T) : relText(value, T) + (open && value < T ? ' · still in Today' : '');
+      const rel = field === 'deadline' ? dueRelText(value, T, this.dv('words')) : relText(value, T) + (open && value < T ? ' · still in Today' : '');
       return { has: true, mixed: false, text: longDate(value, T), cls: 'chip lg ' + (field === 'when' ? 'when ' : 'dl ') + tone + (s.picker && s.picker.field === field ? ' open-picker' : ''), rel, relCls: 'rel after-clr' + (tone ? ' t-' + tone : '') };
     };
     if (one || many) {
@@ -2835,7 +2856,7 @@ class Component extends DCLogic {
     if (one) {
       const dEd = ed && ed.kind === 'dtitle' && ed.id === one.id;
       dpo.titleValue = dEd ? ed.text : one.title;
-      dpo.checkCls = 'check' + (one.completedAt != null ? ' on' : '') + (s.pops[one.id] ? ' pop' : '') + (one.draft ? ' new' : '') + (inert ? ' inert' : '');
+      dpo.checkCls = 'check' + (one.completedAt != null ? ' on' : '') + (s.pops[one.id] ? ' pop' : '') + (one.draft ? ' new' : '') + (inert ? ' inert' : '') + cueCls(one, T, s.route.kind === 'today');
       const nEd = ed && ed.kind === 'notes' && this.nKeyOf(ed) === 'detail:' + one.id;
       const ntext = nEd ? ed.text : one.notes;
       dpo.nt = {
@@ -2933,7 +2954,7 @@ class Component extends DCLogic {
         // §24: a deadline previews as "Due …"; a When after the deadline, or a deadline before the When, gets a quiet note.
         hint: p.none || !p.other ? '' : p.field === 'when' && hot > p.other ? 'after the deadline' : p.field === 'deadline' && hot < p.other ? 'before the When' : '',
         // With a note, it takes the relative words' place, so the line stays one line.
-        preview: p.none ? 'No date matches “' + p.text.trim() + '”' : (p.field === 'deadline' ? 'Due ' : '') + longDate(hot, T) + (pkHint(p, hot) ? '' : ' · ' + (p.field === 'deadline' && hot < T ? dueRelText(hot, T) : relText(hot, T))), previewCls: 'pvt' + (p.none ? ' none' : ''),
+        preview: p.none ? 'No date matches “' + p.text.trim() + '”' : (p.field === 'deadline' ? 'Due ' : '') + longDate(hot, T) + (pkHint(p, hot) ? '' : ' · ' + (p.field === 'deadline' && hot < T ? dueRelText(hot, T, this.dv('words')) : relText(hot, T))), previewCls: 'pvt' + (p.none ? ' none' : ''),
         isWhen: p.field === 'when', isDl: p.field === 'deadline',
         autoFocus: !p.demo,
       };
@@ -2950,7 +2971,7 @@ class Component extends DCLogic {
     };
 
     return {
-      rootCls: 'tk ' + s.theme + ' dv-' + this.dv('dates') + ' dw-' + this.dv('words') + ' cue-' + this.dv('cue') + (s.noAnim ? ' no-anim' : '') + (s.detail === 'open' || s.detail === 'opening' ? ' detail-open' : '') + (s.resize ? ' resizing' : '') + (Date.now() - (this.springbackAt || 0) < DETAIL_CLOSE_MS ? ' springback' : ''),
+      rootCls: 'tk ' + s.theme + ' dw-' + this.dv('words') + ' due-' + this.dv('due') + ' mark-' + this.dv('mark') + (s.noAnim ? ' no-anim' : '') + (s.detail === 'open' || s.detail === 'opening' ? ' detail-open' : '') + (s.resize ? ' resizing' : '') + (Date.now() - (this.springbackAt || 0) < DETAIL_CLOSE_MS ? ' springback' : ''),
       rootStyle: 'width: ' + w + 'px; height: ' + (h + (stageOn ? 44 : 0)) + 'px',
       winStyle: 'height: ' + h + 'px',
       rootRef: this.rootRef, winRef: this.winRef, listScrollRef: this.listScrollRef, sbScrollRef: this.sbScrollRef, liftRef: this.liftRef,
@@ -3386,7 +3407,7 @@ class Component extends DCLogic {
   // heading. It has a title and notes, and never a date or a check. A list's notes are a `notes` field on the list,
   // in the same Markdown editor as a task's.
   isHead(t) { return !!t && t.kind === 'heading'; }
-  // §24's open choices: the strip's, else the board's v-dates, v-words and v-cue, else the recommendation.
+  // §24's open choices: the strip's, else the board's v-words, v-due and v-mark, else the recommendation.
   dv(k) { const o = this.state.dv && this.state.dv[k]; return o || this.props['v' + k[0].toUpperCase() + k.slice(1)] || DATE_DEFAULTS[k]; }
   onlyTasks(ids) { return ids.filter((id) => { const t = this.task(id); return t && !this.isHead(t); }); }
   // A list's order: headings and open tasks, and the completed tasks too when asked (they keep their keys).
