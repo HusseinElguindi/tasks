@@ -160,6 +160,29 @@ final class SyncTests: XCTestCase {
         XCTAssertTrue(log[1].contains(#""hash":"\#(Spec.hash1)""#))
     }
 
+    /// Fixture 11: with `attribution` set, `perform` stamps actor and batch on the op, the request carries them
+    /// byte for byte as the fixture does, and they come back in the log (and from `readEntries`).
+    func testFixturePushWithActor() async throws {
+        let server = try FixtureServer(["01-push", "11-push-with-actor"])
+        let store = makeStore(server)
+        store.perform([op(Spec.opBJSON)])
+        store.cancelScheduledSync()
+        await store.sync()
+        store.attribution = Attribution(actor: "agent:claude-code", batch: "2c1f9e0a-7b3d-4c5e-8f6a-9b0c1d2e3f4a")
+        store.perform([Op(id: "3a7f2c1e-8b4d-4e6a-9c5f-1d2e3f4a5b6c", at: 1_761_811_320_000, type: .taskUpdate,
+                          target: "9f8e7d6c-5b4a-4321-8fed-cba987654321", set: Patch(when: .some(date("2026-11-06"))))])
+        store.cancelScheduledSync()
+        XCTAssertEqual(store.projection.pending.last?.op.actor, "agent:claude-code")
+        await store.sync()
+        XCTAssertEqual(server.mismatches, [])
+        XCTAssertEqual(store.cursor, 3)
+        XCTAssertTrue(store.projection.pending.isEmpty)
+        let entries = store.persistence.readEntries()
+        XCTAssertEqual(entries.map(\.seq), [0, 1, 2])
+        XCTAssertEqual(entries.map(\.op.actor), [nil, nil, "agent:claude-code"])
+        XCTAssertEqual(entries.last?.op.batch, "2c1f9e0a-7b3d-4c5e-8f6a-9b0c1d2e3f4a")
+    }
+
     /// Example 2: a second Mac joins a 2,345-entry log; it pages from each new cursor until `more` is false.
     /// (Its own seed is a duplicate of seq 0, so the server answers exactly as for an empty push.)
     func testFixturePagination() async throws {

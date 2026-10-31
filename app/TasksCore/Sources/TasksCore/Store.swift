@@ -33,6 +33,17 @@ public struct StoreClock: Sendable {
     public static let system = StoreClock(now: { Date() }, calendar: .autoupdatingCurrent)
 }
 
+/// Who is making changes, and the change they belong to (spec §5 `actor`, `batch`).
+public struct Attribution: Hashable, Sendable {
+    public var actor: String
+    public var batch: String
+
+    public init(actor: String, batch: String) {
+        self.actor = actor
+        self.batch = batch
+    }
+}
+
 /// The app's single source of truth on the main actor: confirmed state, cursor, base, pending ops and the
 /// projection, plus the sync loop (spec §5, §8). Views read the projection's models and buckets and call the
 /// actions in `Store+Actions.swift`; they never touch persistence or the network.
@@ -56,6 +67,9 @@ public final class Store {
     public private(set) var recovery: RecoveryProgress?
     /// A non-blocking notice, e.g. "A change couldn't be saved."
     public var notice: String?
+
+    /// Stamped on every op `perform` queues. The app leaves it nil; the CLI sets one per command.
+    @ObservationIgnored public var attribution: Attribution?
 
     /// The next seq this Mac doesn't have, and the hash of entry `cursor − 1`.
     @ObservationIgnored public private(set) var cursor: Int
@@ -115,6 +129,13 @@ public final class Store {
     @discardableResult
     public func perform(_ ops: [Op], undoManager: UndoManager? = nil, actionName: String? = nil) -> Bool {
         guard !ops.isEmpty else { return false }
+        var ops = ops
+        if let a = attribution {
+            for i in ops.indices {
+                ops[i].actor = a.actor
+                ops[i].batch = a.batch
+            }
+        }
         // Inverses against the state before the batch; undo applies them in reverse order.
         var tasks: [EntityID: TaskItem?] = [:]
         var lists: [EntityID: TaskList?] = [:]

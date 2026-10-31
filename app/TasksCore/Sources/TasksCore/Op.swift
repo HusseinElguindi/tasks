@@ -125,18 +125,24 @@ public struct Op: Hashable, Sendable {
     public var type: OpType
     public var target: EntityID
     public var set: Patch
+    /// Optional attribution (spec §5): who wrote the op and the change it belongs to. The reducer never reads
+    /// them; the app never sets them, so its ops' JSON is unchanged.
+    public var actor: String?
+    public var batch: String?
 
-    public init(id: String, at: Int, type: OpType, target: EntityID, set: Patch) {
+    public init(id: String, at: Int, type: OpType, target: EntityID, set: Patch, actor: String? = nil, batch: String? = nil) {
         self.id = id
         self.at = at
         self.type = type
         self.target = target
         self.set = set
+        self.actor = actor
+        self.batch = batch
     }
 }
 
 extension Op: Codable {
-    enum Key: String, CodingKey { case id, at, type, target, set }
+    enum Key: String, CodingKey { case id, at, type, target, set, actor, batch }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: Key.self)
@@ -145,6 +151,8 @@ extension Op: Codable {
         type = OpType(rawValue: (try? c.decode(String.self, forKey: .type)) ?? "")
         target = try c.decode(String.self, forKey: .target)
         set = (try? c.decode(Patch.self, forKey: .set)) ?? Patch()
+        actor = (try? c.decodeIfPresent(String.self, forKey: .actor)) ?? nil
+        batch = (try? c.decodeIfPresent(String.self, forKey: .batch)) ?? nil
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -154,6 +162,8 @@ extension Op: Codable {
         try c.encode(type.rawValue, forKey: .type)
         try c.encode(target, forKey: .target)
         try c.encode(set, forKey: .set)
+        try c.encodeIfPresent(actor, forKey: .actor)
+        try c.encodeIfPresent(batch, forKey: .batch)
     }
 }
 
@@ -184,8 +194,8 @@ public struct PendingOp: Hashable, Sendable {
 // MARK: - Canonical JSON
 
 extension Op {
-    /// The op as compact JSON with keys in a fixed order (`id, at, type, target, set`, as the spec's examples print
-    /// them). Used for `pending.jsonl` and request bodies; hand-written because JSONEncoder doesn't keep key order.
+    /// The op as compact JSON with keys in a fixed order (`id, at, type, target, set`, then `actor, batch` when set,
+    /// the order the server stores them in). Used for `pending.jsonl` and request bodies; hand-written because JSONEncoder doesn't keep key order.
     public var jsonData: Data {
         var out = Data()
         out.reserveCapacity(160 + (set.title?.utf8.count ?? 0) + (set.notes?.utf8.count ?? 0))
@@ -234,7 +244,13 @@ extension Op {
             out.append(contentsOf: (d ? "true" : "false").utf8)
         }
         number("archivedAt", set.archivedAt)
-        out.append(contentsOf: "}}".utf8)
+        out.append(UInt8(ascii: "}"))
+        for (k, v) in [("actor", actor), ("batch", batch)] {
+            guard let v else { continue }
+            out.append(contentsOf: ",\"\(k)\":".utf8)
+            JSONText.appendString(v, to: &out)
+        }
+        out.append(UInt8(ascii: "}"))
         return out
     }
 }

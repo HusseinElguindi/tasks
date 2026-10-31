@@ -19,6 +19,15 @@ public struct LoadedState: Sendable {
     public var source: Source
     /// A `log.jsonl.bak-*` exists: a 409 recovery was under way (spec §5).
     public var recovering: Bool
+
+    public init(confirmed: AppState, cursor: Int, hash: String?, pending: [PendingOp], source: Source, recovering: Bool) {
+        self.confirmed = confirmed
+        self.cursor = cursor
+        self.hash = hash
+        self.pending = pending
+        self.source = source
+        self.recovering = recovering
+    }
 }
 
 /// The three files in the data directory, and all I/O on them, on one background serial queue (spec §8, §9).
@@ -62,6 +71,12 @@ public final class Persistence: @unchecked Sendable {
     }
 
     public func loadSync() -> LoadedState { queue.sync { loadOnQueue() } }
+
+    /// Every confirmed entry in `log.jsonl`, in seq order, for history (the CLI's log and undo). Waits for queued
+    /// writes. The app never calls it.
+    public func readEntries() -> [LogEntry] {
+        queue.sync { parseLog(readLog(from: 0) ?? Data(), firstSeq: 0).entries }
+    }
 
     private func loadOnQueue() -> LoadedState {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

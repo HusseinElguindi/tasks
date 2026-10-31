@@ -32,6 +32,37 @@ final class WireTests: XCTestCase {
         XCTAssertEqual(String(decoding: op(Spec.opBJSON).jsonData, as: UTF8.self), Spec.opBJSON)
     }
 
+    /// `actor` and `batch` (spec §5): written after `set` only when present, in the order the server stores them,
+    /// decoded leniently like every other key.
+    func testActorAndBatch() throws {
+        var o = Op(id: "i", at: 1, type: .taskUpdate, target: "t", set: Patch(title: "x"))
+        XCTAssertEqual(String(decoding: o.jsonData, as: UTF8.self), #"{"id":"i","at":1,"type":"task.update","target":"t","set":{"title":"x"}}"#)
+        o.actor = "agent:claude-code"
+        o.batch = "b\"1"
+        let json = String(decoding: o.jsonData, as: UTF8.self)
+        XCTAssertEqual(json, #"{"id":"i","at":1,"type":"task.update","target":"t","set":{"title":"x"},"actor":"agent:claude-code","batch":"b\"1"}"#)
+        XCTAssertEqual(try JSONDecoder().decode(Op.self, from: Data(json.utf8)), o)
+        XCTAssertEqual(try JSONDecoder().decode(Op.self, from: JSONEncoder().encode(o)), o)
+        o.batch = nil
+        XCTAssertEqual(String(decoding: o.jsonData, as: UTF8.self), #"{"id":"i","at":1,"type":"task.update","target":"t","set":{"title":"x"},"actor":"agent:claude-code"}"#)
+
+        let odd = op(#"{"id":"i","at":1,"type":"task.update","target":"t","set":{"title":"x"},"actor":7,"batch":null}"#)
+        XCTAssertNil(odd.actor)
+        XCTAssertNil(odd.batch)
+        XCTAssertEqual(odd.set.title, "x")
+    }
+
+    /// Fixture 11: the server's stored text for an op with actor and batch is exactly what `jsonData` writes.
+    func testFixtureWithActorMatchesJSONData() throws {
+        let pair = try XCTUnwrap(FixtureTests.loadPairs().first { $0.pair.name == "11-push-with-actor" })
+        let page = try SyncPage.decode(pair.responseBody)
+        let entry = try XCTUnwrap(page.entries.first)
+        XCTAssertEqual(entry.op.actor, "agent:claude-code")
+        XCTAssertEqual(entry.op.batch, "2c1f9e0a-7b3d-4c5e-8f6a-9b0c1d2e3f4a")
+        let stored = try JSONSlices.member(named: "op", in: page.rawEntries[0])
+        XCTAssertEqual(String(decoding: entry.op.jsonData, as: UTF8.self), String(decoding: stored, as: UTF8.self))
+    }
+
     func testJSONEscaping() throws {
         let tricky = "q\"uote\\ back\nline\ttab \u{01} é 🎉 </script>"
         let o = Op(id: "i", at: 0, type: .taskUpdate, target: "t", set: Patch(title: tricky, notes: ""))
