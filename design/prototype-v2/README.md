@@ -13,6 +13,8 @@ citations.
   adding, editing, drag, undo, then the view model (`renderVals`). The four views (§22) are the block at the end of
   the component.
 - `tasks-v2.css`: every color, size, timing and curve the prototype uses.
+- `markdown.css`: the Markdown notes (`design/MARKDOWN.md`). The editor came from `design/prototype-markdown/`, merged
+  onto the views as the app has it; `markdown.css` is that copy's, unchanged.
 - `Add.dc.html`, `Dates.dc.html`: the v2 side boards. Each mounts `Main` part-way through an add or a date pick.
 - `Upcoming-*`, `Undated-*`, `Completed-*`, `Trash-*`: each view in dark and light.
 - `canvas.json`: the canvas layout and its notes.

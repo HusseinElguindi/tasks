@@ -5,6 +5,7 @@
 <title>Tasks interactions v2</title>
 <script src="./support.js"></script>
 <link rel="stylesheet" href="tasks-v2.css">
+<link rel="stylesheet" href="markdown.css">
 </head>
 <body>
 <x-dc>
@@ -78,7 +79,7 @@ body{margin:0}
 <div class="{{r.cls}}" style="{{r.style}}" data-id="{{r.id}}" onPointerDown="{{onRowDown}}" onPointerMove="{{onRowMove}}" onPointerUp="{{onRowUp}}" onPointerCancel="{{onRowUp}}" onDoubleClick="{{onRowDbl}}" onContextMenu="{{onRowCtx}}">
 <button class="{{r.checkCls}}" type="button" data-id="{{r.id}}" aria-label="{{r.checkLabel}}" onPointerDown="{{stopPD}}" onClick="{{onCheck}}"><svg class="ck" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.8 8.4l2.7 2.7 5.7-6.2"></path></svg></button>
 <sc-if value="{{r.editing}}"><input class="ri" data-id="{{r.id}}" value="{{r.editText}}" placeholder="New Task" spellCheck="false" autoFocus="{{r.autoFocus}}" aria-label="Task title" onChange="{{onEditChange}}" onKeyDown="{{onEditKey}}" onBlur="{{onEditBlur}}" onFocus="{{onEditFocus}}" onPointerDown="{{stopPD}}"></sc-if>
-<sc-if value="{{r.notEditing}}"><span class="{{r.titleCls}}">{{r.title}}</span></sc-if>
+<sc-if value="{{r.notEditing}}"><span class="ttw"><span class="{{r.titleCls}}">{{r.title}}</span><sc-if value="{{r.nGlyph}}"><span class="nglyph" role="img" aria-label="Has notes"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 4.5h9M3.5 8h9M3.5 11.5h5.5"></path></svg></span></sc-if><sc-if value="{{r.nCount}}"><span class="{{r.nCountCls}}" role="img" aria-label="{{r.nCountLabel}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="3"></rect><path d="M5.4 8.2l1.8 1.8 3.4-3.7"></path></svg>{{r.nCountText}}</span></sc-if></span></sc-if>
 <sc-if value="{{r.hasWhere}}"><span class="where">{{r.where}}</span></sc-if>
 <span class="chips">
 <sc-for list="{{r.chips}}" as="c" hint-placeholder-count="0">
@@ -154,10 +155,7 @@ body{margin:0}
 <sc-if value="{{dp.single}}">
 <div class="{{dp.sepCls}}"></div>
 <div class="{{dp.notesCls}}">
-<sc-if value="{{dp.notesEditing}}"><textarea value="{{dp.notesText}}" placeholder="Notes" aria-label="Notes" autoFocus="{{true}}" onChange="{{onNotesChange}}" onKeyDown="{{onNotesKey}}" onBlur="{{onNotesBlur}}" onFocus="{{onNotesFocus}}"></textarea></sc-if>
-<sc-if value="{{dp.notesView}}">
-<div class="{{dp.mdCls}}" onPointerDown="{{onNotesDown}}"><sc-if value="{{dp.noNotes}}">Notes</sc-if><sc-for list="{{dp.md}}" as="m" hint-placeholder-count="0"><sc-if value="{{m.plain}}">{{m.s}}</sc-if><sc-if value="{{m.b}}"><b>{{m.s}}</b></sc-if><sc-if value="{{m.i}}"><i>{{m.s}}</i></sc-if><sc-if value="{{m.code}}"><code>{{m.s}}</code></sc-if><sc-if value="{{m.a}}"><a href="{{m.href}}" onClick="{{onLinkClick}}">{{m.s}}</a></sc-if></sc-for></div>
-</sc-if>
+<div class="{{dp.nt.cls}}" ref="{{notesRefCb}}" contentEditable="{{dp.nt.ce}}" data-rev="{{dp.nt.rev}}" suppressContentEditableWarning="{{true}}" spellCheck="false" role="textbox" aria-multiline="true" aria-label="Notes" data-ph="Notes" onFocus="{{onNotesFocus}}" onBlur="{{onNotesBlur}}" onKeyDown="{{onNotesKey}}" onPaste="{{onNotesPaste}}" onCopy="{{onNotesCopy}}" onCut="{{onNotesCut}}" onMouseDown="{{onNotesMouseDown}}" onDragStart="{{onNotesNoDrag}}" onDrop="{{onNotesNoDrag}}"><sc-for list="{{dp.nt.lines}}" as="l" hint-placeholder-count="0"><div class="{{l.cls}}" style="{{l.style}}" data-ls="{{l.a}}" data-le="{{l.b}}" data-cs="{{l.cs}}"><sc-if value="{{l.dot}}"><span class="{{l.decCls}}" contentEditable="false" style="{{l.decStyle}}"></span></sc-if><sc-if value="{{l.num}}"><span class="dec num" contentEditable="false" style="{{l.decStyle}}">{{l.numText}}</span></sc-if><sc-if value="{{l.box}}"><button class="{{l.boxCls}}" type="button" contentEditable="false" tabIndex="-1" style="{{l.decStyle}}" data-box="{{l.boxAt}}" aria-label="{{l.boxLabel}}" onClick="{{onBoxClick}}"><svg class="ck" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.8 8.4l2.7 2.7 5.7-6.2"></path></svg></button></sc-if><sc-for list="{{l.ps}}" as="p" hint-placeholder-count="0"><sc-if value="{{p.link}}"><a class="{{p.cls}}" href="{{p.href}}" data-a="{{p.a}}" data-tip="{{p.tip}}" data-keys="{{p.tipKeys}}" onMouseEnter="{{tipIn}}" onMouseLeave="{{tipOut}}" onClick="{{onNoteLinkClick}}">{{p.s}}</a></sc-if><sc-if value="{{p.plain}}"><span class="{{p.cls}}" data-a="{{p.a}}">{{p.s}}</span></sc-if></sc-for><br></div></sc-for></div>
 </div>
 <div class="{{dp.metaCls}}">{{dp.meta}}</div>
 </sc-if>
@@ -236,6 +234,12 @@ body{margin:0}
 <div class="kr"><span class="kk">⇧⌘M</span><span>Move to… (⌘1–9 picks)</span></div>
 <div class="kr"><span class="kk">⌥⌘↑ ⌥⌘↓</span><span>Move up or down. In Upcoming: a day earlier or later</span></div>
 <div class="kr"><span class="kk">⌘⌫</span><span>Delete (Undo in the notice, or ⌘Z). In Trash: Put Back</span></div>
+<div class="kh">Notes</div>
+<div class="kr"><span class="kk">⌘B · ⌘I</span><span>Bold, italic: the selection, or the word at the caret. Again to remove.</span></div>
+<div class="kr"><span class="kk">↩ · ⇧↩</span><span>Next list item (Return on an empty one ends the list) · a plain line break</span></div>
+<div class="kr"><span class="kk">Tab · ⇧Tab</span><span>Indent or outdent a list item</span></div>
+<div class="kr"><span class="kk">⌥⇧⌘V</span><span>Paste as plain text (rich text pastes as Markdown; a link pasted over text links it)</span></div>
+<div class="kr"><span class="kk">Esc · ⌘↩</span><span>Done; the notes keep what's typed</span></div>
 <div class="kh">Moving around</div>
 <div class="kr"><span class="kk">↑ ↓ · ⇧ · ⌘-click</span><span>Select, extend, add to the selection</span></div>
 <div class="kr"><span class="kk">← → · Tab</span><span>Sidebar, list, details</span></div>
@@ -248,7 +252,7 @@ body{margin:0}
 </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"select":{"editor":null,"default":""},"detail":{"editor":null,"default":"closed"},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"select":{"editor":null,"default":""},"detail":{"editor":null,"default":"closed"},"pick":{"editor":null,"default":"none"},"caret":{"editor":null,"default":""},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
 // ---------- Calendar dates: "YYYY-MM-DD" strings, never instants (SPEC §2). ----------
 const DAY_MS = 86400000;
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -428,7 +432,7 @@ function monogram(name) { const m = (name || '').trim().match(/[A-Za-z0-9]/); re
 function byOrder(a, b) { return a.order - b.order || (a.id < b.id ? -1 : 1); }
 function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
-function isTextTarget(el) { return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA'); }
+function isTextTarget(el) { return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || !!el.isContentEditable); }
 function quote(s) { const t = (s || '').trim() || 'Untitled'; return '“' + (t.length > 28 ? t.slice(0, 27) + '…' : t) + '”'; }
 
 // ---------- Demo data, relative to the real today ----------
@@ -456,15 +460,15 @@ function makeSeed(T) {
   };
   t('school', 'ECE 358 lab report', { when: d(-3), deadline: d(-2) });
   t('school', 'Email TA about midterm regrade', { when: d(0) });
-  t('school', 'Review CS 489 lectures 10–14', { when: d(0), deadline: d(3), notes: 'Slides 10–14 plus the two retrieval readings.\n\n- Make cards for the **attention** derivation\n- Redo tutorial 6, question 3\n\n[Lecture 12 recording](https://example.com/cs489) · bring `q3.py` to tutorial' });
+  t('school', 'Review CS 489 lectures 10–14', { when: d(0), deadline: d(3), notes: "## Before Tuesday\nSlides 10–14 plus the two **retrieval** readings.\n\n- [x] Lecture 10 · tokenization\n- [x] Lecture 11 · embeddings\n- [ ] Lecture 12 · _attention_, redo the derivation\n- [ ] Lecture 13 · retrieval\n- [ ] Lecture 14 · evaluation\n\n> The midterm leans on 12 and 13.\n\n[Lecture 12 recording](https://example.com/cs489/l12) · bring `q3.py` to tutorial" });
   t('school', 'Submit MSE 333 A2', { when: d(2), deadline: d(3) });
-  t('school', 'CS 489 final study plan', { when: d(10) });
+  t('school', 'CS 489 final study plan', { when: d(10), notes: "# CS 489 final\nMonday Dec 14, 9:00, PAC 8. Cumulative, but **weighted to the second half**. One double-sided sheet allowed.\n\n## Week 1 · rebuild the notes\n- [x] Merge lecture notes 1–7 into one doc\n- [x] Merge lecture notes 8–14\n- [ ] Re-derive scaled dot-product attention without the slides\n- [ ] Write the BM25 formula from memory, then check it\n- [ ] One page on tokenizers: BPE vs unigram vs byte-level\n\n## Week 2 · problems\n- [ ] Assignments 1–4: redo every question I lost marks on\n- [ ] Tutorial sets 5–9\n- [ ] Past finals: 2023, 2024 (timed, 2.5 h each)\n- [ ] Mark them with the posted solutions\n\n## Week 3 · the sheet\n1. List every formula from the slides\n2. Cut it to what I can't re-derive in a minute\n3. Write it out by hand (typing it doesn't stick)\n\n## Topics, roughly by weight\n- Retrieval and ranking\n  - BM25, query likelihood\n  - Dense retrieval, the two-tower setup\n- Attention and transformers\n  - Positional encodings: sinusoidal vs learned vs RoPE\n- Evaluation\n  - nDCG, MRR, recall@k: when each one lies\n\n> From the review session: \"if you can explain why nDCG discounts by log rank, you understand the metric.\"\n\n## Things I keep getting wrong\n- Softmax is over the **keys**, not the queries\n- `sqrt(d_k)` scales the logits, not the values\n- MRR only counts the _first_ relevant result\n\n## Office hours\n- Tue 2:30–4:00, DC 2585 (the TA who runs tutorial 3)\n- Thu 11:00, the prof, by email first\n\nPractice exams are on [LEARN](https://example.com/learn/cs489) under Content › Exams. The 2022 one has no solutions; skip it.\n\n## Day before\n- [ ] Sleep before midnight\n- [ ] Pack: calculator, two pencils, WatCard, the sheet\n- [ ] Check the room on the exam schedule again" });
   t('school', 'Print ECE 358 formula sheet');
   t('school', 'Ask about co-op interview slots');
   t('school', 'Submit ECE 358 lab 3', { done: 2 });
   t('school', 'Read MSE 333 chapter 6', { done: 4 });
   t('school', 'Register for winter courses', { done: 9 });
-  t('tasks', 'Write sync log spec', { when: d(0) });
+  t('tasks', 'Write sync log spec', { when: d(0), notes: "One op touches one entity: its `target`. The server only appends.\n\n# Op shape\n```json\n{ \"op\": \"task.update\", \"target\": \"t_81\",\n  \"fields\": { \"notes\": \"…\" } }\n```\n\n1. Reducer rules, one per op\n2. Worked examples for a 409\n3. Ask about compaction\n\nDurable Objects: https://developers.cloudflare.com/durable-objects/" });
   t('tasks', 'Redesign the interactions', { when: d(0), deadline: d(1), notes: 'Adding, renaming, dates, drag. Prototype first, then *INTERACTIONS-v2.md*.' });
   t('tasks', 'Profile list switching');
   t('tasks', 'Try the build on the old MacBook', { when: d(4) });
@@ -472,7 +476,7 @@ function makeSeed(T) {
   t('home', 'Book flu shot', { deadline: d(0) });
   t('home', 'Pick up prescription', { when: d(-1) });
   t('home', 'Fix the bathroom fan', { when: d(7) });
-  t('home', 'Call landlord about the heating');
+  t('home', 'Call landlord about the heating', { notes: 'Radiator in the bedroom is cold again. Mention the **October 12** email.' });
   t('errands', 'Return library books', { deadline: d(0) });
   t('errands', 'Buy printer paper', { when: d(1) });
   t('errands', 'Renew transit pass', { when: d(0), done: 0 });
@@ -526,6 +530,208 @@ function mdSegments(src) {
   return out;
 }
 
+// ---------- Markdown notes (design/MARKDOWN.md) ----------
+// The notes are their Markdown source, always: the editor shows that text with styling laid over it, and every key
+// edits the source. Lines are the unit (SPEC §2 keeps line breaks), so a keystroke re-reads one line.
+const MD_MAX = 20000;          // SPEC §2
+const MD_NEAR = 18000;         // the footer shows a count from here
+const MD_COL = 26;             // a list level: the checkbox's 16pt column and its 10pt gap, so item text sits under the title's
+function mdParseLines(src) {
+  const out = [], parts = src.split('\n');
+  let a = 0, blk = null;
+  for (let i = 0; i < parts.length; i++) {
+    const s = parts[i], L = { i, s, a, b: a + s.length, kind: 'p', pre: 0, ind: 0 };
+    let m;
+    if (/^ {0,3}(```|~~~)/.test(s)) {
+      L.kind = 'fence';
+      if (!blk) { blk = { from: i, to: i, a: L.a, b: L.b }; L.open = true; } else { L.close = true; }
+      L.blk = blk; blk.to = i; blk.b = L.b;
+      if (L.close) blk = null;
+    } else if (blk) { L.kind = 'code'; L.blk = blk; blk.to = i; blk.b = L.b; }
+    else if (!s.trim()) L.kind = 'blank';
+    else if ((m = s.match(/^(#{1,6})[ \t]+/))) { L.kind = m[1].length === 1 ? 'h1' : 'h2'; L.pre = m[0].length; }
+    else if ((m = s.match(/^( *)([-*+])[ \t]+\[([ xX])\](?:[ \t]+|$)/))) { L.kind = 'task'; L.lead = m[1]; L.ind = Math.min(2, m[1].length >> 1); L.pre = m[0].length; L.checked = m[3] !== ' '; L.boxAt = a + m[0].indexOf('[') + 1; L.bullet = m[2]; }
+    else if ((m = s.match(/^( *)([-*+])[ \t]+/))) { L.kind = 'ul'; L.lead = m[1]; L.ind = Math.min(2, m[1].length >> 1); L.pre = m[0].length; L.bullet = m[2]; }
+    else if ((m = s.match(/^( *)(\d{1,9})([.)])[ \t]+/))) { L.kind = 'ol'; L.lead = m[1]; L.ind = Math.min(2, m[1].length >> 1); L.pre = m[0].length; L.num = +m[2]; L.delim = m[3]; }
+    else if ((m = s.match(/^>[ \t]?/))) { L.kind = 'quote'; L.pre = m[0].length; }
+    out.push(L);
+    a = L.b + 1;
+  }
+  return out;
+}
+const MD_LISTY = { ul: 1, ol: 1, task: 1 };
+function mdLineAt(lines, off) { for (const L of lines) if (off <= L.b) return L; return lines[lines.length - 1]; }
+
+// Inline: `code`, [text](url), bare https:// links, **bold** / __bold__, *italic* / _italic_ (one level of nesting).
+const MD_INLINE = /`([^`\n]+)`|\[([^\]\n]+)\]\(([^()\s]+)\)|https?:\/\/[^\s<>]*[^\s<>.,;:!?'")\]*_]|\*\*(?=\S)(.*?\S)\*\*|__(?=\S)(.*?\S)__(?!\w)|\*(?=[^\s*])(.*?[^\s*])\*|(?<!\w)_(?=[^\s_])(.*?[^\s_])_(?!\w)/g;
+// pieces: {a, s, cls, href?}; toks: {kind: c|a|url|b|i, ta, tb, ia, ib, href}. rv(ta, tb) says whether a token shows its marks.
+function mdInline(s, base, rv, pieces, toks, sty) {
+  const re = new RegExp(MD_INLINE.source, 'g');
+  let last = 0, m;
+  const push = (from, to, cls, extra) => { if (to > from) pieces.push(Object.assign({ a: base + from, s: s.slice(from, to), cls }, extra || null)); };
+  while ((m = re.exec(s))) {
+    const i = m.index, tok = m[0], ta = base + i, tb = ta + tok.length, show = rv(ta, tb);
+    const mk = (from, to, x) => push(from, to, 'mk' + (x ? ' ' + x : '') + (show ? '' : ' hid'));
+    push(last, i, sty);
+    if (m[1] != null) {
+      toks.push({ kind: 'c', ta, tb, ia: ta + 1, ib: tb - 1 });
+      mk(i, i + 1, 'm-c'); push(i + 1, i + tok.length - 1, (sty + ' s-c').trim()); mk(i + tok.length - 1, i + tok.length, 'm-c');
+    } else if (m[2] != null) {
+      const e = i + 1 + m[2].length;
+      toks.push({ kind: 'a', ta, tb, ia: ta + 1, ib: base + e, href: m[3] });
+      mk(i, i + 1); push(i + 1, e, (sty + ' s-a').trim(), { href: m[3] }); mk(e, i + tok.length, 'm-url');
+    } else if (/^https?:/.test(tok)) {
+      toks.push({ kind: 'url', ta, tb, ia: ta, ib: tb, href: tok });
+      push(i, i + tok.length, (sty + ' s-a').trim(), { href: tok });
+    } else {
+      const bold = m[4] != null || m[5] != null, inner = m[4] ?? m[5] ?? m[6] ?? m[7], ml = bold ? 2 : 1;
+      toks.push({ kind: bold ? 'b' : 'i', ta, tb, ia: ta + ml, ib: tb - ml });
+      mk(i, i + ml); mdInline(inner, base + i + ml, rv, pieces, toks, (sty + (bold ? ' s-b' : ' s-i')).trim()); mk(i + tok.length - ml, i + tok.length);
+    }
+    last = i + tok.length;
+  }
+  push(last, s.length, sty);
+}
+function mdLineTokens(L) { const toks = []; mdInline(L.s.slice(L.pre), L.a + L.pre, () => false, [], toks, ''); return toks; }
+function mdPlain(s) { const ps = []; mdInline(s, 0, () => false, ps, [], ''); return ps.filter((p) => !/\bmk\b/.test(p.cls)).map((p) => p.s).join(''); }
+// What a row shows (Rows on the strip): the first line as text, and the checklist's count.
+function mdSummary(notes) {
+  const r = { has: !!notes.trim(), first: '', total: 0, done: 0 };
+  for (const L of mdParseLines(notes)) {
+    if (L.kind === 'task') { r.total += 1; if (L.checked) r.done += 1; }
+    if (!r.first && L.kind !== 'blank' && L.kind !== 'fence') r.first = mdPlain(L.s.slice(L.pre)).trim();
+  }
+  return r;
+}
+
+// The editor's DOM ↔ source offsets. Every text piece carries its source offset (data-a); every line its start, end and
+// first visible offset (data-ls, data-le, data-cs). Hidden marks stay in the DOM with display: none.
+function mdShown(el) { return !!el && el.getClientRects().length > 0; }
+function mdPointToOffset(root, node, off) {
+  if (node.nodeType === 3) {
+    const p = node.parentElement && node.parentElement.closest('[data-a]');
+    if (p && root.contains(p)) { const t = document.createTreeWalker(p, NodeFilter.SHOW_TEXT).nextNode(); return +p.dataset.a + (t === node ? Math.min(off, node.length) : p.textContent.length); }
+    node = node.parentElement; off = 0;
+  }
+  const el = node;
+  if (!el || !el.dataset) return 0;
+  const pc = el.closest('[data-a]');   // a piece, or the runtime's wrapper inside one
+  if (pc && root.contains(pc)) return +pc.dataset.a + (off > 0 ? pc.textContent.length : 0);
+  const line = el.closest('[data-ls]');
+  if (line && line !== el) return +line.dataset.cs;   // inside a bullet or a box
+  if (line) {
+    for (let i = Math.min(off, el.childNodes.length) - 1; i >= 0; i--) {
+      const c = el.childNodes[i];
+      if (c.nodeType === 1 && c.dataset.a != null && mdShown(c)) return +c.dataset.a + c.textContent.length;
+    }
+    return +line.dataset.cs;
+  }
+  const lines = root.querySelectorAll('[data-ls]');
+  if (!lines.length) return 0;
+  const kid = el.childNodes[off];
+  if (kid && kid.dataset && kid.dataset.ls != null) return +kid.dataset.cs;
+  return +lines[lines.length - 1].dataset.le;
+}
+function mdOffsetToPoint(root, off) {
+  const lines = Array.from(root.querySelectorAll('[data-ls]')).filter(mdShown);
+  if (!lines.length) return [root, 0];
+  const line = lines.find((l) => off <= +l.dataset.le) || lines[lines.length - 1];
+  // The runtime may wrap a piece's text in its own span: always land in the text node itself.
+  const tn = (p) => document.createTreeWalker(p, NodeFilter.SHOW_TEXT).nextNode();
+  const ps = Array.from(line.querySelectorAll('[data-a]')).filter((p) => tn(p) && mdShown(p));
+  let best = null;
+  for (const p of ps) {
+    const a = +p.dataset.a, t = tn(p), b = a + t.length;
+    if (off >= a && off <= b) { best = [t, off - a]; if (off < b) break; }
+  }
+  if (!best) {
+    const after = ps.find((p) => +p.dataset.a >= off);
+    if (after) best = [tn(after), 0];
+    else if (ps.length) { const t = tn(ps[ps.length - 1]); best = [t, t.length]; }
+    else best = [line, Math.max(0, line.childNodes.length - 1)];   // an empty line: before its <br>
+  }
+  return best;
+}
+function mdWordAt(t, a) {
+  const w = /[\p{L}\p{N}'’-]/u;
+  let s = a, e = a;
+  while (s > 0 && w.test(t[s - 1])) s--;
+  while (e < t.length && w.test(t[e])) e++;
+  return e > s ? [s, e] : null;
+}
+function mdNormalizeUrl(u) {
+  u = u.trim();
+  if (!u) return '';
+  if (/^[a-z][a-z0-9+.-]*:/i.test(u)) return u;
+  if (/^[^\s@/]+@[^\s@/]+\.[a-z]{2,}$/i.test(u)) return 'mailto:' + u;
+  return 'https://' + u;
+}
+const MD_URL = /^(https?:\/\/|mailto:)\S+$/i;
+
+// Rich text on the clipboard becomes Markdown: the styles the notes have (bold, italic, code, links, headings, lists,
+// checkboxes, quotes, code blocks) carry over; fonts, colors, sizes, images and tables' grid don't.
+function htmlToMd(html) {
+  let doc;
+  try { doc = new DOMParser().parseFromString(html, 'text/html'); } catch (e) { return ''; }
+  const BLOCK = new Set(['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'UL', 'OL', 'LI', 'BLOCKQUOTE', 'PRE', 'TABLE', 'THEAD', 'TBODY', 'TR', 'SECTION', 'ARTICLE', 'HEADER', 'FOOTER', 'ASIDE', 'NAV', 'MAIN', 'FIGURE', 'DL', 'DT', 'DD', 'HR', 'BODY']);
+  const SKIP = new Set(['SCRIPT', 'STYLE', 'HEAD', 'TITLE', 'META', 'LINK', 'NOSCRIPT', 'TEMPLATE', 'SVG', 'IFRAME', 'OBJECT', 'VIDEO', 'AUDIO', 'CANVAS', 'BUTTON', 'SELECT', 'TEXTAREA', 'INPUT']);
+  const wrap = (s, m) => { const t = s.trim(); if (!t || t.includes('\n')) return s; return s.match(/^\s*/)[0] + m + t + m + s.match(/\s*$/)[0]; };
+  const kids = (n) => Array.from(n.childNodes).map(inline).join('');
+  function inline(n) {
+    if (n.nodeType === 3) return n.nodeValue.replace(/[\s ]+/g, ' ');
+    if (n.nodeType !== 1 || SKIP.has(n.tagName)) return '';
+    const tag = n.tagName, st = (n.getAttribute('style') || '').toLowerCase();
+    if (tag === 'BR') return '\n';
+    if (tag === 'IMG') return n.getAttribute('alt') || '';
+    if (BLOCK.has(tag)) return '\n' + kids(n) + '\n';
+    let s = kids(n);
+    if (tag === 'CODE' || tag === 'KBD' || tag === 'SAMP' || tag === 'TT') return s.trim() ? '`' + s.replace(/`/g, '') + '`' : s;
+    if (tag === 'A') { const h = n.getAttribute('href') || ''; return /^(https?:|mailto:)/i.test(h) && s.trim() ? '[' + s.trim().replace(/[[\]]/g, '') + '](' + h.replace(/[()\s]/g, encodeURIComponent) + ')' : s; }
+    const bold = (tag === 'B' || tag === 'STRONG' || /font-weight:\s*(bold|[6-9]00)/.test(st)) && !/font-weight:\s*(normal|[1-5]00)/.test(st);
+    const ital = (tag === 'I' || tag === 'EM' || /font-style:\s*italic/.test(st)) && !/font-style:\s*normal/.test(st);
+    if (ital) s = wrap(s, '_');
+    if (bold) s = wrap(s, '**');
+    return s;
+  }
+  const blocks = [];
+  let para = '';
+  const flush = (ctx) => {
+    const lines = para.split('\n').map((x) => x.replace(/ +/g, ' ').trim()).filter(Boolean);
+    para = '';
+    if (lines.length) blocks.push({ text: lines.map((x) => (ctx.quote ? '> ' : '') + x).join('\n'), kind: 'p' });
+  };
+  function listItem(li, ctx, marker) {
+    const depth = ctx.depth || 0;
+    const box = li.querySelector('input[type=checkbox]');
+    let text = '';
+    const nested = [];
+    for (const c of li.childNodes) { if (c.nodeType === 1 && (c.tagName === 'UL' || c.tagName === 'OL')) nested.push(c); else text += inline(c); }
+    text = text.replace(/\s+/g, ' ').trim();
+    blocks.push({ text: (ctx.quote ? '> ' : '') + '  '.repeat(Math.min(depth, 2)) + marker + (box ? (box.checked ? '[x] ' : '[ ] ') : '') + text, kind: 'li' });
+    for (const nl of nested) block(nl, { ...ctx, depth: depth + 1 });
+  }
+  function block(n, ctx) {
+    if (n.nodeType === 3 || (n.nodeType === 1 && !BLOCK.has(n.tagName))) { para += inline(n); return; }
+    if (n.nodeType !== 1) return;
+    flush(ctx);
+    const tag = n.tagName;
+    if (/^H[1-6]$/.test(tag)) { const s = kids(n).replace(/\s+/g, ' ').replace(/\*\*/g, '').trim(); if (s) blocks.push({ text: (ctx.quote ? '> ' : '') + (tag === 'H1' ? '# ' : '## ') + s, kind: 'h' }); return; }
+    if (tag === 'PRE') { blocks.push({ text: '```\n' + n.textContent.replace(/\n$/, '') + '\n```', kind: 'code' }); return; }
+    if (tag === 'UL' || tag === 'OL') { let k = 0; for (const li of n.children) if (li.tagName === 'LI') { k += 1; listItem(li, ctx, tag === 'OL' ? k + '. ' : '- '); } return; }
+    if (tag === 'LI') { listItem(n, ctx, '- '); return; }
+    if (tag === 'TR') { const cells = Array.from(n.children).map((c) => kids(c).replace(/\s+/g, ' ').trim()).filter(Boolean); if (cells.length) blocks.push({ text: cells.join(' · '), kind: 'row' }); return; }
+    if (tag === 'HR') return;
+    const inner = tag === 'BLOCKQUOTE' ? { ...ctx, quote: true } : ctx;
+    for (const c of n.childNodes) block(c, inner);
+    flush(inner);
+  }
+  block(doc.body, { depth: 0 });
+  flush({});
+  let out = '';
+  blocks.forEach((b, i) => { if (i) out += b.kind === blocks[i - 1].kind && (b.kind === 'li' || b.kind === 'row') ? '\n' : '\n\n'; out += b.text; });
+  return out;
+}
+
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -546,7 +752,12 @@ class Component extends DCLogic {
       pins: {}, pops: {},
       cmdHints: false, keysOpen: false,
       noAnim: true,
+      // Markdown notes: a checklist box's pop; a board's hovered link.
+      boxPop: null, hoverLink: null,
     };
+    const pickName = props.pick ?? 'none';   // a board can open on a task's notes (prototype-markdown's boards do)
+    const pick = pickName && pickName !== 'none' ? seed.tasks.find((t) => t.title.startsWith(pickName)) : null;
+    if (pick) { this.state.sel = [pick.id]; this.state.anchor = pick.id; this.state.detail = 'open'; this.state.focus = 'detail'; }
     this.undoStack = []; this.redoStack = [];
     this.rootRef = { current: null }; this.winRef = { current: null };
     this.listScrollRef = { current: null }; this.sbScrollRef = { current: null }; this.liftRef = { current: null };
@@ -570,9 +781,40 @@ class Component extends DCLogic {
     if (this.props.demo === 'picker') setTimeout(() => this.demoPicker(), 250);
     if (this.props.demo === 'add') setTimeout(() => this.demoAdd(), 250);
     if (this.props.select) setTimeout(() => this.demoSelect(), 250);
+    if (/^(notes|long|hover)$/.test(this.props.demo || '')) setTimeout(() => this.demoNotes(this.props.demo), 200);
+    this.markClippedTitles();
+    document.addEventListener('selectionchange', this.onDocSel);
+    document.addEventListener('mouseup', this.onDocUp);
   }
-  componentWillUnmount() { for (const k of ['settleTimer', 'noticeTimer', 'tipTimer', 'cmdTimer', 'cleanTimer', 'detailTimer', 'animTimer', 'scrollTimer']) clearTimeout(this[k]); }
+  // Boards that start part-way through: the caret in the notes (demo notes: at props.caret, a piece of the text, and
+  // its | marks the spot), a long note scrolled, a link hovered.
+  demoNotes(kind) {
+    const id = this.detailTaskId(), t = this.task(id);
+    if (!t) return;
+    const c = this.props.caret || '';
+    const i = c ? t.notes.indexOf(c.replace('|', '')) : -1;
+    let at = i >= 0 ? i + Math.max(0, c.indexOf('|')) : t.notes.length;
+    if (kind === 'long') {
+      const body = this.rootRef.current && this.rootRef.current.querySelector('.dp .dbody');
+      if (body) body.scrollTop = Math.round((body.scrollHeight - body.clientHeight) * 0.42);
+      return;
+    }
+    if (kind === 'hover') {
+      const ps = [];
+      mdParseLines(t.notes).forEach((L) => mdInline(L.s.slice(L.pre), L.a + L.pre, () => false, ps, [], ''));
+      const link = ps.find((p) => p.href && p.a <= at && at <= p.a + p.s.length) || ps.find((p) => p.href);
+      if (!link) return;
+      this.setState({ hoverLink: link.a });
+      setTimeout(() => { const el = this.notesEl && this.notesEl.querySelector('[data-a="' + link.a + '"]'); if (el) { const r = this.rectIn(el); const { w } = this.winSize(); this.setState({ tip: { text: link.href.replace(/^https?:\/\/(www\.)?/, ''), keys: '', x: clamp(r.left + r.width / 2 - 60, 6, w - 160), y: r.bottom + 6 } }); } }, 60);
+      return;
+    }
+    this.setState({ edit: { kind: 'notes', id, text: t.notes, orig: t.notes, sel: [at, at], demo: true }, focus: 'detail' });
+    this.nUndo = []; this.nRedo = [];
+  }
+  componentWillUnmount() { document.removeEventListener('selectionchange', this.onDocSel); document.removeEventListener('mouseup', this.onDocUp); clearTimeout(this.boxPopTimer); for (const k of ['settleTimer', 'noticeTimer', 'tipTimer', 'cmdTimer', 'cleanTimer', 'detailTimer', 'animTimer', 'scrollTimer']) clearTimeout(this[k]); }
   componentDidUpdate() {
+    this.nAfterRender();
+    this.markClippedTitles();
     if (this.scrollToId) { const id = this.scrollToId; this.scrollToId = null; this.ensureVisible(id); }
     if (this.wantTitle) {
       // A new task's title takes the keys once the detail pane is on screen (autoFocus would miss a pane that was already open).
@@ -806,7 +1048,8 @@ class Component extends DCLogic {
   }
   endEdit() { if (this.state.edit) this.commitEdit(); }
   commitEdit() {
-    const e = this.state.edit;
+    const e = this.state.edit && this.state.edit.kind === 'notes' ? this.nState() : this.state.edit;
+    this.nCur = null;
     if (!e) return;
     const text = e.text.trim();
     if (e.kind === 'task') {
@@ -1678,29 +1921,440 @@ class Component extends DCLogic {
     if ((e.metaKey || e.ctrlKey) && (k === 'z' || k === 'Z')) e.stopPropagation();
   };
   onDTitleBlur = () => { const ed = this.state.edit; if (ed && ed.kind === 'dtitle') this.commitEdit(); };
-  startNotes = () => {
+  // A row's hint of its notes, right after its title: a notes glyph, or the checklist's count when there is one.
+  // Summaries are cached per notes string (the app keeps them on the task model, computed when the notes change).
+  rowNotes(t) {
+    const r = { nGlyph: false, nCount: false };
+    if (!t.notes) return r;
+    if (!this.sumCache) this.sumCache = new Map();
+    let m = this.sumCache.get(t.notes);
+    if (!m) { m = mdSummary(t.notes); this.sumCache.set(t.notes, m); }
+    if (!m.has) return r;
+    if (m.total) { r.nCount = true; r.nCountText = m.done + '/' + m.total; r.nCountCls = 'ncount' + (m.done === m.total ? ' all' : ''); r.nCountLabel = m.done + ' of ' + m.total + ' checked'; }
+    else r.nGlyph = true;
+    return r;
+  }
+  // A title fades its last 24pt only when it's cut off, so the hint can sit right after a title that fits. The
+  // runtime writes the rows a frame after componentDidUpdate, hence the frame's wait. (SwiftUI: measure the title, or
+  // use ViewThatFits, and apply the mask only when it's truncated.)
+  markClippedTitles() {
+    cancelAnimationFrame(this.clipRaf);
+    this.clipRaf = requestAnimationFrame(() => {
+      const root = this.rootRef.current;
+      if (!root) return;
+      for (const el of root.querySelectorAll('.row .ttw .tt')) {
+        const clip = el.scrollWidth > el.clientWidth + 0.5;
+        if (clip !== el.hasAttribute('data-clip')) { if (clip) el.setAttribute('data-clip', ''); else el.removeAttribute('data-clip'); }
+      }
+    });
+  }
+  // ---------- Notes: the Markdown editor (design/MARKDOWN.md) ----------
+  // One view of the source, always editable in place. Focusing it starts an editing session; every key edits the
+  // source string; the session commits once, as today (one "Edit Notes" op).
+  mdLines(text) { if (!this.mdCache || this.mdCache.text !== text) this.mdCache = { text, lines: mdParseLines(text) }; return this.mdCache.lines; }
+  startNotes = (sel) => {
     const id = this.detailTaskId();
     const t = this.task(id);
     if (!t || t.deleted) return;
     if (this.state.edit && this.state.edit.kind !== 'notes') this.commitEdit();
-    this.setState({ edit: { kind: 'notes', id, text: t.notes, orig: t.notes, caret: t.notes.length }, focus: 'detail' });
+    this.nUndo = []; this.nRedo = []; this.nCur = null;
+    const s = sel === undefined ? [t.notes.length, t.notes.length] : sel;
+    this.setState({ edit: { kind: 'notes', id, text: t.notes, orig: t.notes, sel: s }, focus: 'detail' });
+    if (sel === undefined) this.nFocusWant = true;   // from the title (Return, Tab): the caret goes to the end
   };
-  onNotesDown = (e) => { if (e.target.closest && e.target.closest('a')) return; e.stopPropagation(); this.startNotes(); };
-  onNotesChange = (e) => { const ed = this.state.edit; if (ed && ed.kind === 'notes') this.setState({ edit: { ...ed, text: e.target.value } }); };
-  // Notes. Return is a new line and Tab a tab character (NSTextView's defaults). Esc and ⌘Return are done and keep the
-  // text, handing the keys back to the list; ⇧Tab goes back to the title.
-  onNotesKey = (e) => {
-    const k = e.key;
-    if (k === 'Escape' || (k === 'Enter' && (e.metaKey || e.ctrlKey))) { e.preventDefault(); e.stopPropagation(); this.commitEdit(); e.target.blur(); this.setState({ focus: 'list' }); this.focusRoot(); return; }
-    if (k === 'Tab') {
-      e.preventDefault(); e.stopPropagation();
-      if (e.shiftKey) { this.commitEdit(); this.focusTitle(true); } else document.execCommand('insertText', false, '\t');
+  notesRefCb = (el) => {
+    if (this.notesEl === el) return;
+    if (this.notesEl) { this.notesEl.removeEventListener('beforeinput', this.onNotesBeforeInput); this.notesEl.removeEventListener('compositionend', this.onNotesCompEnd); }
+    this.notesEl = el;
+    if (el) { el.addEventListener('beforeinput', this.onNotesBeforeInput); el.addEventListener('compositionend', this.onNotesCompEnd); }
+  };
+  // The latest source and selection. Keys can arrive faster than React renders, so changes made since the last render
+  // are kept here (nCur) and win over both this.state and the DOM's selection until the render lands (nAfterRender).
+  nState() {
+    const ed = this.state.edit;
+    if (!ed || ed.kind !== 'notes') return null;
+    return this.nCur && this.nCur.id === ed.id ? this.nCur : ed;
+  }
+  nPut(next) { next = { ...next, rev: (next.rev || 0) + 1 }; this.nCur = next; this.setState({ edit: next }); }
+  nDomSel() {
+    const el = this.notesEl, s = window.getSelection();
+    if (!el || document.activeElement !== el || !s.rangeCount || !el.contains(s.anchorNode) || !el.contains(s.focusNode)) return null;
+    return [mdPointToOffset(el, s.anchorNode, s.anchorOffset), mdPointToOffset(el, s.focusNode, s.focusOffset)];
+  }
+  nSel() {
+    const ed = this.nState();
+    const sel = (!this.nCur && this.nDomSel()) || ed.sel || [ed.text.length, ed.text.length];
+    return [Math.min(sel[0], sel[1]), Math.max(sel[0], sel[1])];
+  }
+  onDocSel = () => {
+    if (this.nMouseDown || this.nCur) return;
+    const ed = this.nState(), sel = ed && this.nDomSel();
+    if (sel && (!ed.sel || ed.sel[0] !== sel[0] || ed.sel[1] !== sel[1])) this.nPut({ ...ed, sel });
+  };
+  onDocUp = () => { if (this.nMouseDown) { this.nMouseDown = false; this.onDocSel(); } };
+  // Every change goes through here: the new source and selection, one undo step per kind of change (typing coalesces).
+  nSet(text, a, b, kind) {
+    const ed = this.nState();
+    if (!ed) return;
+    if (text !== ed.text) {
+      const last = this.nUndo[this.nUndo.length - 1], now = Date.now();
+      if (kind === 'type' && last && last.kind === 'type' && now - last.t < 1500 && this.nAt === Math.min(...(ed.sel || [-1]))) last.t = now;
+      else { this.nUndo.push({ text: ed.text, sel: ed.sel, kind, t: now }); if (this.nUndo.length > 200) this.nUndo.shift(); }
+      this.nRedo = [];
+    }
+    const e = b == null ? a : b;
+    this.nAt = e;
+    this.nScrollWant = true;
+    this.nPut({ ...ed, text, sel: [a, e] });
+  }
+  nReplace(a, b, ins, kind) {
+    const t = this.nState().text, room = MD_MAX - (t.length - (b - a));
+    let s = ins;
+    if (s.length > room) { s = s.slice(0, Math.max(0, room)); this.showNotice('Notes hold up to 20,000 characters', false); }
+    this.nSet(t.slice(0, a) + s + t.slice(b), a + s.length, null, kind);
+  }
+  nUndoStep(redo) {
+    const ed = this.nState(), from = redo ? this.nRedo : this.nUndo, to = redo ? this.nUndo : this.nRedo;
+    const e = from.pop();
+    if (!e) return;
+    to.push({ text: ed.text, sel: ed.sel, kind: 'undo', t: 0 });
+    this.nScrollWant = true;
+    this.nPut({ ...ed, text: e.text, sel: e.sel || [e.text.length, e.text.length] });
+  }
+  onNotesBeforeInput = (e) => {
+    if (!this.nState()) return;
+    const it = e.inputType;
+    if (it === 'insertCompositionText') return;   // IME and dead keys: compositionend writes the result
+    e.preventDefault();
+    const [a, b] = this.nSel(), t = this.nState().text;
+    const lines = this.mdLines(t), L = mdLineAt(lines, a);
+    switch (it) {
+      case 'insertText': case 'insertReplacementText': {
+        const d = e.data != null ? e.data : e.dataTransfer ? e.dataTransfer.getData('text/plain') : '';
+        if (d) this.nReplace(a, b, d.replace(/\r\n?/g, '\n'), d.length === 1 ? 'type' : 'paste');
+        return;
+      }
+      case 'insertParagraph': this.nReturn(false); return;
+      case 'insertLineBreak': this.nReturn(true); return;
+      case 'deleteContentBackward': this.nBackspace(); return;
+      case 'deleteContentForward': {
+        if (b > a) { this.nSet(t.slice(0, a) + t.slice(b), a, null, 'del'); return; }
+        if (a >= t.length) return;
+        const n = /[\uD800-\uDBFF]/.test(t[a]) ? 2 : 1;
+        this.nSet(t.slice(0, a) + t.slice(a + n), a, null, 'del');
+        return;
+      }
+      case 'deleteWordBackward': {
+        if (b > a) { this.nSet(t.slice(0, a) + t.slice(b), a, null, 'del'); return; }
+        const m = t.slice(0, a).match(/(?:[\p{L}\p{N}_]+|[^\p{L}\p{N}_\s]+)?\s*$/u);
+        const n = Math.max(1, m ? m[0].length : 1);
+        this.nSet(t.slice(0, a - n) + t.slice(a), Math.max(0, a - n), null, 'del');
+        return;
+      }
+      case 'deleteWordForward': {
+        if (b > a) { this.nSet(t.slice(0, a) + t.slice(b), a, null, 'del'); return; }
+        const m = t.slice(a).match(/^\s*(?:[\p{L}\p{N}_]+|[^\p{L}\p{N}_\s]+)?/u);
+        this.nSet(t.slice(0, a) + t.slice(a + Math.max(1, m ? m[0].length : 1)), a, null, 'del');
+        return;
+      }
+      case 'deleteSoftLineBackward': case 'deleteHardLineBackward': {
+        if (b > a) { this.nSet(t.slice(0, a) + t.slice(b), a, null, 'del'); return; }
+        const from = a > L.a + L.pre ? L.a + L.pre : a > L.a ? L.a : Math.max(0, a - 1);
+        this.nSet(t.slice(0, from) + t.slice(a), from, null, 'del');
+        return;
+      }
+      case 'deleteSoftLineForward': case 'deleteHardLineForward': {
+        const to = b > a ? b : a < L.b ? L.b : Math.min(t.length, a + 1);
+        this.nSet(t.slice(0, a) + t.slice(to), a, null, 'del');
+        return;
+      }
+      case 'deleteByCut': case 'deleteContent': if (b > a) this.nSet(t.slice(0, a) + t.slice(b), a, null, 'del'); return;
+      case 'historyUndo': this.nUndoStep(false); return;
+      case 'historyRedo': this.nUndoStep(true); return;
+      case 'formatBold': this.nWrap('b'); return;
+      case 'formatItalic': this.nWrap('i'); return;
+      default: return;   // drops, other formatting: nothing
+    }
+  };
+  // A composition (IME, dead keys) already changed the DOM; write its result into the source and redraw over it.
+  onNotesCompEnd = (e) => {
+    const ed = this.nState();
+    if (!ed || !e.data) { this.forceUpdate(); return; }
+    const [a, b] = ed.sel ? [Math.min(...ed.sel), Math.max(...ed.sel)] : [ed.text.length, ed.text.length];
+    this.nReplace(a, b, e.data, 'type');
+  };
+  // Return continues a list, a checklist or a quote; on an empty item it outdents, then ends the list.
+  nReturn(soft) {
+    let [a, b] = this.nSel();
+    let t = this.nState().text;
+    if (b > a) t = t.slice(0, a) + t.slice(b);
+    const L = mdLineAt(mdParseLines(t), a);
+    const put = (ins) => { const s = t.slice(0, a) + ins + t.slice(a); if (s.length <= MD_MAX) this.nSet(s, a + ins.length, null, 'ret'); };
+    if (soft || !L) { put('\n'); return; }
+    if (L.kind === 'code') { put('\n' + L.s.match(/^[ \t]*/)[0]); return; }
+    if ((MD_LISTY[L.kind] || L.kind === 'quote') && a >= L.a + L.pre) {
+      if (!L.s.slice(L.pre).trim()) {
+        if (L.ind > 0) { this.nSet(t.slice(0, L.a) + t.slice(L.a + 2), a - 2, null, 'ret'); return; }
+        this.nSet(t.slice(0, L.a) + t.slice(L.b), L.a, null, 'ret');
+        return;
+      }
+      const pre = L.kind === 'quote' ? '> ' : L.lead + (L.kind === 'ol' ? (L.num + 1) + L.delim + ' ' : L.bullet + ' ' + (L.kind === 'task' ? '[ ] ' : ''));
+      put('\n' + pre);
       return;
     }
-    if ((e.metaKey || e.ctrlKey) && (k === 'z' || k === 'Z')) e.stopPropagation();
+    put('\n');
+  }
+  // Backspace at the start of an item's text outdents it, then turns it into a plain line; on a heading or quote it
+  // takes the whole prefix.
+  nBackspace() {
+    const [a, b] = this.nSel(), t = this.nState().text;
+    if (b > a) { this.nSet(t.slice(0, a) + t.slice(b), a, null, 'del'); return; }
+    if (a === 0) return;
+    const L = mdLineAt(this.mdLines(t), a);
+    if (L && L.pre && a === L.a + L.pre && (MD_LISTY[L.kind] || L.kind === 'quote' || L.kind === 'h1' || L.kind === 'h2')) {
+      if (MD_LISTY[L.kind] && L.ind > 0) { this.nSet(t.slice(0, L.a) + t.slice(L.a + 2), a - 2, null, 'del'); return; }
+      this.nSet(t.slice(0, L.a) + t.slice(L.a + L.pre), L.a, null, 'del');
+      return;
+    }
+    const n = a >= 2 && /[\uDC00-\uDFFF]/.test(t[a - 1]) ? 2 : 1;
+    this.nSet(t.slice(0, a - n) + t.slice(a), a - n, null, 'del');
+  }
+  // Tab and ⇧Tab move a list item a level (two spaces, at most two levels). Elsewhere Tab is a tab character and ⇧Tab
+  // goes back to the title, as before.
+  nIndent(out) {
+    const [a, b] = this.nSel(), t = this.nState().text;
+    const lines = this.mdLines(t).filter((L) => MD_LISTY[L.kind] && L.b >= a && L.a <= b);
+    if (!lines.length) return false;
+    if (out && lines.every((L) => !L.ind)) return false;
+    let s = t, da = 0, db = 0;
+    for (const L of lines.slice().reverse()) {
+      if (out) { if (!L.ind) continue; s = s.slice(0, L.a) + s.slice(L.a + 2); if (L.a < a) da -= 2; db -= 2; }
+      else { if (L.ind >= 2) continue; s = s.slice(0, L.a) + '  ' + s.slice(L.a); if (L.a <= a) da += 2; db += 2; }
+    }
+    if (s !== t) this.nSet(s, Math.max(0, a + da), Math.max(0, b + db), 'indent');
+    return true;
+  }
+  // ⌘B / ⌘I: wrap the selection or the word at the caret; inside that style already, take it off.
+  nWrap(kind) {
+    const mk = kind === 'b' ? '**' : '_', ml = mk.length;
+    const [a, b] = this.nSel(), t = this.nState().text;
+    const lines = this.mdLines(t), L = mdLineAt(lines, a);
+    const tok = L ? mdLineTokens(L).filter((k) => k.kind === kind && k.ta <= a && b <= k.tb).pop() : null;
+    if (tok) {
+      const map = (x) => (x <= tok.ta ? x : x >= tok.tb ? x - 2 * ml : Math.min(Math.max(x - ml, tok.ta), tok.tb - 2 * ml));
+      this.nSet(t.slice(0, tok.ta) + t.slice(tok.ia, tok.ib) + t.slice(tok.tb), map(a), map(b), 'fmt');
+      return;
+    }
+    if (a === b) {
+      const w = mdWordAt(t, a);
+      if (w) this.nSet(t.slice(0, w[0]) + mk + t.slice(w[0], w[1]) + mk + t.slice(w[1]), a + ml, null, 'fmt');
+      else this.nSet(t.slice(0, a) + mk + mk + t.slice(a), a + ml, null, 'fmt');
+      return;
+    }
+    // Spaces at either end stay outside; a selection over several lines wraps each line's text.
+    let s = '', out = t.slice(0, a);
+    const seg = t.slice(a, b).split('\n').map((x) => { const m = x.match(/^(\s*)(.*?)(\s*)$/); return m[2] ? m[1] + mk + m[2] + mk + m[3] : x; }).join('\n');
+    s = out + seg + t.slice(b);
+    if (s.length <= MD_MAX) this.nSet(s, a, a + seg.length, 'fmt');
+  }
+  // A source range's rectangle in window coordinates (keeping the caret in view).
+  nRect(a, b) {
+    const el = this.notesEl;
+    if (!el || !this.winRef.current) return null;
+    const r = document.createRange();
+    try { const p = mdOffsetToPoint(el, a), q = mdOffsetToPoint(el, b); r.setStart(p[0], p[1]); r.setEnd(q[0], q[1]); } catch (e) { return null; }
+    let rc = r.getBoundingClientRect();
+    if (!rc.width && !rc.height) { const n = r.startContainer; rc = (n.nodeType === 3 ? n.parentElement : n).getBoundingClientRect(); }
+    const w = this.winRef.current.getBoundingClientRect();
+    return { left: rc.left - w.left, right: rc.right - w.left, top: rc.top - w.top, bottom: rc.bottom - w.top };
+  }
+  onNotesFocus = () => {
+    if (this.nRestoring) return;
+    const ed = this.state.edit, id = this.detailTaskId();
+    if (ed && ed.kind === 'notes' && ed.id === id) return;
+    this.startNotes(null);
   };
-  onNotesBlur = () => { const ed = this.state.edit; if (ed && ed.kind === 'notes') this.commitEdit(); };
-  onNotesFocus = (e) => { const el = e.target, n = el.value.length; try { el.setSelectionRange(n, n); } catch (err) { /* ignore */ } };
+  onNotesBlur = () => {
+    const ed = this.nState();
+    if (ed) this.commitEdit();
+  };
+  onNotesMouseDown = (e) => {
+    const a = e.target.closest && e.target.closest('a.s-a');
+    if (a) { e.preventDefault(); return; }   // a link opens on click and never takes the caret
+    if (e.target.closest && e.target.closest('.dec, .nbox')) { e.preventDefault(); return; }   // bullets and boxes never take the caret
+    if (e.button === 0) this.nMouseDown = true;
+  };
+  onNoteLinkClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    this.tipOut();
+    this.showNotice('Opens ' + e.currentTarget.getAttribute('href'), false);
+  };
+  onNotesNoDrag = (e) => { e.preventDefault(); };
+  onNotesCopy = (e) => {
+    const [a, b] = this.nSel();
+    if (b <= a) return;
+    e.preventDefault();
+    e.clipboardData.setData('text/plain', this.nState().text.slice(a, b));
+  };
+  onNotesCut = (e) => {
+    const [a, b] = this.nSel();
+    if (b <= a) return;
+    this.onNotesCopy(e);
+    const t = this.nState().text;
+    this.nSet(t.slice(0, a) + t.slice(b), a, null, 'cut');
+  };
+  // Paste: a link over selected text links it; rich text becomes Markdown; ⌥⇧⌘V and code blocks take plain text.
+  onNotesPaste = (e) => {
+    e.preventDefault();
+    const ed = this.nState();
+    if (!ed) return;
+    const cd = e.clipboardData, txt = (cd.getData('text/plain') || '').replace(/\r\n?/g, '\n'), html = cd.getData('text/html');
+    const [a, b] = this.nSel(), t = ed.text, L = mdLineAt(this.mdLines(t), a);
+    const plain = this.nPlainPaste || (L && (L.kind === 'code' || L.kind === 'fence'));
+    this.nPlainPaste = false;
+    const one = txt.trim();
+    if (b > a && MD_URL.test(one) && !t.slice(a, b).includes('\n')) {
+      const ins = '[' + t.slice(a, b).replace(/[[\]]/g, '') + '](' + one.replace(/[()]/g, encodeURIComponent) + ')';
+      this.nSet(t.slice(0, a) + ins + t.slice(b), a + ins.length, null, 'paste');
+      return;
+    }
+    let ins = txt;
+    if (!plain && html && !MD_URL.test(one)) { const m = htmlToMd(html); if (m.trim()) ins = m; }
+    // Blocks (several lines, or a heading, list, quote or fence) start on a line of their own and leave the rest of
+    // the line on its own line after them.
+    if (!plain && ins && (ins.includes('\n') || /^(#{1,6} |[-*+] |\d+[.)] |> |```)/.test(ins))) {
+      if (a > 0 && t[a - 1] !== '\n') ins = '\n' + ins;
+      if (b < t.length && t[b] !== '\n') ins = ins + '\n';
+    }
+    if (ins) this.nReplace(a, b, ins, 'paste');
+  };
+  onBoxClick = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    const at = +e.currentTarget.dataset.box, t = this.task(this.detailTaskId());
+    if (!t) return;
+    const flip = (s) => s.slice(0, at) + (s[at] === ' ' ? 'x' : ' ') + s.slice(at + 1);
+    clearTimeout(this.boxPopTimer);
+    this.boxPopTimer = setTimeout(() => this.setState({ boxPop: null }), 320);
+    const ed = this.nState();
+    if (ed && ed.id === t.id) {
+      this.nUndo.push({ text: ed.text, sel: ed.sel, kind: 'box', t: Date.now() }); this.nRedo = [];
+      this.nPut({ ...ed, text: flip(ed.text) }); this.setState({ boxPop: at });
+      return;
+    }
+    this.commit(t.notes[at] === ' ' ? 'Check Item' : 'Uncheck Item', { tasks: this.state.tasks.map((x) => (x.id === t.id ? { ...x, notes: flip(x.notes) } : x)), boxPop: at });
+  };
+  // Notes. Esc and ⌘Return are done and keep the text, handing the keys back to the list. Tab and ⇧Tab move list items;
+  // elsewhere Tab is a tab character and ⇧Tab goes back to the title. ⌘B, ⌘I and ⌘Z belong to the notes here; ⌘K still
+  // completes the task (the root's menu-command rule ends the session first).
+  onNotesKey = (e) => {
+    const k = e.key, cmd = e.metaKey || e.ctrlKey, letter = (e.code || '').startsWith('Key') ? e.code.slice(3).toLowerCase() : k.toLowerCase();
+    if (!this.nState()) return;
+    if (k === 'Escape' || (k === 'Enter' && cmd)) { e.preventDefault(); e.stopPropagation(); this.commitEdit(); e.currentTarget.blur(); this.setState({ focus: 'list' }); this.focusRoot(); return; }
+    if (k === 'Tab') {
+      e.preventDefault(); e.stopPropagation();
+      if (this.nIndent(e.shiftKey)) return;
+      if (e.shiftKey) { this.commitEdit(); this.focusTitle(true); } else { const [a, b] = this.nSel(); this.nReplace(a, b, '\t', 'type'); }
+      return;
+    }
+    if (cmd && e.altKey && e.shiftKey && letter === 'v') { this.nPlainPaste = true; e.stopPropagation(); return; }
+    if (cmd && !e.altKey && !e.shiftKey && (letter === 'b' || letter === 'i')) { e.preventDefault(); e.stopPropagation(); this.nWrap(letter); return; }
+    if (cmd && letter === 'z') { e.preventDefault(); e.stopPropagation(); this.nUndoStep(e.shiftKey); return; }
+  };
+  // After each render: give the notes the keys if asked, put the caret back on the same source offsets, keep it in view.
+  // The canvas runtime writes the template's DOM a moment after componentDidUpdate, so this waits (a few frames at
+  // most) until the editor carries the model's revision (data-rev) before it touches the selection. Until then nCur
+  // keeps the model ahead of the DOM.
+  nAfterRender() {
+    cancelAnimationFrame(this.nRaf);
+    const step = (n) => {
+      const el = this.notesEl, ed = this.state.edit;
+      if (!el || !ed || ed.kind !== 'notes') { this.nCur = null; return; }
+      if ((this.nCur && this.nCur !== ed) || el.dataset.rev !== String(ed.rev || 0)) { if (n < 8) this.nRaf = requestAnimationFrame(() => step(n + 1)); else this.nCur = null; return; }
+      this.nCur = null;
+      this.nRestore(el, ed);
+    };
+    step(0);
+  }
+  nRestore(el, ed) {
+    if (this.nFocusWant) {
+      this.nFocusWant = false;
+      if (document.activeElement !== el) { this.nRestoring = true; el.focus({ preventScroll: true }); this.nRestoring = false; }
+    }
+    if (document.activeElement !== el || !ed.sel || this.nMouseDown) return;
+    const s = window.getSelection();
+    let ok = false;
+    if (s.rangeCount && el.contains(s.anchorNode) && el.contains(s.focusNode) && s.anchorNode.isConnected && mdShown(s.anchorNode.nodeType === 3 ? s.anchorNode.parentElement : s.anchorNode)) {
+      ok = mdPointToOffset(el, s.anchorNode, s.anchorOffset) === ed.sel[0] && mdPointToOffset(el, s.focusNode, s.focusOffset) === ed.sel[1];
+    }
+    if (!ok) { const p = mdOffsetToPoint(el, ed.sel[0]), q = mdOffsetToPoint(el, ed.sel[1]); try { s.setBaseAndExtent(p[0], p[1], q[0], q[1]); } catch (err) { /* ignore */ } }
+    if (this.nScrollWant) {
+      this.nScrollWant = false;
+      const body = el.closest('.dbody'), r = this.nRect(ed.sel[1], ed.sel[1]), w = this.winRef.current;
+      if (body && r && w) {
+        const br = body.getBoundingClientRect(), wr = w.getBoundingClientRect(), top = br.top - wr.top, bottom = br.bottom - wr.top;
+        if (r.bottom > bottom - 19) body.scrollTop += r.bottom - (bottom - 19);
+        else if (r.top < top + 19) body.scrollTop -= top + 19 - r.top;
+      }
+    }
+  }
+  // The view of the source: rendered, with the marks shown only around the caret (the token it touches, its line's
+  // # or >, the fences of its code block).
+  mdView(text, o) {
+    const lines = this.mdLines(text);
+    const sel = o.focused && o.sel ? [Math.min(...o.sel), Math.max(...o.sel)] : null;
+    const touch = (a, b) => !!sel && sel[0] <= b && sel[1] >= a;
+    const rv = touch;
+    const out = [], run = [];
+    lines.forEach((L, idx) => {
+      const v = { a: L.a, b: L.b, cs: L.a, cls: 'ml', style: '', dot: false, num: false, box: false, ps: [] };
+      out.push(v);
+      const toks = [];
+      const inline = (from) => mdInline(L.s.slice(from), L.a + from, rv, v.ps, toks, '');
+      const prefix = (show) => { v.ps.push({ a: L.a, s: L.s.slice(0, L.pre), cls: 'mk' + (show ? '' : ' hid') }); v.cs = show ? L.a : L.a + L.pre; };
+      if (!MD_LISTY[L.kind]) run.length = 0;
+      if (L.kind === 'blank') return;
+      if (L.kind === 'p') { inline(0); return; }
+      if (L.kind === 'h1' || L.kind === 'h2') { v.cls += ' ' + L.kind; prefix(touch(L.a, L.b)); inline(L.pre); return; }
+      if (L.kind === 'quote') {
+        const up = lines[idx - 1], dn = lines[idx + 1];
+        v.cls += ' q' + (up && up.kind === 'quote' ? '' : ' q-first') + (dn && dn.kind === 'quote' ? '' : ' q-last');
+        prefix(touch(L.a, L.b)); inline(L.pre); return;
+      }
+      if (L.kind === 'code' || L.kind === 'fence') {
+        const B = L.blk, show = touch(B.a, B.b);
+        const vis = (X) => X && X.blk === B && (X.kind === 'code' || show);
+        if (L.kind === 'fence' && !show) { v.cls += ' cb fence gone'; v.ps.push({ a: L.a, s: L.s, cls: 'mk hid', plain: true }); return; }
+        v.cls += ' cb' + (L.kind === 'fence' ? ' fence' : '') + (vis(lines[idx - 1]) ? '' : ' cb-first') + (vis(lines[idx + 1]) ? '' : ' cb-last');
+        if (L.s) v.ps.push({ a: L.a, s: L.s, cls: L.kind === 'fence' ? 'mk' : '' });
+        return;
+      }
+      // Lists: the prefix is drawn (a dot, a number, a box) in the gutter column and never shown as text.
+      prefix(false);
+      v.cls += ' li' + (L.kind === 'task' && L.checked ? ' done' : '');
+      v.style = 'padding-left: ' + (L.ind + 1) * MD_COL + 'px';
+      v.decStyle = 'left: ' + L.ind * MD_COL + 'px';
+      run.length = Math.min(run.length, L.ind + 1);
+      if (L.kind === 'ul') { v.dot = true; v.decCls = 'dec dot l' + (L.ind % 2); }
+      if (L.kind === 'ol') { const n = run[L.ind] != null ? run[L.ind] : L.num; run[L.ind] = n + 1; v.num = true; v.numText = n + L.delim; }
+      else run[L.ind] = null;
+      if (L.kind === 'task') {
+        v.box = true; v.boxAt = L.boxAt;
+        v.boxCls = 'nbox' + (L.checked ? ' on' : '') + (this.state.boxPop === L.boxAt ? ' pop' : '');
+        v.boxLabel = (L.checked ? 'Uncheck: ' : 'Check: ') + (mdPlain(L.s.slice(L.pre)).trim() || 'item');
+      }
+      inline(L.pre);
+    });
+    for (const v of out) for (const p of v.ps) {
+      p.link = !!p.href; p.plain = !p.href;
+      if (p.href) {
+        p.cls += (this.state.hoverLink === p.a ? ' hov' : '');
+        p.tip = p.href.replace(/^https?:\/\/(www\.)?/, '').replace(/^mailto:/, '');
+        p.tipKeys = '';
+      }
+    }
+    return out;
+  }
   onDCheck = () => { const id = this.detailTaskId(); if (id) this.toggleComplete([id]); };
   onDChip = (e) => { const field = e.currentTarget.dataset.field; this.openPicker(field, this.detailIds(), this.rectIn(e.currentTarget)); };
   onDClear = (e) => { e.stopPropagation(); this.setDate(this.detailIds(), e.currentTarget.dataset.field, null); };
@@ -1932,6 +2586,7 @@ class Component extends DCLogic {
         checkCls: 'check' + (done ? ' on' : '') + (s.pops[t.id] ? ' pop' : '') + (t.draft ? ' new' : ''),
         checkLabel: (done ? 'Mark not done: ' : 'Complete: ') + (t.title || 'New Task'),
         chips, where, hasWhere: !!where,
+        ...this.rowNotes(t),
       };
     });
 
@@ -1972,6 +2627,7 @@ class Component extends DCLogic {
     const one = dIds.length === 1 ? this.task(dIds[0]) : null;
     const many = dIds.length > 1 ? dIds.map((id) => this.task(id)) : null;
     const dpo = { show: s.detail !== 'closed', cls: 'pane dp' + (s.focus === 'detail' ? ' focused' : '') + (s.detail === 'opening' || s.detail === 'closing' ? ' out' : ''), style: 'width: ' + s.detailW + 'px' };
+    dpo.nt = { lines: [], cls: 'mded', ce: 'false' };
     dpo.single = !!one; dpo.multi = !!many; dpo.none = !one && !many;
     const dateRow = (field, value, mixed) => {
       if (mixed) return { has: false, mixed: true, ghost: 'Mixed', text: '', cls: 'chip lg ghost', rel: '', relCls: 'rel' };
@@ -1999,12 +2655,13 @@ class Component extends DCLogic {
       dpo.titleValue = dEd ? ed.text : one.title;
       dpo.checkCls = 'check' + (one.completedAt != null ? ' on' : '') + (s.pops[one.id] ? ' pop' : '') + (one.draft ? ' new' : '') + (inert ? ' inert' : '');
       const nEd = ed && ed.kind === 'notes' && ed.id === one.id;
-      dpo.notesEditing = !!nEd; dpo.notesView = !nEd;
-      dpo.notesText = nEd ? ed.text : '';
-      dpo.md = one.notes ? mdSegments(one.notes) : [];
-      dpo.mdCls = 'md' + (one.notes ? '' : ' md-ph');
-      dpo.hasNotes = !!one.notes; dpo.noNotes = !one.notes;
-      dpo.meta = 'Created ' + md(ymdOf(new Date(one.createdAt))) + (one.completedAt ? ' · Completed ' + md(ymdOf(new Date(one.completedAt))) : '');
+      const ntext = nEd ? ed.text : one.notes;
+      dpo.nt = {
+        lines: this.mdView(ntext, { focused: !!nEd, sel: nEd ? ed.sel : null }),
+        cls: 'mded' + (ntext ? '' : ' empty') + (nEd ? ' editing' : ''),
+        ce: inert ? 'false' : 'true', rev: nEd ? ed.rev || 0 : -1,
+      };
+      dpo.meta = 'Created ' + md(ymdOf(new Date(one.createdAt))) + (one.completedAt ? ' · Completed ' + md(ymdOf(new Date(one.completedAt))) : '') + (ntext.length >= MD_NEAR ? ' · ' + ntext.length.toLocaleString('en-US') + ' / 20,000' : '');
     }
     if (many) dpo.multiTitle = many.length + ' tasks selected';
     this.viewDetail(dpo, one, many);   // Trash: read-only, with Put Back in place of Delete (§22)
@@ -2100,7 +2757,8 @@ class Component extends DCLogic {
 
     const seg = (k, opts) => opts.map(([v, label]) => ({ k, v, label, cls: s[k] === v ? 'on' : '' }));
     const stage = { show: stageOn,
-      theme: seg('theme', [['dark', 'Dark'], ['light', 'Light']]), editTasks: [['detail', 'Open in detail pane'], ['list', 'Rename in the list']].map(([v, label]) => ({ k: 'editTasks', v, label, cls: this.editTasksMode() === v ? 'on' : '' })),
+      theme: seg('theme', [['dark', 'Dark'], ['light', 'Light']]),
+      editTasks: [['detail', 'Open in detail pane'], ['list', 'Rename in the list']].map(([v, label]) => ({ k: 'editTasks', v, label, cls: this.editTasksMode() === v ? 'on' : '' })),
     };
 
     return {
@@ -2118,7 +2776,8 @@ class Component extends DCLogic {
       onScrollAreaDbl: this.onScrollAreaDbl, onToggleCompleted: this.onToggleCompleted, onGroupPlus: this.onGroupPlus,
       onEditChange: this.onEditChange, onEditFocus: this.onEditFocus, onEditBlur: this.onEditBlur, onEditKey: this.onEditKey,
       onDetailDown: this.onDetailDown, onDTitleFocus: this.onDTitleFocus, onDTitleChange: this.onDTitleChange, onDTitleKey: this.onDTitleKey, onDTitleBlur: this.onDTitleBlur,
-      onNotesDown: this.onNotesDown, onNotesChange: this.onNotesChange, onNotesKey: this.onNotesKey, onNotesBlur: this.onNotesBlur, onNotesFocus: this.onNotesFocus,
+      onNotesKey: this.onNotesKey, onNotesBlur: this.onNotesBlur, onNotesFocus: this.onNotesFocus, notesRefCb: this.notesRefCb, onNotesPaste: this.onNotesPaste, onNotesCopy: this.onNotesCopy, onNotesCut: this.onNotesCut,
+      onNotesMouseDown: this.onNotesMouseDown, onNotesNoDrag: this.onNotesNoDrag, onBoxClick: this.onBoxClick, onNoteLinkClick: this.onNoteLinkClick,
       onDCheck: this.onDCheck, onDChip: this.onDChip, onDClear: this.onDClear, onDList: this.onDList, onDDelete: this.onDDelete, onDClose: this.onDClose, onLinkClick: this.onLinkClick,
       onSidebarDown: this.onSidebarDown, onSidebarCtx: this.onSidebarCtx, onSbRowDown: this.onSbRowDown, onSbRowMove: this.onSbRowMove, onSbRowUp: this.onSbRowUp, onSbRowDbl: this.onSbRowDbl, onSbRowCtx: this.onSbRowCtx,
       onArchiveLabel: this.onArchiveLabel, onNewListBtn: this.onNewListBtn, onNewTaskBtn: this.onNewTaskBtn, onToggleDetail: this.onToggleDetail, onToggleSidebar: this.onToggleSidebar, onUnarchive: this.onUnarchive,
@@ -2433,7 +3092,7 @@ class Component extends DCLogic {
     dpo.ro = trash; dpo.delOne = !!one && !trash; dpo.delMany = !!many && !trash; dpo.putBack = !!(one || many) && trash;
     dpo.putBackTip = many ? 'Put Back ' + many.length + ' Tasks' : 'Put Back';
     if (!trash) return;
-    dpo.propsCls += ' ro'; dpo.notesCls += ' ro';
+    dpo.propsCls += ' ro'; dpo.notesCls += ' ro'; dpo.nt.ce = 'false';
     if (one) { dpo.checkCls += ' ro'; dpo.meta = 'Created ' + md(ymdOf(new Date(one.createdAt))) + (one.deletedAt ? ' · Deleted ' + md(localDayOfMs(one.deletedAt)) : ''); }
   }
 
