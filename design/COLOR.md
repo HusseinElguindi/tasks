@@ -1,13 +1,22 @@
 # Colour
 
-**Status: proposed, 2026-11-01** (`docs/TASK-design-color.md`). Nothing is built. What the user said: "I feel like
-we don't have enough color... a bit bland", "I like the surface colors", "I like the orange in this image"
-(`docs/feedback/color-reference-orange.png`: a rounded tile with a white spark, on dark grey), "be creative". The
-follow-up (`docs/TASK-design-color-2.md`) gave the tile's source, `docs/feedback/reference-tile.svg`: its fill is
+**Status: final: A + B + D, the user, 2026-11-01** (`docs/TASK-build-color.md`): "let's forget Rooms (C). A is
+good. make this accent color easily changed (in case we pick up the theming later). B is good. use the tiles as above.
+D is good. so yea ABD." Built in the app (§8). The brief was `docs/TASK-design-color.md`; what the user said then:
+"I feel like we don't have enough color... a bit bland", "I like the surface colors", "I like the orange in this
+image" (`docs/feedback/color-reference-orange.png`: a rounded tile with a white spark, on dark grey), "be creative".
+The follow-up (`docs/TASK-design-color-2.md`) gave the tile's source, `docs/feedback/reference-tile.svg`: its fill is
 #E6683D, lit from above (§2).
 
-**Canvas:** https://claude.ai/artifact/ANUrtropTfm2GwdAAXWAYv (private until shared from its Share menu). Its
-prototype is `design/prototype-color/`, a copy of `design/prototype-v2/` at 54681b8. Press Play on the first board and
+**Decided at the build** (the coordinator, 2026-11-01; the user can still change them):
+- **The accent is #E6683D,** the source tile's own colour, in place of round 1's #D66F49, so the accent and Today's
+  tile are one colour. It's one value for the whole theme (§6): light's accent, `accent-text` and `accent-tint` are
+  derived from it by THEMES' rules, and Today's tile follows it.
+- **Today's sun stays white on #E6683D,** as in the reference, though the tip of its top ray is 2.57:1.
+- **Danger red stays.** **The app icon stays as it is.**
+
+**Canvas:** https://claude.ai/artifact/ANUrtropTfm2GwdAAXWAYv (private until shared from its Share menu). It
+still draws round 1's accent, #D66F49 / #AE4E2B, and C; §1's table has the built values. Its prototype is `design/prototype-color/`, a copy of `design/prototype-v2/` at 54681b8. Press Play on the first board and
 click inside once. The strip at its foot picks Dark or Light, a direction (Now, A–D or the pick), or each feature on
 its own, so they can be mixed. Below it are the tokens and contrast board (every ratio is computed from the hexes)
 and a looping close-up of D's spark. Then one row per direction: School with a task just checked, the completed
@@ -22,10 +31,10 @@ Four directions, each a different kind of colour. Each can be switched on alone,
 |---|---|---|---|
 | A | **Ember**: a warm accent | Everywhere the accent is now, in the reference's clay | `accent`, `accent-text`, `accent-tint`, `text-selection`; new `plan` |
 | B | **Tiles**: colour as iconography | Solid tiles with white glyphs, lit like the reference; nothing else | new `tile-*` (8) |
-| C | **Rooms**: colour per list and view | The open list's hue on its title, wash, checks, selection, capsule, popover | two list slots retuned; derived wash, selection, capsule |
+| C | ~~Rooms~~: dropped (§3) | | |
 | D | **Moments**: colour in time | Nothing at rest; a spark on completing, a sunrise when Today is done | new `spark` |
 
-**Recommended: A + B + D** (the pick). The surfaces, the greys, the rows and the quiet stay. Colour goes in three
+**Picked: A + B + D.** The surfaces, the greys, the rows and the quiet stay. Colour goes in three
 places: the sidebar's column of tiles, the clay accent where you act, and a spark when a task is done. §5 says why.
 
 What every direction keeps: Rex's surfaces and greys, metrics and motion; the deadline tones (red when overdue, amber
@@ -33,8 +42,10 @@ when due today); the When ring's blue. Colour is never the only signal (§24's w
 
 ## 1. A · Ember: a warm accent
 
-The accent becomes a clay near the reference. (The round-1 sample, #D66F49; the source tile's fill is #E6683D, and
-the accent could follow it if this is picked: white on it is 3.28:1.)
+The accent becomes the reference's clay: the source tile's own fill, #E6683D (round 1 drew #D66F49). It's the
+theme's one accent value (§6). Dark uses it as it is. Light's accent is derived from it by THEMES §2.5's raise: 2%
+steps toward black until it holds 4.5:1 as text, on base and on its own tint, since light's `accent-text` is the
+accent (as Rex's and round 1's are). That takes 13 steps, to #B1502F, a level or two from round 1's #AE4E2B.
 
 **Colour:** the checked box, the highlighted day, today's date and the Today pill in the popover, the quick pick and
 the chip with its popover open (tint), the highlighted menu item, focus and rename rings, a drop target, links in
@@ -44,24 +55,24 @@ mark's head.
 
 | Token | Dark | Light | Was |
 |---|---|---|---|
-| `accent` | #D66F49 | #AE4E2B | #2F81F7 / #0969DA |
-| `accent-text` | #DA8B6E | #AE4E2B | #5799F6 / #0969DA |
-| `accent-tint` | #342722 | #F7EDEA | #1E2938 / #E6F0FB (the same rule: base → accent 13% / 10%) |
+| `accent` | **#E6683D** (the source) | #B1502F (the source, raised for text) | #2F81F7 / #0969DA |
+| `accent-text` | #E68565 (accent → ink 22%) | #B1502F (= accent) | #5799F6 / #0969DA |
+| `accent-tint` | #362620 | #F7EDEA | #1E2938 / #E6F0FB (the same rule: base → accent 13% / 10%) |
 | `text-selection` | accent at 42% | accent at 22% | 45% / 25% |
 | `plan` (new) | #5799F6 | #0969DA | the When ring read `accent-text` |
 | `on-accent` | #FFFFFF | #FFFFFF | unchanged |
 
-**Contrast:** accent-text on base 6.41 / 5.35, on the popover 5.69 / 5.35, on accent-tint 5.41 / 4.65 (floor 4.5).
-White on the accent 3.37 / 5.35 (floor 3; Rex's blue is 3.75). The accent on base 5.06 / 5.35 and `plan` on base
-5.92 / 5.19 (floor 3).
+**Contrast:** accent-text on base 6.43 / 5.18, on the popover 5.71 / 5.18, on accent-tint 5.44 / 4.52 (floor 4.5:
+checked when the theme is derived, and raised if it fails). White on the accent 3.28 / 5.18 (floor 3, fine for
+glyphs and checkmarks; Rex's blue is 3.75). The accent on base 5.20 / 5.18 and `plan` on base 5.92 / 5.19 (floor 3).
+(Round 1's figures, for #D66F49 / #AE4E2B: 6.41 / 5.35, 5.69 / 5.35, 5.41 / 4.65; 3.37 / 5.35; 5.06 / 5.35.)
 
 **With the semantic colours.** The When ring moves to its own token, `plan`, which keeps today's blue, so "planned"
 stays cool while warm means doing and deadlines. Danger (#FF7B72 / #CF222E) and attention (#D29922 / #9A6700) don't
 change. Clay sits between them in hue (16°, against 4° or 356° and 41°), so they're kept apart by shape. Clay fills
 (the check, the day, the menu item) and outlines whole rows. Red and amber are rings on open boxes and capsules at the
 row's end. The nearest pair is dark danger against accent-text, and they never share a shape. The Today sun moves off
-amber, which then means only "due today". The app icon's head stays blue unless the logo follows; that's a separate
-question.
+amber, which then means only "due today". Danger stays red. The app icon stays as it is (its head stays blue).
 
 ## 2. B · Tiles: colour as iconography
 
@@ -71,7 +82,7 @@ above. These are Pane's category tiles applied to Tasks' tiles, with Rex's own f
 **Colour:** every tile: the sidebar's rows (Today, the views, the lists), the band's and the large title's tile, the
 detail pane's List, Move to and the other menus, a dragged list. An archived list's tile is at 55%. The brand mark's
 head takes the same light (below).
-**Grey:** everything else. The accent stays blue.
+**Grey:** everything else. (With B alone the accent stayed blue; in the pick it's A's.)
 
 ### The finish
 
@@ -112,7 +123,7 @@ appearances; only the halo differs.
 
 | Tile | Flat (round 1) | Lit | White: middle | White: under the glyph | Floor |
 |---|---|---|---|---|---|
-| Today (the sun) | #D66F49 | **#E6683D** | 3.23 | 2.57 at the top ray's tip | 3 |
+| Today (the sun) | #D66F49 | **#E6683D**: the accent's source, and it follows it | 3.23 | 2.57 at the top ray's tip | 3 |
 | Upcoming, and the magenta slot | #7C5CD6 | #6B4FB8 | 5.90 | 4.61 | 4.5 |
 | Undated, and the cyan slot | #17808A | #146E77 | 5.78 | 4.52 | 4.5 |
 | Completed, and the green slot | #27824A | #227040 | 5.89 | 4.56 | 4.5 |
@@ -121,9 +132,10 @@ appearances; only the halo differs.
 | red slot (rose) | #C9456B | #AD3B5C | 5.75 | 4.59 | 4.5 |
 | Trash, and the ink slot (graphite) | #5A6068 | #5A6068 | 6.14 | 4.64 | 4.5 |
 
-**Today is the one exception:** it keeps the source's own fill, #E6683D. Its sun is 3.2:1 through the middle and
-2.6:1 at the top ray's tip, as the reference's spark is. If that tip should hold 3:1 too, Today is #CA5C36, which is
-visibly darker than the reference.
+**Today is the one exception:** it keeps the source's own fill, #E6683D, which is also the accent's source, so
+Today's tile follows the accent (a theme that changes the accent changes Today's tile, in both appearances). Its sun is
+white, 3.2:1 through the middle and 2.6:1 at the top ray's tip, as the reference's spark is (decided: it stays). If
+that tip should hold 3:1 too, Today is #CA5C36, which is visibly darker than the reference.
 
 **The brand mark:** its head (a 5pt dot at 18pt) takes the light, the inner ring and the halo, and no specular, since
 a 0.5pt strip across a 5pt dot is just a fleck.
@@ -132,41 +144,10 @@ a 0.5pt strip across a 5pt dot is just a fleck.
 yellow, so a list's tile doesn't read as an alert. Today's tile is clay rather than yellow, because amber means due
 today.
 
-## 3. C · Rooms: colour per list and view
+## 3. C · Rooms: dropped
 
-Each list keeps its slot, and the slot's hue paints the open list's pane. Views have their own hues: Today clay,
-Upcoming violet, Undated teal, Completed green, Trash none.
-
-**Colour:** the large title (its text and a solid tile), a wash at the top of the pane (the hue fading out over
-220pt), checked boxes, the selection, the current sidebar capsule (the hue mixed in, edges too), the date popover's
-highlighted day, today's date and quick picks, and the views' glyphs and empty states. In Today each group keeps its
-own list's hue: its label and its checks.
-**Grey:** row text, chips at rest, the sidebar at rest, the band, the detail pane except its checkbox. Inbox (the ink
-slot) and Trash keep the greys. Inbox's checks stay the accent. Focus and rename rings stay the accent.
-
-| Token | Dark | Light |
-|---|---|---|
-| list slots | ANSI, unchanged: #58A6FF #BC8CFF #3FB950 #39C5CF | #0969DA #8250DF #116329 #1B7C83 |
-| red slot → rose | #F778BA | #B4357F |
-| yellow slot → lime | #A3C94A | #567312 |
-| Today | #D66F49 (title #DA8B6E) | #AE4E2B |
-| wash | hue at 12%, to nothing over 220pt | hue at 8% |
-| selection | base → hue 18% (unfocused 10%) | 12% (7%) |
-| current capsule | fill-strong → hue 24% | 16% |
-| check mark | the base colour, cut out of the hue | white |
-
-**Contrast** (the board has all 70): every hue as text on base 6.41 to 8.94 dark and 4.93 to 7.39 light (floor 4.5).
-The title on its wash is 4.46 to 7.02 (floor 3, large text). ink-2 on the tinted selection is 4.85 to 5.91, and ink on
-the tinted capsule 5.30 or more (floor 4.5). The check on its hue is 4.93 or more (floor 3). In dark the check is cut out,
-since white on the six list hues is under 3:1 (1.9 to 2.5).
-
-**With the semantic colours.** Rings stay urgency and fills stay done, so a checked box in a list's hue never means
-a deadline. Red and yellow move to rose and lime because a red or yellow room would otherwise sit on danger and
-attention. A slot is a role, not a hue (THEMES §2.1), and the app hands slots out by id, so nobody picked "yellow".
-The When ring stays blue; in a blue list it matches the checks (a ring beside a fill).
-
-**The cost:** every list repaints the pane, the selection is no longer one grey, and Today can hold seven hues at
-once. It's the most colour and the least Rex.
+Dropped by the user ("let's forget Rooms (C)"): it paints the content, every list restyling the selection, checks and
+title, which is the "paint everywhere" the brief warned against (§5); round 1's text is in git at 22c9f20.
 
 ## 4. D · Moments: colour in time
 
@@ -183,9 +164,11 @@ Grey at rest, exactly as now. Colour comes with an event and is gone within a se
 
 | Token | Dark | Light |
 |---|---|---|
-| `spark` (new) | #E8845C | #BA5530 (with A: = `accent-text`) |
+| `spark` (new) | = `accent-text`: #E68565 | = `accent-text`: #B1502F |
 
-**Contrast:** the spark on base 6.40 / 4.74 (floor 3 for the ring and rays; 4.5 for the title's first frame). One
+Without A it would be #E8845C / #BA5530 (a theme with a cool accent sets its own warm one, §6).
+
+**Contrast:** the spark (= accent-text) on base 6.43 / 5.18 (round 1's own spark: 6.40 / 4.74) (floor 3 for the ring and rays; 4.5 for the title's first frame). One
 pair fails on purpose: in light, the flashing title on a selected row starts at 3.80 and fades to ink-3 within
 700 ms. The words are the same before and after, so nothing is ever read in the spark.
 **With the semantic colours:** the spark is gone before a ring could be confused with it, and it never touches a date.
@@ -204,18 +187,25 @@ pair fails on purpose: in light, the flashing title on a selected row starts at 
   Today becomes a patchwork beside the rings, and two slots have to move. It's the "paint everywhere" the brief warns
   against. If the pick still feels quiet, C's cheapest part is already in B: the large title's tile in its colour.
 
-In the pick: `accent` #D66F49 / #AE4E2B, `plan` #5799F6 / #0969DA, the B tiles, lit, and `spark` = `accent-text`.
+In the pick: `accent` #E6683D (light #B1502F, derived), `plan` #5799F6 / #0969DA, the B tiles, lit, and `spark` =
+`accent-text`.
 
 ## 6. Through the theme rules (THEMES.md)
 
 THEMES is tabled, but each direction is a few tokens a theme could set. Its rules don't change.
+- **`accent`:** one value per theme, the source (#E6683D). Dark's accent is the source; light's is the source raised
+  by §2.5's 2% steps toward black until it holds 4.5:1 on base and on its own tint (light's `accent-text` is the
+  accent). A theme may still give each side its own. Everything that reads the accent derives from it: `accent-text`
+  (checked against its 4.5:1 floor and raised if it fails), `accent-tint`, `focus`, `text-selection` (42% / 22%),
+  `on-accent`, `mark-head`, `spark`, the checked box, the highlighted day, the highlighted menu item and Today's
+  tile. To change it, see THEMES §6.
 - **`plan`** (new): default = `accent-text`. A theme whose accent is warm pins it cool, as Ember does. Floor: 3:1 on
   base (a ring).
 - **`tile-*`** (new, 8 values): default as in §2, the same for both appearances, with the fixed finish over them.
+  Seven are one table (`tiles`, by list slot; the views share theirs); Today's is the accent's source.
   Floor: white 4.5:1 for letters and 3:1 for a glyph, checked at the lightest lit point under the glyph. Where B is off, a theme's `lists` still colour the glyphs on grey tiles.
 - **`spark`** (new): default = `accent-text`. A theme with a cool accent sets its own warm one (D's #E8845C / #BA5530).
-- **Rooms** are rules, not inputs: wash, selection and capsule are fixed mixes of base or fill-strong toward the slot's
-  hue, like §2.4's. They're checked as the board does: hue 4.5:1 on base, ink-2 4.5:1 on the selection, the check 3:1.
+- **`tile-halo`** (new): black at 35% / 18%, the finish's one per-appearance value.
 
 ## 7. The prototype
 
