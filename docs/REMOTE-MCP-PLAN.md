@@ -99,6 +99,11 @@ Parity, all generated outside the Swift package:
   6. report once our ops are back in a page.
 - **Test:** `wrangler dev` with a local `server/` and a dummy token. Push, pull, two replicas, then 409 and 413 cases
   (with the server's own fixtures).
+- **As built:** the cursor and `base` aren't stored; they're the log's last row (seq + 1, its hash), so they can't
+  disagree with it. A 409 recovery is one SQLite transaction, so it has no half-done states (the CLI's files need
+  four ordered steps). The Inbox is seeded at the start of each run, as each CLI command's `Store` does. Transient
+  retries inside a run wait at most 2 s each (the CLI: 8 s). The Worker tests run the DO in workerd with `SYNC`
+  forwarded from Node to `server/` under wrangler's test harness (a fresh log per test) or a real `wrangler dev`.
 
 **3. Code mode on Worker Loader.**
 - **The script:** TypeScript is stripped to JS with `sucrase` (types only, small). It is wrapped exactly as the CLI
