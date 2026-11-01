@@ -33,3 +33,25 @@ plus a 0.5 pt dark outer ring. Our current tile is `tile-fill` with a 0.5 pt `ti
 4. Update `design/COLOR.md`. Republish the same canvas URL. Commit per path with the co-author line. Never push.
 
 Report in a few lines when done.
+
+## Update: the source, not a measurement
+
+The user supplied the tile's actual SVG: `docs/feedback/reference-tile.svg`. **Use it instead of the measurements
+above.** It draws the tile at about 2.9× our 20×16 (58.5×45.5, radius 13.8). Its layers, bottom to top:
+
+1. **The halo:** the shape grown by 0.5, black at 40%. It's a soft dark outer edge.
+2. **The base:** the shape grown by 0.23, solid black. That leaves a crisp hairline of black around the fill.
+   Together with the halo, this is the thin black border.
+3. **The fill:** flat #E6683D.
+4. **The light:** a radial gradient centred at the top-middle. Its ellipse is about 1.4× the tile's width and 1.1×
+   its height.
+   - It starts at white 21.6% and eases to 0 at 58%.
+   - Past that it's black, from 0 to 7.2% at the rim, so the bottom corners darken.
+
+   This is the 3D look: lit from above.
+5. **The specular line:** a 1-unit strip along the top edge, white fading 0 → 36% → 0 from left to right, eased.
+6. **The inner ring:** a 1-unit ring just inside the edge, white at 10%, all the way around.
+
+Scale these to 20×16 at 1× and 2×. Hairlines will need snapping to device pixels. Rebuild direction B's tiles and
+the brand mark with this recipe on every list hue, and keep the same deliverables as above. Note how the app can draw
+it: CAGradientLayer has a `.radial` type, and the rings are bordered sublayers.
