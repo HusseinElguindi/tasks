@@ -220,3 +220,23 @@ THEMES is tabled, but each direction is a few tokens a theme could set. Its rule
 - `Palette.dc.html` (tokens and contrast), `Spark.dc.html` (the loop), `Finish.dc.html` (B's tiles now, flat and lit,
   with the light model and the contrast at the glyph computed live), and the boards `<Direction>-<List|Today|Done>-<Dark|Light>`.
 - `canvas.json`: the layout.
+
+## 8. As built (2026-11-01)
+
+- **A:** the accent is `accent:` in `TK.Theme.rex` (`app/Tasks/Theme/Theme.swift`), one value; light's accent, every
+  accent token and Today's tile derive from it (§6, THEMES §6.1). `accent-text`'s 4.5:1 floor is checked as the theme
+  is derived. `TasksTests/ThemeTests.swift` checks the values, that changing the accent changes every derived token
+  and nothing else, the floors for random accents, and that no other app file has an accent hex. The When ring reads
+  `plan`.
+- **B:** `TileArt` draws the finish from any hue into a cached image per hue, size and scale; the sidebar, the band and
+  the large title (views as tiles too), the detail pane's List, the menus, a dragged list and the mark's head (round, no
+  specular) all show it. Letters and glyphs are white; an archived list's tile is at 55%. The grey tile's `tile-fill`
+  and `tile-ring` are gone.
+- **D:** the checkbox's spark (`SparkLayer`), the box filling from `spark`, the row's and title's flash, the all-done
+  sun and the sunrise (`Moments.swift`). Under Reduce Motion none of it runs.
+- **Departures from the canvas:** the accent is #E6683D / #B1502F where the canvas draws round 1's #D66F49 /
+  #AE4E2B. Menu tiles are 1pt larger images (for the halo) with the tile as their alignment rect; menus can't be
+  captured by the debug snapshot, so that's unchecked by eye. The row's flash over a selected row fades over the
+  selection rather than into it. Otherwise the list, the date popover and Today all done match the Pick boards in both
+  appearances (the demo's list colours differ because the app hands slots out by id).
+

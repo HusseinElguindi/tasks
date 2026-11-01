@@ -149,20 +149,31 @@ what to search for in the prototype.
 | `fill-row-selected-dim` (new) | `--sel-dim` | #292929 | #EFEFF0 | Selected task rows, unfocused pane |
 | `fill-control` | `--fill-control` | #2D2E2E | #EDEDEE | Chips, the date field, a list being renamed, the archive banner |
 | `fill-track` | `--fill-track` | #303132 | #E9E9EA | Toolbar icon hover circle, capsule buttons, quick-pick hover |
-| `fill-strong` | `--fill-strong` | #444444 **Rex** | #E0E0E1 | Current sidebar row, list tiles (dark) |
+| `fill-strong` | `--fill-strong` | #444444 **Rex** | #E0E0E1 | Current sidebar row |
 | capsule edge | `--edge-outer` / `--edge-inner` | #5E5E5E / #535353 **Rex** | #CFCFD0 / #D6D6D7 | 0.5pt outer + 1pt inner inset on the current sidebar row |
 | `hover` (new) | `--hover` | white 7% | #1F2328 6% | Fill behind a hovered icon button, day, ghost chip |
 | `press` (new) | `--press` | white 12% | #1F2328 11% | Fill behind a pressed icon button |
-| `accent` | `--accent` | #2F81F7 | #0969DA | Checked box, highlighted day, menu highlight, focus rings |
-| `accent-text` | `--accent-text` | #5799F6 | #0969DA | Today's date number, links, drop-target text, tinted buttons |
-| `accent-tint` | `--accent-tint` | #1E2938 | #E6F0FB | Chip with its popover open, drop target, tinted buttons |
+| `accent` | `--accent` | #E6683D | #B1502F | Checked box, highlighted day, menu highlight, focus rings, the brand mark's head |
+| `accent-text` | `--accent-text` | #E68565 | #B1502F | Today's date number, links, drop-target text, tinted buttons |
+| `accent-tint` | `--accent-tint` | #362620 | #F7EDEA | Chip with its popover open, drop target, tinted buttons |
+| `plan` (new) | `--plan` | #5799F6 | #0969DA | The When ring (planned for today) and its inner ring in a double ring |
+| `spark` (new) | `--spark` | = accent-text | = accent-text | Completing a task's spark and flash; Today all done's sun and sunrise (§13) |
 | `on-accent` | `--on-accent` | #FFFFFF | #FFFFFF | Checkmark, highlighted day, highlighted menu item |
 | `danger` / `danger-tint` | `--danger` / `--danger-tint` | #FF7B72 / #3C2928 | #CF222E / #FBEBEC | Overdue chip |
 | `attention` / `attention-tint` | `--attn` / `--attn-tint` | #D29922 / #352E1D | #9A6700 / #FAF7F2 | Due-today chip; the other date's dot in the calendar |
-| `text-selection` | `--text-sel` | accent 45% | accent 25% | Selected text in fields `css:80` |
+| `text-selection` | `--text-sel` | accent 42% | accent 22% | Selected text in fields `css:80` |
+| `tile-*` (new) | color.css `--tc` | see below | the same | A tile's solid hue |
+| `tile-halo` (new) | `--tile-halo` | black 35% | black 18% | The lit tile's 0.5pt halo |
 
-List colors: a list's tile glyph uses one of the seven ANSI slots (`--ansi-*`). The prototype hands them out in turn
-(`dc:458`, `dc:1245`); the app hashes the list id (DIRECTIONS decision 3).
+**Colour (design/COLOR.md, final: A + B + D, the user, 2026-11-01).** The accent is the reference tile's clay, one
+value (#E6683D) from which light's accent and every accent token derive (THEMES.md §6.1 says how to change it); the
+When ring keeps Rex's blue as `plan`. Rex's surfaces, greys and the deadline tones are unchanged.
+
+List colors: a list's tile is one of seven slots. The prototype hands them out in turn (`dc:458`, `dc:1245`); the app
+hashes the list id (DIRECTIONS decision 3). Each slot has a solid tile hue, the same in both appearances (COLOR.md §2):
+blue #285FCA, magenta #6B4FB8, green #227040, cyan #146E77, yellow (ochre) #825C15, red (rose) #AD3B5C, ink (graphite)
+#5A6068; Today's tile is the accent's #E6683D. The `--ansi-*` slots are still the theme's list inputs (danger and
+attention default from them) but no longer colour a tile.
 
 Shadows: `shadow-popover` = a 0.5pt ring of white 14% (dark) / #1F2328 16% (light) plus `0 12 32` black 50% /
 #1F2328 16%. `shadow-lift` = the same ring (light: 14%) plus `0 8 24` black 50% / #1F2328 18%
@@ -184,7 +195,7 @@ tooltips 11/14. Tiles and inline code use SF Mono. Counts and day numbers use ta
 | Sidebar toggle | 28pt circle at (93, 11), center (107, 25) **Rex**; glyph 16pt | `css:92–95` |
 | Sidebar | 230 wide **Rex** by default, 180–400 by its divider (§4); its content starts at y 50: the brand header (34), then Today 6 below it, at y 90 (§12) | `dc:439`, `dc:440` |
 | Sidebar row | Capsule x 10–219 (209 wide), 30 tall, radius 15 **Rex**; tile 10 in; title 7 after the tile, nudged up 0.5 **Rex**; count (Today only) or ⌘ hint right-aligned 8 from the capsule's right edge | `css:102–105`, `css:107–120` |
-| List tile | 20×16, radius 4, 700 10pt mono glyph; dark `fill-strong` with a white 10% 0.5pt ring, light #E3E3E4 with a #1F2328 10% ring. Small (headers, menus): 16×13, radius 3.5, 8.5pt. The glyph or letter is centred on its ink, not its box (the user, 2026-11-01): a view's 12pt glyph box sits in the middle and each glyph's path is centred in its 16-unit box; a letter's capital is centred (its baseline half the cap height below the middle, on the nearest device pixel), not its line box | `css:123–127` |
+| List tile | 20×16, radius 4, 700 10pt mono glyph in white on the list's solid `tile-*` hue, lit with the reference tile's finish (COLOR.md §2, `TileArt`): a 0.5pt `tile-halo` outside, a radial light from the top middle, a 0.5pt specular strip along the top, a 0.5pt white 7% inner ring; hairlines are one device pixel. An archived list's tile is at 55%. Small (headers, menus): 16×13, radius 3.5, 8.5pt, a view's glyph 10pt. The glyph or letter is centred on its ink, not its box (the user, 2026-11-01): a view's 12pt glyph box sits in the middle and each glyph's path is centred in its 16-unit box; a letter's capital is centred (its baseline half the cap height below the middle, on the nearest device pixel), not its line box | `css:123–127` |
 | Group label | A 32pt slot: 11/14 semibold `ink-tertiary`, 12 in from the row edge, text top 10 **Rex**. Reveal button 22×22, radius 6, 5 from the right, top 6 | `css:131–141` |
 | Panes | 8 from the window edges and each other (the list pane starts at x 230 **Rex**); radius 10; 1pt inset edge | `css:144–146`, `dc:441` |
 | Pane header | 34 tall from the pane's top, so its contents center on y 25; padding 12 left, 8 right; 8 between items; title 13 medium | `css:147–152` |
@@ -589,9 +600,10 @@ One `task.update` per editing session. The footer is "Created Oct 26" (and " · 
 |---|---|---|
 | Hover (on the box) | Ring → `ink-secondary` | `hoverIn` / `hoverOut` |
 | Pressed | Scales to 0.86 | 80 ms ease-out in; back on `snappy` (300 ms) when released |
-| Checked | Fill and ring `accent`; the check (10pt, stroke 2.2, round) draws in `on-accent`; the box pops from 0.8 | Fill 160 ms ease-out; the stroke draws 0 → 100% in 160 ms ease-out after 40 ms; the pop on `snappy` |
-| Unchecked | The same, backwards, and the box pops from 0.8 again | Same |
-| Checked row | Title → `ink-tertiary` with a strike in `ink-quiet` | Color 200 ms ease-out; the strike is instant (`css:173`) |
+| Checked | Fill and ring `accent`, from `spark`; the check (10pt, stroke 2.2, round) draws in `on-accent`; the box pops from 0.8; a spark leaves the box (COLOR.md D): a ring (r 9, scaling 0.9 → 2.1, 2.5 → 0.4pt, fading) and eight rays (11–17 out, turning in 8° from 0.55 → 1.2, in then out) in `spark` | Fill and ring spark → accent 520 ms ease-out; the stroke draws 0 → 100% in 160 ms ease-out after 40 ms; the pop on `snappy`; ring 460 ms, rays 560 ms, `cubic-bezier(0.2, 0.8, 0.2, 1)` |
+| Unchecked | Fill and check back out, and the box pops from 0.8 again; no spark | Fill 160 ms ease-out |
+| Checked row | Title → `ink-tertiary` with a strike in `ink-quiet`; the row and title flash warm: the row from `spark` 14%, the title from `spark` (D) | Color 700 ms ease-out (200 ms when unchecked); the strike is instant (`css:173`) |
+| Reduce Motion | No pop, spark or flash: the box fills at once | |
 
 Triggers: click the box, Space or ⌘K on the selection (a mixed selection completes all; an all-done selection
 uncompletes), the context menu, the box in the detail pane (`dc:1251–1268`).
@@ -869,8 +881,11 @@ archived list shows no empty state.
   280 wide), 6 apart (`css:301–305`, `dc:2880–2884`):
   - Nothing today: a sun glyph (22pt, `ink-quiet`), "Nothing for today", "Tasks you plan for today, or that are due,
     show up here." 34% down.
-  - All done (only completed tasks today): a check-circle in `accent`, "All done for today", 40 below the header, with
-    the Completed group under it from y 132.
+  - All done (only completed tasks today): a 30pt sun in `spark`, its centre filled, whose rays turn in once (from 0.5
+    and −40°, 900 ms) as it appears, then "All done for today" in `ink`, 40 below the header, with the Completed group
+    under it from y 132. Behind the band and the top of the pane, a faint sunrise: `spark` at 13% (light 9%) fading
+    out by 70% of an ellipse 120% of the pane wide and 260 tall from the top edge, fading in over 900 ms. Under
+    Reduce Motion both stand still (COLOR.md D).
   - An empty list: "No tasks" and "Double-click anywhere here or press ⌘N to add one.", 34% down.
 
 ---
@@ -1114,12 +1129,12 @@ Found by an audit of the spec against the prototype; each is what the prototype 
 - **Switching views** (a sidebar row, ⌘1–⌘9, Show in…): instant; clears the selection, ends any edit, closes the
   popover and menus, settles checked rows, and scrolls the new list to its top. An open detail pane stays open and shows
   "No task selected" (`dc:1086–1094`).
-- **Today's look**: the sidebar's Today tile holds a 12pt sun in ANSI yellow; the Today header shows a 14pt yellow sun
-  (no tile), "Today", then the date ("Fri, Oct 30") in `ink-secondary` (`dc:48`,
-  `dc:2982`).
-- **List colors** (`--ansi-*`): dark red #FF7B72, green #3FB950, yellow #D29922, blue #58A6FF, magenta #BC8CFF, cyan
-  #39C5CF, ink #E6EDF3; light #CF222E, #116329, #9A6700, #0969DA, #8250DF, #1B7C83, #1F2328
-  (`css:56`, `css:73`). New lists take them in the order blue, magenta, green,
+- **Today's look**: the sidebar's Today tile holds a white 12pt sun on the accent's clay (#E6683D, lit, B); the band
+  shows the small tile (16×13, a 10pt sun), "Today", then the date ("Fri, Oct 30") in `ink-secondary` (`dc:48`,
+  `dc:2982`; COLOR.md).
+- **List colors** (`--ansi-*`, the theme's slots): dark red #FF7B72, green #3FB950, yellow #D29922, blue #58A6FF,
+  magenta #BC8CFF, cyan #39C5CF, ink #E6EDF3; light #CF222E, #116329, #9A6700, #0969DA, #8250DF, #1B7C83, #1F2328
+  (`css:56`, `css:73`). A tile shows its slot's solid `tile-*` hue (§3). New lists take them in the order blue, magenta, green,
   cyan, yellow, red, ink (`dc:458`); the seeded Inbox is ink. A new list's tile shows "·" until its
   name has a letter or digit (`dc:493`).
 - **Relative dates** in the detail pane: "today", "tomorrow", "yesterday"; "in N days" under 14 days, "in N weeks"
@@ -1199,12 +1214,12 @@ Top to bottom: the brand header, **Today, Upcoming, Undated**, the "Lists" label
 the logbook and the Trash sit after the lists. **No counts** on the four, nor on the lists: only Today keeps its count
 (the user, 2026-10-31).
 
-| Row | Glyph (in the 20×16 tile; 14pt bare in the header) |
+| Row | Glyph, white on its tile (20×16; the band's small tile, 16×13) |
 |---|---|
-| Upcoming | calendar, `ansi-magenta` |
-| Undated | three stacked layers, `ansi-cyan` |
-| Completed | check in a circle, `ansi-green` |
-| Trash | the trash can (the detail pane's Delete glyph), `ink-secondary` |
+| Upcoming | calendar, the magenta slot's tile (#6B4FB8) |
+| Undated | three stacked layers, the cyan slot's (#146E77) |
+| Completed | check in a circle, the green slot's (#227040) |
+| Trash | the trash can (the detail pane's Delete glyph), the ink slot's graphite (#5A6068) |
 
 They are rows like Today: hover, current and ⌘ hints as §12. Type-select tries the lists first, then Today and the
 views, so "t" still goes to "Tasks app" and "u" to Upcoming (`dc:1859–1866`). They can't be dragged, renamed or
@@ -1476,7 +1491,7 @@ centered like "No task selected" (`dc:141`, `dc:3822–3830`).
 ### The list's title
 
 - **Where**: the top of the list's scroll content, 4 below the band. It scrolls with the rows.
-- **Size**: 20/26 semibold `ink`, −0.2 tracking, after the list's tile (20×16) or a view's glyph (18pt), 9 apart, on
+- **Size**: 20/26 semibold `ink`, −0.2 tracking, after the list's or the view's tile (20×16; COLOR.md B), 9 apart, on
   a 30pt line. Today's date and "Archived" follow it in `ink-tertiary`.
 - **The list's notes**: 4 below the title; the rows start 12 after them.
 - **Renaming**: double-click it. The field is in place at 20/26, 30 tall, radius 6, `fill-control`, with a 1.5pt

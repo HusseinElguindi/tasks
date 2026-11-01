@@ -135,8 +135,10 @@ theme shouldn't add one.
 |---|---|---|---|---|---|
 | list slots 0–5 | `--ansi-blue … --ansi-red` | #58A6FF #BC8CFF #3FB950 #39C5CF #D29922 #FF7B72 | #0969DA #8250DF #116329 #1B7C83 #9A6700 #CF222E | input (`lists`), else Rex's | A list's monogram, its tile glyph |
 | list slot 6 | `--ansi-ink` | = ink | = ink | = ink | The seventh slot |
-| `tile-fill` (new) | `--tile-fill` | #444444 | #E3E3E4 | = fill-strong / base → ink 12.5% | A list's tile |
-| `tile-ring` (new) | `--tile-ring` | white 10% | #1F2328 10% | ink at 10% | its 0.5pt ring |
+| `tile-fill` (new) | `--tile-fill` | #444444 | #E3E3E4 | = fill-strong / base → ink 12.5% | A list's tile (gone from the app with COLOR B) |
+| `tile-ring` (new) | `--tile-ring` | white 10% | #1F2328 10% | ink at 10% | its 0.5pt ring (gone with COLOR B) |
+| `tile-*` (COLOR B) | color.css `--tc` | 7 slot hues + Today's | the same | input (`tiles`); Today's = the accent | A tile's solid hue, lit by the fixed finish (`TileArt`) |
+| `tile-halo` (COLOR B) | `--tile-halo` | black 35% | black 18% | fixed | The lit tile's 0.5pt halo |
 | `lift-chip` (new) | `--lift-chip` | #3A3A3A | = fill-track | base → ink 14.7% / = fill-track | A chip on the dragged copy |
 | `mark-head` / `-bar` / `-rings` / `-trail` (new) | `--mark-*` | #2F81F7 #E6EDF3 #A8ADB1 #6D7072 | #0969DA #1F2328 #626568 #A9ACAF | accent / ink / ink-2 / ink-q (light: ink → base 61.6%) | The sidebar's brand mark |
 
