@@ -95,7 +95,7 @@ At rest the notes are fully rendered: no marks at all. While editing, the view s
 - both fence lines of a code block the selection is in (otherwise they take no space).
 
 List prefixes (`- `, `1. `, `- [ ] `) are never shown as text: the dot, number or box is the mark, and Backspace at
-the start of the item's text removes it (§6). Revealed marks fade in over `icon` (100 ms) and go at once (`md:21`);
+the start of the item's text removes it (§6). A box being typed (`- [`) is the one exception (§5). Revealed marks fade in over `icon` (100 ms) and go at once (`md:21`);
 nothing else animates. A drag-select doesn't reveal anything until the button comes up, so the text never moves under
 the pointer (`dc:2135–2140`, `dc:1948`). The rule is `mdView` (`dc:2257–2311`).
 
@@ -114,6 +114,18 @@ the pointer (`dc:2135–2140`, `dc:1948`). The rule is `mdView` (`dc:2257–2311
 - **A checked item reads like a completed task:** `ink-tertiary`, struck through in `ink-quaternary` (`md:51`), as a
   done row is (`tasks-v2.css:171`).
 - Return on an item makes a new unchecked item; Return on an empty one ends the list (§6).
+- **Typing a box** (the user, 2026-11-01; the prototype doesn't do this):
+  - `- ` makes the dot at once. While the item's whole text is the start of a box (`[`, `[ `, `[x`, `[X`) and the
+    selection is on the line, that text shows beside the dot as faint marks (`ink-quaternary`), not as the item's
+    text. Away from the caret it's what it is, a bullet whose text is `[`.
+  - The `]` that closes the box makes it, and types the space after it as well, with the caret after that space.
+    Typing straight on gives `- [ ] text`, never `- [ ]text` (a bullet), so the stored Markdown is what other readers
+    take for a checklist item. A space typed there anyway isn't doubled. If a space already follows the caret, `]`
+    goes in alone.
+  - The `]` and its space are one typing step: one ⌘Z takes both. Backspace right after the box takes the whole
+    prefix, as at the start of any item (§6).
+  - The same for `*` and `+`, at both levels, and in front of an existing bullet's text. Numbered items have no
+    boxes, and pastes go in as they are: a pasted `- [ ]text` stays a bullet.
 
 ---
 
