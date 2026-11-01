@@ -10,7 +10,9 @@ D · Moments, the pick) or each feature on its own.
 - `Main.dc.html`: the prototype. Its additions are the `dir` prop, `DIRS` and `FEATS`, `colorCls` and `dpListCls`,
   `demoColor` (`demo="colorlist|alldone"`), the strip's Colour controls, the spark in the checkbox, and the all-done sun.
 - `color.css`: the directions. `tasks-v2.css` and `markdown.css` are prototype-v2's, unchanged.
-- `Palette.dc.html`: the tokens and contrast board. `Spark.dc.html`: D's spark, looping.
+- `Palette.dc.html`: the tokens and contrast board. `Spark.dc.html`: D's spark, looping. `Finish.dc.html`: B's tiles
+  lit with the reference tile's recipe (`docs/feedback/reference-tile.svg`), against flat and today's, at 1× and 2×.
+  The reference crop on it is an upload on the canvas, not a file here.
 - `<Direction>-List-*`, `-Today-*`, `-Done-*`: the boards.
 - `canvas.json`: the layout. The canvas runtime (`support.js`) comes from the Design artifact type and isn't stored
   here. `ds/pane/tokens.json` is copied onto the canvas from the Pane design system and isn't stored here either.

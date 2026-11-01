@@ -20,7 +20,7 @@ body{margin:0}
 
 <nav class="sb" style="{{sbStyle}}" aria-label="Lists" onPointerDown="{{onSidebarDown}}" onContextMenu="{{onSidebarCtx}}">
 <div class="sbs" ref="{{sbScrollRef}}">
-<div class="sbc" style="{{sb.contentStyle}}"><div class="sbhead"><svg class="mk" width="18" height="18" viewBox="150 150 724 724" aria-hidden="true"><defs><mask id="mk-chk"><rect x="150" y="150" width="724" height="724" fill="#fff"></rect><path class="mk-chk" d="M276.5 339.5L308 371L367.5 304.5"></path></mask></defs><path class="mk-trail" d="M304 436h36v64h-36zM304 612h36v64h-36z"></path><rect class="mk-trail" x="462" y="524" width="280" height="64" rx="32"></rect><rect class="mk-trail" x="462" y="700" width="220" height="64" rx="32"></rect><circle class="mk-rings" cx="322" cy="556" r="56"></circle><circle class="mk-rings" cx="322" cy="732" r="56"></circle><rect class="mk-bar" x="462" y="296" width="340" height="80" rx="40"></rect><circle class="mk-head" cx="322" cy="336" r="100" mask="url(#mk-chk)"></circle></svg><span>Tasks</span></div>
+<div class="sbc" style="{{sb.contentStyle}}"><div class="sbhead"><svg class="mk" width="18" height="18" viewBox="150 150 724 724" aria-hidden="true"><defs><radialGradient id="mk-light" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="1" gradientTransform="translate(322 236) scale(280 220)"><stop offset="0.000" stop-color="#FFFFFF" stop-opacity="0.216"></stop><stop offset="0.072" stop-color="#FFFFFF" stop-opacity="0.213"></stop><stop offset="0.145" stop-color="#FFFFFF" stop-opacity="0.194"></stop><stop offset="0.217" stop-color="#FFFFFF" stop-opacity="0.157"></stop><stop offset="0.290" stop-color="#FFFFFF" stop-opacity="0.108"></stop><stop offset="0.362" stop-color="#FFFFFF" stop-opacity="0.059"></stop><stop offset="0.435" stop-color="#FFFFFF" stop-opacity="0.022"></stop><stop offset="0.507" stop-color="#FFFFFF" stop-opacity="0.003"></stop><stop offset="0.580" stop-color="#FFFFFF" stop-opacity="0.000"></stop><stop offset="0.580" stop-color="#000000" stop-opacity="0.000"></stop><stop offset="0.650" stop-color="#000000" stop-opacity="0.003"></stop><stop offset="0.720" stop-color="#000000" stop-opacity="0.015"></stop><stop offset="0.790" stop-color="#000000" stop-opacity="0.036"></stop><stop offset="0.860" stop-color="#000000" stop-opacity="0.057"></stop><stop offset="0.930" stop-color="#000000" stop-opacity="0.069"></stop><stop offset="1.000" stop-color="#000000" stop-opacity="0.072"></stop></radialGradient><mask id="mk-chk"><rect x="150" y="150" width="724" height="724" fill="#fff"></rect><path class="mk-chk" d="M276.5 339.5L308 371L367.5 304.5"></path></mask></defs><path class="mk-trail" d="M304 436h36v64h-36zM304 612h36v64h-36z"></path><rect class="mk-trail" x="462" y="524" width="280" height="64" rx="32"></rect><rect class="mk-trail" x="462" y="700" width="220" height="64" rx="32"></rect><circle class="mk-rings" cx="322" cy="556" r="56"></circle><circle class="mk-rings" cx="322" cy="732" r="56"></circle><rect class="mk-bar" x="462" y="296" width="340" height="80" rx="40"></rect><circle class="mk-halo" cx="322" cy="336" r="110"></circle><circle class="mk-head" cx="322" cy="336" r="100" mask="url(#mk-chk)"></circle><circle class="mk-lit" cx="322" cy="336" r="100" fill="url(#mk-light)" mask="url(#mk-chk)"></circle><circle class="mk-hl" cx="322" cy="336" r="90" mask="url(#mk-chk)"></circle></svg><span>Tasks</span></div>
 <sc-for list="{{sb.items}}" as="it" hint-placeholder-count="8">
 <sc-if value="{{it.isRow}}" hint-placeholder-val="{{true}}">
 <div class="{{it.cls}}" style="{{it.style}}" data-key="{{it.key}}" onPointerDown="{{onSbRowDown}}" onPointerMove="{{onSbRowMove}}" onPointerUp="{{onSbRowUp}}" onPointerCancel="{{onSbRowUp}}" onDoubleClick="{{onSbRowDbl}}" onContextMenu="{{onSbRowCtx}}">
@@ -239,7 +239,7 @@ body{margin:0}
 <sc-if value="{{stage.show}}">
 <div class="stage" aria-label="Prototype controls">
 <span class="sl">Prototype</span>
-<span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Colour</span><span class="seg"><sc-for list="{{stage.dir}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="seg"><sc-for list="{{stage.feats}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" aria-pressed="{{o.pressed}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
+<span class="seg"><sc-for list="{{stage.theme}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="sl">Colour</span><span class="seg"><sc-for list="{{stage.dir}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="seg"><sc-for list="{{stage.feats}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" aria-pressed="{{o.pressed}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span><span class="seg"><sc-for list="{{stage.finish}}" as="o" hint-placeholder-count="0"><button class="{{o.cls}}" type="button" data-k="{{o.k}}" data-v="{{o.v}}" onClick="{{onStage}}">{{o.label}}</button></sc-for></span>
 <span style="flex: 1;"></span>
 <button class="lnk" type="button" data-k="reset" data-v="1" onClick="{{onStage}}">Reset</button>
 <button class="lnk" type="button" data-k="keys" data-v="1" data-keys-toggle="1" onClick="{{onStage}}">Keys ?</button>
@@ -277,7 +277,7 @@ body{margin:0}
 </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"dir":{"editor":"enum","options":["now","ember","tiles","rooms","moments","pick"],"default":"now"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"select":{"editor":null,"default":""},"detail":{"editor":null,"default":"closed"},"pick":{"editor":null,"default":"none"},"caret":{"editor":null,"default":""},"vCal":{"editor":null,"default":"scroll"},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"dir":{"editor":"enum","options":["now","ember","tiles","rooms","moments","pick"],"default":"now"},"tiles":{"editor":"enum","options":["lit","flat"],"default":"lit"},"start":{"editor":null,"default":"today"},"strip":{"editor":null,"default":"on"},"demo":{"editor":null,"default":"none"},"select":{"editor":null,"default":""},"detail":{"editor":null,"default":"closed"},"pick":{"editor":null,"default":"none"},"caret":{"editor":null,"default":""},"vCal":{"editor":null,"default":"scroll"},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":720},"$preview":{"width":1180,"height":764}}'>
 // ---------- Calendar dates: "YYYY-MM-DD" strings, never instants (SPEC §2). ----------
 const DAY_MS = 86400000;
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -835,6 +835,7 @@ class Component extends DCLogic {
     this.state = {
       theme: props.theme === 'light' ? 'light' : 'dark',
       dir: dirOf(props.dir), feat: { ...DIRS[dirOf(props.dir)].f },   // the colour direction (design/COLOR.md)
+      flatTiles: props.tiles === 'flat',   // B's tiles flat, as round 1 drew them, for the before-and-after
       lists: seed.lists,
       tasks: seed.tasks,
       route: this.routeFromProp(props.start, seed.lists),
@@ -2778,7 +2779,7 @@ class Component extends DCLogic {
   // Colour directions (design/COLOR.md): the root's feature classes and its room (the open list's colour, or the view).
   colorCls() {
     const s = this.state, f = s.feat, rl = s.route.kind === 'list' ? this.list(s.route.id) : null;
-    return (f.ember ? ' f-ember' : '') + (f.tiles ? ' f-tiles' : '') + (f.rooms ? ' f-rooms' : '') + (f.moments ? ' f-moments' : '') + ' room-' + (rl ? rl.color : s.route.kind);
+    return (f.ember ? ' f-ember' : '') + (f.tiles ? ' f-tiles' : '') + (f.rooms ? ' f-rooms' : '') + (f.moments ? ' f-moments' : '') + (f.tiles && s.flatTiles ? ' flat' : '') + ' room-' + (rl ? rl.color : s.route.kind);
   }
   dpListCls() { const id = this.detailTaskId(), t = id && this.task(id), l = t && this.list(t.list); return l ? ' l-' + l.color : ''; }
   // Boards: colorlist = the list's completed tasks shown, one task just checked and held in place, and the When
@@ -2802,6 +2803,7 @@ class Component extends DCLogic {
   onStage = (e) => {
     const k = e.currentTarget.dataset.k, v = e.currentTarget.dataset.v;
     if (k === 'theme') this.instant({ theme: v }); else if (k === 'editTasks') this.setEditTasks(v);
+    else if (k === 'finish') this.instant({ flatTiles: v === 'flat' });
     else if (k === 'dir') this.instant({ dir: v, feat: { ...DIRS[v].f } });   // a direction switches in one frame, as a theme does
     else if (k === 'feat') { const feat = { ...this.state.feat, [v]: !this.state.feat[v] }; this.instant({ feat, dir: Object.keys(DIRS).find((d) => FEATS.every(([f]) => DIRS[d].f[f] === feat[f])) || 'mix' }); }
     else if (k === 'reset') { const seed = makeSeed(this.today); this.undoStack = []; this.redoStack = []; this.instant({ lists: seed.lists, tasks: seed.tasks, sel: [], edit: null, picker: null, menu: null, pins: {}, route: this.routeFromProp(this.props.start, seed.lists), detail: 'closed', notice: null, sbVisible: true, collapsed: {}, scrolled: false }); }
@@ -3131,6 +3133,7 @@ class Component extends DCLogic {
       theme: seg('theme', [['dark', 'Dark'], ['light', 'Light']]),
       dir: Object.keys(DIRS).map((k) => ({ k: 'dir', v: k, label: DIRS[k].label, cls: s.dir === k ? 'on' : '' })),
       feats: FEATS.map(([k, label]) => ({ k: 'feat', v: k, label, cls: s.feat[k] ? 'on' : '', pressed: s.feat[k] ? 'true' : 'false' })),
+      finish: [['lit', 'Lit tiles'], ['flat', 'Flat tiles']].map(([v, label]) => ({ k: 'finish', v, label, cls: (v === 'flat') === s.flatTiles ? 'on' : '' })),
       editTasks: [['detail', 'Open in detail pane'], ['list', 'Rename in the list']].map(([v, label]) => ({ k: 'editTasks', v, label, cls: this.editTasksMode() === v ? 'on' : '' })),
     };
 

@@ -68,7 +68,7 @@ class Component extends DCLogic {
     const eL = { accent: '#AE4E2B', text: '#AE4E2B', tint: '#F7EDEA', plan: '#0969DA' };
     const ember = {
       title: 'A · Ember',
-      sub: 'The accent becomes the reference clay (its dark value is #D66F49 itself). The When ring keeps the blue as a new token, plan. Danger and attention are unchanged.',
+      sub: 'The accent becomes a clay near the reference (#D66F49; the source tile’s own fill, found later, is #E6683D). The When ring keeps the blue as a new token, plan. Danger and attention are unchanged.',
       tokens: [
         tok('accent', 'was #2F81F7 / #0969DA', eD.accent, eL.accent),
         tok('accent-text', 'was #5799F6 / #0969DA', eD.text, eL.text),
@@ -93,18 +93,22 @@ class Component extends DCLogic {
       notes: ['White on the dark accent is 3.37:1; Rex’s blue is 3.75:1. Both pass the 3:1 the checkmark and a highlighted menu item are held to.'],
     };
 
-    // B · Tiles
-    const tiles = [['Today', 'the sun', '#D66F49', 3], ['Upcoming · magenta slot', 'a calendar; a letter', '#7C5CD6', 4.5], ['Undated · cyan slot', 'layers; a letter', '#17808A', 4.5], ['Completed · green slot', 'a check; a letter', '#27824A', 4.5], ['blue slot', 'a letter', '#2F6FEB', 4.5], ['yellow slot', 'ochre: a letter', '#946818', 4.5], ['red slot', 'rose: a letter', '#C9456B', 4.5], ['Trash · ink slot', 'graphite', '#5A6068', 4.5]];
+    // B · Tiles: lit by the reference tile's recipe (Finish.dc.html has the model and the before-and-after)
+    const SS = (u) => { u = Math.max(0, Math.min(1, u)); return u * u * u * (u * (6 * u - 15) + 10); };
+    const LIT = (hex, x, y) => { const d = Math.hypot((x - 10) / 28, y / 17.6), wa = d <= 0.58 ? 0.216 * (1 - SS(d / 0.58)) : 0, ka = d > 0.58 ? 0.072 * SS((d - 0.58) / 0.42) : 0; return '#' + HEX(hex).map((v) => Math.round((v + (255 - v) * wa) * (1 - ka)).toString(16).padStart(2, '0')).join('').toUpperCase(); };
+    const WORST = (hex, b) => { let m = 99; for (let y = b[1]; y <= b[3]; y += 0.25) for (let x = b[0]; x <= b[2]; x += 0.25) m = Math.min(m, RATIO('#FFFFFF', LIT(hex, x, y))); return m; };
+    const nc = (r, floor) => ({ t: r.toFixed(2) + (r >= floor ? '' : ' (under ' + floor + ')'), st: TD + ' color: ' + (r >= floor ? '#E6EDF3' : '#FF7B72') + ';' });
+    const tiles = [['Today', 'the source’s fill; was #D66F49', '#E6683D', 3, true], ['Upcoming · magenta slot', 'was #7C5CD6', '#6B4FB8', 4.5], ['Undated · cyan slot', 'was #17808A', '#146E77', 4.5], ['Completed · green slot', 'was #27824A', '#227040', 4.5], ['blue slot', 'was #2F6FEB', '#285FCA', 4.5], ['yellow slot (ochre)', 'was #946818', '#825C15', 4.5], ['red slot (rose)', 'was #C9456B', '#AD3B5C', 4.5], ['Trash · ink slot (graphite)', 'unchanged', '#5A6068', 4.5]];
     const tile = {
-      title: 'B · Tiles',
-      sub: 'Solid tiles with a white glyph, the reference’s shape, the same in both appearances, as Pane’s tile colours are. Only tiles change.',
-      tokens: tiles.map(([n, note, hex]) => tok('tile · ' + n, note, hex, hex)),
+      title: 'B · Tiles, lit',
+      sub: 'Solid tiles with a white glyph, finished with the reference tile’s recipe: a dark halo, the hue, a radial light from the top, a specular strip and an inner ring. The same in both appearances but the halo. Only tiles change.',
+      tokens: tiles.map(([n, note, hex]) => tok('tile · ' + n, note, hex, hex)).concat([tok('halo', '0.5pt outside, black 35% / 18%', MIX('#181818', '#000000', 0.35), MIX('#F5F5F5', '#000000', 0.18))]),
       tables: [{
-        caption: 'White glyph on the tile · letters 4.5:1, glyphs 3:1',
-        heads: heads('Tile', 'White on it', 'Floor'),
-        rows: tiles.map(([n, , hex, f]) => ({ cells: [cell(n), rcell('#FFFFFF', hex, f), cell(f + ':1')] })),
+        caption: 'White on the lit tile · its middle, and the lightest point under the glyph (a letter’s cap top, the sun’s top ray)',
+        heads: heads('Tile', 'Middle', 'Under glyph', 'Floor'),
+        rows: tiles.map(([n, , hex, f, sun]) => ({ cells: [cell(n), nc(RATIO('#FFFFFF', LIT(hex, 10, 8)), f), nc(WORST(hex, sun ? [4, 2, 16, 14] : [7, 4.5, 13, 11.5]), f), cell(f + ':1')] })),
       }],
-      notes: ['Today’s tile is the reference, #D66F49, at 3.37:1 for its sun: a glyph, so 3:1 holds. Every tile with a letter holds 4.5:1.'],
+      notes: ['The light lifts a letter’s top by about 13% white, so each hue is round 1’s darkened in 2% steps until that point holds 4.5:1 (six or seven steps). Today keeps the source’s #E6683D: its sun is 3.2:1 in the middle and 2.6:1 at the top ray’s tip, as in the reference itself; #CA5C36 would hold 3:1 everywhere.'],
     };
 
     // C · Rooms

@@ -93,23 +93,45 @@
 
 /* ---------- B · Tiles: colour as iconography ----------
    Every tile is a solid colour with a white glyph, the reference's shape: views and lists in the sidebar, the band's
-   and the large title's tile, menus, the detail pane's List, a dragged list. Nothing else changes. One set for both
-   appearances; each holds 4.5:1 for its white letter, Today's 3.37:1 for its glyph (non-text, 3:1). Placed after A
-   and C so their glyph colours don't reach into a solid tile. */
-.tk.f-tiles :is(.tile, .vg) { background: var(--tc, #5A6068); color: #FFFFFF; box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.14); }
-.tk.f-tiles .c-today { --tc: #D66F49; }
-.tk.f-tiles .c-up, .tk.f-tiles .c-magenta { --tc: #7C5CD6; }
-.tk.f-tiles .c-und, .tk.f-tiles .c-cyan { --tc: #17808A; }
-.tk.f-tiles .c-done, .tk.f-tiles .c-green { --tc: #27824A; }
-.tk.f-tiles .c-blue { --tc: #2F6FEB; }
-.tk.f-tiles .c-yellow { --tc: #946818; }
-.tk.f-tiles .c-red { --tc: #C9456B; }
-.tk.f-tiles .c-trash, .tk.f-tiles .c-ink { --tc: #5A6068; }
+   and the large title's tile, menus, the detail pane's List, a dragged list. Nothing else changes. Placed after A and
+   C so their glyph colours don't reach into a solid tile.
+   The finish is the reference tile's own recipe (docs/feedback/reference-tile.svg, scaled from 58.5×45.5 to 20×16,
+   hairlines snapped to one device pixel at 2×), bottom to top:
+     halo     0.5pt outside the edge, black 35% (light 18%): the source's 40% halo and solid black base, snapped;
+     fill     the hue, flat;
+     light    radial, centred at the top middle, radii 140% × 110% of the tile: white 21.6% easing to 0 at 58%, then
+              black 0 to 7.2% at the rim (smootherstep easing both ways, as the source's stops);
+     specular a 0.5pt strip along the top edge, white 0 → 25% → 0 left to right (the source's 1 unit at 36%, snapped);
+     ring     0.5pt just inside the edge, white 7% (the source's 1 unit at 10%, snapped).
+   The light lifts a letter's top edge by about 13% white, so the hues are the round-1 ones darkened (2% steps) until
+   white holds 4.5:1 there; Today keeps the source's #E6683D. `.flat` is round 1's flat tile, for the comparison. */
+.tk.dark { --tile-halo: rgba(0, 0, 0, 0.35); }
+.tk.light { --tile-halo: rgba(0, 0, 0, 0.18); }
+.tk.f-tiles :is(.tile, .vg) { position: relative; color: #FFFFFF;
+  background:
+    linear-gradient(to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.003) 6.25%, rgba(255, 255, 255, 0.058) 12.5%, rgba(255, 255, 255, 0.111) 18.75%, rgba(255, 255, 255, 0.157) 25%, rgba(255, 255, 255, 0.196) 31.25%, rgba(255, 255, 255, 0.226) 37.5%, rgba(255, 255, 255, 0.244) 43.75%, rgba(255, 255, 255, 0.25) 50%, rgba(255, 255, 255, 0.244) 56.25%, rgba(255, 255, 255, 0.226) 62.5%, rgba(255, 255, 255, 0.196) 68.75%, rgba(255, 255, 255, 0.157) 75%, rgba(255, 255, 255, 0.111) 81.25%, rgba(255, 255, 255, 0.058) 87.5%, rgba(255, 255, 255, 0.003) 93.75%, rgba(255, 255, 255, 0) 100%) top / 100% 0.5px no-repeat,
+    radial-gradient(140% 110% at 50% 0%, rgba(255, 255, 255, 0.216) 0%, rgba(255, 255, 255, 0.213) 7.2%, rgba(255, 255, 255, 0.194) 14.5%, rgba(255, 255, 255, 0.157) 21.8%, rgba(255, 255, 255, 0.108) 29%, rgba(255, 255, 255, 0.059) 36.2%, rgba(255, 255, 255, 0.022) 43.5%, rgba(255, 255, 255, 0.003) 50.7%, rgba(255, 255, 255, 0) 58%, rgba(0, 0, 0, 0) 58%, rgba(0, 0, 0, 0.003) 65%, rgba(0, 0, 0, 0.015) 72%, rgba(0, 0, 0, 0.036) 79%, rgba(0, 0, 0, 0.057) 86%, rgba(0, 0, 0, 0.069) 93%, rgba(0, 0, 0, 0.072) 100%),
+    var(--tc, #5A6068);
+  box-shadow: 0 0 0 0.5px var(--tile-halo), inset 0 0 0 0.5px rgba(255, 255, 255, 0.07); }
+.tk.f-tiles.flat :is(.tile, .vg) { background: var(--tcf, #5A6068); box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.14); }
+.tk.f-tiles .c-today { --tc: #E6683D; --tcf: #D66F49; }
+.tk.f-tiles .c-up, .tk.f-tiles .c-magenta { --tc: #6B4FB8; --tcf: #7C5CD6; }
+.tk.f-tiles .c-und, .tk.f-tiles .c-cyan { --tc: #146E77; --tcf: #17808A; }
+.tk.f-tiles .c-done, .tk.f-tiles .c-green { --tc: #227040; --tcf: #27824A; }
+.tk.f-tiles .c-blue { --tc: #285FCA; --tcf: #2F6FEB; }
+.tk.f-tiles .c-yellow { --tc: #825C15; --tcf: #946818; }
+.tk.f-tiles .c-red { --tc: #AD3B5C; --tcf: #C9456B; }
+.tk.f-tiles .c-trash, .tk.f-tiles .c-ink { --tc: #5A6068; --tcf: #5A6068; }
 .tk.f-tiles .vg { width: 20px; height: 16px; flex: none; border-radius: 4px; display: grid; place-items: center; }
 .tk.f-tiles .vg.sm { width: 16px; height: 13px; border-radius: 3.5px; }
 .tk.f-tiles .vg .i, .tk.f-tiles .lhead .lht > span.vg > .i { width: 12px; height: 12px; }
 .tk.f-tiles .vg.sm .i { width: 10px; height: 10px; }
 .tk.f-tiles .srow.arch .tile { opacity: 0.55; }
+/* The brand mark: its head is lit like a tile (the light, the inner ring and the halo; no specular at 5pt). */
+.tk .mk-lit, .tk .mk-hl, .tk .mk-halo { display: none; }
+.tk.f-tiles:not(.flat) :is(.mk-lit, .mk-hl, .mk-halo) { display: inline; }
+.tk .mk-halo { fill: none; stroke: var(--tile-halo); stroke-width: 20; }
+.tk .mk-hl { fill: none; stroke: rgba(255, 255, 255, 0.07); stroke-width: 20; }
 /* With C as well: the room's tile in the title keeps the room's hue. */
 .tk.f-tiles.f-rooms .lhead .lht .tile, .tk.f-tiles.f-rooms .ph .pid .tile { background: var(--rh); color: var(--rh-on); }
 

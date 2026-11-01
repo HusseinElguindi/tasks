@@ -297,12 +297,22 @@
       "radius": 12,
       "is_interactive": true,
       "title": "Pick · Today, all done · light"
+    },
+    "Finish.dc.html": {
+      "x": 4960,
+      "y": 0,
+      "w": 1960,
+      "h": 1840,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "B · the tile’s finish: the reference’s recipe on every hue, flat and lit, 1× and 2×, dark and light"
     }
   },
   "order": [
     "Main.dc.html",
     "Spark.dc.html",
     "Palette.dc.html",
+    "Finish.dc.html",
     "Now-List-Dark.dc.html",
     "Now-Today-Dark.dc.html",
     "Now-List-Light.dc.html",
@@ -338,7 +348,7 @@
       "y": -300,
       "text": "Tasks · colour: four directions and a pick",
       "kind": "title1",
-      "maxW": 4880
+      "maxW": 6920
     },
     "row-now": {
       "x": 0,
