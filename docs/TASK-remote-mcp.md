@@ -63,3 +63,9 @@ Everything runs locally under `wrangler dev` with a local copy of the main serve
 - Per-path commits only (`git commit -m … -- <paths>`), ending with `Co-Authored-By: Claude Opus 5.5
   <noreply@anthropic.com>`. Never `git add -A`. Never push.
 - Compact yourself between phases if context passes about 45%.
+
+## Update from the user: stop before changing TasksCore
+If anything in TasksCore doesn't compile for WASI, **stop before changing any TasksCore source**: no `#if`, no new
+target, no moved code. Report what fails and why, with the file and line for each, the options you see, and what
+each would cost. The user will decide. Building the stock package and inspecting the errors is fine. Editing it is
+not, until they say so.
