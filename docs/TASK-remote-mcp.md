@@ -69,3 +69,35 @@ If anything in TasksCore doesn't compile for WASI, **stop before changing any Ta
 target, no moved code. Report what fails and why, with the file and line for each, the options you see, and what
 each would cost. The user will decide. Building the stock package and inspecting the errors is fine. Editing it is
 not, until they say so.
+
+## Decision (the user, 2026-11-01): the TypeScript path, and nothing existing changes
+"just do the typescript path. i dont want to change what we have."
+
+- **Nothing existing changes.** That means `app/` (TasksCore, TasksCLI, the app), `server/` and the deployed main
+  Worker. The remote MCP is new code only.
+- **Where the code goes:** `remote/`, a new pnpm and wrangler project next to `server/`. It has its own
+  `wrangler.jsonc` with `"name": "tasks-mcp"`, its own `package.json`, tests and README. Wasm and Swift aren't used.
+- **How there are two Workers:** each wrangler project deploys as its own Worker on the same account. `tasks-mcp`
+  reaches the main Worker through a **service binding** (`services: [{ binding: "SYNC", service: "<main worker
+  name>" }]`). It calls the unchanged `POST /v1/sync` over that binding, with the sync token as a `tasks-mcp`
+  secret. No public hop is needed, and the main Worker doesn't know or care.
+- **The port:** port the reducer, projection, ordering and fractional index, CalendarDate, Today and DatePhrase to
+  TypeScript under `remote/src/core/`. Also port the CLI's command layer (Intents, Commands, Refs) as far as code
+  mode needs it.
+- **The contract:** the CLI's `tasks.d.ts` stays the API contract. Copy it into `remote/`, with a test that fails if
+  the copy drifts from the CLI's generated file.
+- **Parity:** generate golden fixtures from Swift **without changing the Swift package**:
+  - use a small separate Swift package in `remote/parity/` that depends on `../../app/TasksCore` by path;
+  - or drive the installed-style `tasks` CLI against a scratch data folder.
+
+  The TypeScript tests must match those fixtures and the existing `fixtures/`.
+
+**Next:** write `docs/REMOTE-MCP-PLAN.md` (keep it short), then build phase by phase, all local under `wrangler dev`.
+Run a local copy of the main server from `server/` with a dummy token for the service binding. The phases are:
+1. core port and parity;
+2. the Replica DO and sync;
+3. code mode on Worker Loader;
+4. OAuth and the passkey.
+
+Stop after the plan and after each phase with a short report. The Cloudflare rules above still hold: ask before
+creating or deploying anything.
