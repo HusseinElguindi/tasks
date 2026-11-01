@@ -20,10 +20,13 @@ enum Glyph: CaseIterable {
         case .plus: return ["M8 3.5v9M3.5 8h9"]
         case .chevronRight: return ["M6.5 4l4 4-4 4"]
         case .chevronLeft: return ["M9.5 4l-4 4 4 4"]
-        case .calendar: return ["rect 2.5 3.5 11 10 2", "M2.5 6.5h11M5.5 2v3M10.5 2v3"]
+        // Calendar and trash sit a quarter unit lower and higher than the prototype's first cut, so their ink is centred
+        // in the box like the other glyphs' (the user, 2026-11-01): the calendar's rings reach 0.25 higher than its
+        // foot goes low, and the trash's lid 0.25 less high than its can goes low.
+        case .calendar: return ["rect 2.5 3.75 11 10 2", "M2.5 6.75h11M5.5 2.25v3M10.5 2.25v3"]
         case .flag: return ["M4 14V2.5M4 3h7.5L10 5.75 11.5 8.5H4"]
         case .xmark: return ["M4.5 4.5l7 7M11.5 4.5l-7 7"]
-        case .trash: return ["M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9"]
+        case .trash: return ["M3 4.25h10M6.5 4.25V2.75h3v1.5M4.5 4.25l.5 9h6l.5-9"]
         case .lines: return ["M3 4.5h10M3 8h10M3 11.5h10"]
         case .archive: return ["rect 2 3 12 3.5 1", "M3 6.5v6a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-6M6.5 9.5h3"]
         case .checkCircle: return ["circle 8 8 6.2", "M5.3 8.2l1.9 1.9 3.6-4"]
@@ -247,6 +250,11 @@ final class FadeMask: CAGradientLayer {
 
 // MARK: - The list tile (Rex's 5:4 program tile, css:123–127)
 
+// A tile's glyph or letter is centred on its ink, not on its box (the user, 2026-11-01): a glyph's 16-unit box sits in
+// the middle of the tile and each glyph's path is centred in that box; a letter's capital is centred, its baseline half
+// the cap height below the middle, not its line box. Three drawings share this: the layer (the sidebar, the large
+// title, a dragged list), `TileView` (the band, the detail pane) and `TileLayer.image` (menus).
+
 final class TileLayer: CALayer {
     enum Size { case regular, small }
     private let letter = TextLayer()
@@ -268,6 +276,28 @@ final class TileLayer: CALayer {
 
     static func dimensions(_ s: Size) -> CGSize { s == .regular ? CGSize(width: 20, height: 16) : CGSize(width: 16, height: 13) }
 
+    static func font(_ s: Size) -> NSFont { s == .regular ? TK.Font.tile : TK.Font.tileSmall }
+
+    /// A letter's baseline, from the tile's top: its capital centred in the tile's height.
+    static func letterBaseline(_ s: Size) -> CGFloat { (dimensions(s).height + font(s).capHeight) / 2 }
+
+    /// The tile's own text is drawn on whole device pixels: CoreText puts a baseline on the pixel at or below where it
+    /// falls in the layer's backing store, and the layer is composited at its own position, so a letter layer at a
+    /// fractional top drew its capital up to a pixel low (+0.48pt at 2×). The letter's layer starts on a pixel, its
+    /// baseline the ascender rounded up to a pixel below that, and that baseline is the pixel nearest the centred one.
+    /// The tile's origin is on a pixel wherever it rests.
+    private func placeLetter() {
+        guard !letter.isHidden else { return }
+        let scale = max(1, contentsScale), font = Self.font(tileSize)
+        let baseline = (Self.letterBaseline(tileSize) * scale).rounded() / scale
+        let ascender = ceil(font.ascender * scale) / scale
+        letter.frame = CGRect(x: 0, y: baseline - ascender, width: bounds.width, height: ceil(font.ascender - font.descender) + 2)
+    }
+
+    override var contentsScale: CGFloat {
+        didSet { if contentsScale != oldValue { placeLetter() } }
+    }
+
     /// `monogram` nil draws `glyph`: Today's sun, or a view's (§22).
     func set(monogram: String?, color: NSColor, palette: TK.Palette, size: Size = .regular, glyph: Glyph = .sun) {
         tileSize = size
@@ -282,10 +312,8 @@ final class TileLayer: CALayer {
         if let monogram {
             sun.isHidden = true
             letter.isHidden = false
-            let font = size == .regular ? TK.Font.tile : TK.Font.tileSmall
-            letter.set(monogram, font: font, color: color)
-            // `display: grid; place-items: center` with `font: 700 10px/1`: a line box as tall as the font size.
-            letter.place(x: 0, lineTop: (d.height - font.pointSize) / 2, lineHeight: font.pointSize, width: d.width)
+            letter.set(monogram, font: Self.font(size), color: color)
+            placeLetter()
         } else {
             letter.isHidden = true
             sun.isHidden = false
@@ -294,9 +322,56 @@ final class TileLayer: CALayer {
                 sun.set(glyph, size: 12)
             }
             sun.color = color
-            // 1pt below center, as the prototype's tile lays its sun out (measured in Chrome).
-            sun.position = CGPoint(x: d.width / 2, y: d.height / 2 + 1)
+            sun.position = CGPoint(x: d.width / 2, y: d.height / 2)
         }
+    }
+
+    /// The small tile as an image, for menu items (they take an `NSImage`): 16×13, radius 3.5, the letter in `color`.
+    static func image(monogram: String, color: NSColor, palette: TK.Palette) -> NSImage {
+        let d = dimensions(.small)
+        return NSImage(size: d, flipped: true) { rect in
+            let path = NSBezierPath(roundedRect: rect.insetBy(dx: 0.25, dy: 0.25), xRadius: 3.5, yRadius: 3.5)
+            palette.tileFill.setFill()
+            path.fill()
+            palette.tileRing.setStroke()
+            path.lineWidth = 0.5
+            path.stroke()
+            let attrs: [NSAttributedString.Key: Any] = [.font: font(.small), .foregroundColor: color]
+            let width = (monogram as NSString).size(withAttributes: attrs).width
+            // Without `.usesLineFragmentOrigin` the rect's origin is the baseline's.
+            (monogram as NSString).draw(with: CGRect(x: (d.width - width) / 2, y: letterBaseline(.small), width: width, height: d.height),
+                                        options: [], attributes: attrs)
+            return true
+        }
+    }
+}
+
+/// The tile in SwiftUI (the band, the detail pane). nil draws Today's sun.
+struct TileView: View {
+    let monogram: String?
+    let color: NSColor
+    var size: TileLayer.Size = .regular
+    @Environment(\.tk) private var tk
+
+    var body: some View {
+        let d = TileLayer.dimensions(size)
+        let r: CGFloat = size == .regular ? 4 : 3.5
+        let font = TileLayer.font(size)
+        RoundedRectangle(cornerRadius: r)
+            .fill(tk.tileFill.swiftUI)
+            .overlay(RoundedRectangle(cornerRadius: r).strokeBorder(tk.tileRing.swiftUI, lineWidth: 0.5))
+            .overlay {
+                if let monogram {
+                    Text(monogram)
+                        .font(Font(font))
+                        .foregroundStyle(color.swiftUI)
+                        // The capital's middle on the tile's, not the line box's.
+                        .alignmentGuide(VerticalAlignment.center) { $0[.firstTextBaseline] - font.capHeight / 2 }
+                } else {
+                    GlyphView(glyph: .sun, size: 12, color: color.swiftUI)
+                }
+            }
+            .frame(width: d.width, height: d.height)
     }
 }
 

@@ -236,22 +236,7 @@ enum Menus {
     static func tileImage(monogram: String, slot: Int, palette: TK.Palette) -> NSImage {
         let key = TileKey(monogram: monogram, slot: slot, palette: palette)
         if let img = tileCache[key] { return img }
-        let size = TileLayer.dimensions(.small)
-        let color = palette.listColor(slot: slot)
-        let img = NSImage(size: size, flipped: false) { rect in
-            // The small tile (css:123–126): 16×13, radius 3.5, an 8.5pt bold mono letter in the list's color.
-            let r = rect.insetBy(dx: 0.25, dy: 0.25)
-            let path = NSBezierPath(roundedRect: r, xRadius: 3.5, yRadius: 3.5)
-            palette.tileFill.setFill()
-            path.fill()
-            palette.tileRing.setStroke()
-            path.lineWidth = 0.5
-            path.stroke()
-            let attrs: [NSAttributedString.Key: Any] = [.font: TK.Font.tileSmall, .foregroundColor: color]
-            let s = (monogram as NSString).size(withAttributes: attrs)
-            (monogram as NSString).draw(at: CGPoint(x: (rect.width - s.width) / 2, y: (rect.height - s.height) / 2), withAttributes: attrs)
-            return true
-        }
+        let img = TileLayer.image(monogram: monogram, color: palette.listColor(slot: slot), palette: palette)
         tileCache[key] = img
         return img
     }

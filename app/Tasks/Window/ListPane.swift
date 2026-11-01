@@ -231,31 +231,3 @@ private struct TipModifier: ViewModifier {
             .onDisappear { if hovered { overlays.hideTip() } }
     }
 }
-
-// MARK: - The list tile, in SwiftUI (headers, the detail pane)
-
-struct TileView: View {
-    /// nil draws Today's sun.
-    let monogram: String?
-    let color: NSColor
-    var size: TileLayer.Size = .regular
-    @Environment(\.tk) private var tk
-
-    var body: some View {
-        let d = TileLayer.dimensions(size)
-        let r: CGFloat = size == .regular ? 4 : 3.5
-        RoundedRectangle(cornerRadius: r)
-            .fill(tk.tileFill.swiftUI)
-            .overlay(RoundedRectangle(cornerRadius: r).strokeBorder(tk.tileRing.swiftUI, lineWidth: 0.5))
-            .overlay {
-                if let monogram {
-                    Text(monogram)
-                        .font(Font(size == .regular ? TK.Font.tile : TK.Font.tileSmall))
-                        .foregroundStyle(color.swiftUI)
-                } else {
-                    GlyphView(glyph: .sun, size: 12, color: color.swiftUI)
-                }
-            }
-            .frame(width: d.width, height: d.height)
-    }
-}
