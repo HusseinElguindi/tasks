@@ -57,6 +57,8 @@ final class TaskRowView: NSView {
     private let selection = CALayer()
     private let ring = CALayer()
     let check = CheckLayer()
+    /// D's warm flash as a task is checked (COLOR.md §4, `tk-sp-row`): `spark` at 14% settling over 700 ms.
+    private let flash = CALayer()
     private let title = TextLayer()
     private let titleMask = FadeMask()
     /// The notes hint, 6 after the title's text: the three-line glyph, or a box glyph and "2/5" (md:67–77).
@@ -90,7 +92,9 @@ final class TaskRowView: NSView {
         ring.isHidden = true
         title.mask = titleMask
         strike.isHidden = true
+        flash.cornerRadius = TK.M.rowRadius
         layer.addSublayer(selection)
+        layer.addSublayer(flash)
         layer.addSublayer(ring)
         layer.addSublayer(check)
         layer.addSublayer(title)
@@ -105,7 +109,7 @@ final class TaskRowView: NSView {
         layer.addSublayer(open)
         open.setInstant { open.opacity = 0 }
         open.reveal(false, animated: false)
-        for l in [selection, ring, check, title, hintGlyph, hintCount, strike, whereLabel, whereSuffixLabel, open, whereMask, titleMask,
+        for l in [selection, flash, ring, check, title, hintGlyph, hintCount, strike, whereLabel, whereSuffixLabel, open, whereMask, titleMask,
                   whenChip, deadlineChip] as [CALayer] {
             l.actions = Self.noActions
         }
@@ -268,9 +272,19 @@ final class TaskRowView: NSView {
         let baseline = (TK.M.row - 16) / 2 - 0.5 + (16 - (TK.Font.body.ascender - TK.Font.body.descender)) / 2 + TK.Font.body.ascender
         strike.frame = CGRect(x: titleX, y: (baseline - 4.0).rounded(), width: min(title.textWidth, titleW), height: 1)
         CATransaction.commit()
-        if anim && old?.done != m.done {
+        flash.frame = CGRect(x: 0, y: 0, width: width, height: TK.M.row)
+        if anim && old?.done == false && m.done && !TK.CA.reduce {
+            // D: checked, the row and title flash warm and settle (700 ms ease-out), while the box sparks.
+            let t = TK.CA.sparkFlashT
+            title.setInstant { title.foregroundColor = color.cgColor }
+            title.add(TK.CA.basic("foregroundColor", t, from: palette.spark.cgColor, to: color.cgColor), forKey: "foregroundColor")
+            flash.add(TK.CA.basic("backgroundColor", t, from: palette.spark.withAlphaComponent(0.14).cgColor,
+                                  to: palette.spark.withAlphaComponent(0).cgColor), forKey: "flash")
+        } else if anim && old?.done != m.done {
+            flash.removeAnimation(forKey: "flash")
             title.animate("foregroundColor", to: color.cgColor, TK.CA.colorT)
         } else {
+            if !same { flash.removeAnimation(forKey: "flash") }
             title.setInstant { title.foregroundColor = color.cgColor }
         }
 
@@ -740,8 +754,14 @@ final class CompletedRowView: NSView {
 
 final class EmptyStateView: NSView {
     private let glyph = GlyphLayer(.sun, size: 22)
+    /// Today all done (D, COLOR.md §4): a 30pt sun in `spark` in place of the check-circle.
+    private let sun = AllDoneSunLayer()
     private let title = TextLayer()
     private let text = CATextLayer()
+    /// The state shown, so the sun's rays turn in once as All done appears; nil while hidden.
+    private var shown: TaskLayout.Empty?
+
+    override var isHidden: Bool { didSet { if isHidden { shown = nil } } }
 
     override var isFlipped: Bool { true }
 
@@ -749,12 +769,13 @@ final class EmptyStateView: NSView {
         super.init(frame: .zero)
         wantsLayer = true
         layer?.addSublayer(glyph)
+        layer?.addSublayer(sun)
         layer?.addSublayer(title)
         layer?.addSublayer(text)
         title.alignmentMode = .center
         text.isWrapped = true
         text.alignmentMode = .center
-        for l in [glyph, title, text] as [CALayer] { l.actions = TaskRowView.noActions }
+        for l in [glyph, sun, title, text] as [CALayer] { l.actions = TaskRowView.noActions }
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -777,16 +798,17 @@ final class EmptyStateView: NSView {
         case .trash: ("Trash is empty", "Deleted tasks wait here until you put them back.")
         }
         var y: CGFloat = 0
+        let appeared = shown != kind
+        shown = kind
         layer?.setInstant {
+            sun.isHidden = kind != .allDone
             switch kind {
             case .today:
                 glyph.isHidden = false
                 glyph.set(.sun, size: 22)
                 glyph.color = palette.inkQuiet
             case .allDone:
-                glyph.isHidden = false
-                glyph.set(.checkCircle, size: 22)
-                glyph.color = palette.accent
+                glyph.isHidden = true
             case .list:
                 glyph.isHidden = true
             case .upcoming, .undated, .completed, .trash:
@@ -798,8 +820,13 @@ final class EmptyStateView: NSView {
             if !glyph.isHidden {
                 glyph.frame = CGRect(x: (width - 22) / 2, y: 0, width: 22, height: 22)
                 y = 22 + 4 + 6
+            } else if kind == .allDone {
+                let s = AllDoneSunLayer.size
+                sun.frame = CGRect(x: (width - s) / 2, y: 0, width: s, height: s)
+                y = s + 4 + 6
             }
         }
+        if kind == .allDone { sun.set(color: palette.spark, animated: appeared) }
         let tw = min(280, max(0, width - 48))
         let para = NSMutableParagraphStyle()
         para.alignment = .center
@@ -808,7 +835,8 @@ final class EmptyStateView: NSView {
         let body = NSAttributedString(string: e2, attributes: [.font: TK.Font.small, .foregroundColor: palette.inkTertiary, .paragraphStyle: para])
         let h = ceil(body.boundingRect(with: CGSize(width: tw, height: 200), options: [.usesLineFragmentOrigin]).height)
         layer?.setInstant {
-            title.set(e1, font: TK.Font.bodyMedium, color: palette.inkSecondary)
+            // All done's title is in ink under its sunrise (D); the others ink-secondary.
+            title.set(e1, font: TK.Font.bodyMedium, color: kind == .allDone ? palette.ink : palette.inkSecondary)
             title.place(x: 24, lineTop: y, lineHeight: 16, width: max(0, width - 48))
             text.string = body
             text.isHidden = e2.isEmpty

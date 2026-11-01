@@ -9,6 +9,10 @@ base → ink 1.5%, light = base) and has no `fill-thumb` (nothing draws one); Re
 `tile-ring` and both shadows' rings as white, which it measures, rather than its ink; `focus` is read by the
 editing rings (a row's, a heading's and the large title's rename, a sidebar row's rename) and the drop ring on a
 sidebar row, and the date popover's keyboard day. PaneColors is gone: Settings reads the same tokens.
+**Since COLOR.md's A + B + D (2026-11-01)** the one theme has the Ember accent and lit tiles: its accent is one value
+for both appearances, from which every token that shows it derives (§6.1 says how to change it); new tokens `plan`,
+`spark`, `tile-halo` and the eight `tile-*` hues; `text-selection` is accent at 42% / 22%; and the derivation holds
+`accent-text`'s floor (§2.5), the one floor built so far. Rex's greys are still pinned.
 
 **Canvas:** https://claude.ai/artifact/Hq16S8JLKGyQqTsbKzNukG (private until shared from its Share menu). Its prototype
 is `design/prototype-themes/`, a copy of `design/prototype-v2/` at commit 16e9625 with a theme switcher. Press Play on
@@ -110,7 +114,15 @@ Hover and press brighten chips and buttons with filters rather than fills (`TK.s
 | `accent-tint` | `--accent-tint` | #1E2938 | #E6F0FB | base → accent 13% | base → accent 10% | A chip with its popover open, a drop target |
 | `on-accent` | `--on-accent` | #FFFFFF | #FFFFFF | white if 3:1, else base | white if 3:1, else ink | The checkmark, text on the accent |
 | `focus` (new name) | `--focus` | = accent | = accent | = accent | = accent | Editing rings (1.5pt), drop rings (2pt) |
-| `text-selection` | `--text-sel` | accent 45% | accent 25% | accent at 45% | accent at 25% | Selected text in fields |
+| `text-selection` | `--text-sel` | accent 45% | accent 25% | accent at 42% | accent at 22% | Selected text in fields |
+| `plan` (new, COLOR §1) | `--plan` | #5799F6 | #0969DA | = accent-text | = accent-text | The When ring (planned for today) |
+| `spark` (new, COLOR §4) | `--spark` | = accent-text | = accent-text | = accent-text | = accent-text | D's spark, the all-done sun and sunrise |
+
+**In the app, since COLOR.md (A):** the accent is the theme's one `accent` value, #E6683D. Dark's `accent` is it;
+light's is it raised by §2.5's 2% steps toward black until it holds 4.5:1 on base and on its own tint (light's
+`accent-text` is the accent), #B1502F. Then by the rules above: `accent-text` #E68565 / #B1502F, `accent-tint`
+#362620 / #F7EDEA, `on-accent` white, `focus`, `mark-head` and `spark` follow, and Today's tile is the theme's
+accent itself. Nothing here is pinned except `plan`, which keeps Rex's blue (COLOR §1: planned stays cool).
 | `danger` / `danger-tint` | `--danger` / `--danger-tint` | #FF7B72 / #3C2928 | #CF222E / #FBEBEC | input or list red / base → danger 14.1% | input or list red / base → danger 9% | The overdue chip |
 | `attention` / `attention-tint` | `--attn` / `--attn-tint` | #D29922 / #352E1D | #9A6700 / #FAF7F2 | input or list yellow / base → attention 13.7% | input or list yellow / base → attention 5% | The due-today chip, the other date's dot |
 
@@ -392,6 +404,19 @@ notes and the date popover open, and Today, dark and light.
 Contrast uses `contrast: "high"`. The names are plain words for the moods, not borrowed from existing themes or apps.
 
 ## 6. In the app
+
+### 6.1 Changing the accent
+
+The accent is one value, `accent:` in `TK.Theme.rex` (`app/Tasks/Theme/Theme.swift`). Change that hex and
+everything that shows the accent follows, in both appearances: light's accent (derived, `Theme.accent(dark:)`),
+`accent-text` (raised if it falls under 4.5:1), `accent-tint`, `on-accent` (white while white holds 3:1 on it),
+`focus`, `text-selection`, `spark`, `mark-head`, Today's tile, and so the checked box, the highlighted day and menu
+item, links and rings. No other app code has an accent hex. To give one appearance its own accent instead, set that
+`Side`'s `accent`. `plan` (the When ring) is pinned, so it stays blue unless its pin goes. Then run the theme's tests
+(`xcodebuild test -scheme Tasks`, `TasksTests/ThemeTests.swift`): they check the values, that every derived token
+follows a new accent and nothing else moves, and the floors.
+
+### 6.2 The plan
 
 The aim: a theme costs nothing per frame. A palette is built once per change of theme or appearance, and everything
 already draws from a palette value.

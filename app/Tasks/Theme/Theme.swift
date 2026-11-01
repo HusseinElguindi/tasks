@@ -1,9 +1,9 @@
 import AppKit
 
-/// One set of semantic colour tokens (design/THEMES.md §1, §2.1–2.4, §6; v2 feedback 17). A theme gives a few colours
-/// per appearance and every other token comes from them by a fixed rule, so a later theme only has to supply its base
-/// colours. There's one theme, Rex, which pins its measured values, so it draws exactly as before. The picker, theme
-/// files and sample themes are tabled.
+/// One set of semantic colour tokens (design/THEMES.md §1, §2.1–2.5, §6; v2 feedback 17; design/COLOR.md). A theme
+/// gives a few colours and every other token comes from them by a fixed rule, so a later theme only has to supply its
+/// base colours. There's one theme: Rex's surfaces, which it pins to their measured values, with COLOR.md's Ember accent
+/// and lit tiles (A + B + D). The picker, theme files and sample themes are tabled.
 extension TK {
     /// An sRGB colour with alpha: what themes and their rules work in, and what palettes compare.
     struct RGBA: Hashable, Sendable {
@@ -31,6 +31,17 @@ extension TK {
         /// `x at t`.
         func alpha(_ t: Double) -> RGBA { RGBA(r: r, g: g, b: b, a: t) }
 
+        /// THEMES.md §2.5's fix: 2% steps toward white (dark) or black (light) until `passes`, at most 50 (`themes.js`
+        /// `nudge`).
+        func raised(dark: Bool, until passes: (RGBA) -> Bool) -> RGBA {
+            var c = self, n = 0
+            while !passes(c), n < 50 {
+                c = c.mix(dark ? .white : .black, 0.02)
+                n += 1
+            }
+            return c
+        }
+
         /// WCAG 2's contrast ratio, on the opaque colours.
         func contrast(_ o: RGBA) -> Double {
             func lum(_ c: RGBA) -> Double {
@@ -55,6 +66,9 @@ extension TK {
         case base, ink, accent, ground
         case listBlue, listMagenta, listGreen, listCyan, listYellow, listRed, listInk
         case danger, attention
+        // B's tile hues (COLOR.md §2), the same in both appearances: the seven list slots' (the views share theirs:
+        // Upcoming magenta, Undated cyan, Completed green, Trash ink) and Today's, which is the theme's accent.
+        case tileBlue, tileMagenta, tileGreen, tileCyan, tileYellow, tileRed, tileInk, tileToday
         // Surfaces
         case dim, popover, lift, card
         // Lines and edges
@@ -65,17 +79,23 @@ extension TK {
         case fillRowSelected, fillRowSelectedDim, fillControl, fillTrack, fillStrong, hover, press
         // Accent, focus and state
         case accentText, accentTint, onAccent, focus, textSelection, dangerTint, attentionTint
-        // Tiles, drag and the brand mark
-        case tileFill, tileRing, liftChip, markHead, markBar, markRings, markTrail
+        /// The When ring, planned for today (COLOR.md §1): its own token, so it stays cool under a warm accent.
+        case plan
+        /// D's spark (COLOR.md §4): the completing ring and rays, the box's first frame, the all-done sun.
+        case spark
+        // Tiles, drag and the brand mark. `tileHalo` is the lit tile's one per-appearance value (COLOR.md §2).
+        case tileFill, tileRing, tileHalo, liftChip, markHead, markBar, markRings, markTrail
         // Shadows: a 0.5pt ring of ink, then a blur whose darkness is fixed per appearance
         case shadowPopoverRing, shadowPopover, shadowLiftRing, shadowLift
     }
 
-    /// A theme (THEMES.md §2.1): per appearance, three colours and a few optional ones. `pins` fixes any derived token,
-    /// for a calibrated theme like Rex.
+    /// A theme (THEMES.md §2.1): one accent, the tile hues, and per appearance two colours and a few optional ones.
+    /// `pins` fixes any derived token, for a calibrated theme like Rex.
     struct Theme: Sendable {
         struct Side: Sendable {
-            var base, ink, accent: RGBA
+            var base, ink: RGBA
+            /// This appearance's own accent; nil derives it from the theme's (`Theme.accent(dark:)`).
+            var accent: RGBA?
             var ground: RGBA?
             /// The six list hues: blue, magenta, green, cyan, yellow, red. A list's slot comes from its id.
             var lists: [RGBA]
@@ -84,7 +104,16 @@ extension TK {
         }
 
         let id: String
-        let dark, light: Side
+        /// The accent (COLOR.md §1, §6): the one value to change for another accent. Every token that shows it is
+        /// derived from it: each appearance's `accent` (`accent(dark:)`), `accent-text`, `accent-tint`, `on-accent`,
+        /// `focus`, `text-selection`, `spark`, `mark-head` and Today's tile, so the checked box, the highlighted day
+        /// and menu item, links and rings follow.
+        var accent: RGBA
+        /// B's tile hues by list slot, the same in both appearances (COLOR.md §2): blue, magenta, green, cyan, yellow,
+        /// red, ink. Each holds white 4.5:1 at the lightest lit point under a letter; the finish over them is fixed
+        /// (`TileArt`), so any hue takes it.
+        var tiles: [RGBA]
+        var dark, light: Side
     }
 }
 
@@ -108,6 +137,9 @@ extension TK.Theme {
         case onAccent
     }
 
+    /// Light's tint of the accent (`accent-tint`'s rule), which light's accent has to read on (`accent(dark:)`).
+    static let lightAccentTint = 0.1
+
     /// The rules, by appearance, in the order they're derived: each reads only tokens set before it. Inputs have none.
     static func rules(dark: Bool) -> [(TK.Token, Rule)] {
         dark ? [
@@ -120,10 +152,11 @@ extension TK.Theme {
             (.fillRowSelected, .mix(.base, .ink, 0.114)), (.fillRowSelectedDim, .mix(.base, .ink, 0.064)),
             (.fillControl, .mix(.base, .ink, 0.084)), (.fillTrack, .mix(.base, .ink, 0.099)), (.fillStrong, .mix(.base, .ink, 0.198)),
             (.hover, .alpha(.ink, 0.07)), (.press, .alpha(.ink, 0.12)),
-            (.accentText, .mix(.accent, .ink, 0.22)), (.accentTint, .mix(.base, .accent, 0.13)), (.onAccent, .onAccent),
-            (.focus, .same(.accent)), (.textSelection, .alpha(.accent, 0.45)),
+            (.accentTint, .mix(.base, .accent, 0.13)), (.accentText, .mix(.accent, .ink, 0.22)), (.onAccent, .onAccent),
+            (.focus, .same(.accent)), (.textSelection, .alpha(.accent, 0.42)), (.plan, .same(.accentText)), (.spark, .same(.accentText)),
             (.dangerTint, .mix(.base, .danger, 0.141)), (.attentionTint, .mix(.base, .attention, 0.137)),
-            (.tileFill, .same(.fillStrong)), (.tileRing, .alpha(.ink, 0.1)), (.liftChip, .mix(.base, .ink, 0.147)),
+            (.tileFill, .same(.fillStrong)), (.tileRing, .alpha(.ink, 0.1)), (.tileHalo, .fixed(TK.RGBA.black.alpha(0.35))),
+            (.liftChip, .mix(.base, .ink, 0.147)),
             (.markHead, .same(.accent)), (.markBar, .same(.ink)), (.markRings, .same(.inkSecondary)), (.markTrail, .same(.inkQuiet)),
             (.shadowPopoverRing, .alpha(.ink, 0.14)), (.shadowPopover, .fixed(TK.RGBA.black.alpha(0.5))),
             (.shadowLiftRing, .alpha(.ink, 0.14)), (.shadowLift, .fixed(TK.RGBA.black.alpha(0.5))),
@@ -137,14 +170,29 @@ extension TK.Theme {
             (.fillRowSelected, .mix(.base, .ink, 0.112)), (.fillRowSelectedDim, .mix(.base, .ink, 0.071)),
             (.fillControl, .mix(.base, .ink, 0.08)), (.fillTrack, .mix(.base, .ink, 0.098)), (.fillStrong, .mix(.base, .ink, 0.138)),
             (.hover, .alpha(.ink, 0.06)), (.press, .alpha(.ink, 0.11)),
-            (.accentText, .same(.accent)), (.accentTint, .mix(.base, .accent, 0.1)), (.onAccent, .onAccent),
-            (.focus, .same(.accent)), (.textSelection, .alpha(.accent, 0.25)),
+            (.accentTint, .mix(.base, .accent, lightAccentTint)), (.accentText, .same(.accent)), (.onAccent, .onAccent),
+            (.focus, .same(.accent)), (.textSelection, .alpha(.accent, 0.22)), (.plan, .same(.accentText)), (.spark, .same(.accentText)),
             (.dangerTint, .mix(.base, .danger, 0.09)), (.attentionTint, .mix(.base, .attention, 0.05)),
-            (.tileFill, .mix(.base, .ink, 0.125)), (.tileRing, .alpha(.ink, 0.1)), (.liftChip, .same(.fillTrack)),
+            (.tileFill, .mix(.base, .ink, 0.125)), (.tileRing, .alpha(.ink, 0.1)), (.tileHalo, .fixed(TK.RGBA.black.alpha(0.18))),
+            (.liftChip, .same(.fillTrack)),
             (.markHead, .same(.accent)), (.markBar, .same(.ink)), (.markRings, .same(.inkSecondary)), (.markTrail, .mix(.ink, .base, 0.616)),
             (.shadowPopoverRing, .alpha(.ink, 0.16)), (.shadowPopover, .alpha(.ink, 0.16)),
             (.shadowLiftRing, .alpha(.ink, 0.14)), (.shadowLift, .alpha(.ink, 0.18)),
         ]
+    }
+
+    /// The floors the derivation holds (§2.5; so far the one a theme's accent can break): a derived token under its
+    /// floor on any of `on` is raised until it passes. A pinned token isn't raised. Each `on` is derived before it.
+    static let floors: [(token: TK.Token, on: [TK.Token], min: Double)] = [(.accentText, [.base, .accentTint], 4.5)]
+
+    /// A side's accent: its own, else the theme's. Light's `accent-text` is its accent (§1.1), so light raises the
+    /// theme's by §2.5's steps until it holds `accent-text`'s floor, 4.5:1, on base and on its own tint, as Rex's
+    /// light blue does: #E6683D becomes #B1502F. Dark's is the theme's as it is.
+    func accent(dark: Bool) -> TK.RGBA {
+        let s = dark ? self.dark : light
+        if let a = s.accent { return a }
+        if dark { return accent }
+        return accent.raised(dark: false) { $0.contrast(s.base) >= 4.5 && $0.contrast(s.base.mix($0, Self.lightAccentTint)) >= 4.5 }
     }
 
     /// Every token's value for one appearance, indexed by `Token.rawValue`. Pins win over rules; a rule reads the
@@ -156,23 +204,32 @@ extension TK.Theme {
         func get(_ t: TK.Token) -> TK.RGBA { v[t.rawValue]! }
         set(.base, s.base)
         set(.ink, s.ink)
-        set(.accent, s.accent)
+        set(.accent, accent(dark: dark))
         if let g = s.ground { set(.ground, g) }
         let slots: [TK.Token] = [.listBlue, .listMagenta, .listGreen, .listCyan, .listYellow, .listRed]
         for (t, c) in zip(slots, s.lists) { set(t, c) }
         set(.listInk, s.ink)
         set(.danger, s.danger ?? s.lists[5])
         set(.attention, s.attention ?? s.lists[4])
+        let tileSlots: [TK.Token] = [.tileBlue, .tileMagenta, .tileGreen, .tileCyan, .tileYellow, .tileRed, .tileInk]
+        for (t, c) in zip(tileSlots, tiles) { set(t, c) }
+        // Today's tile is the accent as given, in both appearances: tiles don't change with the appearance.
+        set(.tileToday, accent)
         for (t, rule) in Self.rules(dark: dark) where v[t.rawValue] == nil {
             if let pin = s.pins[t] { set(t, pin); continue }
+            var c: TK.RGBA
             switch rule {
-            case .mix(let a, let b, let x): set(t, get(a).mix(get(b), x))
-            case .toward(let a, let c, let x): set(t, get(a).mix(c, x))
-            case .alpha(let a, let x): set(t, get(a).alpha(x))
-            case .same(let a): set(t, get(a))
-            case .fixed(let c): set(t, c)
-            case .onAccent: set(t, TK.RGBA.white.contrast(get(.accent)) >= 3 ? .white : get(dark ? .base : .ink))
+            case .mix(let a, let b, let x): c = get(a).mix(get(b), x)
+            case .toward(let a, let to, let x): c = get(a).mix(to, x)
+            case .alpha(let a, let x): c = get(a).alpha(x)
+            case .same(let a): c = get(a)
+            case .fixed(let f): c = f
+            case .onAccent: c = TK.RGBA.white.contrast(get(.accent)) >= 3 ? .white : get(dark ? .base : .ink)
             }
+            if let f = Self.floors.first(where: { $0.token == t }) {
+                c = c.raised(dark: dark) { x in f.on.allSatisfy { x.contrast(get($0)) >= f.min } }
+            }
+            set(t, c)
         }
         return v.map { $0! }
     }
@@ -181,13 +238,18 @@ extension TK.Theme {
 // MARK: - Rex, the one theme
 
 extension TK.Theme {
-    /// Rex (design/REX-REFERENCE.md): graphite and white with a blue accent. It pins every value measured from Rex
-    /// (`tasks-v2.css:46–78`, `themes.js` `REX_PINS`) and the brand mark's light trail, so nothing changes; the
-    /// ones its rules give exactly, like light `hover`, aren't pinned.
+    /// Rex (design/REX-REFERENCE.md): graphite and white, with COLOR.md's Ember accent (A) and lit tiles (B). It pins
+    /// every grey measured from Rex (`tasks-v2.css:46–78`, `themes.js` `REX_PINS`) and the brand mark's light trail,
+    /// so the surfaces don't change; the ones its rules give exactly, like light `hover`, aren't pinned. Nothing that
+    /// shows the accent is pinned, so changing `accent` changes all of it (THEMES.md §6 says how). `plan` is pinned to
+    /// Rex's blue: under a warm accent the When ring stays cool.
     static let rex = TK.Theme(
         id: "rex",
+        // The source tile's fill (docs/feedback/reference-tile.svg).
+        accent: .init(0xE6683D),
+        tiles: [0x285FCA, 0x6B4FB8, 0x227040, 0x146E77, 0x825C15, 0xAD3B5C, 0x5A6068].map(TK.RGBA.init),
         dark: Side(
-            base: .init(0x1C1C1C), ink: .init(0xE6EDF3), accent: .init(0x2F81F7), ground: .init(0x181818),
+            base: .init(0x1C1C1C), ink: .init(0xE6EDF3), ground: .init(0x181818),
             lists: [0x58A6FF, 0xBC8CFF, 0x3FB950, 0x39C5CF, 0xD29922, 0xFF7B72].map(TK.RGBA.init),
             pins: [
                 .dim: .init(0x181818), .popover: .init(0x262626), .lift: .init(0x2C2C2C),
@@ -198,13 +260,13 @@ extension TK.Theme {
                 .fillControl: .init(0x2D2E2E), .fillTrack: .init(0x303132), .fillStrong: .init(0x444444),
                 // Rex's hover, press and hairlines are white, not its ink, at these amounts.
                 .hover: TK.RGBA.white.alpha(0.07), .press: TK.RGBA.white.alpha(0.12),
-                .accentText: .init(0x5799F6), .accentTint: .init(0x1E2938),
+                .plan: .init(0x5799F6),
                 .dangerTint: .init(0x3C2928), .attentionTint: .init(0x352E1D),
                 .tileFill: .init(0x444444), .tileRing: TK.RGBA.white.alpha(0.1), .liftChip: .init(0x3A3A3A),
                 .shadowPopoverRing: TK.RGBA.white.alpha(0.14), .shadowLiftRing: TK.RGBA.white.alpha(0.14),
             ]),
         light: Side(
-            base: .init(0xFFFFFF), ink: .init(0x1F2328), accent: .init(0x0969DA), ground: .init(0xF5F5F5),
+            base: .init(0xFFFFFF), ink: .init(0x1F2328), ground: .init(0xF5F5F5),
             lists: [0x0969DA, 0x8250DF, 0x116329, 0x1B7C83, 0x9A6700, 0xCF222E].map(TK.RGBA.init),
             pins: [
                 .dim: .init(0xFAFAFA),
@@ -213,7 +275,7 @@ extension TK.Theme {
                 .inkSecondary: .init(0x626568), .inkTertiary: .init(0x6C6F72), .inkQuiet: .init(0x888A8D),
                 .fillRowSelected: .init(0xE6E6E8), .fillRowSelectedDim: .init(0xEFEFF0),
                 .fillControl: .init(0xEDEDEE), .fillTrack: .init(0xE9E9EA), .fillStrong: .init(0xE0E0E1),
-                .accentTint: .init(0xE6F0FB), .dangerTint: .init(0xFBEBEC), .attentionTint: .init(0xFAF7F2),
+                .plan: .init(0x0969DA), .dangerTint: .init(0xFBEBEC), .attentionTint: .init(0xFAF7F2),
                 .tileFill: .init(0xE3E3E4), .markTrail: .init(0xA9ACAF),
             ]))
 }
@@ -226,7 +288,7 @@ extension TK.Theme {
         var d = rex.dark, l = rex.light
         d.pins = [:]
         l.pins = [:]
-        return TK.Theme(id: "rex-derived", dark: d, light: l)
+        return TK.Theme(id: "rex-derived", accent: rex.accent, tiles: rex.tiles, dark: d, light: l)
     }
 }
 #endif

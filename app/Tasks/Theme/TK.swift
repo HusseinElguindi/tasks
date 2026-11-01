@@ -34,9 +34,17 @@ extension TK {
         /// Editing rings and drop rings (--focus).
         let focus: NSColor
         let textSelection: NSColor                                    // --text-sel
+        /// The When ring (COLOR.md §1), Rex's blue under the warm accent.
+        let plan: NSColor                                             // --plan
+        /// D's spark (COLOR.md §4): = accent-text.
+        let spark: NSColor                                            // --spark
         let danger, dangerTint, attention, attentionTint: NSColor     // --danger --danger-tint --attn --attn-tint
         // Lists, tiles, drag and the brand mark
         let tileFill, tileRing: NSColor                               // --tile-fill --tile-ring (css:124–125)
+        /// The lit tile's halo, 0.5pt outside its edge (COLOR.md §2; color.css `--tile-halo`).
+        let tileHalo: NSColor                                         // --tile-halo
+        /// B's solid tile hues (color.css `--tc`), the same in both appearances: the seven slots, then Today's.
+        private let tiles: [NSColor]
         let liftChip: NSColor                                         // --lift-chip: a chip on the dragged copy
         let markHead, markBar, markRings, markTrail: NSColor          // --mark-*: the sidebar's brand mark
         // Shadows: a 0.5pt ring plus a blur (css:57–58, 74–75)
@@ -68,9 +76,10 @@ extension TK {
             fillControl = c(.fillControl); fillTrack = c(.fillTrack); fillStrong = c(.fillStrong)
             hover = c(.hover); press = c(.press)
             accent = c(.accent); accentText = c(.accentText); accentTint = c(.accentTint); onAccent = c(.onAccent)
-            focus = c(.focus); textSelection = c(.textSelection)
+            focus = c(.focus); textSelection = c(.textSelection); plan = c(.plan); spark = c(.spark)
             danger = c(.danger); dangerTint = c(.dangerTint); attention = c(.attention); attentionTint = c(.attentionTint)
-            tileFill = c(.tileFill); tileRing = c(.tileRing); liftChip = c(.liftChip)
+            tileFill = c(.tileFill); tileRing = c(.tileRing); tileHalo = c(.tileHalo); liftChip = c(.liftChip)
+            tiles = [c(.tileBlue), c(.tileMagenta), c(.tileGreen), c(.tileCyan), c(.tileYellow), c(.tileRed), c(.tileInk), c(.tileToday)]
             markHead = c(.markHead); markBar = c(.markBar); markRings = c(.markRings); markTrail = c(.markTrail)
             shadowPopoverRing = c(.shadowPopoverRing); shadowPopover = c(.shadowPopover)
             shadowLiftRing = c(.shadowLiftRing); shadowLift = c(.shadowLift)
@@ -90,6 +99,11 @@ extension TK {
 
         func list(_ slot: ListSlot) -> NSColor { lists[slot.rawValue] }
         func listColor(slot: Int) -> NSColor { lists[((slot % 7) + 7) % 7] }
+        /// A list's solid tile (B): its slot's hue.
+        func tile(slot: Int) -> NSColor { tiles[((slot % 7) + 7) % 7] }
+        func tile(_ slot: ListSlot) -> NSColor { tiles[slot.rawValue] }
+        /// Today's tile: the theme's accent, in both appearances.
+        var tileToday: NSColor { tiles[7] }
 
         /// Brightness filters (css:208–210, 293–295): hover 1.18 / 0.96 (chips), 1.12 / 0.97 (capsule buttons and
         /// quick picks), press 0.86. Fixed factors, not colours: no theme changes them (THEMES.md §2.2).
