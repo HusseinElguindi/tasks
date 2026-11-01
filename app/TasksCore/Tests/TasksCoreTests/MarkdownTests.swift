@@ -41,6 +41,75 @@ final class MarkdownTests: XCTestCase {
         XCTAssertEqual(Markdown.parse(">\tq").lines[0].prefix, 2)
     }
 
+    /// A bullet whose whole text is the start of a box is a box being typed (the user, 2026-11-01).
+    func testPartialBox() {
+        for s in ["- [", "- [ ", "- [x", "- [X", "* [", "+ [ ", "    - [x", "-\t["] {
+            let l = Markdown.parse(s).lines[0]
+            XCTAssertEqual(l.kind, .bullet, s)
+            XCTAssertTrue(l.partialBox, s)
+        }
+        for s in ["- [y", "- [  ", "- [a", "- [[", "- [ x", "- [ ]b", "- a [", "1. [", "1) [ ", "[ ", "> [", "- "] {
+            XCTAssertFalse(Markdown.parse(s).lines[0].partialBox, s)
+        }
+        XCTAssertEqual(Markdown.parse("- [ ]").lines[0].kind, .task)
+        XCTAssertFalse(Markdown.parse("```\n- [").lines[1].partialBox)
+    }
+
+    /// Types `keys` one character at a time with the caret at `at` (the end when nil), each through
+    /// `Markdown.typing` as the notes' `insertText` does, on a fresh parse.
+    private func type(_ keys: String, into text: String = "", at: Int? = nil) -> String {
+        var s = text
+        var caret = at ?? (s as NSString).length
+        for ch in keys {
+            let k = String(ch)
+            let u = Array(s.utf16)
+            let d = Markdown.parse(u)
+            let put = u.withUnsafeBufferPointer { b in d.line(at: caret).flatMap { Markdown.typing(k, at: caret, on: $0, b) } } ?? k
+            s = (s as NSString).replacingCharacters(in: NSRange(location: caret, length: 0), with: put)
+            caret += (put as NSString).length
+        }
+        return s
+    }
+
+    /// Typing straight on after `- [ ]` gives a checklist item: `]` brings the space after it, and a space typed
+    /// there anyway isn't doubled (the user, 2026-11-01).
+    func testTypingABox() {
+        XCTAssertEqual(type("- [ ]text"), "- [ ] text")
+        XCTAssertEqual(type("- [ ] text"), "- [ ] text")
+        XCTAssertEqual(type("- [x]done"), "- [x] done")
+        XCTAssertEqual(type("- [X]"), "- [X] ")
+        XCTAssertEqual(type("* [ ]a"), "* [ ] a")
+        XCTAssertEqual(type("+ [ ]a"), "+ [ ] a")
+        XCTAssertEqual(type("- [ ]a\n  - [ ]b\n    * [x]c"), "- [ ] a\n  - [ ] b\n    * [x] c")
+        XCTAssertEqual(type("- [ ]  two spaces"), "- [ ] two spaces")
+        let l = Markdown.parse(type("- [ ]text")).lines[0]
+        XCTAssertEqual(l.kind, .task)
+        XCTAssertFalse(l.checked)
+        XCTAssertEqual(l.textStart, 6)
+        // Right after the box the caret is at the item's text, where Backspace takes the prefix (§6).
+        let empty = Markdown.parse(type("- [ ]")).lines[0]
+        XCTAssertEqual(empty.kind, .task)
+        XCTAssertEqual(empty.textStart, empty.end)
+        XCTAssertEqual(empty.prefix, 6)
+    }
+
+    func testTypingABoxElsewhere() {
+        // Into a bullet's text: the box goes in front of it.
+        XCTAssertEqual(type("[ ]", into: "- buy milk", at: 2), "- [ ] buy milk")
+        // A space after the caret already: no second one.
+        XCTAssertEqual(type("]", into: "- [  milk", at: 4), "- [ ] milk")
+        XCTAssertEqual(Markdown.parse("- [ ] milk").lines[0].kind, .task)
+        // Not a box: numbered items, plain lines, code, a bracket later in the text, a selection-free `]` elsewhere.
+        XCTAssertEqual(type("1. [ ]a"), "1. [ ]a")
+        XCTAssertEqual(type("[ ]a"), "[ ]a")
+        XCTAssertEqual(type("```\n- [ ]a"), "```\n- [ ]a")
+        XCTAssertEqual(type("- a [ ]b"), "- a [ ]b")
+        XCTAssertEqual(type("- [y]a"), "- [y]a")
+        // Spaces are only taken after a box: a bullet's and an item's text keep theirs.
+        XCTAssertEqual(type("-  a"), "-  a")
+        XCTAssertEqual(type(" ", into: "- [ ] milk", at: 10), "- [ ] milk ")
+    }
+
     func testFences() {
         let d = Markdown.parse("a\n```swift\n- [ ] not a task\n```\n~~~\nopen")
         XCTAssertEqual(d.lines.map(\.kind), [.paragraph, .fence, .code, .fence, .fence, .code])

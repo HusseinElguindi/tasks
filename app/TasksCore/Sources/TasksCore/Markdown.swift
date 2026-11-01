@@ -39,6 +39,9 @@ public enum Markdown {
         /// A task item: whether it's checked, and the offset of the character between its brackets.
         public var checked = false
         public var box = -1
+        /// A bullet item whose whole text is the start of a box (`[`, `[ `, `[x`, `[X`): a box being typed. It shows
+        /// as faint marks while the selection is on the line, not as the item's text (the user, 2026-11-01).
+        public var partialBox = false
         /// A fence or code line: its block's index in `Document.blocks`.
         public var block = -1
 
@@ -163,6 +166,7 @@ public enum Markdown {
             }
             line.kind = .bullet
             line.prefix = q - start
+            line.partialBox = at(q) == 91 && (end == q + 1 || end == q + 2 && (at(q + 1) == 32 || at(q + 1) == 120 || at(q + 1) == 88))
             return line
         }
         var d = p
@@ -186,6 +190,29 @@ public enum Markdown {
             return line
         }
         return line
+    }
+
+    // MARK: Typing a box
+
+    /// What typing `typed` with the caret at `at` on `l` puts in, for a checklist box being typed (the user,
+    /// 2026-11-01). A `]` that closes one (`- [ ` or `- [x` before it) comes with the space after it, so typing straight
+    /// on gives `- [ ] text`, a checklist item, and not `- [ ]text`, a bullet. A space typed at the start of a checklist
+    /// item's text, right after its box's space, adds nothing: that space is there already. nil: type it as it is.
+    public static func typing(_ typed: String, at: Int, on l: Line, _ u: UnsafeBufferPointer<UInt16>) -> String? {
+        switch typed {
+        case "]":
+            guard l.kind == .bullet, at == l.textStart + 2, at <= l.end, at <= u.count else { return nil }
+            let inside = u[l.textStart + 1]
+            guard u[l.textStart] == 91, inside == 32 || inside == 120 || inside == 88 else { return nil }
+            // A space or a tab after it already: `]` alone closes the box.
+            if at < l.end, u[at] == 32 || u[at] == 9 { return nil }
+            return "] "
+        case " ":
+            guard l.kind == .task, at == l.textStart, at > l.start, at <= u.count, u[at - 1] == 32 || u[at - 1] == 9 else { return nil }
+            return ""
+        default:
+            return nil
+        }
     }
 
     // MARK: Inline

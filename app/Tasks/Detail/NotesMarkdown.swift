@@ -300,6 +300,12 @@ enum NotesStyler {
             ts.addAttributes(a, range: pr)
         }
         guard l.textStart < l.end else { return }
+        // A box being typed (`- [`, `- [ `, `- [x`): the dot, and what's typed of the box as faint marks while the
+        // selection is on the line, until `]` makes it the box (§5, the user, 2026-11-01).
+        if l.partialBox && d.touches(l.start, l.end) {
+            ts.addAttributes([.foregroundColor: tk.inkQuiet, .mdMark: true], range: NSRange(location: l.textStart, length: l.end - l.textStart))
+            return
+        }
 
         // Inline styles, as flags per character, then laid as runs. Most lines have no mark characters at all.
         let n = l.end - l.textStart

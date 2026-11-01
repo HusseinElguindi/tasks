@@ -165,8 +165,16 @@ final class NotesTextView: NSTextView {
         let now = Date.timeIntervalSinceReferenceDate
         if now - lastTyping > 1.5 { breakUndoCoalescing() }
         lastTyping = now
-        guard let s = (string as? String) ?? (string as? NSAttributedString)?.string else { return super.insertText(string, replacementRange: replacementRange) }
+        guard var s = (string as? String) ?? (string as? NSAttributedString)?.string else { return super.insertText(string, replacementRange: replacementRange) }
         let r = replacementRange.location == NSNotFound ? (hasMarkedText() ? markedRange() : selectedRange()) : replacementRange
+        // A `]` closing a box brings the space after it, in the same typing step; a space typed after that one isn't
+        // doubled (§5, the user, 2026-11-01).
+        var typed: Any = string
+        if let b = notes?.boxTyping(s, at: r) {
+            if b.isEmpty { return }
+            s = b
+            typed = b
+        }
         let room = NotesStyle.maxLength - ((self.string as NSString).length - r.length)
         if (s as NSString).length > room {
             notes?.overLimit()
@@ -174,7 +182,7 @@ final class NotesTextView: NSTextView {
             super.insertText(Self.prefix(s, room), replacementRange: replacementRange)
             return
         }
-        super.insertText(string, replacementRange: replacementRange)
+        super.insertText(typed, replacementRange: replacementRange)
     }
 
     override func insertNewline(_ sender: Any?) {
@@ -740,6 +748,14 @@ struct NotesField: NSViewRepresentable {
 
         /// The reveal asked for while an edit was pending.
         private var wantReveal: NSRange?
+
+        /// What typing `s` at `r` puts in instead, for a checklist box being typed (`Markdown.typing`); nil to type it
+        /// as it is. Only a plain keystroke at a caret, on a current parse.
+        func boxTyping(_ s: String, at r: NSRange) -> String? {
+            guard r.length == 0, pending == nil, let v = view, !v.hasMarkedText(),
+                  document.units.count == (v.string as NSString).length, let l = document.line(at: r.location) else { return nil }
+            return document.units.withUnsafeBufferPointer { Markdown.typing(s, at: r.location, on: l, $0) }
+        }
 
         private func restyleAll() {
             guard let ts = view?.textStorage else { return }
