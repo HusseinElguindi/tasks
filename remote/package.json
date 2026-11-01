@@ -1,0 +1,24 @@
+{
+  "name": "tasks-mcp",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "parity": "pnpm parity:swift && pnpm parity:cli && pnpm parity:gzip",
+    "parity:swift": "cd parity && mise x swift -- swift run golden ../test/golden",
+    "parity:cli": "cd parity && node capture-cli.mjs",
+    "parity:gzip": "gzip -9 -n -f test/golden/*.json"
+  },
+  "dependencies": {
+    "fractional-indexing": "3.2.0",
+    "sucrase": "3.35.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5",
+    "wrangler": "^4.156.0"
+  }
+}

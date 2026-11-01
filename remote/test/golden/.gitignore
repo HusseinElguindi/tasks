@@ -1,0 +1,2 @@
+# Goldens are committed gzipped (pnpm parity:gzip); a fresh run leaves plain JSON here.
+*.json
