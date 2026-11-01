@@ -65,6 +65,25 @@ targets:
         # design/logo/final; regenerate with design/logo/final/export.sh, which copies it here.
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         COMBINE_HIDPI_IMAGES: YES
+  # The theme's tests (design/THEMES.md, COLOR.md): logic tests on the theme's own files, with no app host, so
+  # running them never launches the app or touches its data.
+  TasksTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: TasksTests
+      - path: Tasks/Theme/Theme.swift
+      - path: Tasks/Theme/TK.swift
+      - path: Tasks/Theme/TileArt.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.elguindi.TasksTests
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+        GENERATE_INFOPLIST_FILE: YES
 schemes:
   Tasks:
     build:
@@ -76,5 +95,6 @@ schemes:
       config: Debug
       targets:
         - package: TasksCore/TasksCoreTests
+        - TasksTests
     archive:
       config: Release

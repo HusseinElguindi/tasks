@@ -256,7 +256,7 @@ private struct DetailHeader: View {
         let inert = items.count == 1 && items[0].isDraft && items[0].title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         HStack(spacing: 8) {
             if let first {
-                TileView(monogram: list?.monogram ?? "…", color: list.map { tk.listColor(slot: $0.colorSlot) } ?? tk.list(.ink), size: .small)
+                TileView(monogram: list?.monogram ?? "…", hue: list.map { tk.tile(slot: $0.colorSlot) } ?? tk.tile(.ink), size: .small)
                 Text(list != nil ? actions.listName(first.list) : "Several lists")
                     .font(Font(TK.Font.body))
                     .foregroundStyle(tk.inkSecondary.swiftUI)

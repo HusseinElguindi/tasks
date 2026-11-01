@@ -84,7 +84,7 @@ extension TK {
         /// D's spark (COLOR.md §4): the completing ring and rays, the box's first frame, the all-done sun.
         case spark
         // Tiles, drag and the brand mark. `tileHalo` is the lit tile's one per-appearance value (COLOR.md §2).
-        case tileFill, tileRing, tileHalo, liftChip, markHead, markBar, markRings, markTrail
+        case tileHalo, liftChip, markHead, markBar, markRings, markTrail
         // Shadows: a 0.5pt ring of ink, then a blur whose darkness is fixed per appearance
         case shadowPopoverRing, shadowPopover, shadowLiftRing, shadowLift
     }
@@ -155,7 +155,7 @@ extension TK.Theme {
             (.accentTint, .mix(.base, .accent, 0.13)), (.accentText, .mix(.accent, .ink, 0.22)), (.onAccent, .onAccent),
             (.focus, .same(.accent)), (.textSelection, .alpha(.accent, 0.42)), (.plan, .same(.accentText)), (.spark, .same(.accentText)),
             (.dangerTint, .mix(.base, .danger, 0.141)), (.attentionTint, .mix(.base, .attention, 0.137)),
-            (.tileFill, .same(.fillStrong)), (.tileRing, .alpha(.ink, 0.1)), (.tileHalo, .fixed(TK.RGBA.black.alpha(0.35))),
+            (.tileHalo, .fixed(TK.RGBA.black.alpha(0.35))),
             (.liftChip, .mix(.base, .ink, 0.147)),
             (.markHead, .same(.accent)), (.markBar, .same(.ink)), (.markRings, .same(.inkSecondary)), (.markTrail, .same(.inkQuiet)),
             (.shadowPopoverRing, .alpha(.ink, 0.14)), (.shadowPopover, .fixed(TK.RGBA.black.alpha(0.5))),
@@ -173,7 +173,7 @@ extension TK.Theme {
             (.accentTint, .mix(.base, .accent, lightAccentTint)), (.accentText, .same(.accent)), (.onAccent, .onAccent),
             (.focus, .same(.accent)), (.textSelection, .alpha(.accent, 0.22)), (.plan, .same(.accentText)), (.spark, .same(.accentText)),
             (.dangerTint, .mix(.base, .danger, 0.09)), (.attentionTint, .mix(.base, .attention, 0.05)),
-            (.tileFill, .mix(.base, .ink, 0.125)), (.tileRing, .alpha(.ink, 0.1)), (.tileHalo, .fixed(TK.RGBA.black.alpha(0.18))),
+            (.tileHalo, .fixed(TK.RGBA.black.alpha(0.18))),
             (.liftChip, .same(.fillTrack)),
             (.markHead, .same(.accent)), (.markBar, .same(.ink)), (.markRings, .same(.inkSecondary)), (.markTrail, .mix(.ink, .base, 0.616)),
             (.shadowPopoverRing, .alpha(.ink, 0.16)), (.shadowPopover, .alpha(.ink, 0.16)),
@@ -262,7 +262,7 @@ extension TK.Theme {
                 .hover: TK.RGBA.white.alpha(0.07), .press: TK.RGBA.white.alpha(0.12),
                 .plan: .init(0x5799F6),
                 .dangerTint: .init(0x3C2928), .attentionTint: .init(0x352E1D),
-                .tileFill: .init(0x444444), .tileRing: TK.RGBA.white.alpha(0.1), .liftChip: .init(0x3A3A3A),
+                .liftChip: .init(0x3A3A3A),
                 .shadowPopoverRing: TK.RGBA.white.alpha(0.14), .shadowLiftRing: TK.RGBA.white.alpha(0.14),
             ]),
         light: Side(
@@ -276,7 +276,7 @@ extension TK.Theme {
                 .fillRowSelected: .init(0xE6E6E8), .fillRowSelectedDim: .init(0xEFEFF0),
                 .fillControl: .init(0xEDEDEE), .fillTrack: .init(0xE9E9EA), .fillStrong: .init(0xE0E0E1),
                 .plan: .init(0x0969DA), .dangerTint: .init(0xFBEBEC), .attentionTint: .init(0xFAF7F2),
-                .tileFill: .init(0xE3E3E4), .markTrail: .init(0xA9ACAF),
+                .markTrail: .init(0xA9ACAF),
             ]))
 }
 

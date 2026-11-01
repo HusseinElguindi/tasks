@@ -179,14 +179,13 @@ final class HeadingRowView: NSView {
     override func accessibilityRole() -> NSAccessibility.Role? { .row }
 }
 
-/// The top of the list pane, scrolling with the rows (§23 The list's title): the list's tile (20×16) or a view's glyph
-/// (18pt), 9 apart from the name in 20/26 semibold `ink` with −0.2 tracking, on a 30pt line 4 below the band; Today's
+/// The top of the list pane, scrolling with the rows (§23 The list's title): the list's or the view's tile (20×16),
+/// 9 apart from the name in 20/26 semibold `ink` with −0.2 tracking, on a 30pt line 4 below the band; Today's
 /// date or "Archived" after it in `ink-tertiary`. A list's notes sit 4 below the title, in the notes editor (the list
 /// adds it as a subview), with a "Notes" placeholder in `ink-quaternary` that fades in only on hover, while renaming,
 /// or with the caret in them.
 final class ListTitleView: NSView {
     private let tile = TileLayer()
-    private let glyph = GlyphLayer(.sun, size: 18)
     private let title = TextLayer()
     private let sub = TextLayer()
     private let placeholder = TextLayer()
@@ -212,7 +211,7 @@ final class ListTitleView: NSView {
         layerContentsRedrawPolicy = .never
         guard let layer else { return }
         title.truncationMode = .end
-        for l in [tile, glyph, title, sub, placeholder] as [CALayer] {
+        for l in [tile, title, sub, placeholder] as [CALayer] {
             l.actions = TaskRowView.noActions
             layer.addSublayer(l)
         }
@@ -227,7 +226,7 @@ final class ListTitleView: NSView {
     }
 
     struct Content: Equatable {
-        /// A list's tile, or Today's and a view's glyph in its colour.
+        /// A list's tile, or Today's and a view's (its glyph on its hue).
         enum Mark: Equatable { case tile(monogram: String, slot: Int), view(WindowState.Route) }
         var mark: Mark
         var title: String
@@ -244,19 +243,14 @@ final class ListTitleView: NSView {
         var x: CGFloat = TK.M.rowInset + TK.M.rowPadLeft
         switch c.mark {
         case .tile(let monogram, let slot):
-            glyph.isHidden = true
-            tile.isHidden = false
-            tile.set(monogram: monogram, color: palette.listColor(slot: slot), palette: palette)
+            tile.set(monogram: monogram, hue: palette.tile(slot: slot), palette: palette)
             tile.position = CGPoint(x: x + 10, y: lineTop + 15)
             x += 20 + 9
         case .view(let route):
-            tile.isHidden = true
-            glyph.isHidden = false
-            let g = route.glyph ?? .sun
-            if glyph.glyph != g { glyph.set(g, size: 18) }
-            glyph.color = route.glyphColor(palette)
-            glyph.position = CGPoint(x: x + 9, y: lineTop + 15)
-            x += 18 + 9
+            // B: a view's glyph is a tile too, white on the view's hue (color.css `.lht > span.vg`).
+            tile.set(monogram: nil, hue: route.tileHue(palette), palette: palette, glyph: route.glyph ?? .sun)
+            tile.position = CGPoint(x: x + 10, y: lineTop + 15)
+            x += 20 + 9
         }
         // The name keeps up to 160 (all of a shorter one), then the date or "Archived" after it gives way, then the
         // name; both end in an ellipsis, as the prototype's `.lhn` and `.lhs` do (css:441–442, v2 feedback 16).

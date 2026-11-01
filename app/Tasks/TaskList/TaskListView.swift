@@ -565,6 +565,8 @@ final class TaskListView: NSView {
         } else {
             empty.isHidden = true
         }
+        let allDone = L.empty == .allDone && !empty.isHidden
+        if state.allDone != allDone { state.allDone = allDone }
         // An archived list's banner, 6 from the header, 10 in from the sides.
         if let id = state.route.listID, let l = p.list(id), let at = l.archivedAt {
             banner.isHidden = false

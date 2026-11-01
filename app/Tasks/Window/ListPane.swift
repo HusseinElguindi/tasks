@@ -19,6 +19,8 @@ struct ListPane: View {
             ListPaneHeader(store: store, window: window, focused: focused, single: single, leadingInset: leadingInset, actions: actions)
             TaskListRepresentable(store: store, window: window, palette: tk)
         }
+        // Today all done: D's sunrise at the top of the pane, behind the band (COLOR.md §4).
+        .background(alignment: .top) { Sunrise(shown: window.allDone) }
         .paneChrome(focused: focused, single: single)
         .overlay(alignment: .bottomTrailing) {
             NoticeView(overlays: window.overlays, actions: actions).padding(12)
@@ -46,7 +48,7 @@ struct ListPaneHeader: View {
             // list at the top.
             HStack(spacing: 8) {
             if let list {
-                TileView(monogram: list.monogram, color: tk.listColor(slot: list.colorSlot), size: .small)
+                TileView(monogram: list.monogram, hue: tk.tile(slot: list.colorSlot), size: .small)
                 Text(list.name.isEmpty ? "New List" : list.name)
                     .layoutPriority(1)
                     .font(Font(TK.Font.bodyMedium))
@@ -56,14 +58,14 @@ struct ListPaneHeader: View {
                     Text("Archived").font(Font(TK.Font.body)).foregroundStyle(tk.inkSecondary.swiftUI).lineLimit(1)
                 }
             } else if window.route.isView {
-                // A view's header is Today's: its glyph in its colour, its name, no subtitle (§22).
-                GlyphView(glyph: window.route.glyph ?? .sun, size: 14, color: window.route.glyphColor(tk).swiftUI)
+                // A view's header is Today's: its tile (B), its name, no subtitle (§22).
+                TileView(monogram: nil, hue: window.route.tileHue(tk), glyph: window.route.glyph ?? .sun, size: .small)
                 Text(window.route.viewName ?? "")
                     .font(Font(TK.Font.bodyMedium))
                     .foregroundStyle((lit ? tk.ink : tk.inkSecondary).swiftUI)
                     .lineLimit(1)
             } else {
-                GlyphView(glyph: .sun, size: 14, color: tk.list(.yellow).swiftUI)
+                TileView(monogram: nil, hue: tk.tileToday, size: .small)
                 Text("Today")
                     .layoutPriority(1)
                     .font(Font(TK.Font.bodyMedium))

@@ -60,7 +60,7 @@ struct DetailProps: View {
         VStack(alignment: .leading, spacing: 0) {
             PropRow(glyph: .lines, label: "List") { _ in
                 ListPopup(monogram: list?.monogram ?? "…",
-                          color: list.map { tk.listColor(slot: $0.colorSlot) } ?? tk.list(.ink),
+                          hue: list.map { tk.tile(slot: $0.colorSlot) } ?? tk.tile(.ink),
                           name: list.map { _ in actions.listName(first.list) } ?? "Mixed") { anchor in
                     popListMenu(ids: ids, current: items.count == 1 ? first.list : nil, anchor: anchor)
                 }
@@ -318,7 +318,7 @@ private struct ClearStyle: ButtonStyle {
 /// value column. Hover: the `hover` fill on `icon`; press: the `press` fill at once.
 private struct ListPopup: View {
     let monogram: String
-    let color: NSColor
+    let hue: NSColor
     let name: String
     let action: (CGRect) -> Void
     @State private var hovered = false
@@ -328,7 +328,7 @@ private struct ListPopup: View {
     var body: some View {
         Button { action(frame) } label: {
             HStack(spacing: 6) {
-                TileView(monogram: monogram, color: color, size: .small)
+                TileView(monogram: monogram, hue: hue, size: .small)
                 Text(name).font(Font(TK.Font.body)).foregroundStyle(tk.ink.swiftUI).lineLimit(1).frame(height: 16)
                 GlyphView(glyph: .upDown, size: 12, color: tk.inkTertiary.swiftUI)
             }

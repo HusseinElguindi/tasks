@@ -236,7 +236,7 @@ enum Menus {
     static func tileImage(monogram: String, slot: Int, palette: TK.Palette) -> NSImage {
         let key = TileKey(monogram: monogram, slot: slot, palette: palette)
         if let img = tileCache[key] { return img }
-        let img = TileLayer.image(monogram: monogram, color: palette.listColor(slot: slot), palette: palette)
+        let img = TileLayer.image(monogram: monogram, hue: palette.tile(slot: slot), palette: palette)
         tileCache[key] = img
         return img
     }

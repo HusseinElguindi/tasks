@@ -8,6 +8,7 @@ import TasksCore
 ///
 ///     click:X,Y   dbl:X,Y   cmdclick:X,Y   shiftclick:X,Y     (window points from the top left)
 ///     key:CODE[:cmd|shift]   wait:MS   snap:/path.png   log:/path.txt  (appends the selection and first responder)
+///     psnap:/path.png   (the layers as on screen this frame, mid-animation)
 ///     hold:CODE:N[:cmd]   (the key held: its press, N auto-repeats from 525 ms, its release)
 ///     checkclick:TITLE   checkdbl:TITLE   (a click or a double-click on that task's checkbox)
 ///     chiphover:TITLE:when|deadline   (the pointer over that row's date)
@@ -112,6 +113,8 @@ enum DebugScript {
                     try? await Task.sleep(for: .milliseconds(Int(arg) ?? 100))
                 case "snap":
                     snapshot(w, to: arg)
+                case "psnap":
+                    presentationSnapshot(w, to: arg)
                 case "glasssnap":
                     GlassDebug.snapshot(w, to: arg)
                 case "hit":
@@ -481,6 +484,24 @@ enum DebugScript {
         if enabled, let handler { NSApp.sendAction(action, to: handler, from: item) }
         if let before { out += " text=\(before.debugDescription)→\(((w.firstResponder as? NSTextView)?.string ?? "-").debugDescription)" }
         return out
+    }
+
+    /// `psnap:/path.png`: the window's layers as they are on screen this frame, mid-animation (`snap` draws the model
+    /// values, so a running animation doesn't show). Core Animation's own render: materials draw as their fallbacks.
+    private static func presentationSnapshot(_ w: NSWindow, to path: String) {
+        guard let view = w.contentView?.superview ?? w.contentView, let layer = view.layer else { return }
+        let scale = w.backingScaleFactor, size = view.bounds.size
+        guard let ctx = CGContext(data: nil, width: Int(size.width * scale), height: Int(size.height * scale), bitsPerComponent: 8,
+                                  bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return }
+        ctx.scaleBy(x: scale, y: scale)
+        if layer.isGeometryFlipped || view.isFlipped {
+            ctx.translateBy(x: 0, y: size.height)
+            ctx.scaleBy(x: 1, y: -1)
+        }
+        (layer.presentation() ?? layer).render(in: ctx)
+        guard let img = ctx.makeImage() else { return }
+        try? NSBitmapImageRep(cgImage: img).representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: path))
     }
 
     private static func snapshot(_ w: NSWindow, to path: String) {

@@ -134,6 +134,8 @@ final class WindowState {
     var paneNotes: NotesHost.Target?
     /// The list has scrolled 24pt: the band's own tile and title fade in (§23 On scroll).
     var titleScrolled = false
+    /// Today with every task done (§13): the list pane shows D's sunrise (COLOR.md §4).
+    var allDone = false
     /// Collapsed headings (§23): local to the Mac like a window's size, kept in UserDefaults by heading id, never synced.
     /// A new heading starts open.
     var collapsed: Set<EntityID> = Set(UserDefaults.standard.stringArray(forKey: WindowState.collapsedKey) ?? []) {

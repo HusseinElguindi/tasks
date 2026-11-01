@@ -12,6 +12,8 @@ enum BrandMark {
     enum Part: CaseIterable { case trail, rings, bar, head }
 
     static let viewBox = CGRect(x: 150, y: 150, width: 724, height: 724)
+    /// The small cut's head, a circle in the viewBox (`paths(small: true)`).
+    static let head = (center: CGPoint(x: 322, y: 336), radius: CGFloat(100))
 
     static func paths(small: Bool) -> [(Part, CGPath)] {
         func circle(_ x: CGFloat, _ y: CGFloat, _ r: CGFloat) -> CGPath {
@@ -76,6 +78,10 @@ final class SidebarHeaderLayer: CALayer {
 
     private let mark = CALayer()
     private var shapes: [BrandMark.Part: CAShapeLayer] = [:]
+    /// The head lit like a tile (B, COLOR.md §2): the light, the inner ring and the halo, no specular, with the check
+    /// still cut out (`.mk-lit`, `.mk-hl`, `.mk-halo`).
+    private let headArt = CALayer()
+    private var headRect = CGRect.zero
     let title = TextLayer()
     private var palette: TK.Palette?
 
@@ -90,13 +96,29 @@ final class SidebarHeaderLayer: CALayer {
         mark.actions = TaskRowView.noActions
         let v = BrandMark.viewBox
         var t = CGAffineTransform(scaleX: s / v.width, y: s / v.height).translatedBy(x: -v.minX, y: -v.minY)
+        var headPath = CGPath(rect: .zero, transform: nil)
         for (part, path) in BrandMark.paths(small: true) {
             let l = CAShapeLayer()
             l.path = path.copy(using: &t)
             l.actions = TaskRowView.noActions
             mark.addSublayer(l)
             shapes[part] = l
+            if part == .head, let p = l.path { headPath = p }
         }
+        // The head's art reaches `outset` past the circle for its halo; its mask is that larger circle less the check.
+        let k = s / v.width, h = BrandMark.head
+        let r = h.radius * k, c = CGPoint(x: (h.center.x - v.minX) * k, y: (h.center.y - v.minY) * k)
+        headRect = CGRect(x: c.x - r, y: c.y - r, width: 2 * r, height: 2 * r)
+        let o = TileArt.outset
+        headArt.frame = headRect.insetBy(dx: -o, dy: -o)
+        headArt.actions = TaskRowView.noActions
+        var toArt = CGAffineTransform(translationX: -headArt.frame.minX, y: -headArt.frame.minY)
+        let circle = CGPath(ellipseIn: headRect, transform: nil)
+        let check = circle.subtracting(headPath)
+        let mask = CAShapeLayer()
+        mask.path = CGPath(ellipseIn: headArt.frame, transform: nil).subtracting(check).copy(using: &toArt)
+        headArt.mask = mask
+        mark.addSublayer(headArt)
         addSublayer(mark)
         addSublayer(title)
         title.actions = TaskRowView.noActions
@@ -105,10 +127,23 @@ final class SidebarHeaderLayer: CALayer {
     override init(layer: Any) { super.init(layer: layer) }
     required init?(coder: NSCoder) { fatalError() }
 
+    override var contentsScale: CGFloat {
+        didSet { if contentsScale != oldValue { drawHead() } }
+    }
+
+    private func drawHead() {
+        guard let p = palette else { return }
+        let scale = max(1, contentsScale)
+        headArt.contentsScale = scale
+        headArt.contents = TileArt.image(hue: p.markHead, halo: p.tileHalo, size: headRect.size, radius: headRect.width / 2,
+                                         scale: scale, specular: false)
+    }
+
     func setPalette(_ p: TK.Palette) {
         guard p != palette else { return }
         palette = p
         for (part, l) in shapes { l.fillColor = BrandMark.color(part, p).cgColor }
+        drawHead()
         let x = Self.markX + Self.markSize + Self.gap
         title.set("Tasks", font: TK.Font.brand, color: p.ink)
         title.place(x: x, lineTop: (SB.headerHeight - 16) / 2, lineHeight: 16, width: bounds.width - x)

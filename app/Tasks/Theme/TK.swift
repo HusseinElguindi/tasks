@@ -40,7 +40,6 @@ extension TK {
         let spark: NSColor                                            // --spark
         let danger, dangerTint, attention, attentionTint: NSColor     // --danger --danger-tint --attn --attn-tint
         // Lists, tiles, drag and the brand mark
-        let tileFill, tileRing: NSColor                               // --tile-fill --tile-ring (css:124–125)
         /// The lit tile's halo, 0.5pt outside its edge (COLOR.md §2; color.css `--tile-halo`).
         let tileHalo: NSColor                                         // --tile-halo
         /// B's solid tile hues (color.css `--tc`), the same in both appearances: the seven slots, then Today's.
@@ -78,7 +77,7 @@ extension TK {
             accent = c(.accent); accentText = c(.accentText); accentTint = c(.accentTint); onAccent = c(.onAccent)
             focus = c(.focus); textSelection = c(.textSelection); plan = c(.plan); spark = c(.spark)
             danger = c(.danger); dangerTint = c(.dangerTint); attention = c(.attention); attentionTint = c(.attentionTint)
-            tileFill = c(.tileFill); tileRing = c(.tileRing); tileHalo = c(.tileHalo); liftChip = c(.liftChip)
+            tileHalo = c(.tileHalo); liftChip = c(.liftChip)
             tiles = [c(.tileBlue), c(.tileMagenta), c(.tileGreen), c(.tileCyan), c(.tileYellow), c(.tileRed), c(.tileInk), c(.tileToday)]
             markHead = c(.markHead); markBar = c(.markBar); markRings = c(.markRings); markTrail = c(.markTrail)
             shadowPopoverRing = c(.shadowPopoverRing); shadowPopover = c(.shadowPopover)

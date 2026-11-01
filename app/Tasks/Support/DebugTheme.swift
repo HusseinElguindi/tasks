@@ -3,7 +3,8 @@ import Foundation
 
 /// Debug aid: `-debugThemeCheck /path.txt` writes, per appearance, how far each token Rex pins lies from what its rule
 /// (THEMES.md §2.4) gives from Rex's base, ink and accent alone, in levels of 255. THEMES.md expects 1–4; dark's
-/// hover, press, tile ring and shadow rings show 25, the gap between white, which Rex draws them in, and its ink.
+/// hover, press and shadow rings show 25, the gap between white, which Rex draws them in, and its ink. (The accent
+/// family isn't pinned since COLOR.md's accent, so it isn't listed.)
 @MainActor
 enum DebugThemeCheck {
     static func runIfRequested() {

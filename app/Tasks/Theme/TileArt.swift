@@ -147,11 +147,11 @@ enum TileArt {
         }
     }
 
-    @MainActor private static var cache: [Key: CGImage] = [:]
+    /// Drawn on the main thread, as every layer is (the pattern `Glyph`'s cache uses).
+    nonisolated(unsafe) private static var cache: [Key: CGImage] = [:]
 
     /// The tile at `scale`, `outset` larger than `size` on every side: place it at the tile's frame inset by
     /// −`outset`.
-    @MainActor
     static func image(hue: NSColor, halo: NSColor, size: CGSize, radius: CGFloat, scale: CGFloat,
                       specular: Bool = true) -> CGImage? {
         let key = Key(hue: TK.RGBA(ns: hue), halo: TK.RGBA(ns: halo), size: size, radius: radius, scale: max(1, scale),

@@ -1,5 +1,6 @@
 import AppKit
 import QuartzCore
+import SwiftUI
 
 // D · Moments (design/COLOR.md §4; color.css's D block): grey at rest, colour with an event, gone within a second.
 // Completing a task sparks; Today all done shows a sun under a faint sunrise. None of it under Reduce Motion: the box
@@ -14,8 +15,6 @@ extension TK.CA {
     /// The row's and the title's warm flash, settling (`tk-sp-row`, `tk-sp-title`, 700 ms ease-out).
     static let sparkFlashT = Timing(duration: 0.7, curve: easeOut)
     static let sunT = Timing(duration: 0.9, curve: flight)
-    /// The sunrise fading in (`tk-fade-in`, 900 ms ease-out).
-    static let sunriseT = Timing(duration: 0.9, curve: easeOut)
 }
 
 /// The spark that leaves a checkbox as it's checked (`.check .spark`): a ring and eight rays in `spark`, centred on
@@ -141,37 +140,26 @@ final class AllDoneSunLayer: CALayer {
 }
 
 /// The sunrise at the top of the list pane while Today is all done: `spark` at 13% (light 9%) fading out by 70% of an
-/// ellipse 120% of the pane's width and 260pt tall, centred on the top edge (`.lp:has(.eg-alldone)::before`).
-final class SunriseLayer: CAGradientLayer {
-    static let height: CGFloat = 260
+/// ellipse 120% of the pane's width and 260pt tall, centred on the top edge, 1pt inside the pane's edge; it fades in
+/// over 900 ms (`.lp:has(.eg-alldone)::before`).
+struct Sunrise: View {
+    let shown: Bool
+    @Environment(\.tk) private var tk
 
-    override init() {
-        super.init()
-        type = .radial
-        actions = TaskRowView.noActions
-        cornerRadius = TK.M.paneRadius - 1
-        maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
-        locations = [0, 0.7]
-        opacity = 0
-    }
-
-    override init(layer: Any) { super.init(layer: layer) }
-    required init?(coder: NSCoder) { fatalError() }
-
-    /// `flipped`: the layer's y runs down (its view is flipped), so the top edge is y 0 in unit space.
-    func set(shown: Bool, palette: TK.Palette, flipped: Bool, animated: Bool) {
-        let a = palette.isDark ? 0.13 : 0.09
-        setInstant {
-            colors = [palette.spark.withAlphaComponent(a).cgColor, palette.spark.withAlphaComponent(0).cgColor]
-            startPoint = CGPoint(x: 0.5, y: flipped ? 0 : 1)
-            endPoint = CGPoint(x: 0.5 + 1.2, y: flipped ? 1 : 0)
+    var body: some View {
+        let a = tk.isDark ? 0.13 : 0.09
+        let g = Gradient(stops: [.init(color: tk.spark.swiftUI.opacity(a), location: 0),
+                                 .init(color: tk.spark.swiftUI.opacity(0), location: 0.7)])
+        Canvas { ctx, size in
+            ctx.translateBy(x: size.width / 2, y: 0)
+            ctx.scaleBy(x: 1.2 * size.width, y: size.height)
+            ctx.fill(Path(CGRect(x: -1, y: 0, width: 2, height: 1)),
+                     with: .radialGradient(g, center: .zero, startRadius: 0, endRadius: 1))
         }
-        let to: Float = shown ? 1 : 0
-        guard to != opacity else { return }
-        if shown, animated {
-            animate("opacity", to: to, TK.CA.sunriseT)
-        } else {
-            setInstant { opacity = to }
-        }
+        .frame(height: 260)
+        .padding([.top, .horizontal], 1)
+        .opacity(shown ? 1 : 0)
+        .animation(shown && !TK.Motion.reduce ? .easeOut(duration: 0.9) : nil, value: shown)
+        .allowsHitTesting(false)
     }
 }

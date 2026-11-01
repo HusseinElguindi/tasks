@@ -254,18 +254,24 @@ final class FadeMask: CAGradientLayer {
 // the middle of the tile and each glyph's path is centred in that box; a letter's capital is centred, its baseline half
 // the cap height below the middle, not its line box. Three drawings share this: the layer (the sidebar, the large
 // title, a dragged list), `TileView` (the band, the detail pane) and `TileLayer.image` (menus).
+//
+// B · Tiles (design/COLOR.md §2): every tile is a solid hue (`tile-*`), lit with the reference tile's finish
+// (`TileArt`), with its letter or glyph in white. The three drawings share the finish too.
 
 final class TileLayer: CALayer {
     enum Size { case regular, small }
+    /// The lit finish, as an image reaching `TileArt.outset` past the tile for the halo.
+    private let art = CALayer()
     private let letter = TextLayer()
     private let sun = GlyphLayer(.sun, size: 12)
     private var glyph: Glyph = .sun
-    private let ring = CALayer()
+    private var hue = NSColor.gray, halo = NSColor.black
     private(set) var tileSize: Size = .regular
 
     override init() {
         super.init()
-        addSublayer(ring)
+        art.actions = TaskRowView.noActions
+        addSublayer(art)
         addSublayer(letter)
         addSublayer(sun)
         letter.alignmentMode = .center
@@ -277,6 +283,11 @@ final class TileLayer: CALayer {
     static func dimensions(_ s: Size) -> CGSize { s == .regular ? CGSize(width: 20, height: 16) : CGSize(width: 16, height: 13) }
 
     static func font(_ s: Size) -> NSFont { s == .regular ? TK.Font.tile : TK.Font.tileSmall }
+    static func radius(_ s: Size) -> CGFloat { s == .regular ? 4 : 3.5 }
+    /// A glyph's box: 12 in a tile, 10 in a small one (color.css `.vg .i`, `.vg.sm .i`).
+    static func glyphSize(_ s: Size) -> CGFloat { s == .regular ? 12 : 10 }
+    /// A tile's letter and glyph: white on the hue, flat (COLOR.md §2). Part of the finish, not a theme token.
+    static let ink = NSColor.white
 
     /// A letter's baseline, from the tile's top: its capital centred in the tile's height.
     static func letterBaseline(_ s: Size) -> CGFloat { (dimensions(s).height + font(s).capHeight) / 2 }
@@ -295,80 +306,94 @@ final class TileLayer: CALayer {
     }
 
     override var contentsScale: CGFloat {
-        didSet { if contentsScale != oldValue { placeLetter() } }
+        didSet { if contentsScale != oldValue { placeLetter(); drawArt() } }
     }
 
-    /// `monogram` nil draws `glyph`: Today's sun, or a view's (§22).
-    func set(monogram: String?, color: NSColor, palette: TK.Palette, size: Size = .regular, glyph: Glyph = .sun) {
+    /// The finish at this layer's scale (its hairlines are device pixels).
+    private func drawArt() {
+        let scale = max(1, contentsScale)
+        art.contentsScale = scale
+        art.frame = bounds.insetBy(dx: -TileArt.outset, dy: -TileArt.outset)
+        art.contents = TileArt.image(hue: hue, halo: halo, size: bounds.size, radius: Self.radius(tileSize), scale: scale)
+    }
+
+    /// `monogram` nil draws `glyph`: Today's sun, or a view's (§22). `hue` is the tile's (`tile(slot:)`, `tileToday`).
+    func set(monogram: String?, hue: NSColor, palette: TK.Palette, size: Size = .regular, glyph: Glyph = .sun) {
         tileSize = size
         let d = Self.dimensions(size)
         bounds = CGRect(origin: .zero, size: d)
-        cornerRadius = size == .regular ? 4 : 3.5
-        backgroundColor = palette.tileFill.cgColor
-        ring.frame = bounds
-        ring.cornerRadius = cornerRadius
-        ring.borderWidth = 0.5
-        ring.borderColor = palette.tileRing.cgColor
+        self.hue = hue
+        halo = palette.tileHalo
+        drawArt()
         if let monogram {
             sun.isHidden = true
             letter.isHidden = false
-            letter.set(monogram, font: Self.font(size), color: color)
+            letter.set(monogram, font: Self.font(size), color: Self.ink)
             placeLetter()
         } else {
             letter.isHidden = true
             sun.isHidden = false
-            if glyph != self.glyph {
+            if glyph != self.glyph || sun.size != Self.glyphSize(size) {
                 self.glyph = glyph
-                sun.set(glyph, size: 12)
+                sun.set(glyph, size: Self.glyphSize(size))
             }
-            sun.color = color
+            sun.color = Self.ink
             sun.position = CGPoint(x: d.width / 2, y: d.height / 2)
         }
     }
 
-    /// The small tile as an image, for menu items (they take an `NSImage`): 16×13, radius 3.5, the letter in `color`.
-    static func image(monogram: String, color: NSColor, palette: TK.Palette) -> NSImage {
-        let d = dimensions(.small)
-        return NSImage(size: d, flipped: true) { rect in
-            let path = NSBezierPath(roundedRect: rect.insetBy(dx: 0.25, dy: 0.25), xRadius: 3.5, yRadius: 3.5)
-            palette.tileFill.setFill()
-            path.fill()
-            palette.tileRing.setStroke()
-            path.lineWidth = 0.5
-            path.stroke()
-            let attrs: [NSAttributedString.Key: Any] = [.font: font(.small), .foregroundColor: color]
+    /// The small tile as an image, for menu items (they take an `NSImage`): 16×13, radius 3.5, lit, the letter in
+    /// white. The image is `TileArt.outset` larger all round for the halo; its alignment rect is the tile.
+    static func image(monogram: String, hue: NSColor, palette: TK.Palette) -> NSImage {
+        let d = dimensions(.small), o = TileArt.outset
+        let halo = TK.RGBA(ns: palette.tileHalo), fill = TK.RGBA(ns: hue)
+        let img = NSImage(size: CGSize(width: d.width + 2 * o, height: d.height + 2 * o), flipped: true) { _ in
+            guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
+            let scale = abs(ctx.userSpaceToDeviceSpaceTransform.a)
+            ctx.saveGState()
+            ctx.translateBy(x: o, y: o)
+            TileArt.draw(ctx, size: d, radius: radius(.small), hue: fill, halo: halo, scale: scale > 0 ? scale : 2)
+            ctx.restoreGState()
+            let attrs: [NSAttributedString.Key: Any] = [.font: font(.small), .foregroundColor: ink]
             let width = (monogram as NSString).size(withAttributes: attrs).width
             // Without `.usesLineFragmentOrigin` the rect's origin is the baseline's.
-            (monogram as NSString).draw(with: CGRect(x: (d.width - width) / 2, y: letterBaseline(.small), width: width, height: d.height),
-                                        options: [], attributes: attrs)
+            (monogram as NSString).draw(with: CGRect(x: o + (d.width - width) / 2, y: o + letterBaseline(.small), width: width,
+                                                     height: d.height), options: [], attributes: attrs)
             return true
         }
+        img.alignmentRect = NSRect(x: o, y: o, width: d.width, height: d.height)
+        return img
     }
 }
 
-/// The tile in SwiftUI (the band, the detail pane). nil draws Today's sun.
+/// The tile in SwiftUI (the band, the detail pane), lit as the layer is. nil draws `glyph`: Today's sun, or a view's.
 struct TileView: View {
     let monogram: String?
-    let color: NSColor
+    let hue: NSColor
+    var glyph: Glyph = .sun
     var size: TileLayer.Size = .regular
     @Environment(\.tk) private var tk
+    @Environment(\.displayScale) private var scale
 
     var body: some View {
         let d = TileLayer.dimensions(size)
-        let r: CGFloat = size == .regular ? 4 : 3.5
         let font = TileLayer.font(size)
-        RoundedRectangle(cornerRadius: r)
-            .fill(tk.tileFill.swiftUI)
-            .overlay(RoundedRectangle(cornerRadius: r).strokeBorder(tk.tileRing.swiftUI, lineWidth: 0.5))
+        Color.clear
+            .background {
+                // The finish's image is `outset` larger all round, centred: its halo reaches past the frame.
+                if let art = TileArt.image(hue: hue, halo: tk.tileHalo, size: d, radius: TileLayer.radius(size), scale: scale) {
+                    Image(decorative: art, scale: scale)
+                }
+            }
             .overlay {
                 if let monogram {
                     Text(monogram)
                         .font(Font(font))
-                        .foregroundStyle(color.swiftUI)
+                        .foregroundStyle(TileLayer.ink.swiftUI)
                         // The capital's middle on the tile's, not the line box's.
                         .alignmentGuide(VerticalAlignment.center) { $0[.firstTextBaseline] - font.capHeight / 2 }
                 } else {
-                    GlyphView(glyph: .sun, size: 12, color: color.swiftUI)
+                    GlyphView(glyph: glyph, size: TileLayer.glyphSize(size), color: TileLayer.ink.swiftUI)
                 }
             }
             .frame(width: d.width, height: d.height)
@@ -381,8 +406,9 @@ struct TileView: View {
 /// pop (§8); a recycled row rebinding to another task doesn't.
 final class CheckLayer: CALayer {
     /// What the ring says about an open task (§24, css:495–510): overdue in `danger`, due today in `attention`,
-    /// planned for today (its When is today or earlier, seen outside Today) in `accent-text`. Planned with a
-    /// deadline's ring is a double ring: the deadline's outside, a 1.25pt `accent-text` ring 1.5 inside it.
+    /// planned for today (its When is today or earlier, seen outside Today) in `plan` (blue: COLOR.md §1 split it from
+    /// the warm accent). Planned with a deadline's ring is a double ring: the deadline's outside, a 1.25pt `plan` ring
+    /// 1.5 inside it.
     struct Cue: Equatable {
         enum Deadline: Equatable { case late, due }
         var deadline: Deadline?
@@ -398,6 +424,8 @@ final class CheckLayer: CALayer {
     private let inner = CAShapeLayer()
     private let fill = CALayer()
     private let mark = GlyphLayer(.check, size: TK.M.checkGlyph)
+    /// D's spark as the box is checked (COLOR.md §4).
+    private let spark = SparkLayer()
     private(set) var isOn = false
     private(set) var isPlaceholder = false
     private(set) var cue = Cue()
@@ -424,10 +452,12 @@ final class CheckLayer: CALayer {
         inner.opacity = 0
         mark.position = CGPoint(x: s / 2, y: s / 2)
         mark.strokeEnd = 0
+        spark.position = CGPoint(x: s / 2, y: s / 2)
         addSublayer(fill)
         addSublayer(ring)
         addSublayer(inner)
         addSublayer(mark)
+        addSublayer(spark)
     }
 
     override init(layer: Any) { super.init(layer: layer) }
@@ -442,17 +472,28 @@ final class CheckLayer: CALayer {
         mark.color = palette.onAccent
         opacity = placeholder ? 0.7 : 1
         if animated && changed && !TK.CA.reduce {
-            fill.animate("backgroundColor", to: on ? palette.accent.cgColor : NSColor.clear.cgColor, TK.CA.checkFillT)
             if on {
+                // D: the box fills from the spark to the accent (520 ms), its ring too, as the spark leaves it.
+                let t = TK.CA.sparkFillT
+                setInstant {
+                    fill.backgroundColor = palette.accent.cgColor
+                    updateRing(animated: false)
+                }
+                fill.add(TK.CA.basic("backgroundColor", t, from: palette.spark.cgColor, to: palette.accent.cgColor), forKey: "backgroundColor")
+                ring.add(TK.CA.basic("strokeColor", t, from: palette.spark.cgColor, to: palette.accent.cgColor), forKey: "strokeColor")
                 mark.animate("strokeEnd", to: 1, TK.CA.checkFillT, delay: 0.04)
+                spark.fire(palette.spark)
             } else {
+                spark.stop()
+                fill.animate("backgroundColor", to: NSColor.clear.cgColor, TK.CA.checkFillT)
                 mark.animate("strokeEnd", to: 0, TK.CA.checkFillT)
+                updateRing(animated: true)
             }
-            updateRing(animated: true)
             // The box pops from 0.8 on `snappy`, both ways (§8).
             let pop = TK.CA.spring("transform.scale", TK.CA.snappy, from: 0.8, to: 1)
             add(pop, forKey: "pop")
         } else {
+            if changed { spark.stop() }
             setInstant {
                 fill.backgroundColor = on ? palette.accent.cgColor : nil
                 mark.strokeEnd = on ? 1 : 0
@@ -468,10 +509,10 @@ final class CheckLayer: CALayer {
         if isOn { color = palette.accent } else if isPlaceholder { color = palette.inkQuiet }
         else if open, cue.deadline == .late { color = palette.danger }
         else if open, cue.deadline == .due { color = palette.attention }
-        else if open, cue.planned { color = palette.accentText }
+        else if open, cue.planned { color = palette.plan }
         else { color = hovered ? palette.inkSecondary : palette.lineField }
         let double: Float = open && cue.planned && cue.deadline != nil ? 1 : 0
-        setInstant { inner.strokeColor = palette.accentText.cgColor }
+        setInstant { inner.strokeColor = palette.plan.cgColor }
         if animated {
             ring.animate("strokeColor", to: color.cgColor, hovered ? TK.CA.hoverInT : TK.CA.hoverOutT)
             if inner.opacity != double { inner.animate("opacity", to: double, TK.CA.checkFillT) }

@@ -60,8 +60,10 @@ final class SidebarRowLayer: CALayer {
         hovered = h
         palette = p
 
-        let tileColor = r.monogram == nil ? r.key.glyphColor(p) : p.listColor(slot: r.slot)
-        tile.set(monogram: r.monogram, color: tileColor, palette: p, glyph: r.key.glyph ?? .sun)
+        let hue = r.monogram == nil ? r.key.tileHue(p) : p.tile(slot: r.slot)
+        tile.set(monogram: r.monogram, hue: hue, palette: p, glyph: r.key.glyph ?? .sun)
+        // An archived list's tile is at 55% (COLOR.md §2).
+        tile.opacity = r.archived ? 0.55 : 1
         tile.position = CGPoint(x: SB.tileX + tile.bounds.width / 2, y: SB.rowHeight / 2)
 
         let bg: NSColor? = r.drop ? p.accentTint : r.editing ? p.fillControl : r.current ? p.fillStrong : nil
@@ -210,7 +212,7 @@ final class SidebarLiftLayer: CALayer {
         ring.borderWidth = 0.5
         ring.borderColor = p.shadowLiftRing.cgColor
         addSublayer(ring)
-        tile.set(monogram: monogram, color: p.listColor(slot: slot), palette: p)
+        tile.set(monogram: monogram, hue: p.tile(slot: slot), palette: p)
         tile.position = CGPoint(x: SB.tileX + tile.bounds.width / 2, y: SB.rowHeight / 2)
         addSublayer(tile)
         // `.tt`: 7 after the tile to the 10pt right padding, on the row's own text line (the row's 0.5 nudge too, so the

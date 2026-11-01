@@ -45,14 +45,15 @@ extension WindowState.Route {
         }
     }
 
-    /// Its colour: magenta, cyan, green; the Trash has none of its own (`ink-secondary`, css:414).
-    func glyphColor(_ p: TK.Palette) -> NSColor {
+    /// Its tile's hue (B, COLOR.md §2): Today the accent's, then the magenta, cyan and green slots'; the Trash the ink
+    /// slot's graphite.
+    func tileHue(_ p: TK.Palette) -> NSColor {
         switch self {
-        case .today: p.list(.yellow)
-        case .upcoming: p.list(.magenta)
-        case .undated: p.list(.cyan)
-        case .completed: p.list(.green)
-        default: p.inkSecondary
+        case .today: p.tileToday
+        case .upcoming: p.tile(.magenta)
+        case .undated: p.tile(.cyan)
+        case .completed: p.tile(.green)
+        default: p.tile(.ink)
         }
     }
 
