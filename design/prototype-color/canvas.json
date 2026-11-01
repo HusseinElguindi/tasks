@@ -1,0 +1,386 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-11-01T18:00:00Z"
+  },
+  "title": "Tasks · Colour (proposed)",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "designSystems": [
+    {
+      "title": "Pane",
+      "namespace": "pane",
+      "artifact": "https://claude.ai/artifact/MS3VdrN9VHU7A7pTUTzpm8",
+      "version": "1793379585-5267",
+      "copiedAt": "2026-11-01T18:00:00Z"
+    }
+  ],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1180,
+      "h": 764,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Prototype · the strip picks a direction (Now, A–D, the pick) or each feature on its own, dark or light"
+    },
+    "Spark.dc.html": {
+      "x": 1260,
+      "y": 0,
+      "w": 940,
+      "h": 560,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "D · the spark, looping: with the blue accent (D) and with Ember (the pick)"
+    },
+    "Palette.dc.html": {
+      "x": 2280,
+      "y": 0,
+      "w": 2600,
+      "h": 1420,
+      "radius": 12,
+      "is_interactive": false,
+      "title": "Tokens and contrast · every new or changed colour, dark and light, checked live"
+    },
+    "Now-List-Dark.dc.html": {
+      "x": 0,
+      "y": 1820,
+      "w": 1180,
+      "h": 720,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Now · School: a task just checked, the completed ones shown, the When popover open · dark"
+    },
+    "Now-Today-Dark.dc.html": {
+      "x": 1260,
+      "y": 1820,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Now · Today, a task selected · dark"
+    },
+    "Now-List-Light.dc.html": {
+      "x": 2340,
+      "y": 1820,
+      "w": 1180,
+      "h": 720,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Now · School: a task just checked, the completed ones shown, the When popover open · light"
+    },
+    "Now-Today-Light.dc.html": {
+      "x": 3600,
+      "y": 1820,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Now · Today, a task selected · light"
+    },
+    "Ember-List-Dark.dc.html": {
+      "x": 0,
+      "y": 2920,
+      "w": 1180,
+      "h": 720,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "A · Ember · School: a task just checked, the completed ones shown, the When popover open · dark"
+    },
+    "Ember-Today-Dark.dc.html": {
+      "x": 1260,
+      "y": 2920,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "A · Ember · Today, a task selected · dark"
+    },
+    "Ember-List-Light.dc.html": {
+      "x": 2340,
+      "y": 2920,
+      "w": 1180,
+      "h": 720,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "A · Ember · School: a task just checked, the completed ones shown, the When popover open · light"
+    },
+    "Ember-Today-Light.dc.html": {
+      "x": 3600,
+      "y": 2920,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "A · Ember · Today, a task selected · light"
+    },
+    "Tiles-List-Dark.dc.html": {
+      "x": 0,
+      "y": 4020,
+      "w": 1180,
+      "h": 720,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "B · Tiles · School: a task just checked, the completed ones shown, the When popover open · dark"
+    },
+    "Tiles-Today-Dark.dc.html": {
+      "x": 1260,
+      "y": 4020,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "B · Tiles · Today, a task selected · dark"
+    },
+    "Tiles-List-Light.dc.html": {
+      "x": 2340,
+      "y": 4020,
+      "w": 1180,
+      "h": 720,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "B · Tiles · School: a task just checked, the completed ones shown, the When popover open · light"
+    },
+    "Tiles-Today-Light.dc.html": {
+      "x": 3600,
+      "y": 4020,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "B · Tiles · Today, a task selected · light"
+    },
+    "Rooms-List-Dark.dc.html": {
+      "x": 0,
+      "y": 5120,
+      "w": 1180,
+      "h": 720,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "C · Rooms · School: a task just checked, the completed ones shown, the When popover open · dark"
+    },
+    "Rooms-Today-Dark.dc.html": {
+      "x": 1260,
+      "y": 5120,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "C · Rooms · Today, a task selected · dark"
+    },
+    "Rooms-List-Light.dc.html": {
+      "x": 2340,
+      "y": 5120,
+      "w": 1180,
+      "h": 720,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "C · Rooms · School: a task just checked, the completed ones shown, the When popover open · light"
+    },
+    "Rooms-Today-Light.dc.html": {
+      "x": 3600,
+      "y": 5120,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "C · Rooms · Today, a task selected · light"
+    },
+    "Moments-List-Dark.dc.html": {
+      "x": 0,
+      "y": 6220,
+      "w": 1180,
+      "h": 720,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "D · Moments · School: a task just checked, the completed ones shown, the When popover open · dark"
+    },
+    "Moments-Today-Dark.dc.html": {
+      "x": 1260,
+      "y": 6220,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "D · Moments · Today, a task selected · dark"
+    },
+    "Moments-List-Light.dc.html": {
+      "x": 2340,
+      "y": 6220,
+      "w": 1180,
+      "h": 720,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "D · Moments · School: a task just checked, the completed ones shown, the When popover open · light"
+    },
+    "Moments-Today-Light.dc.html": {
+      "x": 3600,
+      "y": 6220,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "D · Moments · Today, a task selected · light"
+    },
+    "Moments-Done-Dark.dc.html": {
+      "x": 4680,
+      "y": 6220,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "D · Moments · Today, all done · dark"
+    },
+    "Moments-Done-Light.dc.html": {
+      "x": 5760,
+      "y": 6220,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "D · Moments · Today, all done · light"
+    },
+    "Pick-List-Dark.dc.html": {
+      "x": 0,
+      "y": 7320,
+      "w": 1180,
+      "h": 720,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Pick · School: a task just checked, the completed ones shown, the When popover open · dark"
+    },
+    "Pick-Today-Dark.dc.html": {
+      "x": 1260,
+      "y": 7320,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Pick · Today, a task selected · dark"
+    },
+    "Pick-List-Light.dc.html": {
+      "x": 2340,
+      "y": 7320,
+      "w": 1180,
+      "h": 720,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Pick · School: a task just checked, the completed ones shown, the When popover open · light"
+    },
+    "Pick-Today-Light.dc.html": {
+      "x": 3600,
+      "y": 7320,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Pick · Today, a task selected · light"
+    },
+    "Pick-Done-Dark.dc.html": {
+      "x": 4680,
+      "y": 7320,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Pick · Today, all done · dark"
+    },
+    "Pick-Done-Light.dc.html": {
+      "x": 5760,
+      "y": 7320,
+      "w": 1000,
+      "h": 620,
+      "radius": 12,
+      "is_interactive": true,
+      "title": "Pick · Today, all done · light"
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Spark.dc.html",
+    "Palette.dc.html",
+    "Now-List-Dark.dc.html",
+    "Now-Today-Dark.dc.html",
+    "Now-List-Light.dc.html",
+    "Now-Today-Light.dc.html",
+    "Ember-List-Dark.dc.html",
+    "Ember-Today-Dark.dc.html",
+    "Ember-List-Light.dc.html",
+    "Ember-Today-Light.dc.html",
+    "Tiles-List-Dark.dc.html",
+    "Tiles-Today-Dark.dc.html",
+    "Tiles-List-Light.dc.html",
+    "Tiles-Today-Light.dc.html",
+    "Rooms-List-Dark.dc.html",
+    "Rooms-Today-Dark.dc.html",
+    "Rooms-List-Light.dc.html",
+    "Rooms-Today-Light.dc.html",
+    "Moments-List-Dark.dc.html",
+    "Moments-Today-Dark.dc.html",
+    "Moments-List-Light.dc.html",
+    "Moments-Today-Light.dc.html",
+    "Moments-Done-Dark.dc.html",
+    "Moments-Done-Light.dc.html",
+    "Pick-List-Dark.dc.html",
+    "Pick-Today-Dark.dc.html",
+    "Pick-List-Light.dc.html",
+    "Pick-Today-Light.dc.html",
+    "Pick-Done-Dark.dc.html",
+    "Pick-Done-Light.dc.html"
+  ],
+  "notes": {
+    "top": {
+      "x": 0,
+      "y": -300,
+      "text": "Tasks · colour: four directions and a pick",
+      "kind": "title1",
+      "maxW": 4880
+    },
+    "row-now": {
+      "x": 0,
+      "y": 1540,
+      "text": "Now: prototype-v2 as it is, for comparison",
+      "kind": "title1",
+      "maxW": 4600
+    },
+    "row-ember": {
+      "x": 0,
+      "y": 2640,
+      "text": "A · Ember: a warm accent, near the reference; the When ring keeps its blue",
+      "kind": "title1",
+      "maxW": 4600
+    },
+    "row-tiles": {
+      "x": 0,
+      "y": 3740,
+      "text": "B · Tiles: colour as iconography, solid tiles with white glyphs",
+      "kind": "title1",
+      "maxW": 4600
+    },
+    "row-rooms": {
+      "x": 0,
+      "y": 4840,
+      "text": "C · Rooms: each list and view has a hue, and its pane takes it",
+      "kind": "title1",
+      "maxW": 4600
+    },
+    "row-moments": {
+      "x": 0,
+      "y": 5940,
+      "text": "D · Moments: grey at rest, colour when something happens",
+      "kind": "title1",
+      "maxW": 6760
+    },
+    "row-pick": {
+      "x": 0,
+      "y": 7040,
+      "text": "The pick: A + B + D, Ember with solid tiles and the spark",
+      "kind": "title1",
+      "maxW": 6760
+    }
+  }
+}

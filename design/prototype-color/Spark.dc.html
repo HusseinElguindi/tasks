@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>D, the spark</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="tasks-v2.css">
+<link rel="stylesheet" href="color.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 940px; height: 560px; box-sizing: border-box; padding: 32px 40px; background: #0E0E0E; color: #A8ADB1; font: 13px/16px -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 40px; row-gap: 28px;">
+<sc-for list="{{cells}}" as="c" hint-placeholder-count="4">
+<div style="display: flex; flex-direction: column; gap: 12px;">
+<div style="font-weight: 600; color: #E6EDF3;">{{c.label}}</div>
+<div style="width: 410px; height: 176px; overflow: hidden; border-radius: 20px;">
+<div class="{{c.cls}}" style="width: 205px; height: 88px; background: var(--base); border-radius: 10px; box-shadow: inset 0 0 0 1px var(--line-pane); transform: scale(2); transform-origin: 0 0;">
+<div class="{{rowCls}}" style="left: 10px; right: 10px; top: 29px;">
+<button class="{{checkCls}}" type="button" aria-label="Complete: Renew transit pass"><svg class="ck" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.8 8.4l2.7 2.7 5.7-6.2"></path></svg><svg class="spark" viewBox="-22 -22 44 44" aria-hidden="true"><circle class="sp-ring" cx="0" cy="0" r="9"></circle><path class="sp-rays" d="M0 -11V-17M7.8 -7.8L11.3 -11.3M11 0H17M7.8 7.8L11.3 11.3M0 11V17M-7.8 7.8L-11.3 11.3M-11 0H-17M-7.8 -7.8L-11.3 -11.3"></path></svg></button>
+<span class="tt">Renew transit pass</span>
+</div>
+</div>
+</div>
+<div style="font-size: 12px; color: #7F8386;">{{c.note}}</div>
+</div>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":940,"height":560}}'>
+class Component extends DCLogic {
+  // One loop: open for 1.1 s, checked with the pop (the prototype holds 'pop' 720 ms), then checked for 1.5 s.
+  state = { phase: 0 };
+  componentDidMount() { this.cycle(); }
+  componentWillUnmount() { clearTimeout(this.t); }
+  cycle = () => {
+    this.setState({ phase: 0 });
+    this.t = setTimeout(() => {
+      this.setState({ phase: 1 });
+      this.t = setTimeout(() => { this.setState({ phase: 2 }); this.t = setTimeout(this.cycle, 1500); }, 720);
+    }, 1100);
+  };
+  renderVals() {
+    const p = this.state.phase;
+    return {
+      rowCls: 'row' + (p ? ' done' : '') + (p === 1 ? ' popped' : ''),
+      checkCls: 'check' + (p ? ' on' : '') + (p === 1 ? ' pop' : ''),
+      cells: [
+        { label: 'D · Moments, dark', cls: 'tk dark f-moments', note: 'The spark in clay, the box settling to the blue accent.' },
+        { label: 'D · Moments, light', cls: 'tk light f-moments', note: 'Spark #BA5530; the accent stays #0969DA.' },
+        { label: 'The pick, dark', cls: 'tk dark f-moments f-ember f-tiles', note: 'With Ember the spark is the accent, so the box keeps its colour.' },
+        { label: 'The pick, light', cls: 'tk light f-moments f-ember f-tiles', note: 'Ring 460 ms, rays 560 ms, the fill 520 ms, row and title 700 ms.' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

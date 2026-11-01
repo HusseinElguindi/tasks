@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Colour tokens and contrast</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 2600px; height: 1420px; box-sizing: border-box; padding: 40px; background: #141414; color: #E6EDF3; font: 13px/16px -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr) minmax(0, 1.45fr) minmax(0, 0.9fr); column-gap: 32px; align-items: start;">
+<sc-for list="{{cols}}" as="c" hint-placeholder-count="4">
+<section style="background: #1C1C1C; border-radius: 10px; box-shadow: inset 0 0 0 1px #323334; padding: 22px 22px 24px; display: flex; flex-direction: column; gap: 14px;">
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<h2 style="margin: 0; font-size: 17px; line-height: 22px; font-weight: 600;">{{c.title}}</h2>
+<p style="margin: 0; color: #A8ADB1; font-size: 12px; line-height: 17px;">{{c.sub}}</p>
+</div>
+<div style="font: 600 11px/14px -apple-system, system-ui, sans-serif; color: #7F8386; margin-top: 4px;">Tokens · dark, light</div>
+<div style="display: flex; flex-direction: column; gap: 2px;">
+<sc-for list="{{c.tokens}}" as="t" hint-placeholder-count="5">
+<div style="display: grid; grid-template-columns: minmax(0, 1fr) 118px 118px; column-gap: 12px; align-items: center; min-height: 34px; border-top: 1px solid #2A2B2C; padding-top: 4px;">
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;"><span style="font-weight: 500;">{{t.name}}</span><span style="color: #7F8386; font-size: 11px; line-height: 14px;">{{t.note}}</span></div>
+<div style="display: flex; align-items: center; gap: 8px;"><span style="{{t.dSw}}"></span><span style="font: 12px/16px 'SF Mono', ui-monospace, Menlo, monospace; color: #A8ADB1;">{{t.dHex}}</span></div>
+<div style="display: flex; align-items: center; gap: 8px;"><span style="{{t.lSw}}"></span><span style="font: 12px/16px 'SF Mono', ui-monospace, Menlo, monospace; color: #A8ADB1;">{{t.lHex}}</span></div>
+</div>
+</sc-for>
+</div>
+<sc-for list="{{c.tables}}" as="tb" hint-placeholder-count="1">
+<div style="display: flex; flex-direction: column; gap: 6px; margin-top: 6px;">
+<div style="font: 600 11px/14px -apple-system, system-ui, sans-serif; color: #7F8386;">{{tb.caption}}</div>
+<table style="border-collapse: collapse; width: 100%; font-size: 12px; line-height: 16px;">
+<thead><tr><sc-for list="{{tb.heads}}" as="h" hint-placeholder-count="4"><th scope="col" style="{{h.st}}">{{h.t}}</th></sc-for></tr></thead>
+<tbody><sc-for list="{{tb.rows}}" as="r" hint-placeholder-count="5"><tr><sc-for list="{{r.cells}}" as="x" hint-placeholder-count="4"><td style="{{x.st}}">{{x.t}}</td></sc-for></tr></sc-for></tbody>
+</table>
+</div>
+</sc-for>
+<sc-for list="{{c.notes}}" as="n" hint-placeholder-count="2"><p style="margin: 0; color: #A8ADB1; font-size: 12px; line-height: 17px;">{{n}}</p></sc-for>
+</section>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2600,"height":1420}}'>
+// Every ratio here is computed from the hexes (WCAG 2), and every mix is a straight sRGB mix, as color.css's
+// color-mix(in srgb) and THEMES.md §2.4 are. A failing ratio shows in red with "fails".
+const HEX = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const LIN = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+const LUM = (h) => { const [r, g, b] = HEX(h); return 0.2126 * LIN(r) + 0.7152 * LIN(g) + 0.0722 * LIN(b); };
+const RATIO = (a, b) => { const x = LUM(a), y = LUM(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+const MIX = (a, b, t) => { const A = HEX(a), B = HEX(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join('').toUpperCase(); };
+const D = { base: '#1C1C1C', popover: '#262626', sel: '#333333', strong: '#444444', ink: '#E6EDF3', ink2: '#A8ADB1' };
+const L = { base: '#FFFFFF', popover: '#FFFFFF', sel: '#E6E6E8', strong: '#E0E0E1', ink: '#1F2328', ink2: '#626568' };
+const SW = (hex) => 'width: 18px; height: 18px; border-radius: 5px; flex: none; background: ' + hex + '; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);';
+const tok = (name, note, d, l) => ({ name, note, dHex: d, lHex: l, dSw: SW(d), lSw: SW(l) });
+const TH = 'text-align: left; font-weight: 500; color: #7F8386; padding: 4px 6px 4px 0; border-bottom: 1px solid #2A2B2C;';
+const TD = 'padding: 5px 6px 5px 0; border-bottom: 1px solid #242526; font-variant-numeric: tabular-nums;';
+const cell = (t) => ({ t, st: TD + ' color: #A8ADB1;' });
+const rcell = (a, b, floor) => { const r = RATIO(a, b), ok = r >= floor; return { t: r.toFixed(2) + (ok ? '' : ' fails'), st: TD + ' color: ' + (ok ? '#E6EDF3' : '#FF7B72') + ';' }; };
+const heads = (...hs) => hs.map((t) => ({ t, st: TH }));
+
+class Component extends DCLogic {
+  renderVals() {
+    // A · Ember
+    const eD = { accent: '#D66F49', text: '#DA8B6E', tint: '#342722', plan: '#5799F6' };
+    const eL = { accent: '#AE4E2B', text: '#AE4E2B', tint: '#F7EDEA', plan: '#0969DA' };
+    const ember = {
+      title: 'A · Ember',
+      sub: 'The accent becomes the reference clay (its dark value is #D66F49 itself). The When ring keeps the blue as a new token, plan. Danger and attention are unchanged.',
+      tokens: [
+        tok('accent', 'was #2F81F7 / #0969DA', eD.accent, eL.accent),
+        tok('accent-text', 'was #5799F6 / #0969DA', eD.text, eL.text),
+        tok('accent-tint', 'base → accent 13% / 10%', eD.tint, eL.tint),
+        tok('text-selection', 'accent at 42% / 22%', MIX(D.base, eD.accent, 0.42), MIX(L.base, eL.accent, 0.22)),
+        tok('plan (new)', 'the When ring; today’s accent-text', eD.plan, eL.plan),
+        tok('danger, unchanged', 'hue 4° (dark), 356° (light); the accent is 16°', '#FF7B72', '#CF222E'),
+        tok('attention, unchanged', 'hue 41°; Today’s sun leaves it for the accent', '#D29922', '#9A6700'),
+      ],
+      tables: [{
+        caption: 'Contrast · floor from THEMES.md §2.5',
+        heads: heads('Pair', 'Dark', 'Light', 'Floor'),
+        rows: [
+          ['accent-text on base', eD.text, D.base, eL.text, L.base, 4.5],
+          ['accent-text on popover', eD.text, D.popover, eL.text, L.popover, 4.5],
+          ['accent-text on accent-tint', eD.text, eD.tint, eL.text, eL.tint, 4.5],
+          ['accent on base (box, rings)', eD.accent, D.base, eL.accent, L.base, 3],
+          ['white on accent (check, menu item)', '#FFFFFF', eD.accent, '#FFFFFF', eL.accent, 3],
+          ['plan on base (the When ring)', eD.plan, D.base, eL.plan, L.base, 3],
+        ].map(([n, a, b, c, d, f]) => ({ cells: [cell(n), rcell(a, b, f), rcell(c, d, f), cell(f + ':1')] })),
+      }],
+      notes: ['White on the dark accent is 3.37:1; Rex’s blue is 3.75:1. Both pass the 3:1 the checkmark and a highlighted menu item are held to.'],
+    };
+
+    // B · Tiles
+    const tiles = [['Today', 'the sun', '#D66F49', 3], ['Upcoming · magenta slot', 'a calendar; a letter', '#7C5CD6', 4.5], ['Undated · cyan slot', 'layers; a letter', '#17808A', 4.5], ['Completed · green slot', 'a check; a letter', '#27824A', 4.5], ['blue slot', 'a letter', '#2F6FEB', 4.5], ['yellow slot', 'ochre: a letter', '#946818', 4.5], ['red slot', 'rose: a letter', '#C9456B', 4.5], ['Trash · ink slot', 'graphite', '#5A6068', 4.5]];
+    const tile = {
+      title: 'B · Tiles',
+      sub: 'Solid tiles with a white glyph, the reference’s shape, the same in both appearances, as Pane’s tile colours are. Only tiles change.',
+      tokens: tiles.map(([n, note, hex]) => tok('tile · ' + n, note, hex, hex)),
+      tables: [{
+        caption: 'White glyph on the tile · letters 4.5:1, glyphs 3:1',
+        heads: heads('Tile', 'White on it', 'Floor'),
+        rows: tiles.map(([n, , hex, f]) => ({ cells: [cell(n), rcell('#FFFFFF', hex, f), cell(f + ':1')] })),
+      }],
+      notes: ['Today’s tile is the reference, #D66F49, at 3.37:1 for its sun: a glyph, so 3:1 holds. Every tile with a letter holds 4.5:1.'],
+    };
+
+    // C · Rooms
+    const hues = [
+      ['blue', '#58A6FF', '#0969DA', null],
+      ['magenta (violet)', '#BC8CFF', '#8250DF', null],
+      ['green', '#3FB950', '#116329', null],
+      ['cyan (teal)', '#39C5CF', '#1B7C83', null],
+      ['yellow → lime', '#A3C94A', '#567312', null],
+      ['red → rose', '#F778BA', '#B4357F', null],
+      ['Today · clay', '#D66F49', '#AE4E2B', '#DA8B6E'],
+    ];
+    const roomRows = (S, dark) => hues.map(([n, dh, lh, dText]) => {
+      const h = dark ? dh : lh, text = dark && dText ? dText : h;
+      const wash = MIX(S.base, h, dark ? 0.12 : 0.08), sel = MIX(S.base, h, dark ? 0.18 : 0.12), cap = MIX(S.strong, h, dark ? 0.24 : 0.16);
+      const mark = dark ? '#1C1C1C' : '#FFFFFF';
+      return { cells: [cell(n), rcell(text, S.base, 4.5), rcell(text, wash, 3), rcell(S.ink2, sel, 4.5), rcell(S.ink, cap, 4.5), rcell(mark, h, 3)] };
+    });
+    const rooms = {
+      title: 'C · Rooms',
+      sub: 'Each list keeps its slot, and its slot’s hue paints its room. Two slots move off the deadline tones: red to rose, yellow to lime. Views: Today clay, Upcoming violet, Undated teal, Completed green, Trash none.',
+      tokens: hues.map(([n, dh, lh, dText]) => tok(n, dText ? 'title text ' + dText + ' in dark' : n.includes('→') ? 'was ' + (n.startsWith('yellow') ? '#D29922 / #9A6700' : '#FF7B72 / #CF222E') : 'the ANSI slot, unchanged', dh, lh)).concat([
+        tok('wash', 'hue at 12% / 8%, fading out over 220pt', MIX(D.base, '#39C5CF', 0.12), MIX(L.base, '#1B7C83', 0.08)),
+        tok('selection', 'base → hue 18% / 12% (teal shown)', MIX(D.base, '#39C5CF', 0.18), MIX(L.base, '#1B7C83', 0.12)),
+        tok('current capsule', 'fill-strong → hue 24% / 16%', MIX(D.strong, '#39C5CF', 0.24), MIX(L.strong, '#1B7C83', 0.16)),
+      ]),
+      tables: [
+        { caption: 'Dark · title and labels on base, the title on the wash, ink-2 on the selection, ink on the capsule, the cut-out check on the hue', heads: heads('Hue', 'On base', 'On wash', 'Selection', 'Capsule', 'Check'), rows: roomRows(D, true) },
+        { caption: 'Light · the same, with a white check', heads: heads('Hue', 'On base', 'On wash', 'Selection', 'Capsule', 'Check'), rows: roomRows(L, false) },
+      ],
+      notes: ['Floors: 4.5:1 for text, 3:1 for the 20pt title on the wash and for the check. In dark the check is cut out of the hue (the base colour), since white on the six list hues is under 3:1 (1.9 to 2.5).'],
+    };
+
+    // D · Moments
+    const sD = '#E8845C', sL = '#BA5530';
+    const moments = {
+      title: 'D · Moments',
+      sub: 'At rest nothing changes. Colour arrives with an event and leaves within a second: checking a task, and Today all done.',
+      tokens: [
+        tok('spark (new)', 'the burst, the flash, the all-done sun', sD, sL),
+        tok('spark with Ember', '= accent-text, so the box keeps its colour', '#DA8B6E', '#AE4E2B'),
+        tok('row flash', 'spark at 14%, to nothing in 700 ms', MIX(D.base, sD, 0.14), MIX(L.base, sL, 0.14)),
+      ],
+      tables: [
+        {
+          caption: 'Contrast',
+          heads: heads('Pair', 'Dark', 'Light', 'Floor'),
+          rows: [
+            ['spark on base (ring, rays, sun)', sD, D.base, sL, L.base, 3],
+            ['spark title on base (first frame)', sD, D.base, sL, L.base, 4.5],
+            ['spark title on the selection', sD, D.sel, sL, L.sel, 4.5],
+          ].map(([n, a, b, c, d, f]) => ({ cells: [cell(n), rcell(a, b, f), rcell(c, d, f), cell(f + ':1')] })),
+        },
+        {
+          caption: 'Motion · all of it is off with Reduce Motion',
+          heads: heads('Part', 'Time', 'What'),
+          rows: [
+            ['Ring', '460 ms', 'scale 0.9 → 2.1, fading'],
+            ['Rays', '560 ms', 'eight, scale 0.55 → 1.2'],
+            ['Box', '520 ms', 'spark → the accent'],
+            ['Row, title', '700 ms', 'spark → none, → ink-3'],
+            ['All-done sun', '900 ms', 'rays turn in, once'],
+          ].map((r) => ({ cells: r.map(cell) })),
+        },
+      ],
+      notes: ['One pair fails on purpose: in light, the spark title on a selected row starts at 3.8:1 and fades to ink-3 within 700 ms. The title is never read in the spark; the words are the same before and after.'],
+    };
+    return { cols: [ember, tile, rooms, moments] };
+  }
+}
+</script>
+</body>
+</html>

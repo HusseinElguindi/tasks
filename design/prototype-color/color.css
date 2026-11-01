@@ -1,0 +1,144 @@
+/* Tasks · colour directions (design/COLOR.md).
+   Loaded after tasks-v2.css and markdown.css, which are prototype-v2's, unchanged. The root carries one class per
+   feature (f-ember, f-tiles, f-rooms, f-moments) and its room (room-<list colour> or room-<view>); a direction is a
+   preset of features (DIRS in Main.dc.html). With no feature on, everything here resolves to prototype-v2's values. */
+
+/* ---------- Shared: tokens every direction reads, at their current values ---------- */
+.tk { --plan: var(--accent-text); }           /* the When ring (planned for today); A splits it from the accent */
+.tk.dark { --clay: #D66F49; --clay-text: #DA8B6E; --spark: #E8845C; }
+.tk.light { --clay: #AE4E2B; --clay-text: #AE4E2B; --spark: #BA5530; }
+
+/* The views' glyphs, by view rather than by ANSI name, so a direction can recolour one view. Today was c-yellow. */
+.tk .c-today { color: var(--ansi-yellow); }
+.tk .c-up { color: var(--ansi-magenta); }
+.tk .c-und { color: var(--ansi-cyan); }
+.tk .c-done { color: var(--ansi-green); }
+.tk .c-trash { color: var(--ink-2); }
+
+/* The When ring reads --plan (it read accent-text). */
+.tk :where(.check.plate):not(.on) { box-shadow: inset 0 0 0 1.5px var(--plan); }
+.tk .check.plate.late:not(.on)::before, .tk .check.plate.due:not(.on)::before { box-shadow: inset 0 0 0 1.25px var(--plan); }
+
+/* D's spark and the all-done sun are in the markup for every direction and drawn only by D. */
+.tk .check .spark { display: none; }
+.tk .eg-alldone .eg-s { display: none; }
+
+/* ---------- A · Ember: a warm accent ----------
+   The accent becomes the reference's clay: the checked box, the highlighted day and menu item, focus and drop rings,
+   links, tinted buttons, text selection, the Today sun and the brand mark's head. The When ring keeps the blue it has
+   now, as its own token (--plan), so "planned" stays cool and the warm hues are deadlines and doing. */
+.tk.dark.f-ember { --accent: #D66F49; --accent-text: #DA8B6E; --accent-tint: #342722; --on-accent: #FFFFFF; --text-sel: rgba(214, 111, 73, 0.42); --plan: #5799F6; }
+.tk.light.f-ember { --accent: #AE4E2B; --accent-text: #AE4E2B; --accent-tint: #F7EDEA; --on-accent: #FFFFFF; --text-sel: rgba(174, 78, 43, 0.22); --plan: #0969DA; }
+.tk.f-ember { --spark: var(--accent-text); }
+.tk.f-ember .c-today { color: var(--accent-text); }
+.tk.f-ember .mk-head { fill: var(--accent); }
+
+/* ---------- C · Rooms: each list and view has a hue, and its pane takes it ----------
+   The hue paints the large title, its tile, a wash at the top of the pane, checked boxes, the selection, the current
+   sidebar capsule and the date popover. Lists use their slot's colour; Inbox (ink) has none and keeps the accent.
+   Views: Today clay (not yellow: amber is due today), Upcoming violet, Undated teal, Completed green, Trash none. */
+.tk.f-rooms { --rh: var(--accent); --rh-text: var(--ink); --rh-wash: transparent; }
+/* Two slots move off the deadline tones: red becomes rose (danger stays red) and yellow becomes lime (attention stays
+   amber). A slot is a role, not a hue (THEMES.md §2.1), and the app hands slots out by id, so nobody chose "yellow". */
+.tk.dark.f-rooms { --ansi-red: #F778BA; --ansi-yellow: #A3C94A; }
+.tk.light.f-rooms { --ansi-red: #B4357F; --ansi-yellow: #567312; }
+.tk.dark.f-rooms { --rh-on: #1C1C1C; --wash-amt: 12%; --sel-amt: 18%; --seldim-amt: 10%; --cap-amt: 24%; }
+.tk.light.f-rooms { --rh-on: #FFFFFF; --wash-amt: 8%; --sel-amt: 12%; --seldim-amt: 7%; --cap-amt: 16%; }
+.tk.f-rooms.room-blue { --rh: var(--ansi-blue); }
+.tk.f-rooms.room-magenta, .tk.f-rooms.room-upcoming { --rh: var(--ansi-magenta); }
+.tk.f-rooms.room-green, .tk.f-rooms.room-completed { --rh: var(--ansi-green); }
+.tk.f-rooms.room-cyan, .tk.f-rooms.room-undated { --rh: var(--ansi-cyan); }
+.tk.f-rooms.room-yellow { --rh: var(--ansi-yellow); }
+.tk.f-rooms.room-red { --rh: var(--ansi-red); }
+.tk.f-rooms.room-today { --rh: var(--clay); --rh-text: var(--clay-text); --rh-wash: color-mix(in srgb, var(--clay) var(--wash-amt), transparent); }
+.tk.f-rooms:is(.room-blue, .room-magenta, .room-green, .room-cyan, .room-yellow, .room-red, .room-upcoming, .room-undated, .room-completed) { --rh-text: var(--rh); --rh-wash: color-mix(in srgb, var(--rh) var(--wash-amt), transparent); }
+.tk.f-rooms.room-trash { --rh: var(--ink-3); --rh-on: var(--base); }
+.tk.dark.f-rooms.room-ink { --rh-on: var(--on-accent); }
+
+/* A row, a Today label, the detail pane: their own list's hue (in Today, each group keeps its list's). */
+.tk.f-rooms { --lh: var(--accent); --lh-text: var(--ink-3); --lh-on: var(--on-accent); }
+.tk.f-rooms .l-blue { --lh: var(--ansi-blue); }
+.tk.f-rooms .l-magenta { --lh: var(--ansi-magenta); }
+.tk.f-rooms .l-green { --lh: var(--ansi-green); }
+.tk.f-rooms .l-cyan { --lh: var(--ansi-cyan); }
+.tk.f-rooms .l-yellow { --lh: var(--ansi-yellow); }
+.tk.f-rooms .l-red { --lh: var(--ansi-red); }
+.tk.f-rooms :is(.l-blue, .l-magenta, .l-green, .l-cyan, .l-yellow, .l-red) { --lh-text: var(--lh); --lh-on: var(--rh-on); }
+
+.tk.f-rooms .pane.lp::before { content: ""; position: absolute; left: 1px; right: 1px; top: 1px; height: 220px; border-radius: 9px 9px 0 0; background: linear-gradient(to bottom, var(--rh-wash), transparent); pointer-events: none; }
+.tk.f-rooms .lhead .lhn { color: var(--rh-text); }
+.tk.f-rooms:not(.room-ink) .lhead .lht .tile, .tk.f-rooms:not(.room-ink) .ph .pid .tile { background: var(--rh); color: var(--rh-on); box-shadow: none; }
+.tk.f-rooms .check.on { background: var(--lh); box-shadow: inset 0 0 0 1.5px var(--lh); color: var(--lh-on); }
+.tk.f-rooms .lp .row.sel:not(.l-ink) { background: color-mix(in srgb, var(--base), var(--lh) var(--sel-amt)); }   /* Inbox keeps the grey */
+.tk.f-rooms .lp:not(.focused):not(.single) .row.sel:not(.l-ink) { background: color-mix(in srgb, var(--dim), var(--lh) var(--seldim-amt)); }
+.tk.f-rooms .tglabel:is(.l-blue, .l-magenta, .l-green, .l-cyan, .l-yellow, .l-red) .gl { color: var(--lh); }
+.tk.f-rooms .c-today { color: var(--clay-text); }
+.tk.f-rooms .ev-today { color: var(--clay-text); }
+.tk.f-rooms .ev-up { color: var(--ansi-magenta); }
+.tk.f-rooms .ev-und { color: var(--ansi-cyan); }
+.tk.f-rooms .ev-done { color: var(--ansi-green); }
+.tk.f-rooms .empty { --accent: var(--rh); }   /* the all-done check takes Today's clay */
+/* The current sidebar row: the capsule mixes in the row's hue, edges too. Inbox and Trash stay grey. */
+.tk.f-rooms .srow { --lh: var(--fill-strong); }
+.tk.f-rooms .srow:has(> .tile.c-blue) { --lh: var(--ansi-blue); }
+.tk.f-rooms .srow:has(> .tile.c-magenta), .tk.f-rooms .srow:has(> .tile.c-up) { --lh: var(--ansi-magenta); }
+.tk.f-rooms .srow:has(> .tile.c-green), .tk.f-rooms .srow:has(> .tile.c-done) { --lh: var(--ansi-green); }
+.tk.f-rooms .srow:has(> .tile.c-cyan), .tk.f-rooms .srow:has(> .tile.c-und) { --lh: var(--ansi-cyan); }
+.tk.f-rooms .srow:has(> .tile.c-yellow) { --lh: var(--ansi-yellow); }
+.tk.f-rooms .srow:has(> .tile.c-red) { --lh: var(--ansi-red); }
+.tk.f-rooms .srow:has(> .tile.c-today) { --lh: var(--clay); }
+.tk.f-rooms .srow.cur { background: color-mix(in srgb, var(--fill-strong), var(--lh) var(--cap-amt)); box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--edge-outer), var(--lh) var(--cap-amt)), inset 0 0 0 1px color-mix(in srgb, var(--edge-inner), var(--lh) var(--cap-amt)); }
+/* The date popover belongs to a task in the room: its highlighted day, today's number and quick picks take the hue. */
+.tk.f-rooms:not(.room-ink):not(.room-trash) .picker { --accent: var(--rh); --accent-text: var(--rh-text); --accent-tint: color-mix(in srgb, var(--popover), var(--rh) 16%); --on-accent: var(--rh-on); }
+
+/* ---------- B · Tiles: colour as iconography ----------
+   Every tile is a solid colour with a white glyph, the reference's shape: views and lists in the sidebar, the band's
+   and the large title's tile, menus, the detail pane's List, a dragged list. Nothing else changes. One set for both
+   appearances; each holds 4.5:1 for its white letter, Today's 3.37:1 for its glyph (non-text, 3:1). Placed after A
+   and C so their glyph colours don't reach into a solid tile. */
+.tk.f-tiles :is(.tile, .vg) { background: var(--tc, #5A6068); color: #FFFFFF; box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.14); }
+.tk.f-tiles .c-today { --tc: #D66F49; }
+.tk.f-tiles .c-up, .tk.f-tiles .c-magenta { --tc: #7C5CD6; }
+.tk.f-tiles .c-und, .tk.f-tiles .c-cyan { --tc: #17808A; }
+.tk.f-tiles .c-done, .tk.f-tiles .c-green { --tc: #27824A; }
+.tk.f-tiles .c-blue { --tc: #2F6FEB; }
+.tk.f-tiles .c-yellow { --tc: #946818; }
+.tk.f-tiles .c-red { --tc: #C9456B; }
+.tk.f-tiles .c-trash, .tk.f-tiles .c-ink { --tc: #5A6068; }
+.tk.f-tiles .vg { width: 20px; height: 16px; flex: none; border-radius: 4px; display: grid; place-items: center; }
+.tk.f-tiles .vg.sm { width: 16px; height: 13px; border-radius: 3.5px; }
+.tk.f-tiles .vg .i, .tk.f-tiles .lhead .lht > span.vg > .i { width: 12px; height: 12px; }
+.tk.f-tiles .vg.sm .i { width: 10px; height: 10px; }
+.tk.f-tiles .srow.arch .tile { opacity: 0.55; }
+/* With C as well: the room's tile in the title keeps the room's hue. */
+.tk.f-tiles.f-rooms .lhead .lht .tile, .tk.f-tiles.f-rooms .ph .pid .tile { background: var(--rh); color: var(--rh-on); }
+
+/* ---------- D · Moments: colour at events ----------
+   At rest, nothing changes. Checking a task sparks: a ring and eight rays leave the box in --spark, the box fills
+   from the spark to the accent, and the title and row flash warm and settle (720 ms in all, within the pop). Today
+   all done shows a sun in the spark with a faint sunrise at the top of the pane (the pane's ::before, which C's wash
+   also uses: with both, the sunrise wins). Reduce Motion drops all of it. */
+.tk.f-moments .check .spark { display: block; position: absolute; left: -14px; top: -14px; width: 44px; height: 44px; overflow: visible; pointer-events: none; opacity: 0; }
+.tk.f-moments .check.pop.on .spark { opacity: 1; }
+.tk.f-moments .spark .sp-ring { fill: none; stroke: var(--spark); stroke-width: 1.5; transform-origin: 0 0; }
+.tk.f-moments .spark .sp-rays { fill: none; stroke: var(--spark); stroke-width: 1.75; stroke-linecap: round; transform-origin: 0 0; }
+.tk.f-moments .check.pop.on .sp-ring { animation: tk-sp-ring 460ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.tk.f-moments .check.pop.on .sp-rays { animation: tk-sp-rays 560ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.tk.f-moments .check.pop.on { animation: tk-pop var(--dur-snappy) var(--ease-snappy), tk-sp-fill 520ms ease-out; }
+.tk.f-moments .row.popped { animation: tk-sp-row 700ms ease-out; }
+.tk.f-moments .row.popped .tt { animation: tk-sp-title 700ms ease-out; }
+.tk.f-moments .eg-alldone { --accent: var(--spark); }
+.tk.f-moments .eg-alldone .eg-c { display: none; }
+.tk.f-moments .eg-alldone .eg-s { display: block; width: 30px; height: 30px; }
+.tk.f-moments .eg-alldone .eg-s path { transform-origin: 8px 8px; animation: tk-sp-sun 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.tk.f-moments .eg-alldone .eg-s circle { fill: currentColor; }
+.tk.f-moments .lp:has(.eg-alldone)::before { content: ""; position: absolute; left: 1px; right: 1px; top: 1px; height: 260px; border-radius: 9px 9px 0 0; background: radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, var(--spark) 13%, transparent), transparent 70%); pointer-events: none; animation: tk-fade-in 900ms ease-out both; }
+.tk.light.f-moments .lp:has(.eg-alldone)::before { background: radial-gradient(120% 100% at 50% 0%, color-mix(in srgb, var(--spark) 9%, transparent), transparent 70%); }
+.tk.f-moments .lp:has(.eg-alldone) .empty .e1 { color: var(--ink); }
+
+@keyframes tk-sp-ring { from { transform: scale(0.9); opacity: 0.95; stroke-width: 2.5; } to { transform: scale(2.1); opacity: 0; stroke-width: 0.4; } }
+@keyframes tk-sp-rays { 0% { transform: scale(0.55) rotate(-8deg); opacity: 0; } 22% { opacity: 1; } 100% { transform: scale(1.2) rotate(0deg); opacity: 0; } }
+@keyframes tk-sp-fill { from { background-color: var(--spark); box-shadow: inset 0 0 0 1.5px var(--spark); } }
+@keyframes tk-sp-row { from { background-color: color-mix(in srgb, var(--spark) 14%, transparent); } }
+@keyframes tk-sp-title { from { color: var(--spark); } }
+@keyframes tk-sp-sun { from { transform: scale(0.5) rotate(-40deg); opacity: 0; } }
