@@ -4,7 +4,9 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "test": "vitest run",
+    "test": "vitest run && vitest run -c vitest.workers.config.ts",
+    "test:node": "vitest run",
+    "test:workers": "vitest run -c vitest.workers.config.ts",
     "typecheck": "tsc --noEmit",
     "parity": "pnpm parity:swift && pnpm parity:cli && pnpm parity:gzip",
     "parity:swift": "cd parity && mise x swift -- swift run golden ../test/golden",
@@ -16,6 +18,7 @@
     "sucrase": "3.35.0"
   },
   "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.4.11",
     "@types/node": "^26.6.6",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5",

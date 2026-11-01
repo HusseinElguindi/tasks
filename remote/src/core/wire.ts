@@ -15,6 +15,8 @@ export interface LogEntry {
 export interface RawEntry {
   entry: LogEntry;
   json: string;
+  /** The entry's `op`, verbatim (the server's stored text): the 409 recovery queue resends it as is. */
+  opText: string;
 }
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -90,7 +92,7 @@ export function decodePage(text: string): SyncPage | null {
   for (const e of raw.entries) {
     const entry = decodeEntry(e);
     if (!entry) return null;
-    entries.push({ entry, json: JSON.stringify(e) });
+    entries.push({ entry, json: JSON.stringify(e), opText: JSON.stringify((e as { op?: unknown }).op ?? null) });
   }
   return { entries, head: raw.head, more: raw.more };
 }

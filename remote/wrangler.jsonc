@@ -1,0 +1,25 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tasks-mcp",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-15",
+  // node:crypto: SHA-256 for the derived ids (undo batches, add({key})), as the server uses it.
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "durable_objects": {
+    "bindings": [{ "name": "REPLICA", "class_name": "Replica" }]
+  },
+  // Not deployed yet: later phases add their classes to v1 until the first deploy.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Replica"] }],
+  // The main Worker (server/), unchanged: POST /v1/sync with Bearer SYNC_TOKEN.
+  "services": [{ "binding": "SYNC", "service": "tasks" }],
+  "vars": {
+    // Today and every date the API reads or writes: an IANA zone, through Intl.
+    "TIME_ZONE": "America/Toronto",
+    // Numeric date phrases ("3/4"): md or dm, the CLI's TASKS_DATE_ORDER.
+    "DATE_ORDER": "md"
+  },
+  // The main Worker's API_TOKEN. Locally a dummy one in .dev.vars, against a local server/.
+  "secrets": { "required": ["SYNC_TOKEN"] },
+  "observability": { "enabled": true }
+}
