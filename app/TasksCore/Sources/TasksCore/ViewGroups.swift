@@ -83,8 +83,10 @@ public enum ViewGroups {
     // MARK: Completed and Trash
 
     /// Completed's and Trash's group for the local day a task was completed or deleted: a group per day for the last
-    /// week ("Today", "Yesterday", the weekday), then per month (dc:2297–2313).
+    /// week ("Today", "Yesterday", the weekday), then per month (dc:2297–2313). A stamp ahead of today (another
+    /// device's clock) is today's, in today's group (the user, 2026-11-02; the Mac's code read it as its weekday).
     public static func past(_ day: CalendarDate, today: CalendarDate) -> Group {
+        let day = min(day, today)
         let n = day.days(until: today)
         if n < 7 {
             let name = n == 0 ? "Today" : n == 1 ? "Yesterday" : weekday(day)

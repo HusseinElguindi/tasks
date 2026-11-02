@@ -67,8 +67,14 @@ final class ViewGroupsTests: XCTestCase {
         XCTAssertEqual(g("2026-10-26"), .init(id: "m:2026-10", kind: .month, day: nil, name: "October", sub: nil))
         XCTAssertEqual(g("2026-10-01"), .init(id: "m:2026-10", kind: .month, day: nil, name: "October", sub: nil))
         XCTAssertEqual(g("2025-12-15"), .init(id: "m:2025-12", kind: .month, day: nil, name: "December 2025", sub: nil))
-        // A stamp a day ahead (another device's clock) reads as its weekday, as on the Mac.
-        XCTAssertEqual(g("2026-11-03"), .init(id: "d:2026-11-03", kind: .day, day: date("2026-11-03"), name: "Tuesday", sub: "Nov 3"))
+    }
+
+    /// A completion or deletion stamped ahead of today (another device's clock) joins today's group, the same group.
+    func testPastPutsAStampAheadOfTodayInToday() {
+        let todays = ViewGroups.past(today, today: today)
+        XCTAssertEqual(todays, .init(id: "d:2026-11-02", kind: .day, day: date("2026-11-02"), name: "Today", sub: "Nov 2"))
+        XCTAssertEqual(ViewGroups.past(date("2026-11-03"), today: today), todays)
+        XCTAssertEqual(ViewGroups.past(date("2027-01-10"), today: today), todays)
     }
 
     func testRingCue() {
