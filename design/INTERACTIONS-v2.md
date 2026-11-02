@@ -443,7 +443,7 @@ The selected row scrolls into view, ending 8pt below the top or 12pt above the b
 | A list | ⌘N; the header's + | That list, at the bottom of its open tasks (SPEC §3: new tasks append) |
 | A list or Today | Double-clicking the empty space under the rows | As ⌘N (its first press has already cleared the selection, so in Today the task goes to the default list). A single press never adds |
 | An empty list | ⌘N, +, or double-clicking anywhere in the pane: the empty space is the whole pane, and the empty state says "Double-click anywhere here or press ⌘N to add one." | The first slot |
-| A deleted list, opened from Trash | As Trash: no +, ⌘N adds in the default list, a double-click on empty space does nothing (§28) | The default list |
+| Trash with a deleted list in the detail pane, or a list deleted elsewhere while open | As Trash: no +, ⌘N adds in the default list, a double-click on empty space does nothing (§28) | The default list |
 | Today | ⌘N; the header's + | The selected task's list if a task is selected, else the default list (the first active list, SPEC §2); **When = today**. It lands at the bottom of that list's Today group; if the group wasn't showing, its label fades in above it |
 | Today | A group label's + (revealed on hover) | That list, When = today |
 | The sidebar | A list's context menu → "New Task in School" | Opens School, then as a list |
@@ -1299,7 +1299,7 @@ type-select, ← → Tab move between the sidebar, the list and the details.
 - **Put Back in ▸** (context menu) and a drag onto a sidebar list put it at the bottom of another list
   (`set {deleted: false, list, order}`). Context menu: Show Details, Put Back, Put Back in ▸ (`dc:3379–3387`).
 - **Deleted lists** (§28): one row each, on the day the list was deleted, that expands to show its tasks and opens
-  read-only; Restore brings the list back with everything it held. A task whose list is in Trash has no home to go
+  read-only in the detail pane (the user, 2026-11-01); Restore brings the list back with everything it held. A task whose list is in Trash has no home to go
   back to: ⌘⌫ and ↶ pop "Put back in", and its context menu is Show Details, Put Back in ▸.
 - **Deleting from every other view** is unchanged (§9): soft, immediate, "Deleted …" with Undo. The notice doesn't
   say Trash; the sidebar row is always there to find it.
@@ -2036,7 +2036,10 @@ would move it.
 
 ## 28. Delete List: a deleted list lives in Trash
 
-Status: **final, direction A (the user, 2026-11-01); built** (`docs/TASK-build-delete-list.md`). The design brief is
+Status: **final, direction A (the user, 2026-11-01); built** (`docs/TASK-build-delete-list.md`). **Opening changed
+the same day (the user, 2026-11-01):** a deleted list opens in the detail pane, as the list view, with Trash staying in
+the middle (`docs/TASK-deleted-list-in-detail.md`); "Selecting the row, or opening it" below replaces `Del-A`'s
+summary and `Del-Open`'s pane. The design brief is
 `docs/TASK-design-delete-list.md`. It replaces Archive everywhere: §12's Archive group, archive view and banner,
 Unarchive, and the Archive words in §2, §9, §10, §14, §15, §17, §21, §22 and §27, which now say so (the "Menus, keys and
 words" table below lists each one). Where this section and those disagree, this one wins. Directions B and C below are
@@ -2114,31 +2117,41 @@ tasks under it. It starts collapsed. The state is local to the Mac and kept by l
 - They read as trashed rows (§22: `ink-secondary`, the box at 60% and deaf, no dates, no ring) and show no list name.
 - They select, type-select and walk with ↑ ↓ like any row.
 
-**Selecting the row** shows the list in the detail pane (`Del-A`):
+**Selecting the row, or opening it** shows the list in the **detail pane**, with Trash staying in the middle and the
+row selected. The user (2026-11-01): "i actually dont like the open view. it's hard to get back. i would like for it to
+open the same list view as in how normal lists open, but in the detail tab (with a restore banner of course). i dont
+want to rebuild things. reuse is better." This replaces both `Del-A`'s summary (Tasks, Place, the Restore and Open
+capsules, the footer) and `Del-Open`'s read-only list pane; the canvas still shows those.
 
-- The header holds the Trash glyph and "Trash", then ↶ (tooltip "Restore List ⌘⌫") and ×.
-- The body starts with the tile and name in 15/20 semibold, read-only, where a task's box and title go.
-- Two property rows follow. Tasks: "11 open · 4 completed". Place: "Lists, after Inbox", where Restore will put it
-  (the nearest live list above its key; "The top of Lists" when none).
-- Then Restore (tinted) and Open capsules, the separator, the list's notes read-only, and the footer "Created Aug 31 ·
-  Deleted Nov 1".
-
-**Opening** (Return, double-click, Open in its menu or the detail pane; `Del-Open`) shows the list's own pane,
-**read-only**. Trash stays current in the sidebar, since the list is in it.
-
-- **The banner** keeps the archive banner's metrics (`fill-control`, radius 8, padding 9 / 10 / 9 / 12, 6 below the
-  header, 10 in from the pane's sides, 10 between icon, text and button). It holds the trash glyph in `ink-secondary`,
-  "Deleted Nov 1" in 13pt `ink`, " · Read-only until you restore it." in 12pt `ink-secondary`, and a tinted
-  **Restore**.
-- **The large title** starts at 60, as an archived list's rows did (§23). It shows the tile, the name, and "In Trash"
-  in `ink-tertiary` in the subtitle slot. The band title, once it has scrolled under, reads the same.
-- **What's shown.** The notes, headings, tasks as trashed rows, and the Completed fold, which still opens and closes
-  because that isn't an edit.
-- **What you can do** is Trash's (§22): rows select, Return or a double-click shows a task in the detail pane, ⌘⌫ pops
-  "Put back in" (below), and a drag goes only to the sidebar. There's no +, ⌘N adds in the default list as it does in
-  Trash, and a double-click on empty space does nothing. An empty deleted list shows no empty state.
-- **Leaving.** Esc, once there's nothing left to cancel, goes back to Trash with the list's row selected, and so does
-  pressing Trash.
+- **When.** The detail pane follows the selection, so with it open, selecting the row shows the list there. Return,
+  a double-click, and Open in its menu show the pane if it's closed and give it the keys. ⌘D shows or hides it and
+  leaves the keys where they are.
+- **The header** holds the Trash glyph and "Trash", then ↶ (tooltip "Restore List ⌘⌫") and ×.
+- **The body is the list pane's own list view**, not a copy, so it's the list as it opens in the list pane: the banner,
+  the large title, the notes, the headings, the rows and the Completed fold.
+  - **The banner** keeps the archive banner's metrics (`fill-control`, radius 8, padding 9 / 10 / 9 / 12, 6 below the
+    header, 10 in from the pane's sides, 10 between icon, text and button). It holds the trash glyph in
+    `ink-secondary`, "Deleted Nov 1" in 13pt `ink`, " · Read-only until you restore it." in 12pt `ink-secondary`, and a
+    tinted **Restore**.
+  - **The large title** starts at 60, under the banner. It shows the tile, the name, and "In Trash" in `ink-tertiary`
+    in the subtitle slot.
+  - **The notes, headings and tasks** are a list's, read-only. A deleted list with no notes leaves no notes slot. An
+    empty deleted list shows no empty state.
+- **What you can do there.** Headings fold with their chevron, which shows on hover, and the Completed row opens and
+  closes. Neither is an edit, and the folds are the list's own, so they're still there when it's restored. Restore is
+  in the banner. Nothing else takes a press. The rows don't select, light up on hover, open a menu or drag: the
+  window's selection stays the list's row in Trash, so the keys and the menu bar keep one meaning there (⌘⌫ is Restore
+  List). A task is taken out on its own from the expanded row in Trash (One task out, below).
+- **Keys** are the detail pane's, acting on the row in Trash. Esc, ×, or ⌘D closes the pane and gives the keys back
+  to Trash. ↑ ↓ move the selection in Trash, and the pane follows it. Page Up and Page Down scroll the list. Space
+  expands or collapses the row in Trash.
+- **Width.** The pane's 340pt minimum is wider than the list pane's 220pt one, so the list fits as a narrow list does:
+  the banner's words take two lines, the notes wrap, and a long title fades at the row's end. In a window under ~900pt
+  the detail pane replaces the list pane, as it does for a task, and the list has the whole width.
+- **A list deleted elsewhere while it's open** (the CLI, another Mac) stays in the list pane, read-only under its
+  banner. That's the only time the list pane shows a deleted list. Its rows select as Trash's do, a drag goes only to
+  the sidebar, there's no +, and ⌘N adds in the default list. Esc, once there's nothing left to cancel, or pressing
+  Trash goes to Trash with the list's row selected.
 
 Archived lists were editable, so this is a change. SPEC §2's "Nothing is read-only" was Archive's rule, and Trash's
 rule (§22) takes over. An edit to something deleted is an edit nobody sees, the Finder works the same way, and Restore
@@ -2146,7 +2159,7 @@ is one key and undoes.
 
 **Restoring** (`Del-Restored`). Any of these restores the list:
 
-- Restore in the banner or the detail pane, or ↶;
+- Restore in the banner, or ↶;
 - Restore List in its menu;
 - ⌘⌫ with its row selected (⌘⌫ in Trash takes things out, §22);
 - ⌘Z right after the delete.
@@ -2154,14 +2167,15 @@ is one key and undoes.
 It's one op, and the list comes back in its old place in Lists with everything it held. Tasks deleted on their own
 before stay in Trash, now with a live list to go back to, so ⌘⌫ on them is the plain Put Back again.
 
-- **From the row:** the row (and its tasks, if expanded) fades out as the rest close up, and the selection moves on
-  as for Put Back. Notice "Restored School" with Undo.
-- **From the opened pane:** the banner goes and the pane becomes the live list in place, its sidebar row current at
-  its old position. Same notice.
+- **From Trash** (the row, or the banner or ↶ in the detail pane): the row (and its tasks, if expanded) fades out as
+  the rest close up, and the selection moves on as for Put Back. The detail pane shows what's selected next, or closes
+  if nothing is. Notice "Restored School" with Undo.
+- **From the list pane** (a list deleted elsewhere while it was open): the banner goes and the pane becomes the live
+  list in place, its sidebar row current at its old position. Same notice.
 - The undo label is "Restore List".
 
-**One task out of a deleted list: yes** (`Del-A-PutBack`). Its tasks can be selected in the expanded row or the opened
-pane and taken out one at a time. Their own list is in Trash, so there's no "back" for them:
+**One task out of a deleted list: yes** (`Del-A-PutBack`). Its tasks can be selected in the expanded row in Trash and
+taken out one at a time. Their own list is in Trash, so there's no "back" for them:
 
 - ⌘⌫, or ↶ (tooltip "Put Back in… ⌘⌫"), pops the **"Put back in"** menu under the row, placed and keyed as ⇧⌘M's Move
   to (§10). Its header is "Put back in". Every live list is listed with its tile. The task's own list is there,
@@ -2272,12 +2286,33 @@ The build follows A and the prototype (`Del.dc.html`, `del.css`). What it settle
 - **The expanded state** is kept by list id across launches, like a heading's collapse. Collapsed, a list's tasks are
   folded under its row, so expanding unfolds them from it and collapsing folds them back (§23's motion).
 - **Keys:** → expands a selected deleted list; ← collapses it, and from one of its tasks selects the list's row (the
-  Finder's); otherwise ← goes to the sidebar as before. Space toggles. Return and Open open it; in the opened pane Esc
-  (with nothing left to cancel) and pressing Trash go back to Trash with its row selected. Type-select matches its name.
+  Finder's); otherwise ← goes to the sidebar as before. Space toggles. Return, a double-click and Open show it in the
+  detail pane with the keys (see the next section). Type-select matches its name.
 - **"Put back in"** lists the live lists and the task's own deleted list in sidebar order (by key), the deleted one
   disabled with "In Trash" right-aligned. With one task whose list is live, that list is checked.
-- **The opened pane:** a deleted list with no notes leaves no notes slot, so its rows start under the title (the
-  prototype's 60 + 46). A heading in it folds but has no +, and its menu is Collapse / Expand only. Nothing in it drags
-  except tasks out to a live list in the sidebar.
+- **A deleted list's list view** (in the detail pane, or the list pane for one deleted while open): a deleted list
+  with no notes leaves no notes slot, so its rows start under the title (the prototype's 60 + 46). A heading in it
+  folds but has no +. In the list pane its menu is Collapse / Expand only, and nothing drags except tasks out to a
+  live list in the sidebar.
 - **The CLI** is stricter than Archive was: a deleted list takes no edits (add, move into, rename, notes); `move --to`
   is Put back in, bottom only.
+
+### As built: in the detail pane (the user, 2026-11-01)
+
+`docs/TASK-deleted-list-in-detail.md`. The list pane's own view (`TaskListView`) is hosted in the detail pane; nothing
+about the list view was copied, and the Trash pane didn't change.
+
+- **How:** the detail pane draws the list with a second `TaskListView` on a window state of its own
+  (`WindowState.detailListState`), whose route is the deleted list. So the banner, the title, the notes, the headings
+  and the rows are the code the list pane uses. That state shares the window's overlays, and its folds (headings, the
+  Completed row) write through to the window's and back, so a fold made there is the list's own.
+- **Hosted, the view** never takes the keys and its rows take no press, hover, menu or drag. The detail pane's key
+  sink has the keys, and Page Up and Page Down go to the hosted list. Its banner's Restore restores from Trash, as the
+  row would.
+- **Gone:** the detail pane's list summary (`DeletedListDetail`: Tasks, Place, the Restore and Open capsules, the
+  footer) and opening into the list pane. The list pane still shows a list deleted elsewhere while it's open, as
+  before, with Esc and pressing Trash leading out.
+- **Checked** (scratch Tasks Dev, demo data, `-debugScript`): Return and a double-click on the row (the detail pane
+  takes the keys); a click on a row there (nothing selects); Labs folded by its chevron, then still folded in the list
+  pane once restored; Page Down; Esc (the pane closes, Trash has the keys); a click on the row with ⌘D; Restore in the
+  banner (the selection moves on, "Restored PHYS 122"); 420pt, the 340pt minimum and an 860pt window; dark and light.

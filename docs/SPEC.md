@@ -82,7 +82,7 @@ Deleting a list takes its tasks with it into Trash, and restoring it brings ever
 - **Effect:** a task in a deleted list counts as deleted everywhere that decides what's live: the sidebar, Today and its count, Upcoming, Undated, Completed, find, search, type-select, "Move to…" and drag targets. Everything stays in the log and in state.
 - **A task deleted on its own** before its list stays deleted when the list is restored. It shows in Trash on its own, on the day it was deleted.
 - **Undo:** ⌘Z clears `archivedAt`. So do Restore in Trash and the deleted list's banner.
-- **Where they're viewed:** Trash, which is always in the sidebar. A deleted list is one row on the day it was deleted, among the deleted tasks, newest first. It expands to show its tasks, and opens as its list screen with a "Deleted" banner and a Restore button.
+- **Where they're viewed:** Trash, which is always in the sidebar. A deleted list is one row on the day it was deleted, among the deleted tasks, newest first. It expands to show its tasks, and opens in the detail pane as its list screen with a "Deleted" banner and a Restore button (the user, 2026-11-01).
 - **Read-only:** a deleted list and its tasks don't take edits, as nothing in Trash does: an edit to something deleted is an edit nobody sees. A single task can be taken out of a deleted list into a live one ("Put back in", a move).
 - **Concurrency:** a task moved into a list that another Mac deleted at the same time is deleted with it, and shows up under that list in Trash. Restoring puts the list back in its old sidebar spot, by its old key.
 
