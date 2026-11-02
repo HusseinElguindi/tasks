@@ -1,0 +1,84 @@
+# The iOS app. The Xcode project is generated from this file: `xcodegen generate` (XcodeGen 2.46). The generated
+# Tasks.xcodeproj is not checked in. It shares app/TasksCore with the Mac app: the data, Today, dates, ordering,
+# Markdown and sync are the Mac's own code.
+name: Tasks
+options:
+  bundleIdPrefix: com.elguindi
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+packages:
+  TasksCore:
+    path: ../app/TasksCore
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    # The team comes from Signing.local.xcconfig (not checked in; see Signing.xcconfig), so it isn't set here: a
+    # value here would win over the file.
+    CODE_SIGN_STYLE: Automatic
+targets:
+  Tasks:
+    type: application
+    platform: iOS
+    sources:
+      - path: Tasks
+    dependencies:
+      - package: TasksCore
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.elguindi.Tasks
+        PRODUCT_NAME: Tasks
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Tasks
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
+        # No encryption beyond Apple's (HTTPS): skips the export question on TestFlight.
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ENABLE_PREVIEWS: YES
+  TasksUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: TasksUITests
+    dependencies:
+      - target: Tasks
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.elguindi.TasksUITests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: Tasks
+schemes:
+  Tasks:
+    build:
+      targets:
+        Tasks: all
+        TasksUITests: [test]
+    test:
+      targets:
+        - TasksUITests
+  # TasksCore's own tests, run on iOS. Through this project rather than the package's scheme, which also builds the
+  # Mac-only CLI (and would write .swiftpm/ into app/TasksCore). A scheme of their own because their copied Resources
+  # folder fails ad hoc signing on the simulator, so they run with CODE_SIGNING_ALLOWED=NO (README.md), while the app
+  # and its UI tests keep normal signing.
+  TasksCoreTests:
+    build:
+      targets:
+        Tasks: [test]   # xcodegen wants a build target; the tests don't use it
+    test:
+      targets:
+        - package: TasksCore/TasksCoreTests
