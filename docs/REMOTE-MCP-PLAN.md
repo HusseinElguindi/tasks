@@ -130,8 +130,7 @@ Parity, all generated outside the Swift package:
 - **Error positions:** sucrase's source map takes them back to the TypeScript, as Deno does, so all 62 positioned
   errors in the CLI scenarios match. Lines always match; a column can differ after TypeScript-only syntax on the same
   line, where Deno's map is coarser (it can point at an earlier token).
-- **Until phase 4,** `/mcp` takes `Authorization: Bearer <DEV_TOKEN>` (a local-only secret; unset means closed) and
-  writes as `agent:dev`.
+- **Phase 3 only:** `/mcp` took `Authorization: Bearer <DEV_TOKEN>` until phase 4 replaced it with OAuth.
 
 **4. OAuth and the passkey.**
 - **OAuth:** `@cloudflare/workers-oauth-provider` serves `/mcp` as its API route, plus dynamic client registration.
@@ -141,27 +140,66 @@ Parity, all generated outside the Swift package:
 - **Setup:** `/setup` with `SETUP_SECRET` registers the first passkey. After that, registration is closed in the Auth
   DO, and setup refuses.
 - **Test:** register, consent, token and an `/mcp` call, all locally, with a virtual authenticator in the tests.
+- **As built:**
+  - **The resource is the request's origin** + `/mcp` (one provider per origin), so the same build serves
+    localhost, workers.dev or a custom domain with no config. A token only works on the origin it was issued for.
+  - **Clients:** DCR at `/register` and Client ID Metadata Documents; `/token`; RFC 8414 and RFC 9728 metadata; a
+    401 on `/mcp` names the resource metadata. One scope, `tasks` (everything). Refresh tokens slide: a grant lives
+    60 days past its last refresh.
+  - **The actor** is `agent:` + a slug of the client's verified domain (CIMD: `claude.ai` → `agent:claude-ai`), else
+    of its self-asserted name (DCR: "Claude" → `agent:claude`). The page shows it, the grant's props carry it.
+  - **Consent** uses the library's helpers: the page holds a one-time handle bound to a `__Host-` cookie, ten
+    minutes. Allow runs a passkey assertion first and only then consumes the handle, so a refused passkey can be
+    retried. Deny sends `access_denied`. Everything from the client is escaped; nonce CSP, no framing.
+  - **The Auth DO** keeps the passkey (bound to the hostname it was made on, its RP ID), one-use challenges (five
+    minutes), and the registration flag. The first passkey and "closed" are written in one transaction.
+  - **Tests** use a software P-256 authenticator that builds real attestation and assertion responses, so
+    `@simplewebauthn/server` verifies them unchanged.
 
 ## Local dev
 
 `server/` runs unchanged under its own `wrangler dev` with `--var API_TOKEN:<dummy>` and `--persist-to` a folder in
 `remote/.wrangler/`. `tasks-mcp` runs in a second `wrangler dev`, and the dev registry resolves the `SYNC` service
-binding between the two. `remote/.dev.vars` (gitignored) holds the dummy `SYNC_TOKEN`, `DEV_TOKEN` (phase 3) and
-`SETUP_SECRET` (phase 4). `pnpm smoke` (`remote/scripts/dev-smoke.mjs`) runs exactly that, with dummy tokens and
-scratch state, then MCP over HTTP: a write, a read, an error, and the server's log. Nothing is created on Cloudflare.
+binding between the two. `remote/.dev.vars` (gitignored) holds the dummy `SYNC_TOKEN` and `SETUP_SECRET`.
+`pnpm smoke` (`remote/scripts/dev-smoke.mjs`) runs exactly that, with dummy secrets and scratch state, then the whole
+connection: the passkey on `/setup` (a virtual one), registration, consent, the code exchange, and MCP over HTTP with
+the token: a write, a read, an error, and the server's log. Nothing is created on Cloudflare. In a browser, use
+`http://localhost:8787` (not 127.0.0.1: a passkey can't be made for an IP address).
 
 ## For later (not run; the coordinator asks the user)
 
-```
+All from `remote/`, with `pnpm install` done, signed in to the account the main `tasks` Worker is on
+(`npx wrangler whoami`). Nothing here prints a token.
+
+```sh
 cd remote
-npx wrangler kv namespace create OAUTH_KV        # then put its id in wrangler.jsonc
-npx wrangler secret put SYNC_TOKEN               # the main Worker's API_TOKEN
-npx wrangler secret put SETUP_SECRET
-npx wrangler deploy
+
+# 1. The OAuth storage. Prints an id: put it in wrangler.jsonc as
+#    "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "<id>" }]
+npx wrangler kv namespace create OAUTH_KV
+
+# 2. The secrets file, outside the repo: SYNC_TOKEN is the main Worker's API_TOKEN (from ~/.tasks-sync.env),
+#    SETUP_SECRET a fresh random one.
+umask 077
+{ printf 'SYNC_TOKEN=%s\n' "$(sed -n 's/^API_TOKEN=//p' ~/.tasks-sync.env)"
+  printf 'SETUP_SECRET=%s\n' "$(openssl rand -base64 32 | tr '+/' '-_' | tr -d '=')"; } > ~/.tasks-mcp.env
+
+# 3. Deploy: the Worker, the v1 migration (Replica, Auth) and both secrets in one step.
+npx wrangler deploy --secrets-file ~/.tasks-mcp.env
 ```
 
-The DO migrations ship with that deploy. The main `tasks` Worker isn't touched. `DEV_TOKEN` is never set in
-production.
+Then:
+
+1. Open `https://tasks-mcp.<subdomain>.workers.dev/setup`, paste the setup secret
+   (`sed -n 's/^SETUP_SECRET=//p' ~/.tasks-mcp.env | pbcopy`), and create the passkey. Registration closes.
+2. In claude.ai: Settings → Connectors → Add custom connector, URL `https://tasks-mcp.<subdomain>.workers.dev/mcp`.
+   Approve it with the passkey; its changes show as `agent:claude-ai` (or the slug of the name it registers with).
+3. The busy-loop check below.
+
+The main `tasks` Worker isn't touched; `tasks-mcp` reaches it through the `SYNC` service binding, so both must be on
+the same account and the main one named `tasks`. Redeploys are `npx wrangler deploy` (the secrets, the replica and
+the passkey are kept). `SETUP_SECRET` can be deleted after setup (`npx wrangler secret delete SETUP_SECRET`);
+registration stays closed either way.
 
 **After the deploy: check that `limits.cpuMs` stops a busy loop** (it can't be checked locally). From a connected
 MCP client, run `tasks_run` with `while (true) {}`. Expect, within about 10–15 s,
@@ -176,4 +214,7 @@ the second waits, the replica is blocked: switch to the loop-guard fallback (pha
 - **The shared replica:** clients take turns through the run lock, so a slow script delays the next one by up to 10 s.
 - **A busy loop:** locally it blocks the replica until `wrangler dev` restarts; in production `limits.cpuMs` should
   stop it at 10 s (the post-deploy check). Unverified until then.
+- **One passkey, one hostname.** The passkey is bound to the host it was made on; moving to a custom domain means a
+  new passkey there, which needs registration reopened (delete the `registration` row in the Auth DO). Losing the
+  passkey means the same. Grants already issued keep working.
 - **Dates:** `Intl` in Workers carries full time zone data. DST edges are covered by the Today fixtures.
