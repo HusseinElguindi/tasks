@@ -11,17 +11,16 @@ struct ListPane: View {
     @Environment(\.tk) private var tk
 
     var body: some View {
-        let focused = window.focus == .list
-        // Alone in the window (the detail pane closed), the pane has no focus look (v2 feedback 3).
-        let single = !window.detailOpen
+        // Alone in the window (the detail pane closed), the pane's look follows Settings ▸ Highlight focused pane.
+        let look = PaneLook(focused: window.focus == .list, single: !window.detailOpen, highlight: window.paneHighlight)
         let actions = WindowActions(store: store, window: window)
         VStack(spacing: 0) {
-            ListPaneHeader(store: store, window: window, focused: focused, single: single, leadingInset: leadingInset, actions: actions)
+            ListPaneHeader(store: store, window: window, look: look, leadingInset: leadingInset, actions: actions)
             TaskListRepresentable(store: store, window: window, palette: tk)
         }
         // Today all done: D's sunrise at the top of the pane, behind the band (COLOR.md §4).
         .background(alignment: .top) { Sunrise(shown: window.allDone) }
-        .paneChrome(focused: focused, single: single)
+        .paneChrome(look)
         .overlay(alignment: .bottomTrailing) {
             NoticeView(overlays: window.overlays, actions: actions).padding(12)
         }
@@ -31,15 +30,14 @@ struct ListPane: View {
 struct ListPaneHeader: View {
     let store: Store
     @Bindable var window: WindowState
-    let focused: Bool
-    let single: Bool
+    let look: PaneLook
     let leadingInset: CGFloat
     let actions: WindowActions
     @Environment(\.tk) private var tk
 
     var body: some View {
         let p = store.projection
-        let lit = focused || single
+        let lit = look.keyed
         let listID = window.route.listID
         let list = listID.flatMap { p.listModel($0) }
         HStack(spacing: 8) {
@@ -92,7 +90,7 @@ struct ListPaneHeader: View {
                                  on: window.detailOpen, overlays: window.overlays) { actions.toggleDetail() }
             }
             .opacity(lit ? 1 : 0.55)
-            .paneLookAnimation(focused: focused, single: single)
+            .paneLookAnimation(look)
         }
         .padding(.leading, leadingInset)
         .padding(.trailing, 8)
@@ -123,34 +121,64 @@ struct ListPaneHeader: View {
 
 // MARK: - Pane chrome (§4 Pane focus)
 
-extension View {
-    /// `surface-base` and a 1pt inset `line-pane` edge when focused, `surface-dim` and `line-pane-dim` when not; radius
-    /// 10 (css:142–144). A pane alone in the window (`single`) shows no focus, whatever has the keys: the unfocused
-    /// fill and edge, its header and selected rows as in a focused pane (v2 feedback 3). In Glass the fill lets the
-    /// window's glass ground through (`TK.Glass.paneFill`).
-    func paneChrome(focused: Bool, single: Bool) -> some View { modifier(PaneChromeModifier(focused: focused, single: single)) }
+/// How a pane shows focus (§4 Pane focus): whether it has the keys, whether it's alone in the window (the list with the
+/// detail pane closed, or the narrow window's detail pane), and Settings ▸ Highlight focused pane (the user,
+/// 2026-11-01).
+struct PaneLook: Equatable {
+    let focused: Bool
+    let single: Bool
+    let highlight: AppModel.PaneHighlight
 
-    /// Focus changes on `focus` (60 ms); becoming or ceasing to be the only pane rides the detail pane's open and
-    /// close (`natural`), and wins when both change at once (it's the inner one).
-    func paneLookAnimation(focused: Bool, single: Bool) -> some View {
-        animation(TK.Motion.natural, value: single).animation(TK.Motion.focus, value: focused)
+    /// The active fill and edge (`surface-base`, `line-pane`); otherwise `surface-dim`, `line-pane-dim`. Always: when
+    /// focused. With two panes: when focused and not alone (v2 feedback 3). Never: not at all.
+    var lit: Bool {
+        switch highlight {
+        case .always: focused
+        case .twoPanes: focused && !single
+        case .never: false
+        }
+    }
+
+    /// Header icons at 100% and the title in `ink`, selected rows in `fill-row-selected`; otherwise 55%,
+    /// `ink-secondary` and `fill-row-selected-dim`. A pane alone shows these whatever has the keys, except with Always,
+    /// where it shows focus as with two panes. So with Never the header and the rows still tell the two panes apart.
+    var keyed: Bool { highlight == .always ? focused : focused || single }
+
+    /// The selected rows' focus in the task list, which has the window's state rather than a look.
+    @MainActor
+    static func rowsFocused(_ state: WindowState) -> Bool {
+        PaneLook(focused: state.focus == .list, single: !state.detailOpen, highlight: state.paneHighlight).keyed
+    }
+}
+
+extension View {
+    /// `surface-base` and a 1pt inset `line-pane` edge when lit, `surface-dim` and `line-pane-dim` when not (`PaneLook`);
+    /// radius 10 (css:142–144). In Glass the fill lets the window's glass ground through (`TK.Glass.paneFill`).
+    func paneChrome(_ look: PaneLook) -> some View { modifier(PaneChromeModifier(look: look)) }
+
+    /// Focus changes on `focus` (60 ms), and so does a new Settings choice; becoming or ceasing to be the only pane
+    /// rides the detail pane's open and close (`natural`), and wins when both change at once (it's the inner one). With
+    /// Always that changes nothing but the other pane's dimming.
+    func paneLookAnimation(_ look: PaneLook) -> some View {
+        animation(TK.Motion.natural, value: look.single)
+            .animation(TK.Motion.focus, value: look.focused)
+            .animation(TK.Motion.focus, value: look.highlight)
     }
 }
 
 private struct PaneChromeModifier: ViewModifier {
-    let focused: Bool
-    let single: Bool
+    let look: PaneLook
     @Environment(\.tk) private var tk
     @Environment(\.paneInterfaceStyle) private var style
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: TK.M.paneRadius, style: .circular)
-        let lit = focused && !single
+        let lit = look.lit
         content
             .background((lit ? tk.base : tk.dim).swiftUI.opacity(style == .glass ? TK.Glass.paneFill : 1), in: shape)
             .overlay(shape.strokeBorder((lit ? tk.linePane : tk.linePaneDim).swiftUI, lineWidth: 1))
             .clipShape(shape)
-            .paneLookAnimation(focused: focused, single: single)
+            .paneLookAnimation(look)
     }
 }
 

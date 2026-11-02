@@ -27,6 +27,21 @@ final class AppModel {
         static var current: TaskEditing { TaskEditing(rawValue: UserDefaults.standard.string(forKey: Keys.taskEditing) ?? "") ?? .detail }
     }
 
+    /// Settings ▸ Highlight focused pane (the user, 2026-11-01; INTERACTIONS-v2 §4 Pane focus): when the focused pane
+    /// shows its active fill and edge. Per Mac, never synced. A `-paneHighlight never` launch argument overrides it
+    /// without saving (UserDefaults' argument domain).
+    enum PaneHighlight: String, CaseIterable, Identifiable {
+        /// Even when it's the only pane (the default).
+        case always
+        /// Only while both panes are open (v2 feedback 3).
+        case twoPanes
+        /// Neutral fill and edge everywhere; the header and the selected rows still show which pane has the keys.
+        case never
+        var id: String { rawValue }
+
+        static var current: PaneHighlight { PaneHighlight(rawValue: UserDefaults.standard.string(forKey: Keys.paneHighlight) ?? "") ?? .always }
+    }
+
     private(set) var store: Store?
     let dataDirectory: URL
 
@@ -80,6 +95,10 @@ final class AppModel {
         didSet { UserDefaults.standard.set(interfaceStyle == .glass ? "glass" : "classic", forKey: Keys.interfaceStyle) }
     }
 
+    var paneHighlight: PaneHighlight {
+        didSet { UserDefaults.standard.set(paneHighlight.rawValue, forKey: Keys.paneHighlight) }
+    }
+
     var taskEditing: TaskEditing {
         didSet { UserDefaults.standard.set(taskEditing.rawValue, forKey: Keys.taskEditing) }
     }
@@ -95,6 +114,7 @@ final class AppModel {
         static let theme = "theme"
         static let interfaceStyle = "interfaceStyle"
         static let taskEditing = "taskEditing"
+        static let paneHighlight = "paneHighlight"
         /// Testing only: data directory and token from launch arguments (spec §10 end-to-end check).
         static let dataDirectory = "dataDirectory"
         static let syncToken = "syncToken"
@@ -117,6 +137,7 @@ final class AppModel {
         theme = ThemeChoice(rawValue: defaults.string(forKey: Keys.theme) ?? "") ?? .system
         interfaceStyle = defaults.string(forKey: Keys.interfaceStyle) == "glass" ? .glass : .classic
         taskEditing = TaskEditing.current
+        paneHighlight = PaneHighlight.current
         hasToken = defaults.string(forKey: Keys.syncToken) != nil || Keychain.token() != nil
         appearanceObservation = NSApplication.shared.observe(\.effectiveAppearance) { [weak self] app, _ in
             MainActor.assumeIsolated {

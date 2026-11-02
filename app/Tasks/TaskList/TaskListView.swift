@@ -241,8 +241,9 @@ final class TaskListView: NSView {
         let inToday = state.route == .today
         let today = p.day.date
         let detailOpen = state.detailOpen
-        // Alone in the window the pane shows no focus: selected rows keep the focused fill (v2 feedback 3).
-        let paneFocused = state.focus == .list || !detailOpen
+        // Alone in the window selected rows keep the focused fill (v2 feedback 3), unless Settings ▸ Highlight focused
+        // pane is Always (`PaneLook.keyed`).
+        let paneFocused = PaneLook.rowsFocused(state)
         let selection = state.selection
         let rename = state.rename.flatMap { $0.kind == .task || $0.kind == .heading ? $0 : nil }
         let picker = state.overlays.picker
@@ -535,7 +536,7 @@ final class TaskListView: NSView {
             v.configure(key: key, name: name, plus: info?.plus ?? !isDone, palette: palette, width: rowW, sub: info?.sub,
                         quiet: info?.quiet ?? false, chevron: folds, collapsed: folds && state.todayDoneCollapsed,
                         count: L.doneCount, selected: folds && state.selection.contains(key),
-                        paneFocused: state.focus == .list || !state.detailOpen, animated: animate && !isNew)
+                        paneFocused: PaneLook.rowsFocused(state), animated: animate && !isNew)
             if folds, !isNew, v.collapsed != lastDoneCollapsed {
                 // Rows folding into it and unfolding from it pass under it: it goes above the rows.
                 doc.addSubview(v, positioned: .below, relativeTo: completedRow)

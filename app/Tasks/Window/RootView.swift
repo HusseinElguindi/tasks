@@ -37,6 +37,10 @@ struct RootView: View {
         .background(WindowConfigurator(ground: tk.ground, window: window))
         .frame(minWidth: 620, minHeight: 420)
         .onAppear { window.undoManager = undoManager }
+        .onChange(of: model.paneHighlight, initial: true) { _, new in
+            window.paneHighlight = new
+            window.detailList?.paneHighlight = new
+        }
         .onChange(of: undoManager) { _, new in window.undoManager = new }
     }
 }

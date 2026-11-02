@@ -8,7 +8,7 @@ import TasksCore
 struct DetailPane: View {
     let store: Store
     @Bindable var window: WindowState
-    /// Alone in the window (the narrow window's drill-in): no focus look (v2 feedback 3).
+    /// Alone in the window (the narrow window's drill-in): its look follows Settings ▸ Highlight focused pane (`PaneLook`).
     var single = false
     @State private var refs = DetailRefs()
     @Environment(\.tk) private var tk
@@ -16,15 +16,15 @@ struct DetailPane: View {
     var body: some View {
         let actions = WindowActions(store: store, window: window)
         let items = selectedItems
-        let focused = window.focus == .detail
+        let look = PaneLook(focused: window.focus == .detail, single: single, highlight: window.paneHighlight)
         VStack(spacing: 0) {
-            DetailHeader(store: store, window: window, items: items, focused: focused, single: single, refs: refs, actions: actions)
+            DetailHeader(store: store, window: window, items: items, look: look, refs: refs, actions: actions)
             GeometryReader { g in
                 content(items, actions: actions, size: g.size)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .paneChrome(focused: focused, single: single)
+        .paneChrome(look)
         .background(PanePressMonitor(handler: { press($0, actions: actions) }, keyEquivalent: { keyEquivalent($0, actions: actions) }))
         .background(
             KeySink(register: { window.detailKeySink = $0 },
@@ -255,8 +255,7 @@ private struct DetailHeader: View {
     let store: Store
     let window: WindowState
     let items: [DetailItem]
-    let focused: Bool
-    let single: Bool
+    let look: PaneLook
     let refs: DetailRefs
     let actions: WindowActions
     @Environment(\.tk) private var tk
@@ -309,8 +308,8 @@ private struct DetailHeader: View {
                             .onChange(of: g.frame(in: .global)) { _, f in refs.closeFrame = f }
                     })
             }
-            .opacity(focused || single ? 1 : 0.55)
-            .paneLookAnimation(focused: focused, single: single)
+            .opacity(look.keyed ? 1 : 0.55)
+            .paneLookAnimation(look)
         }
         .padding(.leading, TK.M.headerInset)
         .padding(.trailing, 8)

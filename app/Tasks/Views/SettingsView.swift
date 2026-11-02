@@ -55,6 +55,18 @@ struct SettingsView: View {
                     .pickerStyle(.segmented)
                     .frame(width: 160)
                 }
+                PaneRowDivider()
+                // The user, 2026-11-01 (INTERACTIONS-v2 §4 Pane focus): the focused pane's fill and edge.
+                PaneRow("Highlight focused pane", description: highlightDescription) {
+                    Picker("Highlight focused pane", selection: $model.paneHighlight) {
+                        Text("Always").tag(AppModel.PaneHighlight.always)
+                        Text("Two panes").tag(AppModel.PaneHighlight.twoPanes)
+                        Text("Never").tag(AppModel.PaneHighlight.never)
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .frame(width: 240)
+                }
             }
             PaneSection("Behavior") {
                 // v2 feedback 8 (INTERACTIONS-v2 §7): the › button, ⌘N and the sidebar's list renames are the same in both.
@@ -82,6 +94,14 @@ struct SettingsView: View {
         .padding(20)
         .frame(width: 600)
         .background(tk.ground.swiftUI)
+    }
+
+    private var highlightDescription: String {
+        switch model.paneHighlight {
+        case .always: "Even when it's the only pane."
+        case .twoPanes: "Only while the detail pane is open."
+        case .never: "Neutral; the header shows focus."
+        }
     }
 
     private func saveToken() {

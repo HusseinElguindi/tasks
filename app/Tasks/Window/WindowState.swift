@@ -103,6 +103,8 @@ final class WindowState {
     @ObservationIgnored var cursor: EntityID?
     var focus: Focus = .list
     var detailOpen = false
+    /// Settings ▸ Highlight focused pane, mirrored from `AppModel` by RootView so the AppKit list observes it too.
+    var paneHighlight: AppModel.PaneHighlight = .current
     var sidebarVisible = true
     /// The pointer is over the sidebar's header row: the sync cloud shows even when synced or off (§26).
     var sidebarHeaderHovered = false
