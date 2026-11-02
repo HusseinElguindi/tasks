@@ -40,3 +40,10 @@ Splits and moving panes are for later.
 
 ## Report
 In a few lines, with the choices you made, the commit hashes and the snapshot paths.
+
+## Update from the user (2026-11-01): keep the sidebar
+"zoom pane should still respect the sidebar. the user can collapse it if they want afterwards."
+
+Zoom hides only the other content pane, which is the list pane when the detail pane zooms. **The sidebar stays as
+it is.** If it's open, it stays open. If it's collapsed, it stays collapsed. Its own toggle still works while
+zoomed. Unzooming leaves the sidebar's state alone.
