@@ -1,24 +1,26 @@
 import SwiftUI
+import TasksCore
 
-/// A task on the row grid: checkbox, title, the quiet When after it, the list's name where the view mixes lists, and
-/// the deadline capsule at the end.
+/// A task on the row grid: checkbox, title, the notes hint, the quiet When after it, the list's name where the view
+/// mixes lists, and the deadline capsule at the end.
 struct TaskRow: View {
-    let task: TaskItem
+    let task: TaskModel
     let source: Source
     var indent = false
+    var groupDay: CalendarDate? = nil
     var selected = false
-    @Environment(Store.self) private var store
+    @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
 
-    private var trashed: Bool { source == .trash }
+    private var trashed: Bool { app.isTrashed(task) }
     private var done: Bool { task.isDone }
-    private var settled: Bool { done && !store.completing.contains(task.id) }
+    private var settled: Bool { done && !app.completing.contains(task.id) }
 
     var body: some View {
         Button { open() } label: {
             HStack(spacing: 0) {
-                Checkbox(checked: done, cue: store.cue(task, in: source), readOnly: trashed) {
-                    store.toggle(task.id)
+                Checkbox(checked: done, cue: app.cue(task, in: source), readOnly: trashed) {
+                    app.toggle(task.id)
                 }
                 .padding(.leading, Metric.rowPad - 11)   // the 44pt hit area centres the 22pt ring
                 .padding(.trailing, Metric.titleGap - 11)
@@ -30,14 +32,9 @@ struct TaskRow: View {
                             .foregroundStyle(titleColor)
                             .strikethrough(settled, color: p.inkQuiet)
                             .lineLimit(1)
-                        if !task.notes.isEmpty && !settled {
-                            Image(systemName: "text.alignleft")
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(p.inkQuiet)
-                                .accessibilityLabel("Has notes")
-                        }
+                        if !settled { NotesHint(summary: task.notesSummary) }
                     }
-                    if let w = task.when, showWhen(w) { QuietWhen(date: w) }
+                    if let w = task.when, showWhen { QuietWhen(date: w) }
                 }
                 .layoutPriority(1)
                 Spacer(minLength: 8)
@@ -49,14 +46,14 @@ struct TaskRow: View {
                         .layoutPriority(-1)
                         .padding(.trailing, task.deadline == nil ? 0 : 8)
                 }
-                if let d = task.deadline, !settled { DeadlineChip(date: d) }
+                if let d = task.deadline, !settled { DeadlineChip(date: d, groupDay: groupDay) }
             }
             .padding(.trailing, 12)
             .padding(.leading, indent ? 30 : 0)
             .frame(minHeight: Metric.rowHeight)
         }
         .buttonStyle(RowStyle(selected: selected))
-        .opacity(store.completing.contains(task.id) ? 0.75 : 1)
+        .opacity(app.completing.contains(task.id) ? 0.75 : 1)
         .accessibilityElement(children: .contain)
     }
 
@@ -66,7 +63,8 @@ struct TaskRow: View {
         return task.title.isEmpty ? p.inkTertiary : p.ink
     }
 
-    private func showWhen(_ w: Date) -> Bool {
+    /// Today and Upcoming place the task by its date already.
+    private var showWhen: Bool {
         if settled || trashed { return false }
         switch source {
         case .today, .upcoming: return false
@@ -77,19 +75,38 @@ struct TaskRow: View {
     /// Views that mix lists by day show where each task lives; Today and Undated group by list already.
     private var whereName: String? {
         switch source {
-        case .upcoming, .completed, .trash: indent ? nil : store.list(task.listID)?.name
+        case .upcoming, .completed, .trash: indent ? nil : app.list(task.list)?.name
         default: nil
         }
     }
 
     private func open() {
-        if store.isSplit { store.selectedTask = task.id } else { store.detailTask = task.id }
+        if app.isSplit { app.selectedTask = task.id } else { app.detailTask = task.id }
+    }
+}
+
+/// What a row shows of the notes (MARKDOWN.md §7, `NotesSummary`): the checklist's count, "2/5", or the notes glyph.
+struct NotesHint: View {
+    let summary: NotesSummary
+    @Environment(\.palette) private var p
+    var body: some View {
+        if summary.total > 0 {
+            Text("\(summary.checked)/\(summary.total)")
+                .font(Typo.chip).monospacedDigit()
+                .foregroundStyle(p.inkQuiet)
+                .accessibilityLabel("\(summary.checked) of \(summary.total) checked")
+        } else if summary.hasNotes {
+            Image(systemName: "text.alignleft")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(p.inkQuiet)
+                .accessibilityLabel("Has notes")
+        }
     }
 }
 
 /// The heading row: 15 semibold ink at the checkbox's edge with a hairline under it.
 struct HeadingRow: View {
-    let heading: Heading
+    let heading: TaskModel
     let count: Int
     @Environment(\.palette) private var p
     var body: some View {
@@ -109,15 +126,16 @@ struct HeadingRow: View {
 
 /// "Completed 4": the disclosure at a list's end.
 struct CompletedToggleRow: View {
-    let listID: String
+    /// A list's id, or `AppModel.todayDone`.
+    let key: String
     let count: Int
     let open: Bool
-    @Environment(Store.self) private var store
+    @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     var body: some View {
         Button {
             animate(Motion.layout) {
-                if open { store.showCompleted.remove(listID) } else { store.showCompleted.insert(listID) }
+                if open { app.showCompleted.remove(key) } else { app.showCompleted.insert(key) }
             }
         } label: {
             HStack(spacing: 8) {
@@ -142,15 +160,15 @@ struct CompletedToggleRow: View {
 /// A deleted list in Trash: one row on the day it was deleted, its tile on the checkbox's column, "11 tasks", and a
 /// chevron that shows what it holds.
 struct DeletedListRow: View {
-    let list: TaskList
+    let list: ListModel
     let count: Int
     let open: Bool
-    @Environment(Store.self) private var store
+    @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     var body: some View {
         Button { toggle() } label: {
             HStack(spacing: 0) {
-                ListTile(content: .mono(list.mono), hue: p.tile(list.hue))
+                ListTile(content: .mono(list.monogram), hue: p.tile(slot: list.colorSlot))
                     .frame(width: 44)
                     .padding(.leading, Metric.rowPad - 11)
                     .padding(.trailing, Metric.titleGap - 11)
@@ -173,31 +191,30 @@ struct DeletedListRow: View {
     }
     private func toggle() {
         animate(Motion.layout) {
-            if open { store.expandedTrash.remove(list.id) } else { store.expandedTrash.insert(list.id) }
+            if open { app.expandedTrash.remove(list.id) } else { app.expandedTrash.insert(list.id) }
         }
     }
 }
 
 /// The row a new task is typed into: the row's own fill with a 1.5pt accent ring and a quiet placeholder box.
 struct DraftRow: View {
-    @Environment(Store.self) private var store
+    @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     @FocusState private var focused: Bool
     let token: UUID
 
     var body: some View {
-        @Bindable var store = store
         HStack(spacing: 0) {
             Checkbox(checked: false, placeholder: true)
                 .padding(.leading, Metric.rowPad - 11)
                 .padding(.trailing, Metric.titleGap - 11)
-            TextField("New Task", text: Binding(get: { store.draft?.title ?? "" }, set: { store.draft?.title = $0 }),
+            TextField("New Task", text: Binding(get: { app.draft?.title ?? "" }, set: { app.draft?.title = $0 }),
                       prompt: Text("New Task").foregroundStyle(p.inkTertiary))
                 .font(Typo.row)
                 .foregroundStyle(p.ink)
                 .focused($focused)
                 .submitLabel(.next)
-                .onSubmit { store.commitDraft() }
+                .onSubmit { app.commitDraft() }
             Spacer(minLength: 0)
         }
         .padding(.trailing, 12)
@@ -206,10 +223,10 @@ struct DraftRow: View {
         .overlay(RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous).strokeBorder(p.accent, lineWidth: 1.5))
         .onAppear { DispatchQueue.main.async { focused = true } }
         .onChange(of: focused) { _, now in
-            guard !now, store.draft?.token == token else { return }
+            guard !now, app.draft?.token == token else { return }
             // Leaving the row: a title commits, an empty one cancels.
-            if (store.draft?.title ?? "").trimmingCharacters(in: .whitespaces).isEmpty { store.cancelDraft() }
-            else { store.commitDraft(); store.cancelDraft() }
+            if (app.draft?.title ?? "").trimmingCharacters(in: .whitespaces).isEmpty { app.cancelDraft() }
+            else { app.commitDraft(); app.cancelDraft() }
         }
     }
 }
@@ -224,7 +241,9 @@ struct EmptyState: View {
         VStack(spacing: 8) {
             Image(systemName: symbol).font(.system(size: 28, weight: .light)).foregroundStyle(p.inkQuiet).padding(.bottom, 4)
             Text(title).font(.system(size: 17, weight: .medium)).foregroundStyle(p.inkSecondary)
-            Text(message).font(Typo.body).foregroundStyle(p.inkTertiary).multilineTextAlignment(.center).frame(maxWidth: 280)
+            if !message.isEmpty {
+                Text(message).font(Typo.body).foregroundStyle(p.inkTertiary).multilineTextAlignment(.center).frame(maxWidth: 280)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 80)

@@ -1,14 +1,15 @@
 import SwiftUI
+import TasksCore
 
 /// Settings: System / Light / Dark and Classic or Glass, in Pane's sections and cards. One theme, the Mac's.
 struct SettingsView: View {
-    @Environment(Store.self) private var store
+    @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     @Environment(\.colorScheme) private var scheme
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        @Bindable var store = store
+        @Bindable var app = app
         VStack(spacing: 0) {
             HStack {
                 Text("Settings").font(.system(size: 17, weight: .semibold)).foregroundStyle(p.ink)
@@ -24,14 +25,14 @@ struct SettingsView: View {
                     Section("Appearance") {
                         VStack(spacing: 0) {
                             stacked("Appearance", "System follows the phone’s Light and Dark.") {
-                                Picker("Appearance", selection: $store.appearance) {
+                                Picker("Appearance", selection: $app.appearance) {
                                     ForEach(Appearance.allCases) { Text($0.label).tag($0) }
                                 }
                                 .pickerStyle(.segmented)
                             }
                             divider
                             stacked("Interface style", "Glass lets a wallpaper show through the window, the bars and the sheets.") {
-                                Picker("Interface style", selection: $store.style) {
+                                Picker("Interface style", selection: $app.style) {
                                     ForEach(InterfaceStyle.allCases) { Text($0.label).tag($0) }
                                 }
                                 .pickerStyle(.segmented)
@@ -42,9 +43,9 @@ struct SettingsView: View {
 
                     Section("About") {
                         VStack(spacing: 0) {
-                            row("Tasks", "Version 1.0 · a preview with sample data; nothing is saved.") { EmptyView() }
+                            row("Tasks", "Version \(version)") { EmptyView() }
                             divider
-                            row("Lists", "\(store.liveLists.count) lists, \(store.tasks.filter { !$0.isDone && !$0.isTrashed }.count) open tasks.") { EmptyView() }
+                            row("Lists", "\(lists.count) lists, \(lists.reduce(0) { $0 + app.openCount($1.id) }) open tasks.") { EmptyView() }
                         }
                         .background(p.base, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
@@ -56,6 +57,9 @@ struct SettingsView: View {
         }
         .background(p.ground)
     }
+
+    private var lists: [ListModel] { app.activeLists }
+    private var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0" }
 
     private var divider: some View {
         Rectangle().fill(p.lineSeparator).frame(height: 1).padding(.horizontal, 14)

@@ -1,4 +1,5 @@
 import SwiftUI
+import TasksCore
 
 // MARK: - List tile
 
@@ -29,10 +30,10 @@ struct ListTile: View {
     }
 }
 
-extension Store {
+extension AppModel {
     /// A view's tile is the Mac's (`Route.tileHue`): Today the accent's, Upcoming magenta, Undated cyan, Completed green,
-    /// the Trash the ink slot's graphite.
-    @MainActor func tile(for source: Source, palette p: Palette, scale: CGFloat = 1) -> ListTile {
+    /// the Trash the ink slot's graphite. A list's is its slot's, from its id (`ListModel.colorSlot`).
+    func tile(for source: Source, palette p: Palette, scale: CGFloat = 1) -> ListTile {
         switch source {
         case .today: ListTile(content: .symbol("sun.max.fill"), hue: p.tileToday, scale: scale)
         case .upcoming: ListTile(content: .symbol("calendar"), hue: p.tile(.magenta), scale: scale)
@@ -40,7 +41,7 @@ extension Store {
         case .completed: ListTile(content: .symbol("checkmark.circle"), hue: p.tile(.green), scale: scale)
         case .trash: ListTile(content: .symbol("trash"), hue: p.tile(.ink), scale: scale)
         case let .list(id):
-            if let l = list(id) { ListTile(content: .mono(l.mono), hue: p.tile(l.hue), scale: scale) }
+            if let l = list(id) { ListTile(content: .mono(l.monogram), hue: p.tile(slot: l.colorSlot), scale: scale) }
             else { ListTile(content: .mono("?"), hue: p.tile(.ink), scale: scale) }
         }
     }
@@ -65,7 +66,7 @@ struct CheckShape: Shape {
 /// accent and draws the mark.
 struct Checkbox: View {
     let checked: Bool
-    var cue: Store.Cue = .init(tone: nil, planned: false)
+    var cue = ViewGroups.RingCue()
     var readOnly = false
     var placeholder = false
     var size: CGFloat = Metric.check
@@ -77,7 +78,7 @@ struct Checkbox: View {
             ZStack {
                 Circle().fill(checked ? p.accent : .clear)
                 Circle().strokeBorder(checked ? p.accent : ringColor, lineWidth: 1.5)
-                if !checked && cue.planned && cue.tone != nil {
+                if !checked && cue.planned && cue.deadline != nil {
                     Circle().strokeBorder(p.plan, lineWidth: 1.25).padding(size * 0.19)
                 }
                 CheckShape()
@@ -108,7 +109,7 @@ struct Checkbox: View {
 
     private var ringColor: Color {
         if placeholder { return p.inkQuiet }
-        if let t = cue.tone { return t == .late ? p.danger : p.attention }
+        if let d = cue.deadline { return d == .late ? p.danger : p.attention }
         if cue.planned { return p.plan }
         return p.lineField
     }
@@ -124,57 +125,64 @@ private struct CheckPressStyle: ButtonStyle {
 
 // MARK: - Dates on a row
 
-/// The quiet When: glyph and date in ink-tertiary, no capsule.
+/// The quiet When: glyph and date in ink-tertiary, no capsule (`DateLabel.whenChip`: "Today", "Tomorrow", "in 2d"…).
 struct QuietWhen: View {
-    let date: Date
+    let date: CalendarDate
+    @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     var body: some View {
+        let text = DateLabel.whenChip(date, today: app.today)
         HStack(spacing: 3) {
             Image(systemName: "calendar")
                 .font(.system(size: 10.5, weight: .medium))
-            Text(Day.whenLabel(date)).font(Typo.quiet).monospacedDigit()
+            Text(text).font(Typo.quiet).monospacedDigit()
         }
         .foregroundStyle(p.inkTertiary)
         .fixedSize()
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("When \(Day.whenLabel(date))")
+        .accessibilityLabel("When \(text)")
     }
 }
 
-/// The deadline: the one capsule on a row, so a capsule always means something is due.
+/// The deadline: the one capsule on a row, so a capsule always means something is due (`DateLabel.deadlineChip`:
+/// "2d ago", "Due today", "3d left"…). In Upcoming, on its own day's group, "Due", as on the Mac.
 struct DeadlineChip: View {
-    let date: Date
-    var large = false
+    let date: CalendarDate
+    var groupDay: CalendarDate? = nil
+    @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
 
     var body: some View {
-        let tone = Day.tone(date)
-        HStack(spacing: large ? 5 : 4) {
+        let c = DateLabel.deadlineChip(date, today: app.today)
+        let text = date == groupDay ? "Due" : c.text
+        HStack(spacing: 4) {
             Image(systemName: "flag.fill")
-                .font(.system(size: large ? 11 : 9.5, weight: .semibold))
-                .foregroundStyle(tone == .soon ? p.attention : fg(tone))
-            Text(large ? Day.monthDay(date) : Day.deadlineLabel(date))
-                .font(large ? Typo.chipLarge : Typo.chip)
+                .font(.system(size: 9.5, weight: .semibold))
+                .foregroundStyle(c.tone == .soon ? p.attention : fg(c.tone))
+            Text(text)
+                .font(Typo.chip)
                 .monospacedDigit()
         }
-        .foregroundStyle(fg(tone))
-        .padding(.horizontal, large ? 11 : 8)
-        .frame(height: large ? 30 : 22)
-        .background(bg(tone), in: Capsule())
+        .foregroundStyle(fg(c.tone))
+        .padding(.horizontal, 8)
+        .frame(height: 22)
+        .background(bg(c.tone), in: Capsule())
         .fixedSize()
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Deadline \(Day.deadlineLabel(date))")
+        .accessibilityLabel("Deadline, \(DateLabel.deadlineWords(date, today: app.today))")
     }
 
-    private func fg(_ t: Tone) -> Color { t == .late ? p.danger : t == .due ? p.attention : p.inkSecondary }
-    private func bg(_ t: Tone) -> Color { t == .late ? p.dangerTint : t == .due ? p.attentionTint : p.fillControl }
+    private func fg(_ t: DateLabel.Tone) -> Color { t == .late ? p.danger : t == .due ? p.attention : p.inkSecondary }
+    private func bg(_ t: DateLabel.Tone) -> Color { t == .late ? p.dangerTint : t == .due ? p.attentionTint : p.fillControl }
 }
 
-/// The detail pane's date capsule: the date, or a ghost "Add date".
+/// The detail pane's date capsule: the date ("Fri, Nov 6", `DateLabel.long`, as the Mac's detail pane), or a ghost
+/// "Add date".
 struct DateChip: View {
-    let date: Date?
+    let date: CalendarDate?
     let kind: DateKind
     var active = false
+    @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
 
     var body: some View {
@@ -183,7 +191,7 @@ struct DateChip: View {
                 Image(systemName: kind == .when ? "calendar" : "flag.fill")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(iconColor(date))
-                Text(kind == .when ? whenText(date) : Day.full(date))
+                Text(DateLabel.long(date, today: app.today))
             } else {
                 Text("Add date")
             }
@@ -200,14 +208,13 @@ struct DateChip: View {
         .contentShape(Capsule())
     }
 
-    private func whenText(_ d: Date) -> String {
-        let n = Day.diff(d)
-        return n <= 0 ? "Today" : n == 1 ? "Tomorrow" : Day.full(d)
-    }
-    private func iconColor(_ d: Date) -> Color {
-        if kind == .when { return Day.diff(d) <= 0 ? p.accentText : p.inkSecondary }
-        let t = Day.tone(d)
-        return t == .late ? p.danger : (t == .due || t == .soon) ? p.attention : p.inkSecondary
+    private func iconColor(_ d: CalendarDate) -> Color {
+        if kind == .when { return d <= app.today ? p.plan : p.inkSecondary }
+        switch DateLabel.deadlineChip(d, today: app.today).tone {
+        case .late: return p.danger
+        case .due, .soon: return p.attention
+        case .neutral: return p.inkSecondary
+        }
     }
 }
 

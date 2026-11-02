@@ -83,14 +83,6 @@ struct Palette: Sendable {
     var tileToday: Color { tiles[7] }
 }
 
-/// The prototype model's list colour (Model.swift, SampleData.swift; gone with them in step 3, where a list's slot comes
-/// from its id).
-typealias ListHue = Palette.ListSlot
-extension Palette.ListSlot {
-    /// The six colours a new list takes, in order.
-    static let slots: [Self] = [.blue, .magenta, .green, .cyan, .yellow, .red]
-}
-
 // MARK: - Environment
 
 private struct PaletteKey: EnvironmentKey {

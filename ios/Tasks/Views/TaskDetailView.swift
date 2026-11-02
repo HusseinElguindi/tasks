@@ -1,46 +1,67 @@
 import SwiftUI
+import TasksCore
 
 /// A task's details: checkbox and title, List / When / Deadline, then its notes. A sheet on the phone, the third pane
-/// on iPad and the Mac.
+/// on iPad.
 struct TaskDetailView: View {
-    let taskID: String
+    let taskID: EntityID
     var inline = false
-    @Environment(Store.self) private var store
+    @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
-    @Environment(\.dismiss) private var dismiss
-    @FocusState private var focus: Field?
-    enum Field { case title, notes }
 
     var body: some View {
-        @Bindable var store = store
+        @Bindable var app = app
         Group {
-            if let t = store.task(taskID) {
-                content(t)
+            if let t = app.task(taskID), !t.isHeading {
+                TaskDetailContent(task: t, inline: inline)
             } else {
                 NothingSelected()
             }
         }
         .background(inline ? Color.clear : p.base)
-        .sheet(item: inline ? .constant(nil) : $store.dateTarget) { target in
-            DatePickerSheet(target: target).themed(store).datePickerPresentation()
+        .sheet(item: inline ? .constant(nil) : $app.dateTarget) { target in
+            DatePickerSheet(target: target).themed(app).datePickerPresentation()
         }
     }
+}
 
-    private func content(_ t: TaskItem) -> some View {
-        let trashed = t.isTrashed || (store.list(t.listID)?.deletedAt != nil)
-        return VStack(spacing: 0) {
-            topBar(t, trashed: trashed)
+/// The details of one task. The title and the notes are edited here and written once when their editing ends (leaving
+/// the field, or closing the details), as the Mac commits them once per editing session: one op, one undo step.
+private struct TaskDetailContent: View {
+    let task: TaskModel
+    let inline: Bool
+    @Environment(AppModel.self) private var app
+    @Environment(\.palette) private var p
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var phase
+    @FocusState private var focus: DetailField?
+    @State private var title: String
+    @State private var notes: String
+
+    init(task: TaskModel, inline: Bool) {
+        self.task = task
+        self.inline = inline
+        _title = State(initialValue: task.title)
+        _notes = State(initialValue: task.notes)
+    }
+
+    private var t: TaskModel { task }
+
+    var body: some View {
+        let trashed = app.isTrashed(t)
+        VStack(spacing: 0) {
+            topBar(trashed: trashed)
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    if trashed { trashBanner(t) }
+                    if trashed { trashBanner }
                     HStack(alignment: .top, spacing: 0) {
-                        Checkbox(checked: t.isDone, cue: store.cue(t, in: .list(t.listID)), readOnly: trashed, size: 24) {
-                            store.toggle(t.id)
+                        Checkbox(checked: t.isDone, cue: app.cue(t, in: .list(t.list)), readOnly: trashed, size: 24) {
+                            app.toggle(t.id)
                         }
                         .padding(.leading, -10)
                         .padding(.top, -10)
                         .padding(.trailing, 2)
-                        TextField("New Task", text: binding(\.title), prompt: Text("New Task").foregroundStyle(p.inkTertiary), axis: .vertical)
+                        TextField("New Task", text: $title, prompt: Text("New Task").foregroundStyle(p.inkTertiary), axis: .vertical)
                             .font(Typo.detailTitle)
                             .foregroundStyle(t.isDone ? p.inkSecondary : p.ink)
                             .focused($focus, equals: .title)
@@ -51,17 +72,21 @@ struct TaskDetailView: View {
                     .padding(.top, 6)
 
                     VStack(spacing: 0) {
-                        listRow(t, trashed: trashed)
-                        dateRow(t, kind: .when, trashed: trashed)
-                        dateRow(t, kind: .deadline, trashed: trashed)
+                        listRow(trashed: trashed)
+                        dateRow(.when, trashed: trashed)
+                        dateRow(.deadline, trashed: trashed)
                     }
                     .padding(.top, 14)
 
                     Rectangle().fill(p.lineSeparator).frame(height: 1).padding(.top, 12).padding(.bottom, 14)
 
-                    NotesEditor(text: binding(\.notes), readOnly: trashed, focus: $focus)
+                    NotesEditor(text: $notes, readOnly: trashed, focus: $focus) { new, checking in
+                        // A box clicked outside editing is its own step, "Check Item" or "Uncheck Item" (§5).
+                        notes = new
+                        app.setNotes(t.id, new, name: checking ? "Check Item" : "Uncheck Item")
+                    }
 
-                    Text(meta(t))
+                    Text(meta)
                         .font(Typo.meta)
                         .foregroundStyle(p.inkTertiary)
                         .padding(.top, 18)
@@ -71,29 +96,43 @@ struct TaskDetailView: View {
             }
             .scrollDismissesKeyboard(.interactively)
         }
+        .onChange(of: focus) { old, new in
+            if old == .title && new != .title { commitTitle() }
+            if old == .notes && new != .notes { commitNotes() }
+        }
+        .onDisappear { commitTitle(); commitNotes() }
+        // Leaving the app mid-edit writes it too, before the app saves on going to the background.
+        .onChange(of: phase) { _, now in if now != .active { commitTitle(); commitNotes() } }
+        // Another device's edit, or an undo, while this field isn't being edited.
+        .onChange(of: t.title) { _, v in if focus != .title { title = v } }
+        .onChange(of: t.notes) { _, v in if focus != .notes { notes = v } }
     }
+
+    private func commitTitle() { if title != t.title { app.setTitle(t.id, title) } }
+    private func commitNotes() { if notes != t.notes { app.setNotes(t.id, notes) } }
 
     // MARK: Bar
 
-    private func topBar(_ t: TaskItem, trashed: Bool) -> some View {
+    private func topBar(trashed: Bool) -> some View {
         HStack(spacing: 8) {
-            if let l = store.list(t.listID) {
-                ListTile(content: .mono(l.mono), hue: p.tile(l.hue), scale: 0.85)
+            if let l = app.list(t.list) {
+                ListTile(content: .mono(l.monogram), hue: p.tile(slot: l.colorSlot), scale: 0.85)
                 Text(l.name).font(Typo.body).foregroundStyle(p.inkSecondary).lineLimit(1)
             }
             Spacer()
             if trashed {
-                if !t.deletedWithList {
-                    BarIcon(symbol: "arrow.uturn.backward", label: "Restore") { store.restore(t.id) }
+                if app.canRestore(t) {
+                    BarIcon(symbol: "arrow.uturn.backward", label: "Restore") { app.restore(t.id) }
                 }
             } else {
                 BarIcon(symbol: "trash", label: "Delete") {
+                    commitTitle(); commitNotes()
                     if !inline { dismiss() }
-                    store.delete(t.id)
+                    app.delete(t.id)
                 }
             }
             if inline {
-                BarIcon(symbol: "xmark", label: "Hide Details") { store.selectedTask = nil }
+                BarIcon(symbol: "xmark", label: "Hide Details") { app.selectedTask = nil }
             } else {
                 Button("Done") { focus = nil; dismiss() }
                     .buttonStyle(CapsuleButtonStyle(kind: .tinted, height: 32))
@@ -105,24 +144,36 @@ struct TaskDetailView: View {
         .padding(.top, inline ? 0 : 6)
     }
 
-    private func trashBanner(_ t: TaskItem) -> some View {
-        HStack(spacing: 10) {
+    /// Why it's read-only, and the way out: Restore for a task deleted on its own, Restore List for one that went with
+    /// its list (§28).
+    private var trashBanner: some View {
+        let l = app.list(t.list)
+        let listGone = l?.isDeleted ?? true
+        return HStack(spacing: 10) {
             Image(systemName: "trash").foregroundStyle(p.inkSecondary)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Deleted \(Day.monthDay(t.deletedAt ?? store.list(t.listID)?.deletedAt ?? Date()))").font(Typo.body).foregroundStyle(p.ink)
-                Text(t.deletedWithList || t.deletedAt == nil ? "Deleted with \(store.list(t.listID)?.name ?? "its list"). Restore the list to bring it back." : "Read-only until you restore it.")
+                Text(deletedWords).font(Typo.body).foregroundStyle(p.ink)
+                Text(app.canRestore(t) ? "Read-only until you restore it."
+                     : t.deleted ? "\(l?.name ?? "Its list") is in Trash too. Restore the list, then this task."
+                     : "\(l?.name ?? "Its list") is in Trash. Restore the list to bring it back.")
                     .font(Typo.meta).foregroundStyle(p.inkSecondary)
             }
             Spacer(minLength: 8)
-            if t.deletedAt != nil && !t.deletedWithList {
-                Button("Restore") { store.restore(t.id) }.buttonStyle(CapsuleButtonStyle(kind: .tinted, height: 30))
-            } else if let l = store.list(t.listID), l.deletedAt != nil {
-                Button("Restore List") { store.restoreList(l.id) }.buttonStyle(CapsuleButtonStyle(kind: .tinted, height: 30))
+            if app.canRestore(t) {
+                Button("Restore") { app.restore(t.id) }.buttonStyle(CapsuleButtonStyle(kind: .tinted, height: 30))
+            } else if listGone, let l {
+                Button("Restore List") { app.restoreList(l.id) }.buttonStyle(CapsuleButtonStyle(kind: .tinted, height: 30))
             }
         }
         .padding(12)
         .background(p.fillControl, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .padding(.bottom, 14)
+    }
+
+    private var deletedWords: String {
+        if t.deleted, let item = app.projection.task(t.id) { return "Deleted " + day(Projection.deletedAt(item)) }
+        if let at = app.list(t.list)?.archivedAt { return "Deleted with its list, " + day(at) }
+        return "Deleted"
     }
 
     // MARK: Properties
@@ -136,19 +187,19 @@ struct TaskDetailView: View {
         .frame(width: 104, alignment: .leading)
     }
 
-    private func listRow(_ t: TaskItem, trashed: Bool) -> some View {
+    private func listRow(trashed: Bool) -> some View {
         HStack(spacing: 0) {
             propLabel("tray", "List")
             Menu {
-                ForEach(store.liveLists) { l in
-                    Button { store.move(t.id, to: l.id) } label: {
-                        if l.id == t.listID { Label(l.name, systemImage: "checkmark") } else { Text(l.name) }
+                ForEach(app.activeLists) { l in
+                    Button { app.move(t.id, to: l.id) } label: {
+                        if l.id == t.list { Label(l.name, systemImage: "checkmark") } else { Text(l.name) }
                     }
                 }
             } label: {
                 HStack(spacing: 8) {
-                    if let l = store.list(t.listID) {
-                        ListTile(content: .mono(l.mono), hue: p.tile(l.hue), scale: 0.85)
+                    if let l = app.list(t.list) {
+                        ListTile(content: .mono(l.monogram), hue: p.tile(slot: l.colorSlot), scale: 0.85)
                         Text(l.name).font(Typo.body).foregroundStyle(p.ink)
                     }
                     Image(systemName: "chevron.up.chevron.down").font(.system(size: 10, weight: .semibold)).foregroundStyle(p.inkTertiary)
@@ -163,26 +214,26 @@ struct TaskDetailView: View {
         .frame(minHeight: 44)
     }
 
-    private func dateRow(_ t: TaskItem, kind: DateKind, trashed: Bool) -> some View {
+    private func dateRow(_ kind: DateKind, trashed: Bool) -> some View {
         let date = kind == .when ? t.when : t.deadline
-        let active = store.dateTarget?.taskID == t.id && store.dateTarget?.kind == kind
+        let active = app.dateTarget?.taskID == t.id && app.dateTarget?.kind == kind
         return HStack(spacing: 0) {
             propLabel(kind == .when ? "calendar" : "flag", kind == .when ? "When" : "Deadline")
-            Button { store.dateTarget = DateTarget(taskID: t.id, kind: kind) } label: {
+            Button { app.dateTarget = DateTarget(taskID: t.id, kind: kind) } label: {
                 DateChip(date: date, kind: kind, active: active)
             }
             .buttonStyle(.plain)
             .disabled(trashed)
             .accessibilityLabel(kind == .when ? "When" : "Deadline")
-            .accessibilityValue(date.map(Day.full) ?? "None")
+            .accessibilityValue(date.map { DateLabel.long($0, today: app.today) } ?? "None")
             if let date {
-                Text(relWords(date, kind))
+                Text(words(date, kind))
                     .font(Typo.quiet)
-                    .foregroundStyle(relColor(date, kind))
+                    .foregroundStyle(wordsColor(date, kind))
                     .padding(.leading, 10)
                     .lineLimit(1)
                 if !trashed {
-                    Button { store.setDate(t.id, kind, nil) } label: {
+                    Button { app.setDate(t.id, kind, nil) } label: {
                         Image(systemName: "xmark").font(.system(size: 11, weight: .semibold)).foregroundStyle(p.inkTertiary)
                             .frame(width: 30, height: 30).contentShape(Rectangle())
                     }
@@ -195,27 +246,40 @@ struct TaskDetailView: View {
         .frame(minHeight: 44)
     }
 
-    private func relWords(_ d: Date, _ kind: DateKind) -> String {
-        if kind == .deadline { let x = Day.deadlineLabel(d); return Day.diff(d) > 7 ? Day.relative(d) : x }
-        return Day.diff(d) <= 1 ? "" : Day.relative(d)
+    /// The Mac's detail words: a deadline's "2 days overdue", "due today", "3 days left"; a When's "tomorrow", "in 3
+    /// days", and "· still in Today" once it's past and the task is open.
+    private func words(_ d: CalendarDate, _ kind: DateKind) -> String {
+        if kind == .deadline { return DateLabel.deadlineWords(d, today: app.today) }
+        return DateLabel.relative(d, today: app.today) + (!t.isDone && d < app.today ? " · still in Today" : "")
     }
-    private func relColor(_ d: Date, _ kind: DateKind) -> Color {
+
+    private func wordsColor(_ d: CalendarDate, _ kind: DateKind) -> Color {
         guard kind == .deadline else { return p.inkTertiary }
-        switch Day.tone(d) { case .late: return p.danger; case .due: return p.attention; default: return p.inkTertiary }
+        switch DateLabel.deadlineChip(d, today: app.today).tone {
+        case .late: return p.danger
+        case .due: return p.attention
+        default: return p.inkTertiary
+        }
     }
 
-    private func meta(_ t: TaskItem) -> String {
-        var parts = ["Created \(Day.monthDay(t.created))"]
-        if let c = t.completedAt { parts.append("Completed \(Day.monthDay(c))") }
-        if let d = t.deletedAt { parts.append("Deleted \(Day.monthDay(d))") }
-        return parts.joined(separator: " · ")
+    /// "Created Oct 26 · Completed Oct 30"; in Trash "Created Aug 20 · Deleted Oct 28", or "Deleted with School, Nov 1"
+    /// (the Mac's detail pane).
+    private var meta: String {
+        var s = "Created " + day(t.createdAt)
+        if t.deleted, let item = app.projection.task(t.id) {
+            s += " · Deleted " + day(Projection.deletedAt(item))
+        } else if let l = app.list(t.list), let at = l.archivedAt {
+            s += " · Deleted with " + l.name + ", " + day(at)
+        } else if let done = t.completedAt {
+            s += " · Completed " + day(done)
+        }
+        return s
     }
 
-    private func binding(_ key: WritableKeyPath<TaskItem, String>) -> Binding<String> {
-        Binding(get: { store.task(taskID)?[keyPath: key] ?? "" },
-                set: { v in if let i = store.index(taskID) { store.tasks[i][keyPath: key] = v } })
-    }
+    private func day(_ ms: Int) -> String { DateLabel.monthDay(app.localDay(ms)) }
 }
+
+enum DetailField { case title, notes }
 
 /// A 34pt round icon button for the detail pane's bar.
 struct BarIcon: View {
@@ -250,11 +314,13 @@ struct NothingSelected: View {
 
 // MARK: - Notes
 
-/// The notes: rendered Markdown at rest (bold, italics, links, code, square checklists), the plain text while editing.
+/// The notes: rendered Markdown at rest (TasksCore's reading, `MarkdownText`), the plain text while editing.
 struct NotesEditor: View {
     @Binding var text: String
     var readOnly = false
-    var focus: FocusState<TaskDetailView.Field?>.Binding
+    var focus: FocusState<DetailField?>.Binding
+    /// A checklist box clicked at rest: the new text, and whether it checked the box.
+    var onToggle: (String, Bool) -> Void
     @Environment(\.palette) private var p
 
     private var editing: Bool { focus.wrappedValue == .notes }
@@ -278,7 +344,7 @@ struct NotesEditor: View {
                     if text.isEmpty {
                         Text("Notes").font(Typo.detailNotes).foregroundStyle(p.inkTertiary)
                     } else {
-                        MarkdownNotes(text: $text, readOnly: readOnly)
+                        MarkdownText(text: text, onToggle: readOnly ? nil : onToggle)
                     }
                 }
                 .frame(maxWidth: .infinity, minHeight: 180, alignment: .topLeading)
@@ -286,69 +352,5 @@ struct NotesEditor: View {
                 .onTapGesture { if !readOnly { focus.wrappedValue = .notes } }
             }
         }
-    }
-}
-
-struct MarkdownNotes: View {
-    @Binding var text: String
-    var readOnly = false
-    @Environment(\.palette) private var p
-
-    var body: some View {
-        let lines = text.components(separatedBy: "\n")
-        VStack(alignment: .leading, spacing: 4) {
-            ForEach(Array(lines.enumerated()), id: \.offset) { i, line in
-                if let (checked, rest) = checklist(line) {
-                    HStack(alignment: .firstTextBaseline, spacing: 9) {
-                        Button { toggle(i) } label: {
-                            Image(systemName: checked ? "checkmark.square.fill" : "square")
-                                .font(.system(size: 16, weight: .regular))
-                                .foregroundStyle(checked ? p.accent : p.inkQuiet)
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(readOnly)
-                        .accessibilityLabel(checked ? "Checked" : "Unchecked")
-                        rich(rest)
-                            .foregroundStyle(checked ? p.inkTertiary : p.ink)
-                            .strikethrough(checked, color: p.inkQuiet)
-                    }
-                } else if line.hasPrefix("- ") || line.hasPrefix("* ") {
-                    HStack(alignment: .firstTextBaseline, spacing: 9) {
-                        Text("•").foregroundStyle(p.inkTertiary).frame(width: 16)
-                        rich(String(line.dropFirst(2)))
-                    }
-                } else if line.isEmpty {
-                    Color.clear.frame(height: 6)
-                } else {
-                    rich(line)
-                }
-            }
-        }
-        .font(Typo.detailNotes)
-        .lineSpacing(6)
-        .foregroundStyle(p.ink)
-        .tint(p.accentText)
-    }
-
-    private func rich(_ s: String) -> Text {
-        if let a = try? AttributedString(markdown: s, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
-            return Text(a)
-        }
-        return Text(s)
-    }
-
-    private func checklist(_ line: String) -> (Bool, String)? {
-        let t = line.trimmingCharacters(in: .whitespaces)
-        if t.hasPrefix("- [ ] ") { return (false, String(t.dropFirst(6))) }
-        if t.lowercased().hasPrefix("- [x] ") { return (true, String(t.dropFirst(6))) }
-        return nil
-    }
-
-    private func toggle(_ i: Int) {
-        var lines = text.components(separatedBy: "\n")
-        guard i < lines.count else { return }
-        if lines[i].contains("- [ ] ") { lines[i] = lines[i].replacingOccurrences(of: "- [ ] ", with: "- [x] ") }
-        else { lines[i] = lines[i].replacingOccurrences(of: "- [x] ", with: "- [ ] ").replacingOccurrences(of: "- [X] ", with: "- [ ] ") }
-        text = lines.joined(separator: "\n")
     }
 }

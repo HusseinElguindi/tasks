@@ -1,37 +1,36 @@
 import SwiftUI
+import TasksCore
 
 /// The When and Deadline picker: quick choices, then one endless column of weeks (the Mac's §25 calendar), then what
 /// the choice means.
 struct DatePickerSheet: View {
     let target: DateTarget
-    @Environment(Store.self) private var store
+    @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     @Environment(\.dismiss) private var dismiss
     @State private var topWeek: Int?
-    @State private var picked: Date?
+    @State private var picked: CalendarDate?
 
     private static let weeksBack = 26
     private static let weeksAhead = 104
     private let rowH: CGFloat = 44
     private let visibleRows: CGFloat = 6
 
-    private var task: TaskItem? { store.task(target.taskID) }
-    private var current: Date? { picked ?? (target.kind == .when ? task?.when : task?.deadline) }
-    private var other: Date? { target.kind == .when ? task?.deadline : task?.when }
+    private var task: TaskModel? { app.task(target.taskID) }
+    private var today: CalendarDate { app.today }
+    private var current: CalendarDate? { picked ?? (target.kind == .when ? task?.when : task?.deadline) }
+    private var other: CalendarDate? { target.kind == .when ? task?.deadline : task?.when }
 
-    private var firstWeekStart: Date {
-        let t = Day.today
-        let wd = Day.cal.component(.weekday, from: t) - 1   // Sunday first, as the header reads
-        return Day.offset(-wd - 7 * Self.weeksBack, from: t)
-    }
-    private func weekStart(_ i: Int) -> Date { Day.offset(7 * i, from: firstWeekStart) }
-    private func weekIndex(_ d: Date) -> Int { Day.cal.dateComponents([.day], from: firstWeekStart, to: Day.start(d)).day! / 7 }
-    private var todayWeek: Int { weekIndex(Day.today) }
+    /// The grid's first Sunday (Sunday first, as the header reads), `weeksBack` weeks before this one.
+    private var firstWeekStart: CalendarDate { today.adding(days: -(today.weekday - 1) - 7 * Self.weeksBack) }
+    private func weekStart(_ i: Int) -> CalendarDate { firstWeekStart.adding(days: 7 * i) }
+    private func weekIndex(_ d: CalendarDate) -> Int { firstWeekStart.days(until: d) / 7 }
+    private var todayWeek: Int { weekIndex(today) }
 
     /// The month with the most days showing.
-    private var headerMonth: Date {
+    private var headerMonth: CalendarDate {
         let top = topWeek ?? todayWeek
-        return Day.offset(3, from: weekStart(top + 2))
+        return weekStart(top + 2).adding(days: 3)
     }
 
     var body: some View {
@@ -49,11 +48,11 @@ struct DatePickerSheet: View {
             quickPicks
 
             HStack(spacing: 8) {
-                Text(Day.fmt(Day.cal.component(.year, from: headerMonth) == Day.cal.component(.year, from: Day.today) ? "MMMM" : "MMMM yyyy", headerMonth))
+                Text(DateLabel.monthTitle(year: headerMonth.year, month: headerMonth.month))
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(p.ink)
                     .contentTransition(.numericText())
-                    .animation(.easeOut(duration: 0.15), value: Day.month(headerMonth))
+                    .animation(.easeOut(duration: 0.15), value: headerMonth.month)
                 Spacer()
                 if let top = topWeek, abs(top + 1 - todayWeek) > 2 {
                     Button { scroll(to: todayWeek) } label: {
@@ -115,10 +114,10 @@ struct DatePickerSheet: View {
     private var quickPicks: some View {
         ScrollView(.horizontal) {
             HStack(spacing: 8) {
-                quick("Today", Day.today, symbol: "sun.max.fill", tint: p.list(.yellow))
-                quick("Tomorrow", Day.offset(1), symbol: "sunrise.fill", tint: p.list(.red))
-                quick("This Weekend", weekend, symbol: "sofa.fill", tint: p.list(.cyan))
-                quick("Next Week", nextWeek, symbol: "arrow.right.circle.fill", tint: p.list(.magenta))
+                quick("Today", today, symbol: "sun.max.fill", tint: p.list(.yellow))
+                quick("Tomorrow", today.adding(days: 1), symbol: "sunrise.fill", tint: p.list(.red))
+                quick("This Weekend", DatePhrase.weekend(from: today), symbol: "sofa.fill", tint: p.list(.cyan))
+                quick("Next Week", DatePhrase.nextWeek(from: today), symbol: "arrow.right.circle.fill", tint: p.list(.magenta))
                 if current != nil {
                     Button { choose(nil) } label: {
                         Text("Clear").font(.system(size: 14, weight: .medium)).foregroundStyle(p.inkSecondary)
@@ -134,8 +133,8 @@ struct DatePickerSheet: View {
         .scrollIndicators(.hidden)
     }
 
-    private func quick(_ title: String, _ date: Date, symbol: String, tint: Color) -> some View {
-        let on = current.map { Day.start($0) == date } ?? false
+    private func quick(_ title: String, _ date: CalendarDate, symbol: String, tint: Color) -> some View {
+        let on = current == date
         return Button { choose(date) } label: {
             HStack(spacing: 6) {
                 Image(systemName: symbol).font(.system(size: 12, weight: .semibold)).foregroundStyle(on ? p.accentText : tint)
@@ -152,20 +151,20 @@ struct DatePickerSheet: View {
     private func week(_ i: Int) -> some View {
         HStack(spacing: 0) {
             ForEach(0..<7, id: \.self) { k in
-                day(Day.offset(k, from: weekStart(i)))
+                day(weekStart(i).adding(days: k))
             }
         }
     }
 
-    private func day(_ d: Date) -> some View {
-        let isToday = d == Day.today
-        let selected = current.map { Day.start($0) == d } ?? false
-        let otherMonth = Day.cal.component(.month, from: d) != Day.cal.component(.month, from: headerMonth)
-        let marked = other.map { Day.start($0) == d } ?? false
+    private func day(_ d: CalendarDate) -> some View {
+        let isToday = d == today
+        let selected = current == d
+        let otherMonth = d.month != headerMonth.month || d.year != headerMonth.year
+        let marked = other == d
         return Button { choose(d) } label: {
             ZStack {
                 if selected { Circle().fill(p.accent).frame(width: 38, height: 38) }
-                Text("\(Day.cal.component(.day, from: d))")
+                Text("\(d.day)")
                     .font(.system(size: 16, weight: selected || isToday ? .semibold : .regular))
                     .monospacedDigit()
                     .foregroundStyle(selected ? p.onAccent : isToday ? p.accentText : otherMonth ? p.inkQuiet : p.ink)
@@ -177,7 +176,7 @@ struct DatePickerSheet: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(Day.full(d) + (isToday ? ", today" : ""))
+        .accessibilityLabel(DateLabel.long(d, today: today) + (isToday ? ", today" : ""))
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
@@ -187,11 +186,11 @@ struct DatePickerSheet: View {
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(p.inkTertiary)
             if let c = current {
-                Text(Day.full(c)).font(Typo.body).foregroundStyle(p.ink)
-                Text("· " + Day.relative(c)).font(Typo.body).foregroundStyle(p.inkTertiary)
-                if target.kind == .deadline, Day.tone(c) == .due || Day.tone(c) == .late {
-                    Text("· " + Day.deadlineLabel(c)).font(Typo.body).foregroundStyle(Day.tone(c) == .late ? p.danger : p.attention)
-                }
+                // The Mac's popover: the date, then how far it is, or for a past deadline how overdue.
+                let overdue = target.kind == .deadline && c < today
+                Text(DateLabel.long(c, today: today)).font(Typo.body).foregroundStyle(p.ink)
+                Text("· " + (overdue ? DateLabel.deadlineWords(c, today: today) : DateLabel.relative(c, today: today)))
+                    .font(Typo.body).foregroundStyle(overdue ? p.danger : p.inkTertiary)
             } else {
                 Text(target.kind == .when ? "No date · it waits in Undated" : "No deadline").font(Typo.body).foregroundStyle(p.inkTertiary)
             }
@@ -206,22 +205,13 @@ struct DatePickerSheet: View {
 
     // MARK: Behaviour
 
-    private var weekend: Date {
-        let wd = Day.cal.component(.weekday, from: Day.today)   // 1 Sunday … 7 Saturday
-        return wd == 7 ? Day.today : Day.offset(7 - wd)
-    }
-    private var nextWeek: Date {
-        let wd = Day.cal.component(.weekday, from: Day.today)
-        return Day.offset((9 - wd) % 7 == 0 ? 7 : (9 - wd) % 7)   // next Monday
-    }
-
     private func scroll(to week: Int) {
         withAnimation(Motion.natural) { topWeek = max(0, week - 1) }
     }
 
-    private func choose(_ d: Date?) {
+    private func choose(_ d: CalendarDate?) {
         picked = d
-        store.setDate(target.taskID, target.kind, d)
+        app.setDate(target.taskID, target.kind, d)
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(0.22))
             dismiss()

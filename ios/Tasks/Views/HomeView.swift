@@ -3,24 +3,22 @@ import SwiftUI
 /// The root on the phone, and the sidebar on iPad and the Mac: Today, Upcoming, Undated · Lists · Completed, Trash.
 struct HomeView: View {
     var sidebar = false
-    @Environment(Store.self) private var store
+    @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
 
     var body: some View {
         List {
             header.listRow()
-            SourceRow(source: .today, count: store.todayCount(), sidebar: sidebar).listRow()
+            SourceRow(source: .today, count: app.todayCount(), sidebar: sidebar).listRow()
             SourceRow(source: .upcoming, sidebar: sidebar).listRow()
             SourceRow(source: .undated, sidebar: sidebar).listRow()
             GroupLabel(title: "Lists").listRow()
-            ForEach(store.liveLists) { l in
-                SourceRow(source: .list(l.id), count: store.openCount(l.id), sidebar: sidebar)
+            ForEach(app.activeLists) { l in
+                SourceRow(source: .list(l.id), count: app.openCount(l.id), sidebar: sidebar)
                     .contextMenu {
-                        Button { store.listEditor = .init(listID: l.id, name: l.name) } label: { Label("Rename", systemImage: "pencil") }
-                        if l.id != "inbox" {
-                            Divider()
-                            Button(role: .destructive) { store.deleteList(l.id) } label: { Label("Delete List", systemImage: "trash") }
-                        }
+                        Button { app.listEditor = .init(listID: l.id, name: l.name) } label: { Label("Rename", systemImage: "pencil") }
+                        Divider()
+                        Button(role: .destructive) { app.deleteList(l.id) } label: { Label("Delete List", systemImage: "trash") }
                     }
                     .listRow()
             }
@@ -59,15 +57,15 @@ struct SourceRow: View {
     let source: Source
     var count: Int? = nil
     var sidebar = false
-    @Environment(Store.self) private var store
+    @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
 
     var body: some View {
-        let current = sidebar && store.selection == source
-        Button { store.open(source) } label: {
+        let current = sidebar && app.selection == source
+        Button { app.open(source) } label: {
             HStack(spacing: 12) {
-                store.tile(for: source, palette: p)
-                Text(store.title(source))
+                app.tile(for: source, palette: p)
+                Text(app.title(source))
                     .font(Typo.row)
                     .foregroundStyle(current || !sidebar ? p.ink : p.inkSecondary)
                     .lineLimit(1)
@@ -92,7 +90,7 @@ struct SourceRow: View {
             }
         }
         .buttonStyle(RowStyle())
-        .accessibilityLabel(count.map { "\(store.title(source)), \($0)" } ?? store.title(source))
+        .accessibilityLabel(count.map { "\(app.title(source)), \($0)" } ?? app.title(source))
         .accessibilityAddTraits(current ? .isSelected : [])
     }
 }
