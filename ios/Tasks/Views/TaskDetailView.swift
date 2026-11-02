@@ -96,7 +96,7 @@ private struct TaskDetailContent: View {
                         .foregroundStyle(p.inkTertiary)
                         .padding(.top, 18)
                 }
-                .padding(.horizontal, 22)
+                .padding(.horizontal, 20)
                 .padding(.bottom, 32)
             }
             .scrollDismissesKeyboard(.interactively)
@@ -179,7 +179,7 @@ private struct TaskDetailContent: View {
                     .buttonStyle(CapsuleButtonStyle(kind: .tinted, height: 32))
             }
         }
-        .padding(.leading, 22)
+        .padding(.leading, 20)
         .padding(.trailing, 14)
         .frame(height: inline ? 46 : 60)
         .padding(.top, inline ? 0 : 6)

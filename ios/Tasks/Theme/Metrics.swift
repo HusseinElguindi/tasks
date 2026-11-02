@@ -3,8 +3,8 @@ import SwiftUI
 /// The iPhone's row grid and type, scaled up from the Mac's 13/16 on a 32pt pitch (tasks-v2.css) to 17/22 on 48.
 enum Metric {
     static let rowHeight: CGFloat = 48
-    static let rowInset: CGFloat = 16          // screen edge to the row's pressed fill
-    static let rowPad: CGFloat = 14            // fill edge to the checkbox / tile
+    static let rowInset: CGFloat = 10          // screen edge to the row's pressed fill
+    static let rowPad: CGFloat = 10            // fill edge to the checkbox / tile
     static let rowRadius: CGFloat = 12
     static let check: CGFloat = 22
     static let titleGap: CGFloat = 12

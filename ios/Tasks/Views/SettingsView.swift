@@ -100,7 +100,7 @@ struct SettingsView: View {
                         .background(p.base, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                 }
-                .padding(.horizontal, 18)
+                .padding(.horizontal, 10)
                 .padding(.top, 10)
                 .padding(.bottom, 40)
             }
@@ -128,7 +128,7 @@ struct SettingsView: View {
     private var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0" }
 
     private var divider: some View {
-        Rectangle().fill(p.lineSeparator).frame(height: 1).padding(.horizontal, 14)
+        Rectangle().fill(p.lineSeparator).frame(height: 1).padding(.horizontal, 10)
     }
 
     private func row<T: View>(_ title: String, _ description: String, @ViewBuilder trailing: () -> T) -> some View {
@@ -140,7 +140,7 @@ struct SettingsView: View {
             Spacer(minLength: 8)
             trailing()
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 10)
         .padding(.vertical, 12)
     }
 
@@ -152,7 +152,7 @@ struct SettingsView: View {
             }
             control()
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 10)
         .padding(.vertical, 12)
     }
 
