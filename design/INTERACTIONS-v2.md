@@ -44,9 +44,11 @@ The sidebar (§12) gains their rows, and ⌘1–⌘9 now open the sidebar's firs
 list's notes, and a large list title, with the user's picks (§23, final). Its canvas is
 https://claude.ai/artifact/9dQ4fC46yZLLhf61gLiELx. Where §1–§22 disagree, §23 wins; its last part lists where.
 
-**Delete List, with a deleted list in Trash (`docs/TASK-design-delete-list.md`): proposed, not built (§28).** Archive
-goes. ⌘⌫ deletes a list, and it waits in Trash with its tasks until it's restored. Three directions are on
-https://claude.ai/artifact/JEqsvymjkNwNHkfDGbqzQw; the recommendation is one row in Trash's timeline that expands.
+**Delete List, with a deleted list in Trash (`docs/TASK-design-delete-list.md`): final, direction A, built (§28; the
+user, 2026-11-01; `docs/TASK-build-delete-list.md`).** Archive is gone. ⌘⌫ deletes a list, and it waits in Trash with
+its tasks, one row on the day it was deleted that expands, until it's restored. The canvas is
+https://claude.ai/artifact/JEqsvymjkNwNHkfDGbqzQw. §28 is folded into the sections it replaces; where they disagree,
+§28 wins.
 
 **A sidebar footer (`docs/TASK-design-sidebar-footer.md`): proposed, not built (§27).** Three directions for a foot
 under the sidebar; the recommendation (+ New List and Settings) leaves §26 where it is.
@@ -116,7 +118,7 @@ add and a date pick.
 2. **Hover only reveals, and only where something can be clicked.** Task rows never change on hover except that their
    trailing › fades in. Navigation rows (the sidebar) brighten their title, as Rex does. Controls (checkbox, chips,
    icon buttons) answer when the pointer is on *them*.
-3. **No confirmations; everything undoes.** Anything that removes items from the view (delete, move, archive, a date
+3. **No confirmations; everything undoes.** Anything that removes items from the view (delete, move, a date
    that takes a task out of Today) says so in a notice with Undo.
 4. **Things appear where they'll live.** A new task's row appears at its landing slot while its details open beside
    it. A checked task stays put, then moves (§8). Nothing jumps somewhere you can't see without a notice.
@@ -151,7 +153,7 @@ what to search for in the prototype.
 | `ink-quiet` | `--ink-q` | #6D7072 **Rex** | #888A8D | Pane-header icons at rest, strike-through, other months' days |
 | `fill-row-selected` (new) | `--sel` | #333333 | #E6E6E8 | Selected task rows, focused pane or a pane alone |
 | `fill-row-selected-dim` (new) | `--sel-dim` | #292929 | #EFEFF0 | Selected task rows, unfocused pane |
-| `fill-control` | `--fill-control` | #2D2E2E | #EDEDEE | Chips, the date field, a list being renamed, the archive banner |
+| `fill-control` | `--fill-control` | #2D2E2E | #EDEDEE | Chips, the date field, a list being renamed, a deleted list's banner (§28) |
 | `fill-track` | `--fill-track` | #303132 | #E9E9EA | Toolbar icon hover circle, capsule buttons, quick-pick hover |
 | `fill-strong` | `--fill-strong` | #444444 **Rex** | #E0E0E1 | Current sidebar row |
 | capsule edge | `--edge-outer` / `--edge-inner` | #5E5E5E / #535353 **Rex** | #CFCFD0 / #D6D6D7 | 0.5pt outer + 1pt inner inset on the current sidebar row |
@@ -199,12 +201,12 @@ tooltips 11/14. Tiles and inline code use SF Mono. Counts and day numbers use ta
 | Sidebar toggle | 28pt circle at (93, 11), center (107, 25) **Rex**; glyph 16pt | `css:92–95` |
 | Sidebar | 230 wide **Rex** by default, 180–400 by its divider (§4); its content starts at y 50: the brand header (34), then Today 6 below it, at y 90 (§12) | `dc:439`, `dc:440` |
 | Sidebar row | Capsule x 10–219 (209 wide), 30 tall, radius 15 **Rex**; tile 10 in; title 7 after the tile, nudged up 0.5 **Rex**; count (Today only) or ⌘ hint right-aligned 8 from the capsule's right edge | `css:102–105`, `css:107–120` |
-| List tile | 20×16, radius 4, 700 10pt mono glyph in white on the list's solid `tile-*` hue, lit with the reference tile's finish (COLOR.md §2, `TileArt`): a 0.5pt `tile-halo` outside, a radial light from the top middle, a 0.5pt specular strip along the top, a 0.5pt white 7% inner ring; hairlines are one device pixel. An archived list's tile is at 55%. Small (headers, menus): 16×13, radius 3.5, 8.5pt, a view's glyph 10pt. The glyph or letter is centred on its ink, not its box (the user, 2026-11-01): a view's 12pt glyph box sits in the middle and each glyph's path is centred in its 16-unit box; a letter's capital is centred (its baseline half the cap height below the middle, on the nearest device pixel), not its line box | `css:123–127` |
+| List tile | 20×16, radius 4, 700 10pt mono glyph in white on the list's solid `tile-*` hue, lit with the reference tile's finish (COLOR.md §2, `TileArt`): a 0.5pt `tile-halo` outside, a radial light from the top middle, a 0.5pt specular strip along the top, a 0.5pt white 7% inner ring; hairlines are one device pixel. Small (headers, menus): 16×13, radius 3.5, 8.5pt, a view's glyph 10pt. The glyph or letter is centred on its ink, not its box (the user, 2026-11-01): a view's 12pt glyph box sits in the middle and each glyph's path is centred in its 16-unit box; a letter's capital is centred (its baseline half the cap height below the middle, on the nearest device pixel), not its line box | `css:123–127` |
 | Group label | A 32pt slot: 11/14 semibold `ink-tertiary`, 12 in from the row edge, text top 10 **Rex**. Reveal button 22×22, radius 6, 5 from the right, top 6 | `css:131–141` |
 | Panes | 8 from the window edges and each other (the list pane starts at x 230 **Rex**); radius 10; 1pt inset edge | `css:144–146`, `dc:441` |
 | Pane header | 34 tall from the pane's top, so its contents center on y 25; padding 12 left, 8 right; 8 between items; title 13 medium | `css:147–152` |
 | Pane-header icon button | 26×26, radius 6, glyph 14, 2 apart | `css:153–156` |
-| Task row | 10 in from the pane's sides, 30 tall, radius 8; the first row 4 below the header (64 in an archived list, under the banner). Padding 10 left, 5 right. Checkbox at 10; title 10 after it, nudged up 0.5, its last 24pt fading out; chips 8 after the title, 6 apart; › 22×22 (radius 6) 4 after the chips, 5 from the right edge, its slot always kept. **A short row** (built, v2 feedback 16): the title keeps up to 120pt and its hint; chips keep their size and drop from the first; a list name after the title keeps up to 72pt, then fades out like a title, and goes below 32pt; spare room goes to the title first | `css:161–181`, `dc:974` |
+| Task row | 10 in from the pane's sides, 30 tall, radius 8; the first row 4 below the header (a deleted list's large title starts at 60, under its banner, §28). Padding 10 left, 5 right. Checkbox at 10; title 10 after it, nudged up 0.5, its last 24pt fading out; chips 8 after the title, 6 apart; › 22×22 (radius 6) 4 after the chips, 5 from the right edge, its slot always kept. **A short row** (built, v2 feedback 16): the title keeps up to 120pt and its hint; chips keep their size and drop from the first; a list name after the title keeps up to 72pt, then fades out like a title, and goes below 32pt; spare room goes to the title first | `css:161–181`, `dc:974` |
 | Checkbox | 16 circle, 1.5 ring; check glyph 10, stroke 2.2, round; hit area 30×30 | `css:192–204` |
 | Chip | 18 tall, radius 9, padding 7, gap 4, 11/14 medium, icon 11. Large (detail pane): 22 tall, radius 11, padding 9, gap 5, 12pt | `css:207–217` |
 | Detail pane | 420 wide by default, 340 and up by its divider (§4); body padding 8 / 18 / 18; title row: checkbox 2 down, 10 to the title (15/20 semibold); property rows 32 tall from 12 below the title, from the checkbox's left edge, label column 81 (the icon centered in the checkbox's 16pt column, the word at 26 with the title's text); the separator, notes and footer span the content width like the title row | `css:255–284` |
@@ -441,7 +443,7 @@ The selected row scrolls into view, ending 8pt below the top or 12pt above the b
 | A list | ⌘N; the header's + | That list, at the bottom of its open tasks (SPEC §3: new tasks append) |
 | A list or Today | Double-clicking the empty space under the rows | As ⌘N (its first press has already cleared the selection, so in Today the task goes to the default list). A single press never adds |
 | An empty list | ⌘N, +, or double-clicking anywhere in the pane: the empty space is the whole pane, and the empty state says "Double-click anywhere here or press ⌘N to add one." | The first slot |
-| An archived list | As a list (SPEC §2: nothing is read-only) | That list |
+| A deleted list, opened from Trash | As Trash: no +, ⌘N adds in the default list, a double-click on empty space does nothing (§28) | The default list |
 | Today | ⌘N; the header's + | The selected task's list if a task is selected, else the default list (the first active list, SPEC §2); **When = today**. It lands at the bottom of that list's Today group; if the group wasn't showing, its label fades in above it |
 | Today | A group label's + (revealed on hover) | That list, When = today |
 | The sidebar | A list's context menu → "New Task in School" | Opens School, then as a list |
@@ -648,8 +650,8 @@ else above, so repeated ⌘⌫ walks down the list like Mail; if nothing is left
 (`dc:1279–1291`, `dc:1269–1278`).
 
 **Notice.** An action that takes items out of the view says so at the bottom-right of the list pane: "Deleted “Buy
-milk”" (titles over 28 characters end in …), "Deleted 3 tasks", "Moved to School", "Moved 3 tasks to School", "Archived
-School", "Scheduled for Fri, Nov 6", "Due Fri, Nov 6", "Removed from Today" (the last three only when a date takes a task
+milk”" (titles over 28 characters end in …), "Deleted 3 tasks", "Moved to School", "Moved 3 tasks to School", "Deleted
+School", "Restored School" (§28), "Scheduled for Fri, Nov 6", "Due Fri, Nov 6", "Removed from Today" (the last three only when a date takes a task
 out of Today).
 
 | Part | Value |
@@ -666,7 +668,7 @@ Source: `css:346–349`, `dc:1402–1406`,
 **Undo.** ⌘Z / ⇧⌘Z undo and redo every change as new ops (SPEC §6), with these action names so the Edit menu reads
 "Undo Delete", "Redo Move": New Task, Rename Task, Edit Notes, Complete / Complete 3 Tasks / Mark Not Done, Delete /
 Delete 3 Tasks, Move / Move 3 Tasks, Set When / Remove When / Set Deadline / Remove Deadline, New List, Rename List,
-Move List, Archive List, Unarchive List. After an undo or redo the app goes back to the view where the change was made (at once, if it's
+Move List, Delete List, Restore List (§28), Put Back / Put Back 3 Tasks (§22). After an undo or redo the app goes back to the view where the change was made (at once, if it's
 another view), selects what was selected just before the change (for a redo, what was selected at the undo), and
 scrolls it into view. A notice without a button confirms it ("Undo Delete",
 1.8 s). The notice's Undo is the same as ⌘Z. Inside a text field ⌘Z is the field's own undo
@@ -685,8 +687,9 @@ scrolls it into view. A notice without a button confirms it ("Undo Delete",
 | Detail pane → List pop-up | The same list, under the pop-up (`dc:1484–1490`) |
 
 Moved tasks land at the bottom of the target (SPEC §3). In a list view they leave (fade, close up, selection moves on)
-with the notice "Moved to School". In Today they stay visible, regrouped, with no notice. Archived lists are never
-offered (`dc:1292–1302`).
+with the notice "Moved to School". In Today they stay visible, regrouped, with no notice. Deleted lists are never
+offered (`dc:1292–1302`, §28); a task taken out of one goes through "Put back in", which shows its own list disabled with
+"In Trash".
 
 ---
 
@@ -798,14 +801,13 @@ Clear in the popover, ⌫ in its empty field, the × beside a detail-pane chip, 
 
 ## 12. Lists and the sidebar
 
-**Sidebar rows** (Today, lists, archived lists) `css:107–120`, `dc:2965–2981`:
+**Sidebar rows** (Today, the views, lists) `css:107–120`, `dc:2965–2981`:
 
 | State | Look |
 |---|---|
 | Rest | Title `ink-secondary` **Rex**; Today's count `ink-tertiary`, tabular; a list shows no count (the user, 2026-10-31) |
 | Hover | Title → `ink` (`hoverIn`, out on `hoverOut`). No fill, no trailing action |
 | Current | `fill-strong` capsule with the two-step edge, title `ink`, Today's count `ink-secondary` **Rex** |
-| Archived | Title `ink-tertiary`, `ink` on hover or when current; no count |
 | Drop target (a task drag) | `accent-tint` fill, 2pt inset `accent` ring, title (and Today's count) `accent-text` |
 | Being renamed | `fill-control`, 1.5pt inset `accent` ring, the name as a field in place |
 | Holding ⌘ (450 ms) | ⌘1–⌘9 show in the count's place on the sidebar's first nine rows (Today, Upcoming, Undated, then lists; §22), Today's count giving way, in 12pt `ink-secondary` (Rex, preview.16); any key or letting go hides them |
@@ -816,7 +818,8 @@ across the active lists. Lists have none (the user, 2026-10-31). Long names fade
 hint), and 10 short when it's empty, so a list's name uses the room the count left.
 
 **Layout**: the brand header, Today 6 below it, Upcoming and Undated, the "Lists" label, the active lists, then 8pt and
-Completed and Trash (§22), then 8pt and the "Archive" label when anything is archived (`dc:1032–1057`).
+Completed and Trash (§22). The sidebar ends there: there's no Archive group (§28). A deleted list is in Trash, which is
+always shown.
 
 **Brand header** (v2 feedback 12; the logo canvas's "Sidebar header" board, `design/logo/Sheet.dc.html` ~168)
 `dc:22`, `dc:440`, `dc:1035`, `css:398–413`:
@@ -839,13 +842,12 @@ is dark only. In both, the check is cut out of the head.
 It's a label. It has no hover, and a press there is a press on the sidebar's empty space. It scrolls with the sidebar's
 content, and when the sidebar collapses the panes cover it with everything else; it never moves into the top band.
 
-**Group labels.** "Lists" reveals a + (New List ⇧⌘N) on hover. "Archive" reveals a chevron, and pressing the label
-toggles the group (collapsed by default; the chevron turns 90° in 200 ms ease-out and stays shown while open). The
-reveal is in on `hoverIn`, out on `hoverOut`; the button's own hover is the `hover` fill with `ink-secondary`, its press
-the `press` fill at once (`css:133–141`). Labels never take selection.
+**Group labels.** "Lists" reveals a + (New List ⇧⌘N) on hover. The reveal is in on `hoverIn`, out on `hoverOut`; the
+button's own hover is the `hover` fill with `ink-secondary`, its press the `press` fill at once (`css:133–141`). Labels
+never take selection.
 
 **Sidebar keys** (sidebar focused) `dc:1842–1857`: ↑ ↓ open the previous / next row; letters
-type-select by name; Return renames; ⌥⌘↑ ⌥⌘↓ move the list; ⌘⌫ archives it; → Tab ⇧Tab Esc go back to the list. Anywhere: ⌘1–⌘9
+type-select by name; Return renames; ⌥⌘↑ ⌥⌘↓ move the list; ⌘⌫ deletes it (§28); → Tab ⇧Tab Esc go back to the list. Anywhere: ⌘1–⌘9
 open the sidebar's first nine rows (§22).
 
 **Create**: ⇧⌘N, the "Lists" +, or the menu on the sidebar's empty space. A row appears at the bottom of Lists in the
@@ -856,21 +858,14 @@ Esc or an empty name cancels and writes nothing (`dc:1241–1247`).
 **Rename**: double-click (Rex, preview.15), Return, or Rename in the menu (inline here; Rex sends menu renames to its
 palette, which Tasks doesn't have).
 
-**Reorder**: drag (§14), ⌥⌘↑ ⌥⌘↓, or Move Up / Move Down in the menu (Rex has the same pair for sessions). Today and
-archived lists don't move.
+**Reorder**: drag (§14), ⌥⌘↑ ⌥⌘↓, or Move Up / Move Down in the menu (Rex has the same pair for sessions). Today
+doesn't move.
 
-**Archive**: Archive in the menu or ⌘⌫ with the sidebar focused. No confirmation. The row fades as the rows below close
-up; if it was open, the first active list opens (Today if none). Notice "Archived School". The Archive group appears
-when the first list is archived (`dc:1370–1381`).
-
-§28 (proposed) replaces Archive, the archive view and Unarchive below with Delete List and Trash.
-
-**The archive view.** Archived lists sit in the collapsible Archive group at the bottom of the sidebar, newest first.
-One opens as a normal list pane, header "School  Archived", with a banner on top: archive icon, "Archived Oct 28 · Not
-in Today or Move to. Everything still edits." and a tinted **Unarchive** button (banner: `fill-control`, radius 8,
-padding 9 / 10 / 9 / 12, 6 from the header; `css:289–291`). Rows start 64 below the header.
-Unarchive (or Unarchive in its menu, or ⌘Z right after) puts it back in its old place in Lists (SPEC §2). An empty
-archived list shows no empty state.
+**Delete List** (§28): Delete List in the menu, or ⌘⌫ with the sidebar focused. No confirmation. The row fades as the
+rows below close up; if it was open, the next list below opens, else the one above, else Today. Notice "Deleted
+School" with Undo; undo label "Delete List". The list and its tasks wait in Trash, one row on the day it was deleted,
+and Restore puts it back in its old place in Lists (SPEC §2). §28 has the row, opening it read-only, and taking one
+task out.
 
 ---
 
@@ -909,7 +904,7 @@ the drop will land; there is no insertion line. Source: `dc:1561–1578`,
 | Move 4pt | Lift: a copy of the row (the grabbed row, for a multi-selection) follows the pointer, keeping the grab offset: `fill-lift`, radius 8, `shadow-lift`, the checkbox ring, title and chips (chips on #3A3A3A in dark). The rows being dragged leave their places (hidden). Several tasks: an `accent` badge with the count, 18 tall, 11 semibold `on-accent`, 7pt past the copy's top-right corner. Tooltips, menus and popovers close |
 | Over the list | The other rows in the group part on `layout` to open a gap (as many slots as rows dragged) at the target. The target is the nearest slot to the copy. The copy stays inside its group: it stops 6pt past the first and last slot (a list's open tasks; one Today group) |
 | Near the top or bottom (24pt) | The list scrolls 8pt every 16 ms |
-| Over the sidebar | The gap closes and everything below the group moves up (the rows are leaving). The copy becomes a compact tag, 210 wide (width on 160 ms ease-out) at the pointer +12, +8, so the target stays readable. It stays a tag, and the group stays closed, anywhere over the sidebar, on a target or not. The row under the pointer shows the drop-target state if it takes the drop. Each row's hit area takes half the 2pt gap on either side, so the state passes straight from one row to the next, with the fill, ring and (on Today) count changing in one frame and the title easing on `hover-out`. Today is a target (sets When = today) unless you're in Today; the current list, archived lists and labels aren't, and over them nothing is highlighted |
+| Over the sidebar | The gap closes and everything below the group moves up (the rows are leaving). The copy becomes a compact tag, 210 wide (width on 160 ms ease-out) at the pointer +12, +8, so the target stays readable. It stays a tag, and the group stays closed, anywhere over the sidebar, on a target or not. The row under the pointer shows the drop-target state if it takes the drop. Each row's hit area takes half the 2pt gap on either side, so the state passes straight from one row to the next, with the fill, ring and (on Today) count changing in one frame and the title easing on `hover-out`. Today is a target (sets When = today) unless you're in Today; the current list and labels aren't (a deleted list isn't in the sidebar, §28), and over them nothing is highlighted |
 | Drop on the list | The copy flies into its slot (160 ms, cubic-bezier(0.2, 0.8, 0.2, 1)); at 170 ms the new order is written (one op per task, `keysBetween`, SPEC §3) and the grabbed row shows at once, exactly under the copy, which then fades out over it (150 ms ease-out), so the lift dissolves into the row; the other rows that came along fade in (150 ms). Dropping where it started writes nothing |
 | Drop on a sidebar list | The copy flies to the row's left (x 10) and fades out (160 ms); at 170 ms the move is written; notice "Moved to Errands" |
 | Drop on the sidebar elsewhere | As Esc: the copy flies home, widening back into the row, and nothing is written |
@@ -918,8 +913,8 @@ the drop will land; there is no insertion line. Source: `dc:1561–1578`,
 **Sidebar lists** drag the same way, vertically only, after 4pt: the copy is the capsule (`fill-strong`, the row's
 width, radius 15, `shadow-lift`, tile and name in `ink`, the name on the row's text line) at x 10, clamped 6pt past the
 first and last list; the other lists part on `layout`; the drop flies to its slot (160 ms), the order is written at
-170 ms, and the row shows at once under the copy, which fades out over it (150 ms; Esc the same). Today and archived
-lists can't be dragged (`dc:1670–1678`, `dc:1679–1693`, `dc:1694–1708`, `css:244`).
+170 ms, and the row shows at once under the copy, which fades out over it (150 ms; Esc the same). Today can't be
+dragged, and a deleted list's row in Trash can't either (§28) (`dc:1670–1678`, `dc:1679–1693`, `dc:1694–1708`, `css:244`).
 
 ---
 
@@ -946,10 +941,11 @@ Delete                  ⌘⌫        ("Delete 3 Tasks")
 ```
 
 **A list** `dc:1455–1472`: New Task in School · Rename ↩ · ── · Move Up ⌥⌘↑ · Move Down ⌥⌘↓ ·
-── · Archive ⌘⌫. **An archived list**: Unarchive · Rename ↩. **Empty sidebar space**: New List ⇧⌘N.
+── · Delete List ⌘⌫. **A deleted list's row in Trash** (§28): Open ↩ · Show Details ⌘D · ── · Restore List ⌘⌫. **A
+task whose list is in Trash**: Show Details ⌘D · Put Back in ▸. **Empty sidebar space**: New List ⇧⌘N.
 
 Items that don't apply are disabled, not hidden (Remove with no date set; Move Up on the first list). No ellipsis on
-actions that happen at once (Archive, Delete); "Choose Date…" keeps one because it asks for input (macOS rule).
+actions that happen at once (Delete List, Delete); "Choose Date…" keeps one because it asks for input (macOS rule).
 
 ---
 
@@ -973,7 +969,7 @@ checkbox is the exception: it shrinks over 80 ms ease-out and comes back on `sna
 | Empty space under the rows | — | Nothing | Clears the selection; a double-click adds (§5, §6) | — | `dc:1970–1983` |
 | Pane-header icon button | `ink-quiet`; at 55% in an unfocused pane (never in a pane alone, §4) | `hover` fill (radius 6), `ink-secondary` (`icon`) | `press` fill, `ink` | Split button `ink-secondary` while the detail pane is open | `css:153–156` |
 | Toolbar icon (sidebar toggle) | `ink-secondary` | `fill-track` circle, `ink` (`icon`) **Rex** | `press` fill | — | `css:93–94` |
-| Capsule button (Undo, Unarchive) | Tinted | Brightness 1.12 / 0.97 (`icon`) | Brightness 0.86 | — | `css:295–297` |
+| Capsule button (Undo, Restore) | Tinted | Brightness 1.12 / 0.97 (`icon`) | Brightness 0.86 | — | `css:295–297` |
 | Quick pick (popover) | `fill-control` | `fill-track`, brightness 1.12 (`icon`) | — | Matches the typing: `accent-tint` | `css:324–326` |
 | Month arrows | `ink-secondary` | `hover` fill, `ink` (`icon`) | — | — | `css:331` |
 | Day | — | `hover` fill (`icon`) | Sets it | Highlighted `accent`; current ring; today `accent-text` | `css:335` |
@@ -984,8 +980,8 @@ checkbox is the exception: it shrinks over 80 ms ease-out and comes back on `sna
 
 **Tooltips** (Rex draws its own, with keys, preview.23) on the toolbar and pane-header buttons, the row's ›, and the
 "Lists" +: the name, then the shortcut in `ink-secondary`, 6 apart ("New Task ⌘N", "Hide Sidebar ⌃⌘S"). A Today group's
-+ ("New Task in School") and the detail rows' × show the name only; the Archive chevron and the popover's month arrows
-have none. They appear 600 ms after the pointer arrives, at once if
++ ("New Task in School") and the detail rows' × show the name only; a deleted list's chevron in Trash and the popover's
+month arrows have none. They appear 600 ms after the pointer arrives, at once if
 another closed within the last 600 ms, 6pt below the button with its left edge 60pt left of the button's center (kept between 6 and the window's width − 160), and fade in
 over 100 ms; they go at once on a press or when the pointer leaves, and never during a drag or with a menu open
 (`dc:2718–2724`, `css:351–352`).
@@ -1013,7 +1009,7 @@ over 100 ms; they go at once on a press or when the pointer leaves, and never du
 | ⌘T | When: Today |
 | ⇧⌘M | Move to… (⌘1–⌘9 inside it) |
 | ⌥⌘↑ ⌥⌘↓ | Move the selection (or the sidebar list) up or down |
-| ⌘⌫ | Delete tasks; with the sidebar focused, archive the list |
+| ⌘⌫ | Delete tasks; with the sidebar focused, delete the list (the menu item reads "Delete List" then); in Trash, Put Back (a deleted list: Restore List; a task whose list is in Trash: Put back in) (§28) |
 | Esc | Cancel or finish the innermost thing: drag, menu, popover, edit, then the detail pane, then the selection |
 | ⌘R / ⌘, | Sync now / Settings (unchanged) |
 
@@ -1042,8 +1038,8 @@ Where SwiftUI's defaults fight the design, and what to use instead.
    Entering rows use `.transition(.opacity)` on a 180 ms ease-out, leaving ones 150 ms; the prototype's
    `MOTION_WINDOW_MS` bookkeeping (`dc:2743–2794`) is what SwiftUI's transitions do for you.
 2. **Hover: one tracker per list, not per row.** `.onContinuousHover` on the list container; the hovered row is
-   the one whose `[top − 1, top + 31)` holds the pointer, from the layout's own row positions (Today's labels, the
-   archived banner and the Completed row's extra 8pt break the plain 32pt grid; each 2pt gap is split 1/1, §5); store `hoveredTaskID` in an observable
+   the one whose `[top − 1, top + 31)` holds the pointer, from the layout's own row positions (Today's labels, a
+   deleted list's banner and the Completed row's extra 8pt break the plain 32pt grid; each 2pt gap is split 1/1, §5); store `hoveredTaskID` in an observable
    that only the two affected rows read. Recompute on scroll (the pointer is still but the rows move). `.ended` clears
    it. This replaces v1's `PaneHoverRegion` and its missed exits. The checkbox, chips and › use their own `.onHover`:
    they're small and never stacked.
@@ -1104,7 +1100,7 @@ Where SwiftUI's defaults fight the design, and what to use instead.
 | Quick add editor: title, notes, chips, key hints | ⌘N opens the new task in the detail pane, its row at its landing slot | The user's pick: one place for everything about a task |
 | Move to… sheet | Native menu at the row | A sheet for a one-word choice |
 | Notes: Edit / Preview control, mono editing | Click to edit in place, same font | No mode switch, no reflow |
-| Archive pane beside the list | A collapsible Archive group in the sidebar | One less pane type |
+| Archive pane beside the list | No Archive: a deleted list lives in Trash with its tasks (§28) | One concept for one thing |
 | SwiftUI item-provider drags | In-window custom drag, rows part for the gap, Esc cancels | v1's drop bugs; no control over the lift |
 | Rows jump when order changes | Rows move on one spring | The list should show what happened |
 
@@ -1185,8 +1181,9 @@ Found by an audit of the spec against the prototype; each is what the prototype 
   before Today, so "t" goes to "Tasks app" (`dc:1859–1871`).
 - **Renaming a task** keeps the text as typed (not trimmed) and may leave it empty; an empty title shows "New Task" in
   `ink-tertiary` (`css:171`).
-- **The archive banner**: "Archived Oct 28" in 13pt `ink`, the rest in 12pt `ink-secondary`, the icon in
-  `ink-secondary`; 10 in from the pane's sides, 10 between icon, text and button (`dc:60–64`).
+- **A deleted list's banner** (§28): the trash glyph in `ink-secondary`, "Deleted Nov 1" in 13pt `ink`, " · Read-only
+  until you restore it." in 12pt `ink-secondary`, a tinted Restore; 10 in from the pane's sides, 10 between icon, text
+  and button (`dc:60–64`).
 - **Glyphs**: icons are drawn with 1.5pt round strokes, 14pt by default. The ›, group + and chevron, Completed chevron,
   date ×, month arrows and ⌃⌄ are 12pt; chip icons 11pt. The group buttons and the date × rest in `ink-tertiary`. "Add
   date" has no icon (`css:40–43`).
@@ -1216,7 +1213,7 @@ Put Back deletes it again at that moment.
 ### The sidebar
 
 Top to bottom: the brand header, **Today, Upcoming, Undated**, the "Lists" label and the lists, then 8pt and
-**Completed, Trash**, then the Archive group (`dc:1032–1056`, `dc:3192–3198`). The views you plan from sit under Today;
+**Completed, Trash** (`dc:1032–1056`, `dc:3192–3198`). There's no Archive group (§28). The views you plan from sit under Today;
 the logbook and the Trash sit after the lists. **No counts** on the four, nor on the lists: only Today keeps its count
 (the user, 2026-10-31).
 
@@ -1229,8 +1226,8 @@ the logbook and the Trash sit after the lists. **No counts** on the four, nor on
 
 They are rows like Today: hover, current and ⌘ hints as §12. Type-select tries the lists first, then Today and the
 views, so "t" still goes to "Tasks app" and "u" to Upcoming (`dc:1859–1866`). They can't be dragged, renamed or
-archived, and have no context menu. Trash is always shown, empty or not, so a deleted task always has somewhere to be
-found. Template: `dc:26`, `dc:48`; tiles `dc:460`.
+deleted, and have no context menu. Trash is always shown, empty or not, so a deleted task or list always has somewhere
+to be found. Template: `dc:26`, `dc:48`; tiles `dc:460`.
 
 **⌘1–⌘9 open the sidebar's first nine rows, top to bottom** (`dc:3197`, `dc:1793`): Today, Upcoming, Undated, then the
 first six lists. Holding ⌘ shows the numbers as before (§12). (The user may revisit this.)
@@ -1246,7 +1243,7 @@ From Trash, a list puts the tasks back into that list; Today and Completed don't
 | Upcoming | Open, in active lists, whose **earlier date is after today**. Each sits on the day it will reach Today (SPEC §4: either date brings it in), so every dated open task is in exactly one of Today and Upcoming. A task with both dates shows **once**, on the earlier date | **The next seven days, always**: "Tomorrow", then weekday names, each with its date after it in 400 `ink-quiet` ("Monday  Nov 2"). An empty day's label is `ink-quiet` and still takes +, a double-click and a drop. **Then one group per month**: "Later in November" (the rest of the seventh day's month), "December", "January 2027". Within a group: by date, then the list's sidebar order, then the list's order | The list's name after the title (12pt `ink-tertiary`, as Today's Completed rows). In a day group the day's own date isn't repeated: When on that day shows no chip, and a deadline on that day reads "Due" (neutral flag chip). The other date shows as its usual chip | `dc:3225–3252`, `dc:3275`, `dc:3278–3284` |
 | Undated | Open, in active lists, with **no When and no Deadline** | By list, in sidebar order, each list's name as the label with its +; rows in the list's order. Exactly Today's grouping | none | `dc:3218–3224` |
 | Completed | Completed, in active lists, **newest first, all of them**: it's the logbook (kept forever, SPEC §2; the app draws only what's on screen) | A group per local day for the last 7 days ("Today", "Yesterday", weekday names, with the date), then per month | The list's name; in a month group also the day ("School · Oct 22") | `dc:3253–3269` |
-| Trash | Deleted, in active lists (a deleted task in an archived list shows once the list is unarchived), newest-deleted first | As Completed, by the day it was deleted | The list's name (and the day, in a month group). Titles `ink-secondary` (completed ones keep their struck `ink-tertiary`); the checkbox at 60% and deaf to the pointer; no When, no Deadline and no ring (§24) | `dc:3253–3269`, `css:427–430` |
+| Trash | Deleted tasks, wherever their list is, and deleted lists, each one row (§28), newest deleted first. A task in a deleted list counts as deleted everywhere else | As Completed, by the day it was deleted | The list's name (and the day, in a month group). Titles `ink-secondary` (completed ones keep their struck `ink-tertiary`); the checkbox at 60% and deaf to the pointer; no When, no Deadline and no ring (§24) | `dc:3253–3269`, `css:427–430` |
 
 Label metrics are Today's (`css:131`, `css:236–239`); the date part is `css:421`, an empty day `css:422`. Group labels
 keep one node per id while the view is open, so they move with their rows (`dc:3286–3310`).
@@ -1301,6 +1298,9 @@ type-select, ← → Tab move between the sidebar, the list and the details.
   as a delete does.
 - **Put Back in ▸** (context menu) and a drag onto a sidebar list put it at the bottom of another list
   (`set {deleted: false, list, order}`). Context menu: Show Details, Put Back, Put Back in ▸ (`dc:3379–3387`).
+- **Deleted lists** (§28): one row each, on the day the list was deleted, that expands to show its tasks and opens
+  read-only; Restore brings the list back with everything it held. A task whose list is in Trash has no home to go
+  back to: ⌘⌫ and ↶ pop "Put back in", and its context menu is Show Details, Put Back in ▸.
 - **Deleting from every other view** is unchanged (§9): soft, immediate, "Deleted …" with Undo. The notice doesn't
   say Trash; the sidebar row is always there to find it.
 - **No "Delete Forever" and no "Empty Trash"** (the user's call): SPEC §1 and §11 defer hard deletes. Trash only grows,
@@ -1315,7 +1315,7 @@ All centered, 34% down, as §13 (`dc:462–467`, `dc:113`):
 | Upcoming | calendar | Nothing upcoming | Tasks with a date after today show up here, on the day they reach Today. (Drawn 24 under the seven empty days) |
 | Undated | layers | Every task has a date | Open tasks with no When and no Deadline show up here, by list. |
 | Completed | check circle | Nothing completed yet | Tasks you check off show up here, newest first. |
-| Trash | trash can | Trash is empty | Deleted tasks wait here until you put them back. |
+| Trash | trash can | Trash is empty | Deleted tasks and lists wait here until you put them back. |
 
 ### The header
 
@@ -1362,7 +1362,7 @@ On the 32pt pitch, in the row's shape: 30 tall, 10 in from the pane's sides, pad
   `hoverIn` and out on `hoverOut`, with the `hover` fill under the pointer. These are Rex's group headers (⊕ and a
   chevron on hover, `design/REX-REFERENCE.md`). Both glyphs are 12pt (`i--sm`), centered in their button, and the
   chevron stays 12pt open or collapsed: only its rotation changes. It points down when open and right when collapsed
-  (200 ms ease-out, as the Archive label's; `css:138–141`). The two buttons take the press above the row: a press on
+  (200 ms ease-out, as a deleted list's in Trash, §28; `css:138–141`). The two buttons take the press above the row: a press on
   them never selects or drags the heading (`css:459`; see the bugs below).
 - **Collapsed**: the chevron stays shown, and its open tasks' count follows the name, 8 after it, in 11/14 medium
   `ink-tertiary`, with tabular figures.
@@ -1428,7 +1428,7 @@ heading, collapsed and expanded, twice over, and the glyph sizes from the first 
   collapsed and expanded.
 - **The chevron was too big.** Its open state used the class `open`, which is also the task row's › button
   (`.tk .open`: 22×22, 4 to its left, and hidden until the row is hovered or while the detail pane is open). An open
-  heading's chevron, and the Completed and Archive chevrons when open, drew 22pt instead of 12 and vanished when the
+  heading's chevron, and the Completed chevron when open, drew 22pt instead of 12 and vanished when the
   pointer left. Collapsed, it was 12pt, so it looked like the icon changed size. The open state is now `down`
   (`css:138–141`, `dc:3769`). **Build:** give the chevron glyph a fixed 12pt frame and change only its rotation
   between states, with nothing else styling it, so it's 12pt from the first frame in both states.
@@ -1498,7 +1498,7 @@ centered like "No task selected" (`dc:141`, `dc:3822–3830`).
 
 - **Where**: the top of the list's scroll content, 4 below the band. It scrolls with the rows.
 - **Size**: 20/26 semibold `ink`, −0.2 tracking, after the list's or the view's tile (20×16; COLOR.md B), 9 apart, on
-  a 30pt line. Today's date and "Archived" follow it in `ink-tertiary`.
+  a 30pt line. Today's date, and a deleted list's "In Trash" (§28), follow it in `ink-tertiary`.
 - **The list's notes**: 4 below the title; the rows start 12 after them.
 - **Renaming**: double-click it. The field is in place at 20/26, 30 tall, radius 6, `fill-control`, with a 1.5pt
   `accent` ring. Tab goes on to the notes.
@@ -1996,7 +1996,7 @@ show where Rex keeps its global actions: in the title band beside the sidebar to
 | **New List** | **Yes.** Today it's ⇧⌘N, the menu on the sidebar's empty space, or a + that only appears when you hover "Lists". The foot makes it visible without adding anything to the list. |
 | **Settings** | **Yes**, as an icon. ⌘, and the app menu stay; the foot is the one place in the window that opens it. |
 | **Sync status** | **No: it stays in the header row (§26).** A line at the foot either says "Synced" all day, or is empty at rest and appears only when something's wrong, at the bottom corner, the last place anyone looks. The header row is where the eye starts and is already built for this. |
-| The Archive toggle | No. Archive is a group in the list with its own label and chevron (§12); a second control for it in the foot would be two ways to do one thing. |
+| The Archive toggle | No, and Archive itself is gone: a deleted list lives in Trash (§28). |
 | The brand mark and name | No. They head the sidebar (§12), and the foot is for doing, not naming. |
 
 ### The direction: A · Actions
@@ -2036,10 +2036,11 @@ would move it.
 
 ## 28. Delete List: a deleted list lives in Trash
 
-Status: **proposed, 2026-11-01**, not built. The brief is `docs/TASK-design-delete-list.md`. It replaces Archive
-everywhere: §12's Archive group, archive view and banner, Unarchive, and the Archive words in §2, §9, §10, §14, §15,
-§17, §21, §22 and §27 (the last part lists each one). Where this section and those disagree, this one wins once it's
-final.
+Status: **final, direction A (the user, 2026-11-01); built** (`docs/TASK-build-delete-list.md`). The design brief is
+`docs/TASK-design-delete-list.md`. It replaces Archive everywhere: §12's Archive group, archive view and banner,
+Unarchive, and the Archive words in §2, §9, §10, §14, §15, §17, §21, §22 and §27, which now say so (the "Menus, keys and
+words" table below lists each one). Where this section and those disagree, this one wins. Directions B and C below are
+kept as the record of what was weighed.
 
 The canvas is https://claude.ai/artifact/JEqsvymjkNwNHkfDGbqzQw (private until shared). It's a mock-up of the window
 drawn with the prototype's own classes, not wired into `Main.dc.html`: the component is `Del.dc.html` with `del.css` in
@@ -2226,8 +2227,9 @@ found.
 | Principle 3 (§2) | delete, move, archive, … | delete, move, … |
 
 The words: a list is **deleted** and **restored**. A task keeps **Put Back** (the Finder's word, already built). The
-user named Restore for the banner, and a list coming back whole, with its tasks, reads better as Restore. One verb for
-both is the alternative: either Put Back for lists too, or Restore for tasks too. It's the user's choice.
+user named Restore for the banner, and a list coming back whole, with its tasks, reads better as Restore. The user kept
+the split for now (2026-11-01): the app spells each verb once (`TrashVerb` in `app/Tasks/Window/DeletedLists.swift`),
+so one verb for both is a one-line change there.
 
 VoiceOver reads the row as "School, deleted list, 11 tasks, collapsed", and the chevron as "Expand School" or
 "Collapse School".
@@ -2236,15 +2238,15 @@ VoiceOver reads the row as "School, deleted list, 11 tasks, collapsed", and the 
 
 - `tasks list archive` becomes **`tasks list delete`**, and `tasks list unarchive` becomes **`tasks list restore`**.
   In the SDK, `archiveList` becomes **`deleteList`**, `unarchiveList` becomes **`restoreList`**, and the read
-  `archive()` becomes **`deletedLists()`**. The List's `archivedAt` field keeps its name, since it's the model's.
+  `archive()` becomes **`deletedLists()`** (as built, the command `tasks archive` became **`tasks deleted`**). The List's `archivedAt` field keeps its name, since it's the model's.
   These live in `app/TasksCore/Sources/TasksCLI/Commands.swift` and `Intents.swift`,
   `remote/src/cli/commands.ts` and `context.ts`, `remote/tasks.d.ts` (and the test copy), `docs/AGENTS.md`,
   `docs/SDK-PLAN.md` and `remote/parity/capture-cli.mjs`.
 - **Aliases: keep the old names, hidden.** They still work, but they aren't in `tasks help`, `tasks.d.ts` or
   AGENTS.md. Saved scripts, the parity suite and agents' habits don't break, and nothing new learns them. Drop them
   after a release.
-- `find()` already leaves out a deleted list's tasks. `find({ deleted: true })` should include them, each marked with
-  its deleted list.
+- `find()` already leaves out a deleted list's tasks. `find({ deleted: true })` includes them, each marked with
+  **`listDeleted: true`** (present only then; `deleted` keeps the stored value).
 - `restore(task)` on a task whose list is deleted should fail with a message naming the list (restore the list, or
   move the task). `move(task, { list })` is the app's Put back in.
 - SPEC changes with it:
@@ -2257,3 +2259,25 @@ VoiceOver reads the row as "School, deleted list, 11 tasks, collapsed", and the 
   - §9 Maintained indexes: `archivedLists`, which Trash now reads.
 
   The field, the ops and the server don't change.
+
+### As built (2026-11-01)
+
+The build follows A and the prototype (`Del.dc.html`, `del.css`). What it settled that the canvas doesn't show:
+
+- **TasksCore** owns the rule: `Projection.isLive(task:)` (not deleted, and its list not deleted), `trash()` (each
+  deleted list once at its `archivedAt`, and each task deleted on its own at its deletion, newest first; headings
+  aren't listed), `tasksInDeletedList(_:)` (open in order, then completed, newest first; no headings), and in the Store
+  `deleteList`, `restoreList` and `putBack(_:in:)` (Put back in: `set {list, order}` at the bottom, plus
+  `deleted: false` only where it was deleted on its own). The bucket formerly `archivedLists` is `deletedLists`.
+- **The expanded state** is kept by list id across launches, like a heading's collapse. Collapsed, a list's tasks are
+  folded under its row, so expanding unfolds them from it and collapsing folds them back (§23's motion).
+- **Keys:** → expands a selected deleted list; ← collapses it, and from one of its tasks selects the list's row (the
+  Finder's); otherwise ← goes to the sidebar as before. Space toggles. Return and Open open it; in the opened pane Esc
+  (with nothing left to cancel) and pressing Trash go back to Trash with its row selected. Type-select matches its name.
+- **"Put back in"** lists the live lists and the task's own deleted list in sidebar order (by key), the deleted one
+  disabled with "In Trash" right-aligned. With one task whose list is live, that list is checked.
+- **The opened pane:** a deleted list with no notes leaves no notes slot, so its rows start under the title (the
+  prototype's 60 + 46). A heading in it folds but has no +, and its menu is Collapse / Expand only. Nothing in it drags
+  except tasks out to a live list in the sidebar.
+- **The CLI** is stricter than Archive was: a deleted list takes no edits (add, move into, rename, notes); `move --to`
+  is Put back in, bottom only.
