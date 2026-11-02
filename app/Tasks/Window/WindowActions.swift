@@ -144,6 +144,12 @@ struct WindowActions {
         if let w = window.nsWindow, w.firstResponder === w { focus(window.focus) }
     }
 
+    /// Quit, logout and restart (`willTerminate`): AppKit ends no edit and takes no view out of its window on the way
+    /// out, so whatever is being typed in any window is written now, before the store's last flush.
+    static func endAllEdits(store: Store) {
+        for w in WindowState.windows.allObjects where w.nsWindow != nil { WindowActions(store: store, window: w).endEdits() }
+    }
+
     // MARK: - Selection (§5, dc:703–727)
 
     func select(_ ids: [EntityID], anchor: EntityID? = nil) {
@@ -412,7 +418,7 @@ struct WindowActions {
         endEdits()
         select([id])
         window.focus = .list
-        window.rename = .init(kind: .task, id: id, caret: caret, text: t.title)
+        window.rename = .init(kind: .task, id: id, caret: caret, text: t.title, original: t.title)
     }
 
     func startListRename(_ id: EntityID) {
@@ -420,7 +426,7 @@ struct WindowActions {
         guard let l = p.list(id), l.archivedAt == nil else { return }
         endEdits()
         window.focus = .sidebar
-        window.rename = .init(kind: .list, id: id, caret: .all, text: l.name)
+        window.rename = .init(kind: .list, id: id, caret: .all, text: l.name, original: l.name)
     }
 
     func setRenameText(_ text: String) {
@@ -428,34 +434,34 @@ struct WindowActions {
         window.rename?.text = text
     }
 
-    /// Return, Tab or a press elsewhere: one update, only if it changed. A task title keeps the text as typed; a list
-    /// name can't be empty (§7, §21).
+    /// Return, Tab or a press elsewhere: one update, only if the user changed the name from where the rename began
+    /// (`EditSession`): an untouched rename never writes its old name back over one that synced in meanwhile. A task
+    /// title keeps the text as typed; a list name can't be empty (§7, §21).
     func commitRename() {
         guard let r = window.rename else { return }
         window.rename = nil
+        let name = r.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let original = r.original.trimmingCharacters(in: .whitespacesAndNewlines)
         switch r.kind {
         case .task:
-            guard let t = p.task(r.id), t.title != r.text else { return }
-            undoable("Rename Task") { store.setTitle(r.id, r.text, name: "Rename Task", undoManager: undo) }
+            guard let t = p.task(r.id), let text = EditSession.write(r.text, original: r.original, current: t.title) else { return }
+            undoable("Rename Task") { store.setTitle(r.id, text, name: "Rename Task", undoManager: undo) }
         case .list:
-            let name = r.text.trimmingCharacters(in: .whitespacesAndNewlines)
             if r.isNewList {
                 guard !name.isEmpty else { return }
                 undoable("New List") { _ = store.createList(id: r.id, name: name, undoManager: undo); return true }
                 go(.list(r.id), focus: .list)
-            } else if !name.isEmpty, p.list(r.id)?.name != name {
+            } else if !name.isEmpty, EditSession.write(name, original: original, current: p.list(r.id)?.name) != nil {
                 undoable("Rename List") { store.rename(list: r.id, to: name, undoManager: undo) }
             }
         case .title:
             // The list's large title (§23): as its sidebar row renames.
-            let name = r.text.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !name.isEmpty, p.list(r.id)?.name != name {
+            if !name.isEmpty, EditSession.write(name, original: original, current: p.list(r.id)?.name) != nil {
                 undoable("Rename List") { store.rename(list: r.id, to: name, undoManager: undo) }
             }
         case .heading:
             // A new heading is written now, with its name; without one it leaves nothing. An empty name keeps the old
             // one (§23, dc:2987).
-            let name = r.text.trimmingCharacters(in: .whitespacesAndNewlines)
             if let n = r.newHeading {
                 guard !name.isEmpty else { dropNewHeading(); return }
                 undoable("New Heading", selection: []) {
@@ -463,7 +469,7 @@ struct WindowActions {
                                         undoManager: undo) != nil
                 }
                 select([r.id])
-            } else if !name.isEmpty, p.task(r.id)?.title != name {
+            } else if !name.isEmpty, EditSession.write(name, original: original, current: p.task(r.id)?.title) != nil {
                 undoable("Rename Heading") { store.setTitle(r.id, name, name: "Rename Heading", undoManager: undo) }
             }
         }

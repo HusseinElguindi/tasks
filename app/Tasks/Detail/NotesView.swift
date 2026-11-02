@@ -646,7 +646,9 @@ struct NotesField: NSViewRepresentable {
             if !dragging { updateReveal() }
         }
 
-        /// Esc, ⌘Return, ⇧Tab or a press elsewhere: one `task.update` if the text changed.
+        /// Esc, ⌘Return, ⇧Tab or a press elsewhere: one `task.update` if the user changed the text from where the session
+        /// began (`EditSession`). Notes left as they were never go back over ones that synced in during the session;
+        /// the view shows those instead.
         func endEditing() {
             guard let s = session, let v = view else { return }
             session = nil
@@ -660,14 +662,17 @@ struct NotesField: NSViewRepresentable {
             }
             let store = host.store
             let a = actions
+            var wrote = false
             switch s.target {
             case .task(let id):
-                if let t = store.projection.task(id), !t.deleted, t.notes != text {
+                if let t = store.projection.task(id), !t.deleted, EditSession.write(text, original: s.original, current: t.notes) != nil {
                     a.undoable("Edit Notes") { store.setNotes(id, text, name: "Edit Notes", undoManager: a.undo) }
+                    wrote = true
                 }
             case .list(let id):
-                if let l = store.projection.list(id), l.notes != text {
+                if let l = store.projection.list(id), EditSession.write(text, original: s.original, current: l.notes) != nil {
                     a.undoable("Edit List Notes") { store.setNotes(list: id, text, name: "Edit List Notes", undoManager: a.undo) }
+                    wrote = true
                 }
             }
             // Read what was written, not the model (it may update a moment later).
@@ -677,6 +682,8 @@ struct NotesField: NSViewRepresentable {
             hover(at: nil)
             host.onLength(nil)
             host.onLayoutChange()
+            // Nothing written and the model moved on (notes synced in): show the model's.
+            if !wrote, text != host.notes { apply(force: true) }
         }
 
         /// Esc and ⌘Return: done, the text kept, the keys to the list.

@@ -126,6 +126,12 @@ struct MainLayout: View {
                     .allowsHitTesting(false)
             }
             .onAppear { window.openSettings = { openSettings() } }
+            // Closing the window writes what's being typed, as a press elsewhere would. The detail pane's fields do
+            // that themselves as they leave the window; the renames in place live in this window's state, which
+            // goes with it (docs/MAC-EDIT-DURABILITY.md).
+            .onReceive(NotificationCenter.default.publisher(for: NSWindow.willCloseNotification)) { n in
+                if let w = n.object as? NSWindow, w === window.nsWindow { WindowActions(store: store, window: window).endEdits() }
+            }
             // A window narrowed past ~900pt has the detail pane in the list's place: a zoom has nothing left to do.
             .onChange(of: g.narrow, initial: true) { _, n in
                 if window.narrow != n { window.narrow = n }

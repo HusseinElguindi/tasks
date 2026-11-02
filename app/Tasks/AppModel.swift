@@ -222,7 +222,12 @@ final class AppModel {
             MainActor.assumeIsolated { store?.persistNow() }
         })
         observers.append(center.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak store] _ in
-            MainActor.assumeIsolated { store?.persistNow() }
+            MainActor.assumeIsolated {
+                guard let store else { return }
+                // What's being typed first: quitting never ends an edit by itself (docs/MAC-EDIT-DURABILITY.md).
+                WindowActions.endAllEdits(store: store)
+                store.persistNow()
+            }
         })
     }
 }

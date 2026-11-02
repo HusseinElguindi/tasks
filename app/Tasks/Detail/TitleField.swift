@@ -190,11 +190,26 @@ final class TitleFieldView: NSView {
             }
             return
         }
-        let text = field.stringValue
-        guard let t = store.projection.task(s.id), !t.deleted, t.title != text else { return }
+        // Only what the user changed (`EditSession`): a title left as it was never goes back over one that synced in
+        // during the session; the field shows that one instead.
+        guard let t = store.projection.task(s.id), !t.deleted,
+              let text = EditSession.write(field.stringValue, original: s.original, current: t.title) else {
+            showModel()
+            return
+        }
         let a = actions
         let store = store!
         a.undoable("Rename Task") { store.setTitle(s.id, text, name: "Rename Task", undoManager: a.undo) }
+    }
+
+    /// Once the field has let go, shows the task's title as the model has it (the field ignores the model while it
+    /// has the caret, so a title that synced in meanwhile isn't on screen yet).
+    private func showModel() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, !self.field.isEditing, let id = self.taskID, let t = self.store.projection.task(id),
+                  self.field.stringValue != t.title else { return }
+            self.field.attributedStringValue = NSAttributedString(string: t.title, attributes: self.attributes(self.palette.ink))
+        }
     }
 
     /// The title has the caret.
@@ -225,12 +240,13 @@ final class TitleFieldView: NSView {
                 // Esc keeps a new task's title.
                 finish()
             } else if let s = session {
-                // An existing one gets its old title back.
+                // An existing one gets its title back: the model's, which is the old one unless one synced in.
                 session = nil
                 if state.detailEditing == .title { state.detailEditing = nil }
                 onLiveText?(nil)
                 field.abortEditing()
-                field.attributedStringValue = NSAttributedString(string: s.original, attributes: attributes(palette.ink))
+                let title = store.projection.task(s.id)?.title ?? s.original
+                field.attributedStringValue = NSAttributedString(string: title, attributes: attributes(palette.ink))
             }
             a.focus(.list)
         case .backtab, .commandReturn:

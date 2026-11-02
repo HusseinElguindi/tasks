@@ -32,7 +32,7 @@ extension WindowActions {
         endEdits()
         select([id])
         window.focus = .list
-        window.rename = .init(kind: .heading, id: id, caret: caret, text: t.title)
+        window.rename = .init(kind: .heading, id: id, caret: caret, text: t.title, original: t.title)
     }
 
     /// Double-clicking the large title, or the band's once the list has scrolled (it scrolls back up first).
@@ -41,7 +41,7 @@ extension WindowActions {
         endEdits()
         window.taskList?.scrollToTop()
         window.focus = .list
-        window.rename = .init(kind: .title, id: id, caret: .all, text: l.name)
+        window.rename = .init(kind: .title, id: id, caret: .all, text: l.name, original: l.name)
     }
 
     // MARK: Notes in the list pane

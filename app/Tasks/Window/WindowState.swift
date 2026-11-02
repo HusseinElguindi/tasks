@@ -57,6 +57,8 @@ final class WindowState {
         var id: EntityID
         var caret: Caret
         var text: String
+        /// The name when the rename began: the commit writes only if `text` differs from it (`EditSession`).
+        var original = ""
         /// A new list that isn't created yet (§12 Create).
         var isNewList = false
         var colorSlot = 0
@@ -199,7 +201,11 @@ final class WindowState {
     /// The colors for this window's appearance (set by RootView), for AppKit code that draws (menus' tiles).
     @ObservationIgnored var palette: TK.Palette = .dark
     @ObservationIgnored weak var undoManager: UndoManager?
-    @ObservationIgnored weak var nsWindow: NSWindow?
+    @ObservationIgnored weak var nsWindow: NSWindow? {
+        didSet { if nsWindow != nil { Self.windows.add(self) } }
+    }
+    /// Every main window's state (weakly), for quitting: `WindowActions.endAllEdits` writes what each is typing.
+    static let windows = NSHashTable<WindowState>.weakObjects()
     @ObservationIgnored weak var taskList: TaskListView?
     @ObservationIgnored weak var sidebarView: SidebarView?
     /// Opens the Settings window (set by the scene, which has `openSettings`).
