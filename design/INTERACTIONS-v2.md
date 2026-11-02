@@ -5,10 +5,15 @@ Status: **final, 2026-10-30.** The user reviewed the prototype and made the four
 
 **Changed after the user tried the app (`docs/TASK-v2-feedback.md`):**
 
+- **Highlight focused pane (the user, 2026-11-01):** item 3 is now a setting. Settings ▸ Appearance ▸ Highlight
+  focused pane is Always (the default: the focused pane is lit even when it's the only pane), Two panes (item 3), or
+  Never (§4 Highlight focused pane).
+
 - Item 2: a single click on empty list space no longer adds a task; it clears the selection (or ends an edit). A
   double-click there adds one, as ⌘N does, and the hover "New Task" row is gone. §5, §6, §13, §16, §18.12 and §21 say
   so.
 - Item 3: a pane alone in the window shows no focus; the focused look appears only with two panes (§4 Pane focus).
+  Since 2026-11-01 that is one choice of Settings ▸ Highlight focused pane, and the default is Always (below).
 - Item 4: the sidebar's edge and the gap before the detail pane are dividers that resize the panes (§4 Resizing the
   panes).
 - Item 5: no flicker on a rename or a drop. The rename field and the label swap in one frame, on the same pixels and at
@@ -363,13 +368,29 @@ inset `line-pane` edge. Unfocused: `surface-dim`, `line-pane-dim`, header icons 
 show unfocused; the sidebar has no focus look of its own. Selected rows in an unfocused pane use
 `fill-row-selected-dim`.
 
-**Only with two panes** (user feedback, `docs/TASK-v2-feedback.md` item 3). A pane alone in the window (the list with
-the detail pane closed, or the narrow window's detail pane) shows no focus, whatever has the keys: `surface-dim` and
-`line-pane-dim`, header icons at 100% and the title in `ink`, selected rows in `fill-row-selected`. With both panes
-open the rule above applies. Becoming or ceasing to be the only pane rides the detail pane's open and close: the fill,
-edge, icons and title change on `natural` while the pane slides (in the prototype the list pane takes `.swap` for the
-460 ms of the move); selected rows switch at once, as they always do (`css:146`, `css:151–152`, `css:185`, `dc:1104`,
-`dc:1110`, `dc:2890`).
+### Highlight focused pane (Settings)
+
+Settings (⌘,) ▸ Appearance ▸ **Highlight focused pane** (the user, 2026-11-01: "make it so that the active tab is that
+highlighted color even if there is just one tab … maybe make it a setting"). A segmented control after Interface
+style, kept per Mac in UserDefaults (`paneHighlight`: `always`, `twoPanes` or `never`, the default `always`), never
+synced, and live:
+
+- **Always** (the default): the rule above, with one pane or two. The list pane alone is lit while it has the keys,
+  and shows unfocused while the sidebar has them. Opening or closing the detail pane changes nothing in the list
+  pane's look apart from its dimming when the detail pane takes the keys.
+- **Two panes** (user feedback, `docs/TASK-v2-feedback.md` item 3, the behaviour from 2026-10-30 to 2026-11-01). A
+  pane alone in the window (the list with the detail pane closed, or the narrow window's detail pane) shows no focus,
+  whatever has the keys: `surface-dim` and `line-pane-dim`, header icons at 100% and the title in `ink`, selected
+  rows in `fill-row-selected`. With both panes open the rule above applies.
+- **Never:** every pane keeps `surface-dim` and `line-pane-dim`, with one pane or two. Focus still reads from the
+  rest of the rule: with two panes the unfocused one's header icons are at 55%, its title in `ink-secondary` and its
+  selected rows in `fill-row-selected-dim`. A pane alone looks as with Two panes, so nothing shows whether the
+  sidebar or the list has the keys (the sidebar has no focus look of its own).
+
+A new choice changes the panes on `focus` (60 ms). With Two panes and Never, becoming or ceasing to be the only pane
+rides the detail pane's open and close: the fill, edge, icons and title change on `natural` while the pane slides
+(in the prototype the list pane takes `.swap` for the 460 ms of the move); selected rows switch at once, as they
+always do (`css:146`, `css:151–152`, `css:185`, `dc:1104`, `dc:1110`, `dc:2890`).
 
 ### Glass (Settings ▸ Interface style)
 
