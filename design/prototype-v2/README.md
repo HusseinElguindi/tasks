@@ -26,6 +26,13 @@ Its boards: `Sections` (the prototype on that list), `Title-Large` and `Title-Sc
 title once it has scrolled under), `Heading-*` (adding, collapsed, mid-drag, from `demo="newhead|collapse|dragsec"`)
 and the light ones. The code is the block at the end of the component, after the four views'.
 
+**§28, Delete List with a deleted list in Trash (`docs/TASK-design-delete-list.md`): proposed, a mock-up only.**
+Archive goes, and a deleted list waits in Trash with its tasks. Three directions for how Trash holds it, drawn as the
+whole window with the prototype's classes but not wired into `Main`. The component is `Del.dc.html` with `del.css`
+(props `theme`, `dir` = a|b|c|before, `scene` = trash|expanded|putback|trashmenu|open|restored|listmenu|deleted,
+`select`, `expand`). Its boards are `Del-*.dc.html`, laid out by `canvas-del.json` on
+https://claude.ai/artifact/JEqsvymjkNwNHkfDGbqzQw.
+
 **§27, a sidebar footer (`docs/TASK-design-sidebar-footer.md`): proposed, a mock-up only.** Three directions for a
 foot under the sidebar, drawn as the sidebar alone: the component is `Foot.dc.html` (props `dir` = actions|status|band|none,
 `theme`, `sync`, `hover`, `tip`, `scroll`, `sbw`, `glass`) with `foot.css`; its boards are `Foot-*.dc.html`, laid out by

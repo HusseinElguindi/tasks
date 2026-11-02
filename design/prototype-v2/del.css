@@ -1,0 +1,60 @@
+/* Delete List, with a deleted list in Trash (INTERACTIONS-v2 §28, proposed). A mock-up of the window: the tokens and
+   every row, label, pane, menu and notice come from tasks-v2.css; this adds only what's new, and the few rules the
+   mock-up borrows from markdown.css and foot.css. */
+
+.dl { overflow: hidden; }
+
+/* The title slot, as markdown.css draws it (the When sits after the title). */
+.tk .row .ttw { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; margin-left: 10px; }
+.tk .row .ttw .tt { flex: 0 1 auto; margin-left: 0; -webkit-mask-image: none; mask-image: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* A deleted list in Trash: one row on the 32pt pitch, its tile centred on the checkbox's column (so its name starts
+   where task titles do), the name in 500 ink-secondary, "11 tasks" where a task's list name goes, and in A a
+   disclosure chevron at the row's end, always shown, turning 90° in 200 ms ease-out. */
+.dl .row.lrow .tile { margin-left: -2px; }
+.dl .row.lrow .ttw { margin-left: 8px; }
+.dl .row.lrow .tt { font-weight: 500; }
+.dl .lchev { position: relative; width: 22px; height: 22px; margin-left: 4px; border-radius: 6px; display: grid; place-items: center; color: var(--ink-3); transition: background-color var(--icon), color var(--icon); }
+.dl .lchev:hover { background: var(--hover); color: var(--ink-2); }
+.dl .lchev:active { background: var(--press); transition: none; }
+/* Its tasks, expanded: under it, indented 26 so their boxes start under its name; no list name after the title. */
+.dl .row.child { padding-left: 36px; }
+
+/* The large title's notes line, read-only. */
+.dl .lnotes { font: 13px/19px var(--font); color: var(--ink-2); white-space: pre-line; }
+
+/* The detail pane for a selected deleted list: its tile and name where a task's checkbox and title go, two property
+   rows, Restore (and Open), its notes, and the footer. */
+.dl .dlt { display: flex; align-items: center; gap: 8px; min-height: 20px; }
+.dl .dlt .tile { margin-left: -2px; }
+.dl .dlt .dln { font: 600 15px/20px var(--font); color: var(--ink); }
+.dl .prow .dv { color: var(--ink); white-space: nowrap; }
+.dl .dacts { display: flex; gap: 8px; margin: 8px 0 0 0; }
+.dl .dnotes { font: 13px/19px var(--font); color: var(--ink-2); white-space: pre-line; margin-bottom: 10px; }
+.dl .dtt { flex: 1; min-width: 0; font: 600 15px/20px var(--font); color: var(--ink); }
+.dl .popup .dq { margin-left: 6px; font-size: 12px; color: var(--ink-3); }
+.dl .dp .props.ro .chip { opacity: 0.8; }
+
+/* C: what the list holds, as compact lines in the detail pane: a 12pt ring at 60%, the title in ink-secondary, 24pt
+   apart; completed ones struck, under a small label. */
+.dl .qlist { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+.dl .ql { height: 24px; flex: none; display: flex; align-items: center; gap: 10px; color: var(--ink-2); white-space: nowrap; }
+.dl .ql .qc { width: 12px; height: 12px; margin: 0 2px; flex: none; border-radius: 50%; box-shadow: inset 0 0 0 1.25px var(--line-field); opacity: 0.6; }
+.dl .ql.done .qc { background: var(--accent); box-shadow: none; }
+.dl .ql .qt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.dl .ql.done .qt { color: var(--ink-3); text-decoration: line-through; text-decoration-color: var(--ink-q); }
+.dl .qh { margin: 10px 0 4px; font: 600 11px/14px var(--font); color: var(--ink-3); }
+
+/* §27's foot, as foot.css draws it: pinned, 36pt, no fill and no divider; the scroll view ends at its top. */
+.dl .sbs { bottom: 36px; }
+.dl .ft { position: absolute; left: 0; right: 0; bottom: 0; height: 36px; display: flex; align-items: center; gap: 2px; padding: 0 11px 0 10px; }
+.dl .ft .fsp { flex: 1; }
+.dl .fnew { height: 26px; padding: 0 8px 0 7px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; color: var(--ink-3); white-space: nowrap; transition: background-color var(--icon), color var(--icon); }
+.dl .fnew:hover { background: var(--hover); color: var(--ink); }
+.dl .fnew .fl { font-size: 12px; }
+.dl .fb { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; color: var(--ink-q); transition: background-color var(--icon), color var(--icon); }
+.dl .fb:hover { background: var(--hover); color: var(--ink); }
+.dl .ft .i { width: 14px; height: 14px; }
+
+/* The mock-up's menus and tooltip are static: no entrance. */
+.dl .menu, .dl .tip, .dl .notice { animation: none; }

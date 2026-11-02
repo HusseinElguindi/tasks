@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Delete List, in Trash</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="tasks-v2.css">
+<link rel="stylesheet" href="del.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div class="{{rootCls}}" style="{{rootStyle}}">
+<div class="win" style="{{winStyle}}">
+
+<nav class="sb" style="width: 230px" aria-label="Lists">
+<div class="sbs"><div class="sbc" style="{{sbContentStyle}}"><div class="sbhead"><svg class="mk" width="18" height="18" viewBox="150 150 724 724" aria-hidden="true"><defs><mask id="{{maskId}}"><rect x="150" y="150" width="724" height="724" fill="#fff"></rect><path class="mk-chk" d="M276.5 339.5L308 371L367.5 304.5"></path></mask></defs><path class="mk-trail" d="M304 436h36v64h-36zM304 612h36v64h-36z"></path><rect class="mk-trail" x="462" y="524" width="280" height="64" rx="32"></rect><rect class="mk-trail" x="462" y="700" width="220" height="64" rx="32"></rect><circle class="mk-rings" cx="322" cy="556" r="56"></circle><circle class="mk-rings" cx="322" cy="732" r="56"></circle><rect class="mk-bar" x="462" y="296" width="340" height="80" rx="40"></rect><circle class="mk-head" cx="322" cy="336" r="100" mask="{{maskUrl}}"></circle></svg><span>Tasks</span></div>
+<sc-for list="{{sbRows}}" as="it" hint-placeholder-count="12">
+<sc-if value="{{it.row}}" hint-placeholder-val="{{true}}"><div class="{{it.cls}}" style="{{it.style}}" onClick="{{it.go}}"><span class="{{it.tileCls}}">{{it.mono}}<sc-if value="{{it.iToday}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.6"></circle><path d="M8 1.9v1.3M8 12.8v1.3M1.9 8h1.3M12.8 8h1.3M3.7 3.7l.9.9M11.4 11.4l.9.9M3.7 12.3l.9-.9M11.4 4.6l.9-.9"></path></svg></sc-if><sc-if value="{{it.iUp}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.75" width="11" height="10" rx="2"></rect><path d="M2.5 6.75h11M5.5 2.25v3M10.5 2.25v3"></path></svg></sc-if><sc-if value="{{it.iUnd}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5l5.5 2.75L8 8 2.5 5.25z"></path><path d="M2.5 8l5.5 2.75L13.5 8M2.5 10.75l5.5 2.75 5.5-2.75"></path></svg></sc-if><sc-if value="{{it.iDone}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"></circle><path d="M5.3 8.2l1.9 1.9 3.6-4"></path></svg></sc-if><sc-if value="{{it.iTrash}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.25h10M6.5 4.25V2.75h3v1.5M4.5 4.25l.5 9h6l.5-9"></path></svg></sc-if></span><span class="tl">{{it.name}}</span><span class="ct">{{it.count}}</span></div></sc-if>
+<sc-if value="{{it.label}}"><div class="sbi glabel" style="{{it.style}}"><span class="gl">{{it.name}}</span><sc-if value="{{it.chev}}"><span class="gbtn reveal on"><svg class="i i--sm gchev down" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4l4 4-4 4"></path></svg></span></sc-if><sc-if value="{{it.plus}}"><span class="gbtn reveal"><svg class="i i--sm" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"></path></svg></span></sc-if></div></sc-if>
+</sc-for>
+</div></div>
+<div class="ft"><button class="fnew" type="button" aria-label="New List"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"></path></svg><span class="fl">New List</span></button><span class="fsp"></span><button class="fb" type="button" aria-label="Settings"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4.5h3.2M8.3 4.5h5.2M2.5 8h7.2M12.3 8h1.2M2.5 11.5h1.7M6.8 11.5h6.7"></path><circle cx="7" cy="4.5" r="1.3"></circle><circle cx="11" cy="8" r="1.3"></circle><circle cx="5.5" cy="11.5" r="1.3"></circle></svg></button></div>
+</nav>
+
+<div class="lights" aria-hidden="true"><i></i><i></i><i></i></div>
+<button class="tbtn" type="button" aria-label="Hide Sidebar"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="2"></rect><line x1="6" y1="3" x2="6" y2="13"></line></svg></button>
+
+<section class="{{lp.cls}}" style="{{lp.style}}" aria-label="{{lp.title}}">
+<header class="ph">
+<span class="pid fold"><span class="pt">{{lp.title}}</span></span>
+<span class="acts">
+<button class="{{lp.addCls}}" type="button" aria-label="New Task"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"></path></svg></button>
+<button class="{{lp.detailBtnCls}}" type="button" aria-label="Show Details"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="2"></rect><line x1="10" y1="3" x2="10" y2="13"></line></svg></button>
+</span>
+</header>
+<div class="pcs">
+<div class="pcc" style="{{lp.contentStyle}}">
+<sc-if value="{{banner.show}}">
+<div class="banner" style="position: absolute; left: 0; right: 0; top: 0;">
+<span style="color: var(--ink-2);"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.25h10M6.5 4.25V2.75h3v1.5M4.5 4.25l.5 9h6l.5-9"></path></svg></span>
+<span class="bt"><span>{{banner.date}}</span><span class="bs"> · Read-only until you restore it.</span></span>
+<button class="btn tinted" type="button" onClick="{{onRestore}}">Restore</button>
+</div>
+</sc-if>
+<div class="lhead" style="{{lh.style}}">
+<div class="lht"><sc-if value="{{lh.trash}}"><span class="c-mute"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.25h10M6.5 4.25V2.75h3v1.5M4.5 4.25l.5 9h6l.5-9"></path></svg></span></sc-if><sc-if value="{{lh.list}}"><span class="{{lh.tileCls}}">{{lh.mono}}</span></sc-if><span class="lhn">{{lh.title}}</span><span class="lhs">{{lh.sub}}</span></div>
+<sc-if value="{{lh.hasNotes}}"><div class="lhd"><div class="lnotes">{{lh.notes}}</div></div></sc-if>
+</div>
+<sc-for list="{{labels}}" as="g" hint-placeholder-count="4">
+<div class="tglabel" style="{{g.style}}"><div class="glabel"><span class="gl">{{g.name}}</span><span class="gs">{{g.sub}}</span></div></div>
+</sc-for>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+<div class="{{r.cls}}" style="{{r.style}}" onClick="{{r.pick}}" onDoubleClick="{{r.open}}">
+<sc-if value="{{r.isList}}"><span class="{{r.tileCls}}">{{r.mono}}</span></sc-if>
+<sc-if value="{{r.isTask}}"><button class="{{r.checkCls}}" type="button" tabIndex="-1" aria-label="{{r.checkLabel}}"><svg class="ck" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.8 8.4l2.7 2.7 5.7-6.2"></path></svg></button></sc-if>
+<sc-if value="{{r.isHead}}"><span class="ht">{{r.title}}</span></sc-if>
+<sc-if value="{{r.notHead}}"><span class="ttw"><span class="{{r.titleCls}}">{{r.title}}</span><sc-if value="{{r.hasWhen}}"><span class="chip when"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.75" width="11" height="10" rx="2"></rect><path d="M2.5 6.75h11M5.5 2.25v3M10.5 2.25v3"></path></svg><span class="ct">{{r.when}}</span></span></sc-if></span></sc-if>
+<sc-if value="{{r.hasWhere}}"><span class="where">{{r.where}}</span></sc-if>
+<sc-if value="{{r.hasDl}}"><span class="chips"><span class="{{r.dlCls}}"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 14V2.5M4 3h7.5L10 5.75 11.5 8.5H4"></path></svg><span class="ct">{{r.dl}}</span></span></span></sc-if>
+<sc-if value="{{r.chev}}"><button class="lchev" type="button" aria-label="{{r.chevLabel}}" aria-expanded="{{r.expanded}}" onClick="{{r.toggle}}"><svg class="{{r.chevCls}}" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4l4 4-4 4"></path></svg></button></sc-if>
+</div>
+</sc-for>
+<sc-if value="{{crow.show}}"><button class="crow" type="button" style="{{crow.style}}" aria-label="Completed tasks"><svg class="i i--sm gchev" viewBox="0 0 16 16" aria-hidden="true"><path d="M6.5 4l4 4-4 4"></path></svg><span class="cl">Completed</span><span class="cn">{{crow.count}}</span></button></sc-if>
+</div>
+</div>
+<sc-if value="{{notice.show}}">
+<div class="notice" role="status"><span>{{notice.text}}</span><button class="btn tinted" type="button" onClick="{{onUndo}}">Undo<span class="nk">⌘Z</span></button></div>
+</sc-if>
+</section>
+
+<sc-if value="{{dp.show}}">
+<section class="pane dp" style="width: 420px" aria-label="Details">
+<header class="ph">
+<sc-if value="{{dp.headTrash}}"><span class="c-mute"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.25h10M6.5 4.25V2.75h3v1.5M4.5 4.25l.5 9h6l.5-9"></path></svg></span><span class="pt" style="color: var(--ink-2); font-weight: 400;">Trash</span></sc-if>
+<sc-if value="{{dp.headList}}"><span class="{{dp.headTile}}">{{dp.headMono}}</span><span class="pt" style="color: var(--ink-2); font-weight: 400;">{{dp.headName}}</span></sc-if>
+<span class="acts">
+<button class="hb" type="button" aria-label="{{dp.backTip}}" onClick="{{onRestore}}"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 3.5L3 6l2.5 2.5"></path><path d="M3 6h6.5a3.5 3.5 0 0 1 0 7H7"></path></svg></button>
+<button class="hb" type="button" aria-label="Hide Details"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"></path></svg></button>
+</span>
+</header>
+<div class="dbody">
+<sc-if value="{{dp.none}}"><div class="empty" style="top: 40%;"><span class="e1">Nothing selected</span><span class="e2">Select a task or a list to see it here.</span></div></sc-if>
+<sc-if value="{{dp.isList}}">
+<div class="dlt"><span class="{{dp.tileCls}}">{{dp.mono}}</span><span class="dln">{{dp.title}}</span></div>
+<div class="props">
+<div class="prow"><span class="pl"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M3 8h10M3 11.5h10"></path></svg>Tasks</span><span class="dv">{{dp.counts}}</span></div>
+<div class="prow"><span class="pl"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.5 3.5L3 6l2.5 2.5"></path><path d="M3 6h6.5a3.5 3.5 0 0 1 0 7H7"></path></svg>Place</span><span class="dv">{{dp.place}}</span></div>
+</div>
+<div class="dacts"><button class="btn tinted" type="button" onClick="{{onRestore}}">Restore</button><sc-if value="{{dp.canOpen}}"><button class="btn" type="button" onClick="{{onOpenSel}}">Open</button></sc-if></div>
+<div class="dsep"></div>
+<sc-if value="{{dp.hasNotes}}"><div class="dnotes">{{dp.notes}}</div></sc-if>
+<sc-if value="{{dp.isPreview}}">
+<div class="qlist">
+<sc-for list="{{dp.lines}}" as="q" hint-placeholder-count="6">
+<sc-if value="{{q.head}}"><div class="qh">{{q.text}}</div></sc-if>
+<sc-if value="{{q.line}}"><div class="{{q.cls}}"><span class="qc"></span><span class="qt">{{q.text}}</span></div></sc-if>
+</sc-for>
+</div>
+</sc-if>
+<div class="dmeta">{{dp.meta}}</div>
+</sc-if>
+<sc-if value="{{dp.isTask}}">
+<div class="dtitle"><button class="{{dp.checkCls}}" type="button" tabIndex="-1" aria-label="Complete"><svg class="ck" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.8 8.4l2.7 2.7 5.7-6.2"></path></svg></button><div class="dtt">{{dp.title}}</div></div>
+<div class="props ro">
+<div class="prow"><span class="pl"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M3 8h10M3 11.5h10"></path></svg>List</span><span class="popup"><span class="{{dp.listTile}}">{{dp.listMono}}</span>{{dp.listName}}<span class="dq">{{dp.listQ}}</span></span></div>
+<div class="prow"><span class="pl"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.75" width="11" height="10" rx="2"></rect><path d="M2.5 6.75h11M5.5 2.25v3M10.5 2.25v3"></path></svg>When</span><span class="chipwrap"><sc-if value="{{dp.hasWhen}}"><span class="chip lg"><svg class="i i--xs" viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3.75" width="11" height="10" rx="2"></rect><path d="M2.5 6.75h11M5.5 2.25v3M10.5 2.25v3"></path></svg>{{dp.when}}</span></sc-if><sc-if value="{{dp.noWhen}}"><span class="chip lg ghost">Add date</span></sc-if></span></div>
+<div class="prow"><span class="pl"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 14V2.5M4 3h7.5L10 5.75 11.5 8.5H4"></path></svg>Deadline</span><span class="chipwrap"><span class="chip lg ghost">Add date</span></span></div>
+</div>
+<div class="dsep"></div>
+<div class="notes"><div class="md">{{dp.notes}}</div></div>
+<div class="dmeta">{{dp.meta}}</div>
+</sc-if>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{menu.show}}">
+<div class="menu" style="{{menu.style}}" role="menu" aria-label="{{menu.label}}">
+<sc-for list="{{menu.items}}" as="m" hint-placeholder-count="5">
+<sc-if value="{{m.head}}"><div class="mhead">{{m.text}}</div></sc-if>
+<sc-if value="{{m.sep}}"><div class="msep"></div></sc-if>
+<sc-if value="{{m.item}}"><div class="{{m.cls}}" role="menuitem" onClick="{{m.act}}"><sc-if value="{{m.tile}}"><span class="{{m.tileCls}}">{{m.mono}}</span></sc-if><span>{{m.text}}</span><sc-if value="{{m.hasKeys}}"><span class="mk">{{m.keys}}</span></sc-if></div></sc-if>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{tip.show}}"><div class="tip" style="{{tip.style}}">{{tip.text}}<span class="tk2">{{tip.keys}}</span></div></sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"dir":{"editor":"enum","options":["a","b","c","before"],"default":"a"},"scene":{"editor":"enum","options":["trash","expanded","putback","trashmenu","open","restored","listmenu","deleted"],"default":"trash"},"select":{"editor":null,"default":""},"expand":{"editor":null,"default":""},"w":{"editor":null,"default":1180},"h":{"editor":null,"default":620},"$preview":{"width":1180,"height":620}}'>
+// Delete List, with a deleted list in Trash (INTERACTIONS-v2 §28, proposed): a mock-up of the window, drawn with the
+// prototype's own classes (tasks-v2.css) so it reads as the app does. Sunday, Nov 1, 2026.
+//   dir   before: Trash today, and the Archive group in the sidebar.
+//         a: a deleted list is one row in Trash's timeline, on the day it was deleted, collapsed; it expands in place.
+//         b: deleted lists in a "Lists" group at the top of Trash, then the days.
+//         c: one row in the timeline; selecting it lists what it holds in the detail pane.
+//   scene trash · expanded · putback (⌘⌫ on a task whose list is in Trash) · trashmenu · open (the list itself,
+//         read-only) · restored · listmenu (the sidebar's menu) · deleted (after ⌘⌫ in the sidebar).
+const L = {
+  inbox: { name: 'Inbox', mono: 'I', c: 'c-ink' },
+  school: { name: 'School', mono: 'S', c: 'c-blue', created: 'Aug 31', deleted: 'Nov 1', notes: 'Fall term: ECE 358, CS 489 and MSE 333.' },
+  phys: { name: 'PHYS 122', mono: 'P', c: 'c-yellow', notes: 'Waves, electricity and magnetism. Lectures Mon, Wed, Fri 9:30 in STC 0010; labs Tuesdays in PHY 2009.\nMidterm Nov 6, final in December.' },
+  tasks: { name: 'Tasks app', mono: 'T', c: 'c-magenta' },
+  home: { name: 'Home', mono: 'H', c: 'c-green' },
+  errands: { name: 'Errands', mono: 'E', c: 'c-cyan' },
+  w26: { name: 'Winter 2026', mono: 'W', c: 'c-yellow', created: 'Dec 15, 2025', deleted: 'May 5' },
+  move: { name: 'Apartment move', mono: 'A', c: 'c-red', created: 'Jul 20', deleted: 'Sep 14' },
+};
+const ORDER = ['inbox', 'school', 'phys', 'tasks', 'home', 'errands', 'w26', 'move'];   // sidebar order, as the lists' keys
+// A list's open tasks, in its order, then its completed ones. School's as the prototype has them, with their dates.
+const OPEN = {
+  school: [
+    { id: 's1', t: 'ECE 358 lab report', ring: 'late', dl: ['late', '2d ago'] },
+    { id: 's2', t: 'Email TA about midterm regrade', ring: 'plate', when: 'Today', created: 'Sep 3' },
+    { id: 's3', t: 'Review CS 489 lectures 10–14', ring: 'plate', when: 'Today', dl: ['', '3d left'] },
+    { id: 's4', t: 'Submit MSE 333 A2', when: 'Tue', dl: ['', '3d left'] },
+    { id: 's5', t: 'Return the ECE 358 lab kit', ring: 'due', dl: ['due', 'Due today'] },
+    { id: 's6', t: 'Pay the MSE 333 field trip fee', ring: 'plate due', dl: ['due', 'Due today'] },
+    { id: 's7', t: 'CS 489 final study plan', when: 'Nov 11' },
+    { id: 's8', t: 'Print ECE 358 formula sheet' },
+    { id: 's9', t: 'Ask about co-op interview slots' },
+    { id: 's10', t: 'Midterm review session', when: 'Tomorrow' },
+    { id: 's11', t: 'ECE 358 final exam', dl: ['', 'Dec 9'] },
+  ],
+  w26: [{ id: 'w1', t: 'Return the oscilloscope kit' }],
+  move: [{ id: 'm1', t: 'Cancel the old internet plan' }, { id: 'm2', t: 'Return the moving boxes' }],
+};
+const DONE = {
+  school: [{ id: 'sd1', t: 'Meet the ECE 358 lab group' }, { id: 'sd2', t: 'Submit ECE 358 lab 3' }, { id: 'sd3', t: 'Read MSE 333 chapter 6' }, { id: 'sd4', t: 'Register for winter courses' }],
+  w26: [{ id: 'wd1', t: 'Study for ECE 222 final' }],
+  move: [{ id: 'md1', t: 'Forward mail' }],
+};
+const PHYS = [
+  { t: 'Buy safety glasses for the lab', ring: 'plate', when: 'Today' },
+  { h: 'Lectures' },
+  { t: 'Read chapter 15 · oscillations', ring: 'plate', when: 'Today' },
+  { t: 'Redo the worked examples from lecture 9' },
+  { t: 'Watch the recording on standing waves', when: 'Tue' },
+  { h: 'Labs' },
+  { t: 'Lab 3 report · pendulum', ring: 'plate', when: 'Today', dl: ['soon', '1d left'] },
+  { t: 'Lab 4 pre-lab · RC circuits', dl: ['', '5d left'] },
+  { t: 'Book a make-up lab bench' },
+  { h: 'Exam prep' },
+  { t: 'Make the midterm formula sheet', when: 'Wed' },
+  { t: 'Past midterms 2024 and 2025, timed', when: 'Thu' },
+  { t: 'Ask about problem 7 at office hours' },
+];
+// Tasks deleted on their own (deleted: true), each with the day it was deleted. "Old group project notes" was deleted
+// the day before School: it stays a row of its own, and restoring School doesn't bring it back.
+const TRASHED = [
+  { id: 'x1', t: 'Try the new notes app', list: 'inbox', g: 'today', date: 'Nov 1', created: 'Oct 2' },
+  { id: 'x2', t: 'Old group project notes', list: 'school', g: 'yday', date: 'Oct 31', created: 'Sep 9', notes: 'Superseded by the shared doc.' },
+  { id: 'x3', t: 'Buy a second lamp', list: 'home', g: 'thu', date: 'Oct 29', created: 'Sep 25', when: 'Tue, Nov 3', notes: 'The one by the window is fine after all.' },
+  { id: 'x4', t: 'Pick up dry cleaning', list: 'errands', g: 'oct', date: 'Oct 24', created: 'Oct 1', done: true },
+  { id: 'x5', t: 'Prototype a menu bar widget', list: 'tasks', g: 'oct', date: 'Oct 12', created: 'Sep 2' },
+];
+// Where each deleted list sits in Trash's timeline: the day it was deleted (School just now; the other two were archived
+// and become deleted lists on the day they were archived).
+const LIST_AT = { school: { g: 'today', date: 'Nov 1' }, move: { g: 'sep', date: 'Sep 14' }, w26: { g: 'may', date: 'May 5' } };
+const GROUPS = [['today', 'Today', 'Nov 1'], ['yday', 'Yesterday', 'Oct 31'], ['thu', 'Thursday', 'Oct 29'], ['oct', 'October', ''], ['sep', 'September', ''], ['may', 'May', '']];
+const MONTH = { oct: true, sep: true, may: true };
+const PITCH = 32;
+const noop = () => {};
+let MASK = 0;
+const tasksText = (n) => (n === 1 ? '1 task' : n + ' tasks');
+
+class Component extends DCLogic {
+  constructor(props) { super(props); this.mid = 'dlmk' + (++MASK); this.state = {}; }
+
+  // ----- Interaction (the component's own board): click selects, the chevron expands, a double-click opens a deleted
+  // list, Restore restores it, Undo goes back. Trash in the sidebar goes back to Trash.
+  pick(id) { this.setState({ sel: id }); }
+  toggle(id) { const e = { ...this.expNow() }; e[id] = !e[id]; this.setState({ exp: e }); }
+  openList(id) { this.setState({ scene: 'open', list: id, sel: '' }); }
+  expNow() { if (this.state.exp) return this.state.exp; const e = {}; if (this.props.expand) e[this.props.expand] = true; return e; }
+  restore() {
+    const v = this.view();
+    const id = v.scene === 'open' ? v.list : L[v.sel] && OPEN[v.sel] ? v.sel : null;
+    if (id) this.setState({ scene: 'restored', list: id, sel: '' });
+  }
+  undo() {
+    const v = this.view();
+    if (v.scene === 'restored') this.setState({ scene: 'trash', list: '', sel: v.list });
+    else if (v.scene === 'deleted') this.setState({ scene: 'live', list: 'school', sel: '' });
+  }
+  go(key) {
+    if (key === 'trash') this.setState({ scene: 'trash', list: '', sel: '' });
+    else if (key === 'school' && this.view().live.includes('school')) this.setState({ scene: 'live', list: 'school', sel: '' });
+  }
+
+  // What's showing: the props, then whatever the board's clicks changed.
+  view() {
+    const p = this.props, s = this.state;
+    const dir = p.dir || 'a';
+    const scene = s.scene || p.scene || 'trash';
+    let list = s.list != null && s.list !== '' ? s.list : '';
+    if (!list) list = scene === 'open' || scene === 'restored' ? 'school' : scene === 'deleted' ? 'phys' : scene === 'listmenu' || scene === 'live' ? 'school' : '';
+    const before = dir === 'before';
+    // Lists in Trash. Before: none (two are archived instead). School is deleted except where it's live.
+    const binned = before ? [] : ['school', 'move', 'w26'].filter((id) => !((scene === 'restored' || scene === 'live' || scene === 'listmenu') && id === list) && !((scene === 'live' || scene === 'listmenu') && id === 'school'));
+    const archived = before ? ['w26', 'move'] : [];
+    const live = ORDER.filter((id) => !binned.includes(id) && !archived.includes(id));
+    const sel = s.sel != null ? s.sel : p.select != null && p.select !== '' ? p.select : scene === 'expanded' || scene === 'putback' ? 's2' : before ? 'x3' : scene === 'trash' || scene === 'trashmenu' ? 'school' : '';
+    const inTrash = ['trash', 'expanded', 'putback', 'trashmenu', 'open'].includes(scene);
+    return { dir, scene, list, before, binned, archived, live, sel, inTrash, exp: this.expNow() };
+  }
+
+  renderVals() {
+    const p = this.props, v = this.view();
+    const theme = p.theme === 'light' ? 'light' : 'dark';
+    const W = +(p.w || 1180), H = +(p.h || 620);
+    const listScene = !v.inTrash;
+    const detail = v.inTrash && v.scene !== 'open';
+    const paneLeft = 230, paneRight = detail ? 8 + 420 + 8 : 8;
+
+    // ----- The sidebar (§12): the brand header, Today, Upcoming, Undated · Lists · Completed, Trash; no Archive group
+    // any more (before: it's there, open).
+    const cur = v.inTrash ? 'trash' : v.list;
+    const todayN = v.live.includes('school') ? 13 : 8;
+    const sbRows = []; let y = 40;
+    const row = (key, name, tile, mono, icon, count, arch) => {
+      sbRows.push({ row: true, label: false, cls: 'sbi srow' + (cur === key ? ' cur' : '') + (arch ? ' arch' : ''), style: 'top: ' + y + 'px', name, tileCls: 'tile ' + tile, mono: mono || '',
+        iToday: icon === 'today', iUp: icon === 'up', iUnd: icon === 'und', iDone: icon === 'done', iTrash: icon === 'trash', count: count == null ? '' : String(count), go: () => this.go(key), chev: false, plus: false });
+      y += PITCH;
+    };
+    const label = (name, chev) => { sbRows.push({ row: false, label: true, name, chev: !!chev, plus: !chev, style: 'top: ' + y + 'px', cls: '', go: noop }); y += PITCH; };
+    row('today', 'Today', 'c-yellow', '', 'today', todayN); row('upcoming', 'Upcoming', 'c-magenta', '', 'up'); row('undated', 'Undated', 'c-cyan', '', 'und');
+    label('Lists');
+    for (const id of v.live) row(id, L[id].name, L[id].c, L[id].mono, '');
+    y += 8; row('completed', 'Completed', 'c-green', '', 'done'); row('trash', 'Trash', 'c-mute', '', 'trash');
+    if (v.before) { y += 8; label('Archive', true); for (const id of ['move', 'w26']) row(id, L[id].name, L[id].c, L[id].mono, '', null, true); }
+    const sbH = y + 16;
+    const sbY = (key) => { const i = sbRows.findIndex((r) => r.row && r.go && r.name === (L[key] ? L[key].name : key)); return i < 0 ? 0 : parseInt(sbRows[i].style.slice(5), 10); };
+
+    // ----- The list pane
+    const R = (o) => ({ id: '', cls: 'row', style: '', isList: false, isTask: false, isHead: false, notHead: true, tileCls: '', mono: '', title: '', titleCls: 'tt', hasWhen: false, when: '', hasWhere: false, where: '', hasDl: false, dl: '', dlCls: 'chip', checkCls: 'check', checkLabel: 'Complete', chev: false, chevCls: 'i i--sm gchev', chevLabel: '', expanded: 'false', pick: noop, open: noop, toggle: noop, ...o });
+    const rows = [], labels = [], ys = {};
+    let lh = { style: 'top: 0px', trash: true, list: false, tileCls: '', mono: '', title: 'Trash', sub: '', hasNotes: false, notes: '' };
+    let banner = { show: false, date: '' }, crow = { show: false, style: '', count: '' }, notice = { show: false, text: '' };
+    let ty = 46;   // under the large title (§23): 4 + 30 + 12
+    const place = (r) => { r.style = 'transform: translateY(' + ty + 'px)'; ys[r.id] = ty; rows.push(r); ty += PITCH; };
+    const lbl = (name, sub) => { labels.push({ name, sub: sub || '', style: 'transform: translateY(' + ty + 'px)' }); ty += PITCH; };
+    const sel = v.sel;
+    const listRow = (id, where, chev) => R({ id, isList: true, cls: 'row trashed lrow' + (sel === id ? ' sel' : ''), tileCls: 'tile ' + L[id].c, mono: L[id].mono, title: L[id].name, hasWhere: true, where,
+      chev, chevCls: 'i i--sm gchev' + (v.exp[id] ? ' down' : ''), chevLabel: (v.exp[id] ? 'Collapse ' : 'Expand ') + L[id].name, expanded: v.exp[id] ? 'true' : 'false',
+      pick: () => this.pick(id), open: () => this.openList(id), toggle: () => this.toggle(id) });
+    const childRows = (id, extra) => {
+      for (const t of OPEN[id] || []) place(R({ id: t.id, isTask: true, cls: 'row trashed' + (extra || '') + (sel === t.id ? ' sel' : ''), title: t.t, pick: () => this.pick(t.id) }));
+      if (!extra) return;
+      for (const t of DONE[id] || []) place(R({ id: t.id, isTask: true, cls: 'row trashed done' + extra + (sel === t.id ? ' sel' : ''), checkCls: 'check on', title: t.t, pick: () => this.pick(t.id) }));
+    };
+    const taskRow = (t, inMonth) => R({ id: t.id, isTask: true, cls: 'row trashed' + (t.done ? ' done' : '') + (sel === t.id ? ' sel' : ''), checkCls: 'check' + (t.done ? ' on' : ''), title: t.t,
+      hasWhere: true, where: L[t.list].name + (inMonth ? ' · ' + t.date : ''), pick: () => this.pick(t.id) });
+    const liveRows = (items) => {
+      for (const t of items) {
+        if (t.h) { ty += 8; place(R({ id: 'h-' + t.h, isHead: true, notHead: false, cls: 'row hrow', title: t.h })); continue; }
+        place(R({ id: t.id || t.t, isTask: true, cls: 'row', checkCls: 'check' + (t.ring ? ' ' + t.ring : ''), title: t.t, hasWhen: !!t.when, when: t.when || '', hasDl: !!t.dl, dl: t.dl ? t.dl[1] : '', dlCls: 'chip' + (t.dl && t.dl[0] ? ' ' + t.dl[0] : '') }));
+      }
+    };
+
+    if (v.inTrash && v.scene !== 'open') {
+      // Trash (§22): newest deleted first, a group per day for the last week, then per month.
+      if (v.dir === 'b' && v.binned.length) {
+        lbl('Lists');
+        for (const id of v.binned) place(listRow(id, tasksText((OPEN[id] || []).length) + ' · ' + LIST_AT[id].date, false));
+      }
+      for (const [g, name, sub] of GROUPS) {
+        const lists = v.dir === 'b' ? [] : v.binned.filter((id) => LIST_AT[id].g === g);
+        const tasks = TRASHED.filter((t) => t.g === g);
+        if (!lists.length && !tasks.length) continue;
+        lbl(name, sub);
+        for (const id of lists) {
+          place(listRow(id, tasksText((OPEN[id] || []).length) + (MONTH[g] ? ' · ' + LIST_AT[id].date : ''), v.dir === 'a'));
+          if (v.dir === 'a' && v.exp[id]) childRows(id, ' child');
+        }
+        for (const t of tasks) place(taskRow(t, MONTH[g]));
+      }
+    } else if (v.scene === 'open') {
+      // The deleted list itself: its own pane, read-only as the rest of Trash, with Restore in the banner.
+      const id = v.list;
+      banner = { show: true, date: 'Deleted ' + (L[id].deleted || 'Nov 1') };
+      lh = { style: 'top: 60px', trash: false, list: true, tileCls: 'tile ' + L[id].c, mono: L[id].mono, title: L[id].name, sub: 'In Trash', hasNotes: !!L[id].notes, notes: L[id].notes || '' };
+      ty = 60 + 46 + (L[id].notes ? 23 : 0);
+      childRows(id, '');
+      if ((DONE[id] || []).length) { crow = { show: true, style: 'transform: translateY(' + (ty + 8) + 'px)', count: String(DONE[id].length) }; ty += 40; }
+    } else {
+      // A live list: School as it was (restored, or before the delete), or PHYS 122 after School was deleted.
+      const id = v.list;
+      const lines = L[id].notes ? L[id].notes.split('\n').length : 0;
+      lh = { style: 'top: 0px', trash: false, list: true, tileCls: 'tile ' + L[id].c, mono: L[id].mono, title: L[id].name, sub: '', hasNotes: !!L[id].notes, notes: L[id].notes || '' };
+      ty = 46 + (lines ? 4 + 19 * lines : 0);
+      liveRows(id === 'phys' ? PHYS : OPEN[id] || []);
+      if ((DONE[id] || []).length) { crow = { show: true, style: 'transform: translateY(' + (ty + 8) + 'px)', count: String(DONE[id].length) }; ty += 40; }
+      if (v.scene === 'restored') notice = { show: true, text: 'Restored ' + L[id].name };
+      if (v.scene === 'deleted') notice = { show: true, text: 'Deleted School' };
+    }
+
+    // ----- The detail pane (Trash only): a deleted list's summary (A, B), its contents (C), or a task, read-only.
+    const dp = { show: detail, headTrash: false, headList: false, headTile: '', headMono: '', headName: '', backTip: 'Put Back', isList: false, isPreview: false, isTask: false, lines: [] };
+    if (detail && L[sel] && OPEN[sel]) {
+      const id = sel, nOpen = (OPEN[id] || []).length, nDone = (DONE[id] || []).length;
+      const i = ORDER.indexOf(id);
+      let prev = ''; for (let k = i - 1; k >= 0; k--) if (v.live.includes(ORDER[k])) { prev = ORDER[k]; break; }
+      Object.assign(dp, { headTrash: true, backTip: 'Restore List', isList: true, tileCls: 'tile ' + L[id].c, mono: L[id].mono, title: L[id].name,
+        counts: nOpen + ' open · ' + nDone + ' completed', place: prev ? 'Lists, after ' + L[prev].name : 'The top of Lists',
+        canOpen: v.dir !== 'c', hasNotes: !!L[id].notes, notes: L[id].notes || '', meta: 'Created ' + L[id].created + ' · Deleted ' + L[id].deleted });
+      if (v.dir === 'c') {
+        dp.isPreview = true;
+        dp.lines = (OPEN[id] || []).map((t) => ({ head: false, line: true, cls: 'ql', text: t.t }));
+        if (nDone) dp.lines = dp.lines.concat([{ head: true, line: false, text: 'Completed' }], DONE[id].map((t) => ({ head: false, line: true, cls: 'ql done', text: t.t })));
+      }
+    } else if (detail && sel) {
+      let t = TRASHED.find((x) => x.id === sel), home = t ? t.list : '', done = t ? !!t.done : false, withList = false;
+      if (!t) for (const id of Object.keys(OPEN)) {
+        const f = (OPEN[id] || []).find((x) => x.id === sel) || (DONE[id] || []).find((x) => x.id === sel);
+        if (f) { t = { t: f.t, when: f.when, created: f.created || 'Sep 3', notes: '' }; home = id; done = (DONE[id] || []).includes(f); withList = true; }
+      }
+      if (t) {
+        const homeBinned = v.binned.includes(home);
+        Object.assign(dp, { headList: true, headTile: 'tile sm ' + L[home].c, headMono: L[home].mono, headName: L[home].name, backTip: homeBinned ? 'Put Back in…' : 'Put Back', isTask: true,
+          checkCls: 'check ro' + (done ? ' on' : ''), title: t.t, listTile: 'tile sm ' + L[home].c, listMono: L[home].mono, listName: L[home].name, listQ: homeBinned ? 'In Trash' : '',
+          hasWhen: !!t.when, noWhen: !t.when, when: t.when || '', notes: t.notes || '',
+          meta: 'Created ' + (t.created || 'Sep 3') + ' · ' + (withList ? 'Deleted with ' + L[home].name + ', ' + L[home].deleted : 'Deleted ' + t.date) });
+      }
+    }
+
+    dp.none = detail && !dp.isList && !dp.isTask;
+
+    // ----- Menus (the prototype draws what are NSMenus in the app, §15) and the held tooltip.
+    let menu = { show: false, style: '', label: '', items: [] };
+    const mi = (text, keys, o) => ({ head: false, sep: false, item: true, cls: 'mi' + (o && o.hot ? ' hot' : '') + (o && o.dis ? ' dis' : ''), text, keys: keys || '', hasKeys: !!keys, tile: !!(o && o.tile), tileCls: o && o.tile ? 'tile sm ' + L[o.tile].c : '', mono: o && o.tile ? L[o.tile].mono : '', act: (o && o.act) || noop });
+    const sep = () => ({ head: false, sep: true, item: false, cls: '', text: '', act: noop });
+    if (v.scene === 'listmenu') {
+      menu = { show: true, label: 'School', style: 'left: 124px; top: ' + (50 + sbY('school') + 14) + 'px', items: [
+        mi('New Task in School'), mi('Rename', '↩'), sep(), mi('Move Up', '⌥⌘↑'), mi('Move Down', '⌥⌘↓'), sep(),
+        mi('Delete List', '⌘⌫', { hot: true, act: () => this.setState({ scene: 'deleted', list: 'phys', sel: '' }) })] };
+    } else if (v.scene === 'trashmenu') {
+      menu = { show: true, label: 'School', style: 'left: ' + (paneLeft + 150) + 'px; top: ' + (8 + 34 + (ys.school || 0) + 15) + 'px', items: [
+        mi('Open', '↩', { hot: true, act: () => this.openList('school') }), mi('Show Details', '⌘D'), sep(), mi('Restore List', '⌘⌫', { act: () => this.restore() })] };
+    } else if (v.scene === 'putback') {
+      const items = [{ head: true, sep: false, item: false, cls: '', text: 'Put back in', act: noop }];
+      for (const id of ORDER.slice(0, 6)) items.push(mi(L[id].name, v.binned.includes(id) ? 'In Trash' : '', { tile: id, dis: v.binned.includes(id), hot: id === 'inbox' }));
+      menu = { show: true, label: 'Put back in', style: 'left: ' + (paneLeft + 10 + 26 + 34) + 'px; top: ' + (8 + 34 + (ys.s2 || 0) + 32) + 'px', items };
+    }
+    const tip = v.scene === 'expanded' ? { show: true, text: 'Put Back in…', keys: '⌘⌫', style: 'left: ' + (W - 132) + 'px; top: 40px' } : { show: false, text: '', keys: '', style: '' };
+
+    const lpTitle = v.inTrash && v.scene !== 'open' ? 'Trash' : L[v.list] ? L[v.list].name : 'Trash';
+    return {
+      rootCls: 'tk dl ' + theme + (detail ? ' detail-open' : ''), rootStyle: 'width: ' + W + 'px; height: ' + H + 'px',
+      winStyle: 'width: ' + W + 'px; height: ' + H + 'px', maskId: this.mid, maskUrl: 'url(#' + this.mid + ')',
+      sbRows, sbContentStyle: 'height: ' + sbH + 'px',
+      lp: { cls: 'pane lp' + (detail ? ' focused' : ' single'), style: 'left: ' + paneLeft + 'px; right: ' + paneRight + 'px', title: lpTitle,
+        addCls: 'hb' + (v.inTrash ? ' gone' : ''), detailBtnCls: 'hb' + (detail ? ' on' : ''), contentStyle: 'height: ' + (ty + 24) + 'px' },
+      banner, lh, labels, rows, crow, notice, dp, menu, tip,
+      onRestore: () => this.restore(), onUndo: () => this.undo(), onOpenSel: () => { const s = this.view().sel; if (L[s] && OPEN[s]) this.openList(s); },
+    };
+  }
+}
+</script>
+</body>
+</html>

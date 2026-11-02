@@ -44,6 +44,10 @@ The sidebar (§12) gains their rows, and ⌘1–⌘9 now open the sidebar's firs
 list's notes, and a large list title, with the user's picks (§23, final). Its canvas is
 https://claude.ai/artifact/9dQ4fC46yZLLhf61gLiELx. Where §1–§22 disagree, §23 wins; its last part lists where.
 
+**Delete List, with a deleted list in Trash (`docs/TASK-design-delete-list.md`): proposed, not built (§28).** Archive
+goes. ⌘⌫ deletes a list, and it waits in Trash with its tasks until it's restored. Three directions are on
+https://claude.ai/artifact/JEqsvymjkNwNHkfDGbqzQw; the recommendation is one row in Trash's timeline that expands.
+
 **A sidebar footer (`docs/TASK-design-sidebar-footer.md`): proposed, not built (§27).** Three directions for a foot
 under the sidebar; the recommendation (+ New List and Settings) leaves §26 where it is.
 
@@ -858,6 +862,8 @@ archived lists don't move.
 **Archive**: Archive in the menu or ⌘⌫ with the sidebar focused. No confirmation. The row fades as the rows below close
 up; if it was open, the first active list opens (Today if none). Notice "Archived School". The Archive group appears
 when the first list is archived (`dc:1370–1381`).
+
+§28 (proposed) replaces Archive, the archive view and Unarchive below with Delete List and Trash.
 
 **The archive view.** Archived lists sit in the collapsible Archive group at the bottom of the sidebar, newest first.
 One opens as a normal list pane, header "School  Archived", with a banner on top: archive icon, "Archived Oct 28 · Not
@@ -2027,3 +2033,227 @@ A keeps the sync indicator in the header row: **nothing in §26 moves, and its b
 would move it.
 
 ---
+
+## 28. Delete List: a deleted list lives in Trash
+
+Status: **proposed, 2026-11-01**, not built. The brief is `docs/TASK-design-delete-list.md`. It replaces Archive
+everywhere: §12's Archive group, archive view and banner, Unarchive, and the Archive words in §2, §9, §10, §14, §15,
+§17, §21, §22 and §27 (the last part lists each one). Where this section and those disagree, this one wins once it's
+final.
+
+The canvas is https://claude.ai/artifact/JEqsvymjkNwNHkfDGbqzQw (private until shared). It's a mock-up of the window
+drawn with the prototype's own classes, not wired into `Main.dc.html`: the component is `Del.dc.html` with `del.css` in
+`design/prototype-v2/` (props `theme`, `dir` = a | b | c | before, `scene` = trash | expanded | putback | trashmenu |
+open | restored | listmenu | deleted, `select`, `expand`), and the boards are `Del-*.dc.html`, laid out by
+`canvas-del.json`. The `Del` board itself works: click a row, the chevron, double-click School, Restore, Undo.
+
+**The user's decision (2026-11-01).** Deleted and archived were two concepts for one thing, and archiving a list should
+take its tasks with it.
+
+- **Mechanics.** A list's `archivedAt` stays exactly as it is: no new ops, no cascade, no server change. Everything
+  that decides what's live treats a task in a deleted list as deleted. Restoring the list brings everything back as it
+  was. Tasks deleted on their own before the list was deleted stay deleted.
+- **What you see.** There is no Archive. The action is **Delete List** (⌘⌫ in the sidebar, and the menu). The deleted
+  list lives in **Trash** with its tasks, and restoring it puts it back in its old place in Lists.
+
+### The model: nothing new
+
+- A **deleted list** is a list with `archivedAt` set; the field keeps its name on the wire and in the reducer. Its
+  value is already the moment it was deleted, so Trash orders lists by it directly. Tasks still need §22's derivation
+  from the op that set `deleted: true`.
+- A task is **live** only if it isn't deleted and its list is live. SPEC §5 rule 5 already says so, and the indexes
+  already iterate `activeLists` (SPEC §9), so these leave out a deleted list's tasks today: Today and its count,
+  Upcoming, Undated, Completed, `find`, type-select, Move to and drag targets. The build should check each one, since
+  the words change around them.
+- **Restoring** writes `archivedAt: null`, one op, and the list returns by its old order key (SPEC §2). A task deleted
+  on its own before then keeps `deleted: true`.
+- **Lists archived before this ships** become deleted lists on the day they were archived. No migration: they're the
+  same field. On the canvas, Winter 2026 (archived in May) and Apartment move (September) sit in Trash's May and
+  September groups.
+
+### Three directions
+
+| | Trash holds a deleted list as | Opening it | One task out |
+|---|---|---|---|
+| **A · In the timeline** (recommended) | One row on the day it was deleted, among the tasks, newest first: tile, name, "11 tasks", collapsed. The chevron or Space shows its tasks under it | Return: its own pane, read-only, Restore in the banner | Expand it (or open it), select the task, ⌘⌫: "Put back in" |
+| **B · Lists first** | A "Lists" group above the days, each "11 tasks · Nov 1", newest first; no chevron | As A | Open it, then as A |
+| **C · Previewed** | One row in the timeline as A, without a chevron. Selecting it lists its tasks in the detail pane, compact, under Restore | None: the detail pane is the look inside, as for a trashed task | No good way: restore, move, delete the list again |
+
+**Why A.** Trash keeps one rule: what you deleted, newest first, so "I just deleted School" is at the top and old
+lists sink like old tasks. A list is a single row, so a list of 40 tasks takes no more room than one task until you ask.
+Expanding uses §23's heading gestures (chevron, Space), opening uses everyone's (Return, double-click), and every task
+in it can still be reached on its own. B splits Trash into two orders, so the newest thing you deleted can sit below a
+list deleted last spring. C puts a long list in a 420pt pane, and nothing in that preview can be taken out on its own.
+
+### A in detail
+
+**The row** (`del.css`, `.lrow`). A deleted list's row is 30pt on the 32pt pitch, like a task row:
+
+- The list's tile (20×16) is centred on the checkbox's column, so the name starts where task titles do (2pt left of
+  the box, 8 to the name).
+- The name is in 13/16 medium `ink-secondary`: medium because the row holds things, and secondary like the rest of
+  Trash.
+- The count goes in the list-name slot (12pt `ink-tertiary`). It counts open tasks: "11 tasks", "1 task". With none
+  open it reads "4 completed", and an empty list reads "Empty". In a month group the date follows: "2 tasks · Sep 14".
+- A 22pt chevron sits at the end, always shown, where a task row's › appears on hover. It rests in `ink-tertiary`,
+  takes the `hover` fill with `ink-secondary` on hover and the `press` fill on press, and turns 90° in 200 ms ease-out.
+  The row has no › of its own.
+
+Hover, selection and type-select (by the list's name) are a task row's. A row can't be dragged.
+
+**Ordering.** It sits in the day group of `archivedAt` (Today, Yesterday, weekday names, then months, §22), among that
+day's deleted tasks, newest first by time.
+
+**Expanding.** The chevron, Space (§23's heading gesture), or → and ← (expand and collapse, as in the Finder) show its
+tasks under it. It starts collapsed. The state is local to the Mac and kept by list id, like a heading's (§23).
+
+- The tasks unfold from under the row and fold back on `layout`, exactly as a heading's do (§23 Collapsing).
+- They're indented 26, so their boxes start under the list's name. They come in the list's order: open tasks, then
+  completed ones (struck). Headings and notes stay out; they're in the opened list.
+- They read as trashed rows (§22: `ink-secondary`, the box at 60% and deaf, no dates, no ring) and show no list name.
+- They select, type-select and walk with ↑ ↓ like any row.
+
+**Selecting the row** shows the list in the detail pane (`Del-A`):
+
+- The header holds the Trash glyph and "Trash", then ↶ (tooltip "Restore List ⌘⌫") and ×.
+- The body starts with the tile and name in 15/20 semibold, read-only, where a task's box and title go.
+- Two property rows follow. Tasks: "11 open · 4 completed". Place: "Lists, after Inbox", where Restore will put it
+  (the nearest live list above its key; "The top of Lists" when none).
+- Then Restore (tinted) and Open capsules, the separator, the list's notes read-only, and the footer "Created Aug 31 ·
+  Deleted Nov 1".
+
+**Opening** (Return, double-click, Open in its menu or the detail pane; `Del-Open`) shows the list's own pane,
+**read-only**. Trash stays current in the sidebar, since the list is in it.
+
+- **The banner** keeps the archive banner's metrics (`fill-control`, radius 8, padding 9 / 10 / 9 / 12, 6 below the
+  header, 10 in from the pane's sides, 10 between icon, text and button). It holds the trash glyph in `ink-secondary`,
+  "Deleted Nov 1" in 13pt `ink`, " · Read-only until you restore it." in 12pt `ink-secondary`, and a tinted
+  **Restore**.
+- **The large title** starts at 60, as an archived list's rows did (§23). It shows the tile, the name, and "In Trash"
+  in `ink-tertiary` in the subtitle slot. The band title, once it has scrolled under, reads the same.
+- **What's shown.** The notes, headings, tasks as trashed rows, and the Completed fold, which still opens and closes
+  because that isn't an edit.
+- **What you can do** is Trash's (§22): rows select, Return or a double-click shows a task in the detail pane, ⌘⌫ pops
+  "Put back in" (below), and a drag goes only to the sidebar. There's no +, ⌘N adds in the default list as it does in
+  Trash, and a double-click on empty space does nothing. An empty deleted list shows no empty state.
+- **Leaving.** Esc, once there's nothing left to cancel, goes back to Trash with the list's row selected, and so does
+  pressing Trash.
+
+Archived lists were editable, so this is a change. SPEC §2's "Nothing is read-only" was Archive's rule, and Trash's
+rule (§22) takes over. An edit to something deleted is an edit nobody sees, the Finder works the same way, and Restore
+is one key and undoes.
+
+**Restoring** (`Del-Restored`). Any of these restores the list:
+
+- Restore in the banner or the detail pane, or ↶;
+- Restore List in its menu;
+- ⌘⌫ with its row selected (⌘⌫ in Trash takes things out, §22);
+- ⌘Z right after the delete.
+
+It's one op, and the list comes back in its old place in Lists with everything it held. Tasks deleted on their own
+before stay in Trash, now with a live list to go back to, so ⌘⌫ on them is the plain Put Back again.
+
+- **From the row:** the row (and its tasks, if expanded) fades out as the rest close up, and the selection moves on
+  as for Put Back. Notice "Restored School" with Undo.
+- **From the opened pane:** the banner goes and the pane becomes the live list in place, its sidebar row current at
+  its old position. Same notice.
+- The undo label is "Restore List".
+
+**One task out of a deleted list: yes** (`Del-A-PutBack`). Its tasks can be selected in the expanded row or the opened
+pane and taken out one at a time. Their own list is in Trash, so there's no "back" for them:
+
+- ⌘⌫, or ↶ (tooltip "Put Back in… ⌘⌫"), pops the **"Put back in"** menu under the row, placed and keyed as ⇧⌘M's Move
+  to (§10). Its header is "Put back in". Every live list is listed with its tile. The task's own list is there,
+  disabled, with "In Trash" at the right, so it's clear why it can't go home. The first live list is highlighted.
+- Picking a list, or dragging the task onto it in the sidebar, writes `set {list, order}` at the bottom of that list
+  (plus `deleted: false` if it had also been deleted on its own).
+- Notice "Put back “Email TA about midterm re…” in Inbox", with Undo; the undo label is "Put Back". The list's count
+  drops by one. If the list is restored later, the task stays where it went.
+- Its context menu: Show Details ⌘D · Put Back in ▸.
+- With several tasks selected: if every one has a live list, ⌘⌫ puts them back. If any doesn't, ⌘⌫ pops Put back
+  in for all of them.
+
+**A task deleted on its own whose list is deleted later shows alone**, not under the list. It sits on the day it was
+deleted, with its list's name ("Old group project notes · School" on the canvas). Each row in Trash is one thing you
+deleted, when you deleted it. Under the list it would look as though restoring the list would bring it back, and it
+won't (the user's rule). While its list is in Trash it has nowhere to go back to, so ⌘⌫ pops Put back in for it too,
+and its detail pane's List row reads "School  In Trash".
+
+The footers tell the two kinds apart: a task deleted on its own reads "Deleted Oct 31", and one that went with its
+list reads "Deleted with School, Nov 1" (`Del-A-Expanded`).
+
+### The sidebar
+
+**What goes:**
+
+- the Archive group: its label, chevron and collapsed state (`dc:34`, `dc:1052–1056`, `onArchiveLabel`, `archiveOpen`);
+- the archived row state (`css:113–114`) and its §12 table row;
+- archived lists' place in `sidebarOrder` (`dc:3226–3229`);
+- §27's "Archive toggle" row.
+
+The sidebar ends at Completed and Trash. Trash is always shown (§22), so a deleted list always has somewhere to be
+found.
+
+**⌘⌫ with the sidebar focused, or Delete List in a list's menu** (`Del-Menu-List`, `Del-Deleted`):
+
+- **At once, with no confirmation** (§2.3). The row fades (150 ms) as the rows below close up on `layout`.
+- **What opens next.** A list is open whenever it's selected in the sidebar, so the next list below opens, else the
+  one above, else Today. This is how ⌘⌫ walks down tasks (§9), so repeated ⌘⌫ never jumps; Archive opened the first
+  list instead.
+- **Notice:** "Deleted School" with Undo (5 s, §9). The undo label is "Delete List". The notice doesn't say Trash, as
+  for tasks (§22).
+- **The default list.** If the default list is deleted, the next live one takes over (SPEC §2). With no lists left,
+  adding a task asks you to create a list or restore one from Trash.
+
+### Menus, keys and words
+
+| Where | Was | Now |
+|---|---|---|
+| A list's menu (§15) | … · ── · Archive ⌘⌫ | … · ── · **Delete List ⌘⌫** |
+| An archived list's menu (§15) | Unarchive · Rename ↩ | Gone. A deleted list's row in Trash: **Open ↩ · Show Details ⌘D · ── · Restore List ⌘⌫** (`Del-Menu-Trash`) |
+| A task whose list is in Trash | | Show Details ⌘D · Put Back in ▸ |
+| Sidebar keys (§12) | ⌘⌫ archives it | ⌘⌫ deletes it |
+| §17's table | ⌘⌫: delete tasks; with the sidebar focused, archive the list | ⌘⌫: delete tasks; with the sidebar focused, delete the list; in Trash, Put Back (a deleted list: Restore; a task whose list is in Trash: Put back in) |
+| Menu bar (§17) | Task ▸ Delete ⌘⌫ | The same item reads "Delete List" while the sidebar has focus, so both meanings of the key are in a menu |
+| Undo names (§9) | Archive List, Unarchive List | Delete List, Restore List |
+| Notices (§9) | "Archived School" | "Deleted School", "Restored School" |
+| Banner (§12, §21) | Archive glyph, "Archived Oct 28 · Not in Today or Move to. Everything still edits.", Unarchive | Trash glyph, "Deleted Nov 1 · Read-only until you restore it.", Restore |
+| The header (§12) | "School  Archived" | "In Trash" after the large title, and after the band title |
+| Move to (§10) | Archived lists are never offered | Deleted lists are never offered. Put back in shows a task's own list, disabled |
+| Drag (§14) | Archived lists aren't targets and can't be dragged | Deleted lists aren't in the sidebar. Their rows in Trash can't be dragged; their tasks drag out to a list |
+| Trash (§22) | Deleted, in active lists (a deleted task in an archived list shows once the list is unarchived) | Deleted tasks, wherever their list is, and deleted lists, newest deleted first |
+| Trash's empty state (§22) | "Deleted tasks wait here until you put them back." | "Deleted tasks and lists wait here until you put them back." |
+| Principle 3 (§2) | delete, move, archive, … | delete, move, … |
+
+The words: a list is **deleted** and **restored**. A task keeps **Put Back** (the Finder's word, already built). The
+user named Restore for the banner, and a list coming back whole, with its tasks, reads better as Restore. One verb for
+both is the alternative: either Put Back for lists too, or Restore for tasks too. It's the user's choice.
+
+VoiceOver reads the row as "School, deleted list, 11 tasks, collapsed", and the chevron as "Expand School" or
+"Collapse School".
+
+### For the build: the CLI, the SDK and SPEC
+
+- `tasks list archive` becomes **`tasks list delete`**, and `tasks list unarchive` becomes **`tasks list restore`**.
+  In the SDK, `archiveList` becomes **`deleteList`**, `unarchiveList` becomes **`restoreList`**, and the read
+  `archive()` becomes **`deletedLists()`**. The List's `archivedAt` field keeps its name, since it's the model's.
+  These live in `app/TasksCore/Sources/TasksCLI/Commands.swift` and `Intents.swift`,
+  `remote/src/cli/commands.ts` and `context.ts`, `remote/tasks.d.ts` (and the test copy), `docs/AGENTS.md`,
+  `docs/SDK-PLAN.md` and `remote/parity/capture-cli.mjs`.
+- **Aliases: keep the old names, hidden.** They still work, but they aren't in `tasks help`, `tasks.d.ts` or
+  AGENTS.md. Saved scripts, the parity suite and agents' habits don't break, and nothing new learns them. Drop them
+  after a release.
+- `find()` already leaves out a deleted list's tasks. `find({ deleted: true })` should include them, each marked with
+  its deleted list.
+- `restore(task)` on a task whose list is deleted should fail with a message naming the list (restore the list, or
+  move the task). `move(task, { list })` is the app's Put back in.
+- SPEC changes with it:
+  - §1: "Archiving lists" and the Archive screen;
+  - §2: Archiving lists (the section becomes Deleting lists), including "Nothing is read-only", and the default-list
+    rules' "unarchive one";
+  - §4 Sidebar: the Archive item and "'Delete list' in the UI is labeled Archive";
+  - §5 Reducer rules 4 and 5 ("Unarchive"), and §5 Deletes ("Lists are never deleted, only archived");
+  - §6 Ideas evaluated ("Undoing an archive restores the list's tasks too");
+  - §9 Maintained indexes: `archivedLists`, which Trash now reads.
+
+  The field, the ops and the server don't change.

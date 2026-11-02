@@ -1,0 +1,70 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-11-01T18:00:00Z"
+  },
+  "title": "Tasks · Delete List, in Trash (§28, proposed)",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "designSystems": [
+    {
+      "title": "Pane",
+      "namespace": "pane",
+      "artifact": "https://claude.ai/artifact/MS3VdrN9VHU7A7pTUTzpm8",
+      "version": "1793379585-5267",
+      "copiedAt": "2026-11-01T18:00:00Z"
+    }
+  ],
+  "boards": {
+    "Del-Before.dc.html": { "x": 0, "y": 0, "w": 1180, "h": 620, "radius": 12, "is_interactive": false, "title": "Today: Trash holds tasks; archived lists sit in the sidebar's Archive group" },
+    "Del-A.dc.html": { "x": 1260, "y": 0, "w": 1180, "h": 620, "radius": 12, "is_interactive": false, "title": "A · In the timeline (recommended): one row when it was deleted, collapsed; it expands" },
+    "Del-B.dc.html": { "x": 2520, "y": 0, "w": 1180, "h": 620, "radius": 12, "is_interactive": false, "title": "B · Lists first: a Lists group at the top of Trash, then the days" },
+    "Del-C.dc.html": { "x": 3780, "y": 0, "w": 1180, "h": 620, "radius": 12, "is_interactive": false, "title": "C · Previewed: one row; the detail pane lists what it holds" },
+    "Del.dc.html": { "x": 5040, "y": 0, "w": 1180, "h": 620, "radius": 12, "is_interactive": true, "title": "The component (A): click a row, the chevron, double-click School, Restore, Undo" },
+    "Del-Before-Light.dc.html": { "x": 0, "y": 1040, "w": 1180, "h": 620, "radius": 12, "is_interactive": false, "title": "Today · light" },
+    "Del-A-Light.dc.html": { "x": 1260, "y": 1040, "w": 1180, "h": 620, "radius": 12, "is_interactive": false, "title": "A · In the timeline (recommended) · light" },
+    "Del-B-Light.dc.html": { "x": 2520, "y": 1040, "w": 1180, "h": 620, "radius": 12, "is_interactive": false, "title": "B · Lists first · light" },
+    "Del-C-Light.dc.html": { "x": 3780, "y": 1040, "w": 1180, "h": 620, "radius": 12, "is_interactive": false, "title": "C · Previewed · light" },
+    "Del-A-Expanded.dc.html": { "x": 0, "y": 2080, "w": 1180, "h": 620, "radius": 12, "is_interactive": false, "title": "A · Space or the chevron: its tasks under it; one selected, “Deleted with School”" },
+    "Del-A-PutBack.dc.html": { "x": 1260, "y": 2080, "w": 1180, "h": 620, "radius": 12, "is_interactive": false, "title": "A · ⌘⌫ on one of its tasks: “Put back in”, School itself disabled" },
+    "Del-Open.dc.html": { "x": 2520, "y": 2080, "w": 1180, "h": 620, "radius": 12, "is_interactive": false, "title": "A · Return: the list itself, read-only, Restore in the banner" },
+    "Del-Restored.dc.html": { "x": 3780, "y": 2080, "w": 1180, "h": 620, "radius": 12, "is_interactive": false, "title": "Restore: back in its old place in Lists, with everything it held" },
+    "Del-Menu-List.dc.html": { "x": 0, "y": 3120, "w": 1180, "h": 620, "radius": 12, "is_interactive": false, "title": "A list's menu: Delete List ⌘⌫ (was Archive)" },
+    "Del-Deleted.dc.html": { "x": 1260, "y": 3120, "w": 1180, "h": 620, "radius": 12, "is_interactive": false, "title": "⌘⌫ in the sidebar: no confirmation, the next list opens, “Deleted School”" },
+    "Del-Menu-Trash.dc.html": { "x": 2520, "y": 3120, "w": 1180, "h": 620, "radius": 12, "is_interactive": false, "title": "In Trash, a deleted list's menu: Open, Show Details, Restore List" },
+    "Del-Open-Light.dc.html": { "x": 3780, "y": 3120, "w": 1180, "h": 620, "radius": 12, "is_interactive": false, "title": "Opened · light" }
+  },
+  "order": [
+    "Del-Before.dc.html",
+    "Del-A.dc.html",
+    "Del-B.dc.html",
+    "Del-C.dc.html",
+    "Del.dc.html",
+    "Del-Before-Light.dc.html",
+    "Del-A-Light.dc.html",
+    "Del-B-Light.dc.html",
+    "Del-C-Light.dc.html",
+    "Del-A-Expanded.dc.html",
+    "Del-A-PutBack.dc.html",
+    "Del-Open.dc.html",
+    "Del-Restored.dc.html",
+    "Del-Menu-List.dc.html",
+    "Del-Deleted.dc.html",
+    "Del-Menu-Trash.dc.html",
+    "Del-Open-Light.dc.html"
+  ],
+  "noteOrder": ["title", "howto", "t_light", "t_a", "t_s"],
+  "notes": {
+    "title": { "kind": "title1", "x": 0, "y": -300, "maxW": 4960, "text": "Tasks · Delete List: a deleted list lives in Trash, with its tasks" },
+    "howto": {
+      "x": -560, "y": 0, "w": 480, "size": 24,
+      "text": "No Archive any more. ⌘⌫ on a list (or Delete List in its menu) deletes it at once, “Deleted School” with Undo, and it goes to Trash with its tasks. Restoring puts it back in its old place.\n\nToday’s Trash first, then three ways for Trash to hold a list:\n\nA · In the timeline (recommended): one row on the day it was deleted, “11 tasks”, collapsed. Space or the chevron shows its tasks; Return opens it, read-only, with Restore.\n\nB · Lists first: deleted lists in their own group above the days.\n\nC · Previewed: one row; the detail pane lists its tasks.\n\nWinter 2026 and Apartment move were archived; they become deleted lists in Trash on the day they were archived."
+    },
+    "t_light": { "kind": "title1", "x": 0, "y": 740, "maxW": 4960, "text": "Light" },
+    "t_a": { "kind": "title1", "x": 0, "y": 1780, "maxW": 4960, "text": "A, in detail: expand, one task out, open, restore" },
+    "t_s": { "kind": "title1", "x": 0, "y": 2820, "maxW": 4960, "text": "The sidebar and the menus" }
+  }
+}
