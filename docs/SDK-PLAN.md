@@ -246,7 +246,7 @@ declarations next to them. A test encodes each one and checks its keys against t
 - **Refs.** Anything that takes a task or list accepts:
   - its full id;
   - a unique id prefix of at least 4 characters, which is how Git refs work;
-  - for lists, a name, case-insensitive, matched among active lists first and then archived ones.
+  - for lists, a name, case-insensitive, matched among live lists first and then deleted ones.
 
   Output shows each id's shortest unique prefix, at least 6 characters, as `ref`. **Refs fail closed:** a missing or
   ambiguous ref is an error that lists the candidates, and the CLI never guesses. Duplicate list names are allowed, so
@@ -329,8 +329,9 @@ the `TasksCore` code each one runs.
 | Rename a list | `tasks list rename School "School 2026"` | `await tasks.renameList("School", "School 2026")` | `rename(list:to:)` |
 | A list's notes, under its title (§23) | `tasks list notes School "Lectures **MWF**"`; `-` reads stdin; `--append` | `await tasks.setListNotes("School", md)` | `setNotes(list:)`, "Edit List Notes" |
 | Reorder lists: drag, ⌥⌘↑ ⌥⌘↓, Move Up / Down | `tasks list move School --after Work`; `--up` | `await tasks.moveList("School", "top")` | `reorderLists` |
-| Archive ("delete list") | `tasks list archive School` | `await tasks.archiveList("School")` | `archive(list:)` |
-| Unarchive (button, menu) | `tasks list unarchive School` | `await tasks.unarchiveList("School")` | `unarchive(list:)` |
+| Delete List: sidebar ⌘⌫, the list's menu (INTERACTIONS-v2 §28) | `tasks list delete School` | `await tasks.deleteList("School")` | `deleteList(_:)`, "Delete List" |
+| Restore List: the banner, Trash's ↶ and menu, ⌘⌫ in Trash | `tasks list restore School` | `await tasks.restoreList("School")` | `restoreList(_:)`, "Restore List" |
+| Put back in (a task whose list is in Trash) | `tasks move 3f9a2c --to Inbox` | `await tasks.move(id, { list: "Inbox" })` | `putBack(_:in:)` |
 
 **Views**
 
@@ -339,14 +340,18 @@ the `TasksCore` code each one runs.
 | Today: groups in sidebar order, then Completed today (§13) | `tasks today` | `const { groups } = await tasks.today()` | `activeLists`, `todayTasks(in:)`, `todayDone` |
 | The sidebar with its counts (headings not counted) | `tasks lists` | `await tasks.lists()` | `activeLists`, `openTaskCount(in:)` |
 | A list: its notes, its rows in order (headings as section lines), then Completed newest first | `tasks ls School`; `--done` adds Completed | `(await tasks.list("School")).open`, headings with `kind: "heading"` | `openTasks(in:)`, `completedTasks(in:)` |
-| The Archive group: archived lists, newest first | `tasks archive` | `await tasks.archive()` | `archivedLists` |
-| An archived list ("Archived Oct 28", still editable) | `tasks ls School` (shows the banner line) | as a list; `list.archivedAt` is set | as a list |
+| Trash's deleted lists, newest first | `tasks deleted` | `await tasks.deletedLists()` | `deletedLists` |
+| A deleted list, opened (read-only, "Deleted Nov 1") | `tasks ls School` (shows the banner line) | as a list; `list.archivedAt` is set, each task has `listDeleted: true` | as a list |
+| Trash's tasks, and those of deleted lists | `tasks find "" --deleted` | `await tasks.find({ deleted: true })` | `isLive(task:)` (the app's Trash is `trash()`) |
 | The detail pane: fields, raw notes, Created / Completed | `tasks show 3f9a2c` | `await tasks.task(id)` | `projection.task` |
 | Sync now (⌘R) | `tasks sync` | (each run syncs) | `sync()` |
 
-Moving into an archived list is refused with "School is archived; unarchive it first". The app never offers archived
-lists as targets (§10), and a task moved there would quietly vanish from view. Adding a task to an archived list works,
-as it does in the app.
+A task in a deleted list counts as deleted (§28): `today`, `find`, the counts and refs leave it out, and only
+`find --deleted`, `show` and `ls` of the list reach it. A deleted list is read-only, as in the app: adding to it,
+moving into it, renaming it, editing its notes and editing its tasks are refused with "School is deleted; tasks list
+restore School brings it back". `restore` on one of its tasks fails, naming the list; `move --to` (bottom only) is
+Put back in. The old names, `tasks archive`, `list archive`, `list unarchive`, `archive()`, `archiveList` and
+`unarchiveList`, still run but aren't in `tasks help`, `tasks.d.ts` or AGENTS.md; drop them after a release.
 
 **Not covered, on purpose:** selection, focus, navigation ("Show in School", ⌘1–⌘9), type-to-select, the sidebar
 toggle, and the UserDefaults settings (Edit tasks, Theme, Glass). They're the app's local state and none of them is in
@@ -450,7 +455,7 @@ doing only if there are ever other users.
 2. For each touched entity, rebuild it as it was just before the batch's first op on it, by replaying the earlier
    entries with `Reducer.apply`.
 3. Write the inverse with `Inverse.of`: the touched keys go back to their earlier values. A created task gets
-   `deleted: true`, and a created list gets `archivedAt`.
+   `deleted: true`, and a created list gets `archivedAt` (it goes to Trash).
 
 Two more rules make it safe hours later:
 
@@ -485,14 +490,14 @@ trade-off as a stale drag (SPEC §3).
 ### Commands
 
 ```
-tasks today | lists | ls [<list>] [--done] | archive | show <task> [--history] | find <text> | log [filters]
+tasks today | lists | ls [<list>] [--done] | deleted | show <task> [--history] | find <text> | log [filters]
 tasks add <title> [--list L] [--today] [--when D] [--deadline D] [--notes TEXT|-] [--top|--after R|--before R]
                   [--id ID | --key K]
 tasks rename <task> <title>          tasks notes <task> <TEXT|-> [--append]
 tasks done|undone|toggle <task>…     tasks when|deadline <date|none> <task>…
 tasks move <task>… [--to L] [--top|--bottom|--up|--down|--after R|--before R]
 tasks delete|restore <task>…
-tasks list add <name> [place]  |  rename <list> <name>  |  move <list> <place>  |  archive|unarchive <list>
+tasks list add <name> [place]  |  rename <list> <name>  |  move <list> <place>  |  delete|restore <list>
 tasks undo [<batch>] [--force]  |  redo  |  sync  |  status  |  date <text>
 tasks run [<file>|-] [--dry-run]  |  types  |  mcp
 global: --json  --ids  --dry-run  --cached  --actor A  --server URL  --large
@@ -651,7 +656,7 @@ type Place = "top" | "bottom" | "up" | "down" | { after: Ref } | { before: Ref }
 
 interface Task { id: string; ref: string; kind?: "heading"; list: string; listName: string; title: string;
   notes: string /* Markdown */; when: CalendarDate | null; deadline: CalendarDate | null; done: boolean;
-  completedAt: number | null; deleted: boolean; createdAt: number; updatedAt: number }
+  completedAt: number | null; deleted: boolean; listDeleted?: true; createdAt: number; updatedAt: number }
 interface List { id: string; ref: string; name: string; notes: string; archivedAt: number | null; open: number }
 interface Change { batch: string; summary: string; tasks: Task[]; lists: List[] }
 
@@ -659,7 +664,7 @@ declare const tasks: {
   today(): Promise<{ date: CalendarDate; groups: { list: List; tasks: Task[] }[]; done: Task[] }>;
   lists(): Promise<List[]>;                       // the sidebar, in order
   list(list: Ref): Promise<{ list: List; open: Task[]; completed: Task[] }>;
-  archive(): Promise<List[]>;
+  deletedLists(): Promise<List[]>;                // Trash's lists, newest first
   task(task: Ref): Promise<Task>;
   find(q: { text?: string; list?: Ref; done?: boolean }): Promise<Task[]>;
   date(text: string): Promise<CalendarDate | null>;
@@ -681,8 +686,8 @@ declare const tasks: {
   renameList(list: Ref, name: string): Promise<Change>;
   setListNotes(list: Ref, notes: string): Promise<Change>;
   moveList(list: Ref, place: Place): Promise<Change>;
-  archiveList(list: Ref): Promise<Change>;
-  unarchiveList(list: Ref): Promise<Change>;
+  deleteList(list: Ref): Promise<Change>;
+  restoreList(list: Ref): Promise<Change>;
   undo(batch: string): Promise<Change>;
 };
 // The whole script is one change: it's written when the script returns, and nothing is written if it throws.
