@@ -59,6 +59,10 @@ https://claude.ai/artifact/JEqsvymjkNwNHkfDGbqzQw. §28 is folded into the secti
 beside the detail pane's ×: the detail pane takes the list pane's room too, and the list hides until it's unzoomed.
 The sidebar stays as it is.
 
+**When edits are written (`docs/MAC-EDIT-DURABILITY.md`): built (§7 When an edit is written; the user, 2026-11-02).**
+Every text field writes only what the user changed from where the edit began, so an untouched field never reverts a
+change that synced in. Quitting (⌘Q, logout, restart) and closing the window first end every edit.
+
 **A sidebar footer (`docs/TASK-design-sidebar-footer.md`): proposed, not built (§27).** Three directions for a foot
 under the sidebar; the recommendation (+ New List and Settings) leaves §26 where it is.
 
@@ -582,8 +586,8 @@ always selected while it's renamed,
 so it keeps `fill-row-selected` and adds a 1.5pt inset `accent` ring at radius 8; the › is hidden
 (`css:167`, `css:184`: the `.row.editing` fill never shows, because the selection
 rule comes later); a list row in the sidebar gets `fill-control` with the same ring
-(`css:119`). Return, Tab or a press elsewhere commits (one `task.update` / `list.update`, only if it
-changed). Esc restores the old text. A list name can't be empty: committing an empty name keeps the old one. Pressing
+(`css:119`). Return, Tab or a press elsewhere commits (one `task.update` / `list.update`, only if the
+user changed it: §7 When an edit is written). Esc restores the old text. A list name can't be empty: committing an empty name keeps the old one. Pressing
 inside the field moves the caret and never ends the edit (Rex fixed the same bug, preview.12). Double-click doesn't
 rename a completed task; Return and the detail pane still do. While a new or renamed list's name is typed, its tile's
 letter follows it (`dc:2988`). Source: `dc:1934–1947`,
@@ -620,6 +624,26 @@ from here:
 
 One `task.update` per editing session. The footer is "Created Oct 26" (and " · Completed Oct 30"), 11/14
 `ink-tertiary`, 14 below the notes, plus " · 19,412 / 20,000" from 18,000 characters.
+
+### When an edit is written (every field)
+
+The rule for every text field: the detail title, a new task's title, the notes (the detail pane's, a list's and a
+heading's), and every rename in place (a task's row, a heading, the list's large title, a list in the sidebar, a new
+list). Source: `docs/MAC-EDIT-DURABILITY.md` (the user, 2026-11-02).
+
+- **One write, when the edit ends.** Nothing is written while typing. The edit ends with the keys above, a press
+  elsewhere, or a command that ends edits first (§17).
+- **Only what the user changed.** The write happens only if the text differs from what it was when the edit began
+  (and from the model's value now). An edit left as it was writes nothing, even if a sync changed the same field
+  meanwhile: the field ignores the model while it has the caret, and when it lets go it shows the synced value. Text
+  the user did change is written, and wins over the synced change (the log's last writer wins). Esc on an existing
+  title puts back the model's title, which is the old one unless one synced in.
+- **Quitting ends every edit first.** ⌘Q, logout and restart: in `willTerminate`, before the last flush to disk, each
+  window's edit ends as a press elsewhere would (a titled new task is created, an untitled one dropped).
+- **Closing the window ends its edits** the same way. The app keeps running without a window.
+- **Not covered:** a crash, `kill -9` or power loss while a field is open loses that edit (the whole session; there
+  is no save while typing). Switching to another app doesn't end the edit or write it (the user skipped that,
+  2026-11-02). A committed edit is on disk a moment after it's written.
 
 ---
 
