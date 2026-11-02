@@ -5,6 +5,7 @@ struct HomeView: View {
     var sidebar = false
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
+    @State private var folded = false
 
     var body: some View {
         List {
@@ -33,8 +34,27 @@ struct HomeView: View {
         .scrollContentBackground(.hidden)
         .environment(\.defaultMinListRowHeight, 0)
         .background(AppBackground())
-        .toolbar(sidebar ? .automatic : .hidden, for: .navigationBar)
+        // The phone's bar stays, as on a list's screen (ListScreen): pull to refresh draws its indicator only with the
+        // bar there. Empty at rest; the name fades in once the large one has gone under it.
+        .onScrollGeometryChange(for: Bool.self) { g in
+            g.contentOffset.y + g.contentInsets.top > 40
+        } action: { _, now in
+            withAnimation(.easeOut(duration: 0.15)) { folded = now }
+        }
         .navigationTitle("Tasks")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if !sidebar {
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 7) {
+                        LogoMark(size: 20)
+                        Text("Tasks").font(.system(size: 17, weight: .semibold)).foregroundStyle(p.ink)
+                    }
+                    .opacity(folded ? 1 : 0)
+                    .accessibilityHidden(!folded)
+                }
+            }
+        }
     }
 
     private var header: some View {
@@ -46,7 +66,7 @@ struct HomeView: View {
             Spacer()
         }
         .padding(.leading, Metric.rowPad - 2)
-        .padding(.top, sidebar ? 4 : 10)
+        .padding(.top, 4)
         .padding(.bottom, 14)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Tasks")
