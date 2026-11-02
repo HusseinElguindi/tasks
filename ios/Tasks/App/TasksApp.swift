@@ -83,6 +83,8 @@ enum Launch {
 ///   -appearance system|light|dark   -style classic|glass
 ///   -expand <listID> (opens a deleted list in Trash)   -completed <listID> (opens a list's Completed)
 ///   -hold YES (keeps notices and just-checked rows on screen, for screenshots)
+///   Debug only, for UI tests: -remoteTask <taskID> -remoteTitle <text> -remoteNotes <text>; -remoteList <listID> -remoteName <text>
+///   (RemoteEdit.swift)
 /// A list can be named by its sample short name (`school`, `phys`, `inbox`, `w26`…) or its id.
 enum LaunchArguments {
     @MainActor static func apply(to app: AppModel) async {
@@ -93,6 +95,9 @@ enum LaunchArguments {
         if let e = d.string(forKey: "expand") { app.expandedTrash.insert(listID(e)) }
         if let c = d.string(forKey: "completed") { app.showCompleted.insert(listID(c)) }
         if d.bool(forKey: "hold") { app.holdTransient = true }
+        #if DEBUG
+        RemoteEdit.install(app)
+        #endif
         guard let screen = d.string(forKey: "screen") else { return }
 
         func list(of taskID: EntityID) -> Source { .list(app.task(taskID)?.list ?? p.activeLists.ids.first ?? "") }

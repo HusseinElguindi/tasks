@@ -26,7 +26,8 @@ struct TaskDetailView: View {
 }
 
 /// The details of one task. The title and the notes are edited here and written once when their editing ends (leaving
-/// the field, or closing the details), as the Mac commits them once per editing session: one op, one undo step.
+/// the field, or closing the details), as the Mac commits them once per editing session: one op, one undo step, and
+/// only if the user changed the text from where the edit began (`EditSession`).
 private struct TaskDetailContent: View {
     let task: TaskModel
     let inline: Bool
@@ -37,6 +38,10 @@ private struct TaskDetailContent: View {
     @FocusState private var focus: DetailField?
     @State private var title: String
     @State private var notes: String
+    /// Each field's text when its edit began; nil while it isn't being edited. While a field has the caret it ignores
+    /// the model, so a change that syncs in meanwhile shows once the edit ends without a write.
+    @State private var titleBase: String?
+    @State private var notesBase: String?
 
     init(task: TaskModel, inline: Bool) {
         self.task = task
@@ -97,19 +102,55 @@ private struct TaskDetailContent: View {
             .scrollDismissesKeyboard(.interactively)
         }
         .onChange(of: focus) { old, new in
-            if old == .title && new != .title { commitTitle() }
-            if old == .notes && new != .notes { commitNotes() }
+            if old == .title && new != .title { endTitle() }
+            if old == .notes && new != .notes { endNotes() }
+            if new == .title && old != .title { titleBase = title }
+            if new == .notes && old != .notes { notesBase = notes }
         }
-        .onDisappear { commitTitle(); commitNotes() }
-        // Leaving the app mid-edit writes it too, before the app saves on going to the background.
-        .onChange(of: phase) { _, now in if now != .active { commitTitle(); commitNotes() } }
+        .onDisappear { endTitle(); endNotes() }
+        // Leaving the app mid-edit writes what was typed so far, before the app saves on going to the background (iOS
+        // may end it there); the edit goes on from that text.
+        .onChange(of: phase) { _, now in if now != .active { saveTitle(); saveNotes() } }
         // Another device's edit, or an undo, while this field isn't being edited.
         .onChange(of: t.title) { _, v in if focus != .title { title = v } }
         .onChange(of: t.notes) { _, v in if focus != .notes { notes = v } }
     }
 
-    private func commitTitle() { if title != t.title { app.setTitle(t.id, title) } }
-    private func commitNotes() { if notes != t.notes { app.setNotes(t.id, notes) } }
+    /// The title's edit ends: one write if the user changed it from where the edit began; otherwise the field shows
+    /// the model's title, which a sync may have changed meanwhile. "Rename Task", as on the Mac.
+    private func endTitle() {
+        guard let base = titleBase else { return }
+        titleBase = nil
+        if let text = EditSession.write(title, original: base, current: t.title) {
+            app.setTitle(t.id, text, name: "Rename Task")
+        } else if title != t.title {
+            title = t.title
+        }
+    }
+
+    private func endNotes() {
+        guard let base = notesBase else { return }
+        notesBase = nil
+        if let text = EditSession.write(notes, original: base, current: t.notes) {
+            app.setNotes(t.id, text)
+        } else if notes != t.notes {
+            notes = t.notes
+        }
+    }
+
+    /// The app leaves the front mid-edit: what the user changed so far is written, and the edit carries on from it. The
+    /// field keeps the caret, so it keeps its text either way.
+    private func saveTitle() {
+        guard let base = titleBase, let text = EditSession.write(title, original: base, current: t.title) else { return }
+        app.setTitle(t.id, text, name: "Rename Task")
+        titleBase = text
+    }
+
+    private func saveNotes() {
+        guard let base = notesBase, let text = EditSession.write(notes, original: base, current: t.notes) else { return }
+        app.setNotes(t.id, text)
+        notesBase = text
+    }
 
     // MARK: Bar
 
@@ -126,7 +167,7 @@ private struct TaskDetailContent: View {
                 }
             } else {
                 BarIcon(symbol: "trash", label: "Delete") {
-                    commitTitle(); commitNotes()
+                    endTitle(); endNotes()
                     if !inline { dismiss() }
                     app.delete(t.id)
                 }

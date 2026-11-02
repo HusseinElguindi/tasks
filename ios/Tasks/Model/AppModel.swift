@@ -129,7 +129,14 @@ final class AppModel {
 
     static let todayDone = "today"
 
-    struct ListEditor: Identifiable { let id = UUID(); var listID: EntityID?; var name: String }
+    struct ListEditor: Identifiable {
+        let id = UUID()
+        var listID: EntityID?
+        var name: String
+        /// The name when the editor opened: a rename writes only if the user changed it (`EditSession`).
+        let original: String
+        init(listID: EntityID?, name: String) { self.listID = listID; self.name = name; original = name }
+    }
 
     enum Keys {
         static let appearance = "appearance"
@@ -243,7 +250,7 @@ final class AppModel {
         animate(Motion.layout) { _ = store.move([id], to: listID, undoManager: undo) }
     }
 
-    func setTitle(_ id: EntityID, _ title: String) { store.setTitle(id, title, undoManager: undo) }
+    func setTitle(_ id: EntityID, _ title: String, name: String? = nil) { store.setTitle(id, title, name: name, undoManager: undo) }
     func setNotes(_ id: EntityID, _ notes: String, name: String? = nil) { store.setNotes(id, notes, name: name, undoManager: undo) }
 
     // MARK: Lists
@@ -283,7 +290,11 @@ final class AppModel {
         let name = editor.name.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { return }
         if let id = editor.listID {
-            store.rename(list: id, to: name, undoManager: undo)
+            // Only a name the user changed: an untouched Rename never writes the old name over one that synced in.
+            let original = editor.original.trimmingCharacters(in: .whitespaces)
+            if EditSession.write(name, original: original, current: list(id)?.name) != nil {
+                store.rename(list: id, to: name, undoManager: undo)
+            }
             return
         }
         var id: EntityID?

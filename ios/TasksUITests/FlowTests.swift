@@ -137,6 +137,117 @@ final class FlowTests: XCTestCase {
         shot("flow-edit-title-done")
     }
 
+    // MARK: An edit writes only what the user changed (the Mac's rule, INTERACTIONS-v2 §7)
+
+    /// Launches with a change "from another device" for `task`, made each time `remoteEdit()` posts (RemoteEdit.swift).
+    private func launch(remote task: String, title: String? = nil, notes: String? = nil) {
+        app.launchArguments += ["-remoteTask", task]
+        if let title { app.launchArguments += ["-remoteTitle", title] }
+        if let notes { app.launchArguments += ["-remoteNotes", notes] }
+        app.launch()
+    }
+
+    /// The other device's change lands now, mid-edit.
+    private func remoteEdit() {
+        CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                             CFNotificationName("com.elguindi.Tasks.test.remote-edit" as CFString), nil, nil, true)
+        sleep(1)
+    }
+
+    /// The details' title field, by its text, with the caret at its end.
+    private func editTitle(_ text: String) {
+        func titled(_ q: XCUIElementQuery) -> XCUIElement { q.matching(NSPredicate(format: "value == %@", text)).firstMatch }
+        let field = titled(app.textViews).exists ? titled(app.textViews) : titled(app.textFields)
+        XCTAssertTrue(field.waitForExistence(timeout: 3), "the title field")
+        field.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.5)).tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3), "the title has the caret")
+    }
+
+    /// The caret sits in the title, untouched, while another device renames the task: closing the details writes
+    /// nothing, so the rename stands (before, the old title went back over it).
+    func testSyncedTitleStandsAfterAnUntouchedEdit() {
+        launch(remote: "s4", title: "Submit MSE 333 A2 (from the Mac)")
+        app.buttons["School, 11"].firstMatch.tap()
+        sleep(1)
+        app.staticTexts["Submit MSE 333 A2"].firstMatch.tap()
+        sleep(1)
+        editTitle("Submit MSE 333 A2")
+        remoteEdit()
+        app.buttons["Done"].firstMatch.tap()
+        sleep(1)
+        XCTAssertTrue(app.staticTexts["Submit MSE 333 A2 (from the Mac)"].waitForExistence(timeout: 3), "the synced title stands")
+        XCTAssertFalse(app.staticTexts["Submit MSE 333 A2"].exists, "the old title isn't written back")
+    }
+
+    /// Typed text is written, and wins over a rename that synced in meanwhile (the log's last writer wins).
+    func testTypedTitleWinsOverASyncedOne() {
+        launch(remote: "s4", title: "Submit MSE 333 A2 (from the Mac)")
+        app.buttons["School, 11"].firstMatch.tap()
+        sleep(1)
+        app.staticTexts["Submit MSE 333 A2"].firstMatch.tap()
+        sleep(1)
+        editTitle("Submit MSE 333 A2")
+        app.typeText(" v2")
+        remoteEdit()
+        app.buttons["Done"].firstMatch.tap()
+        sleep(1)
+        XCTAssertTrue(app.staticTexts["Submit MSE 333 A2 v2"].waitForExistence(timeout: 3), "the typed title is written")
+        XCTAssertFalse(app.staticTexts["Submit MSE 333 A2 (from the Mac)"].exists)
+    }
+
+    /// The caret sits in the notes, untouched, while another device changes them: closing the details writes nothing.
+    func testSyncedNotesStandAfterAnUntouchedEdit() {
+        launch(remote: "s2", notes: "Synced from the Mac.")
+        app.buttons["School, 11"].firstMatch.tap()
+        sleep(1)
+        app.staticTexts["Email TA about midterm regrade"].firstMatch.tap()
+        sleep(1)
+        let notes = app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Question 4(b)'")).firstMatch
+        XCTAssertTrue(notes.waitForExistence(timeout: 3), "the notes at rest")
+        notes.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3), "the notes have the caret")
+        remoteEdit()
+        app.buttons["Done"].firstMatch.tap()
+        sleep(1)
+        app.staticTexts["Email TA about midterm regrade"].firstMatch.tap()
+        sleep(1)
+        XCTAssertTrue(app.staticTexts["Synced from the Mac."].waitForExistence(timeout: 3), "the synced notes stand")
+        XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Question 4(b)'")).firstMatch.exists,
+                       "the old notes aren't written back")
+    }
+
+    /// Rename List left as it was while another device renames the list: Rename writes nothing, so that name stands.
+    func testSyncedListNameStandsAfterAnUntouchedRename() {
+        app.launchArguments += ["-remoteList", "school-9", "-remoteName", "School (from the Mac)"]
+        app.launch()
+        app.buttons["School, 11"].firstMatch.press(forDuration: 1.0)
+        app.buttons["Rename"].firstMatch.tap()
+        XCTAssertTrue(app.alerts["Rename List"].waitForExistence(timeout: 3), "the rename alert")
+        remoteEdit()
+        app.alerts["Rename List"].buttons["Rename"].tap()
+        sleep(1)
+        XCTAssertTrue(app.buttons["School (from the Mac), 11"].waitForExistence(timeout: 3), "the synced name stands")
+    }
+
+    /// Leaving the app mid-edit writes only what was typed: an untouched title doesn't go back over one that synced in.
+    func testSyncedTitleStandsAfterTheBackground() {
+        launch(remote: "s4", title: "Submit MSE 333 A2 (from the Mac)")
+        app.buttons["School, 11"].firstMatch.tap()
+        sleep(1)
+        app.staticTexts["Submit MSE 333 A2"].firstMatch.tap()
+        sleep(1)
+        editTitle("Submit MSE 333 A2")
+        remoteEdit()
+        XCUIDevice.shared.press(.home)
+        sleep(1)
+        app.activate()
+        sleep(1)
+        app.buttons["Done"].firstMatch.tap()
+        sleep(1)
+        XCTAssertTrue(app.staticTexts["Submit MSE 333 A2 (from the Mac)"].waitForExistence(timeout: 3), "the synced title stands")
+        XCTAssertFalse(app.staticTexts["Submit MSE 333 A2"].exists, "the old title isn't written back")
+    }
+
     /// Settings ▸ Sync against a local `wrangler dev`: the token typed into the SecureField goes to the Keychain and sync
     /// runs on it; after a relaunch it's still there. Runs only when TEST_RUNNER_SYNC_TEST_TOKEN holds that server's
     /// throwaway token (it never comes from here), and takes no screenshots.

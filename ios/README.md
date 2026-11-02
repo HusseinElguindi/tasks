@@ -84,6 +84,7 @@ Mac-only CLI, and building there writes `.swiftpm/` into `app/TasksCore`. (The `
 | `-expand <listID>` | opens a deleted list in Trash (`w26`, `move`) |
 | `-completed <listID>` | opens a list's Completed |
 | `-hold YES` | keeps notices and just-checked rows on screen |
+| `-remoteTask <taskID>` with `-remoteTitle <text>` and/or `-remoteNotes <text>`; `-remoteList <listID>` with `-remoteName <text>` | Debug only, for UI tests: that change, as if another device made it, each time the test posts the Darwin notification `com.elguindi.Tasks.test.remote-edit` (`Tasks/App/RemoteEdit.swift`) |
 
 With `-sampleData`, lists go by short names: `inbox` `school` `phys` `tasks` `home` `errands`, and in Trash `w26`
 `move`. Task ids are in `Tasks/Model/SampleData.swift`.
