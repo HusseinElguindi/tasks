@@ -45,7 +45,8 @@ public struct TaskList: Hashable, Sendable, Codable {
     public var order: String
     /// The list's text under its title, Markdown (design/INTERACTIONS-v2.md §23).
     public var notes: String
-    /// Epoch ms; nil = active.
+    /// Epoch ms: when the list was deleted (it's in Trash, design/INTERACTIONS-v2.md §28); nil = live. The wire name
+    /// is Archive's, kept: a deleted list is exactly an archived one.
     public var archivedAt: Int?
     public var createdAt: Int
     public var updatedAt: Int
@@ -145,7 +146,7 @@ extension TaskList {
     }
 }
 
-/// The confirmed state: every task and list reduced from the log, deleted and archived ones included.
+/// The confirmed state: every task and list reduced from the log, deleted ones included.
 public struct AppState: Hashable, Sendable, Codable {
     public var tasks: [EntityID: TaskItem]
     public var lists: [EntityID: TaskList]
@@ -212,7 +213,7 @@ public enum Inverse {
         }
     }
 
-    /// Undoing a list create archives it: lists are never deleted (spec §2).
+    /// Undoing a list create deletes it, which for a list is `archivedAt` (it goes to Trash, spec §2).
     public static func of(_ op: Op, beforeList before: TaskList?, id: String, at: Int) -> Op? {
         switch op.type {
         case .listCreate:

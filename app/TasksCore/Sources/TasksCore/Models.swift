@@ -154,10 +154,11 @@ public final class ListModel: Identifiable {
     public internal(set) var order: String
     /// The text under the list's title (§23), Markdown.
     public internal(set) var notes: String
+    /// When it was deleted (it's in Trash, §28); nil = live. The field keeps its wire name.
     public internal(set) var archivedAt: Int?
     public internal(set) var createdAt: Int
 
-    public var isArchived: Bool { archivedAt != nil }
+    public var isDeleted: Bool { archivedAt != nil }
 
     /// One of 7 color slots, derived from the id so every Mac agrees with no field (design/DIRECTIONS.md).
     public let colorSlot: Int

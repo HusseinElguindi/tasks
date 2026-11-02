@@ -575,13 +575,13 @@ extension Context {
     func archiveList(_ ref: String) throws {
         try requireUnfixed()
         let l = try resolve.list(ref)
-        try writable().archive(list: l.id)
+        try writable().deleteList(l.id)
     }
 
     func unarchiveList(_ ref: String) throws {
         try requireUnfixed()
         let l = try resolve.list(ref)
-        try writable().unarchive(list: l.id)
+        try writable().restoreList(l.id)
     }
 
     // MARK: Views
@@ -617,7 +617,7 @@ extension Context {
     func archiveJSON() throws -> (JSON, [String]) {
         let p = try self.p
         let r = Render(p)
-        let lists = p.archivedLists.ids.compactMap(p.list)
+        let lists = p.deletedLists.ids.compactMap(p.list)
         return (.array(lists.map(r.list)), lists.isEmpty ? ["  No archived lists."] : lists.map(r.listRow))
     }
 
@@ -649,7 +649,7 @@ extension Context {
         let p = try self.p
         let r = Render(p)
         let listID = try list.map { try resolve.list($0).id }
-        let rank = Dictionary(uniqueKeysWithValues: (p.activeLists.ids + p.archivedLists.ids).enumerated().map { ($1, $0) })
+        let rank = Dictionary(uniqueKeysWithValues: (p.activeLists.ids + p.deletedLists.ids).enumerated().map { ($1, $0) })
         let needle = text?.trimmingCharacters(in: .whitespaces) ?? ""
         let matches = p.allTaskIDs.compactMap(p.task).filter { t in
             !t.isHeading && (deleted || !t.deleted) && (listID == nil || t.list == listID) && (done == nil || (t.completedAt != nil) == done)

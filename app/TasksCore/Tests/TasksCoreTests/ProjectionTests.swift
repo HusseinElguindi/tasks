@@ -26,7 +26,7 @@ func assertMatchesRebuild(_ p: Projection, _ context: @autoclosure () -> String,
     compare(p.today, fresh.today, "today")
     XCTAssertEqual(p.todayDone.ids, fresh.todayDone.ids, "\(ctx): todayDone", file: file, line: line)
     XCTAssertEqual(p.activeLists.ids, fresh.activeLists.ids, "\(ctx): activeLists", file: file, line: line)
-    XCTAssertEqual(p.archivedLists.ids, fresh.archivedLists.ids, "\(ctx): archivedLists", file: file, line: line)
+    XCTAssertEqual(p.deletedLists.ids, fresh.deletedLists.ids, "\(ctx): deletedLists", file: file, line: line)
     XCTAssertEqual(p.taskPlacement, fresh.taskPlacement, "\(ctx): task placements", file: file, line: line)
     XCTAssertEqual(p.listPlacement, fresh.listPlacement, "\(ctx): list placements", file: file, line: line)
     for (id, m) in p.taskModels {
@@ -145,7 +145,7 @@ final class ProjectionTests: XCTestCase {
         assertMatchesRebuild(b, "seed dedup")
     }
 
-    func testArchiveMovesOneListAndHidesItsTasksFromToday() {
+    func testDeletingAListMovesOneListAndHidesItsTasksFromToday() {
         let p = Projection(day: day)
         p.perform([m.createList("L", name: "L", order: "a0"), m.createList("M", name: "M", order: "a1")])
         p.perform([m.createTask("a", list: "L", order: "a0", when: day.date)])
@@ -157,13 +157,63 @@ final class ProjectionTests: XCTestCase {
 
         p.perform([m.updateList("L", Patch(archivedAt: .some(5)))])
         XCTAssertEqual(p.activeLists.ids, ["M"])
-        XCTAssertEqual(p.archivedLists.ids, ["L"])
-        XCTAssertEqual(p.openTasks(in: "L").ids, ["a"], "task buckets ignore archive state")
+        XCTAssertEqual(p.deletedLists.ids, ["L"])
+        XCTAssertEqual(p.openTasks(in: "L").ids, ["a"], "task buckets ignore whether the list is deleted")
         XCTAssertEqual(p.todayDone.ids, [], "done-today follows the list")
-        assertMatchesRebuild(p, "archived")
+        assertMatchesRebuild(p, "deleted")
         p.perform([m.updateList("L", Patch(archivedAt: .some(nil)))])
         XCTAssertEqual(p.todayDone.ids, ["d"])
-        assertMatchesRebuild(p, "unarchived")
+        assertMatchesRebuild(p, "restored")
+    }
+
+    /// §28: a task in a deleted list counts as deleted; Trash holds the list once, with its tasks under it, and a task
+    /// deleted on its own as a row of its own, wherever its list is.
+    func testDeletedListsTasksCountAsDeletedAndTrashHoldsTheListOnce() {
+        let p = Projection(day: day)
+        p.perform([m.createList("L", name: "School", order: "a0"), m.createList("M", name: "Inbox", order: "a1")])
+        p.perform([m.createTask("a", list: "L", order: "a0", when: day.date), m.createTask("b", list: "L", order: "a1"),
+                   m.createTask("h", list: "L", order: "a2", kind: Patch.heading), m.createTask("c", list: "L", order: "a3"),
+                   m.createTask("x", list: "M", order: "a0")])
+        p.perform([m.updateTask("c", Patch(completedAt: .some(day.start + 1000)))])
+        p.perform([m.updateTask("x", Patch(deleted: true))])
+        XCTAssertTrue(p.isLive(task: "a"))
+        XCTAssertFalse(p.isLive(task: "x"))
+
+        p.perform([m.updateList("L", Patch(archivedAt: .some(m.at + 500)))])
+        for id in ["a", "b", "c", "h"] { XCTAssertFalse(p.isLive(task: id), id) }
+        XCTAssertFalse(p.task("a")!.deleted, "no cascade: the tasks aren't written")
+        XCTAssertTrue(p.isDeleted(list: "L"))
+        XCTAssertEqual(p.trash().map(\.item), [.list("L"), .task("x")], "newest deleted first, the list once")
+        XCTAssertEqual(p.tasksInDeletedList("L"), ["a", "b", "c"], "open in order, then completed; no heading")
+        assertMatchesRebuild(p, "deleted")
+
+        p.perform([m.updateList("L", Patch(archivedAt: .some(nil)))])
+        for id in ["a", "b", "c", "h"] { XCTAssertTrue(p.isLive(task: id) || p.task(id)!.completedAt != nil, id) }
+        XCTAssertEqual(p.trash().map(\.item), [.task("x")])
+        XCTAssertEqual(p.todayTasks(in: "L").ids, ["a"])
+        assertMatchesRebuild(p, "restored")
+    }
+
+    /// A task deleted before its list is a row of its own in Trash, on its own day, and restoring the list leaves it
+    /// deleted (the user's rule, §28).
+    func testTaskDeletedBeforeItsListStaysDeletedWhenTheListIsRestored() {
+        let p = Projection(day: day)
+        p.perform([m.createList("L", name: "School", order: "a0")])
+        p.perform([m.createTask("a", list: "L", order: "a0"), m.createTask("old", list: "L", order: "a1")])
+        p.perform([m.updateTask("old", Patch(deleted: true))])
+        let oldAt = p.task("old")!.updatedAt
+        p.perform([m.updateList("L", Patch(archivedAt: .some(m.at + 500)))])
+        XCTAssertEqual(p.trash().map(\.item), [.list("L"), .task("old")])
+        XCTAssertEqual(p.trash().last?.deletedAt, oldAt, "on the day it was deleted")
+        XCTAssertEqual(p.tasksInDeletedList("L"), ["a"], "not under the list")
+
+        p.perform([m.updateList("L", Patch(archivedAt: .some(nil)))])
+        XCTAssertTrue(p.isLive(task: "a"))
+        XCTAssertFalse(p.isLive(task: "old"))
+        XCTAssertTrue(p.task("old")!.deleted)
+        XCTAssertEqual(p.openTasks(in: "L").ids, ["a"])
+        XCTAssertEqual(p.trash().map(\.item), [.task("old")])
+        assertMatchesRebuild(p, "restored, the old one still deleted")
     }
 
     func testMidnightRebuildsToday() {

@@ -87,8 +87,8 @@ final class ReducerTests: XCTestCase {
         XCTAssertNil(s.lists[L]?.archivedAt)
     }
 
-    /// Rule 5: archiving is one field on the list; tasks are not rewritten.
-    func testArchiveDoesNotTouchTasks() {
+    /// Rule 5: deleting a list is one field on it (`archivedAt`, §28); its tasks are not rewritten.
+    func testDeletingAListDoesNotTouchTasks() {
         var s = AppState()
         s.apply(m.createList(L, name: "L", order: "a0"))
         s.apply(m.createTask(T, list: L, order: "a0"))

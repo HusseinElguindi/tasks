@@ -525,21 +525,63 @@ final class SyncTests: XCTestCase {
         XCTAssertNotNil(store.projection.confirmed.tasks[id]?.completedAt)
     }
 
-    func testArchiveUndoAndDefaultList() {
+    func testDeleteListUndoAndDefaultList() {
         let store = makeStore(StubServer())
         let inbox = store.defaultListID!
         let school = store.createList(name: "School")
         let undo = UndoManager()
         undo.groupsByEvent = false
         undo.beginUndoGrouping()
-        store.archive(list: inbox, undoManager: undo)
+        store.deleteList(inbox, undoManager: undo)
         undo.endUndoGrouping()
-        XCTAssertEqual(store.defaultListID, school, "the next active list takes over")
+        XCTAssertEqual(undo.undoActionName, "Delete List")
+        XCTAssertEqual(store.defaultListID, school, "the next live list takes over")
         undo.undo()
         XCTAssertEqual(store.defaultListID, inbox)
-        store.archive(list: inbox)
-        store.archive(list: school)
+        XCTAssertFalse(store.restoreList(inbox), "already live")
+        store.deleteList(inbox)
+        store.deleteList(school)
         XCTAssertNil(store.createTask(title: "nowhere to go"))
+        XCTAssertTrue(store.restoreList(school))
+        XCTAssertEqual(store.defaultListID, school)
+    }
+
+    /// Put back in (§28): a task whose list is in Trash can't go home; it goes to the bottom of a live list, with
+    /// `deleted: false` only if it was deleted on its own. Restoring the list later leaves it where it went.
+    func testPutBackInOutOfADeletedList() {
+        let store = makeStore(StubServer())
+        let inbox = store.defaultListID!
+        let school = store.createList(name: "School")
+        let kept = store.createTask(title: "Kept", in: inbox)!
+        let a = store.createTask(title: "A", in: school)!
+        let b = store.createTask(title: "B", in: school)!
+        store.delete([b])
+        store.deleteList(school)
+        XCTAssertEqual(store.trashedTasks([a, b, kept]), [a, b])
+
+        XCTAssertFalse(store.putBack([a]), "its list is in Trash: nowhere to go back to")
+        XCTAssertFalse(store.putBack([a], in: school), "not into a deleted list")
+        let undo = UndoManager()
+        undo.groupsByEvent = false
+        undo.beginUndoGrouping()
+        XCTAssertTrue(store.putBack([a, b], in: inbox, undoManager: undo))
+        undo.endUndoGrouping()
+        XCTAssertEqual(undo.undoActionName, "Put Back 2 Tasks")
+        let p = store.projection
+        XCTAssertEqual(p.openTasks(in: inbox).ids, [kept, a, b], "at the bottom, in order")
+        XCTAssertTrue(p.isLive(task: a))
+        XCTAssertTrue(p.isLive(task: b))
+        let ops = p.pending.suffix(2).map(\.op)
+        XCTAssertNil(ops[0].set.deleted, "A went with its list: only list and order")
+        XCTAssertEqual(ops[1].set.deleted, false, "B was deleted on its own")
+
+        store.restoreList(school)
+        XCTAssertEqual(p.openTasks(in: school).ids, [], "they stay where they went")
+        undo.undo()
+        XCTAssertEqual(p.openTasks(in: school).ids, [a])
+        XCTAssertTrue(p.task(b)!.deleted)
+        XCTAssertTrue(store.putBack([b]), "its list is live again: the plain Put Back")
+        XCTAssertEqual(p.openTasks(in: school).ids, [a, b])
     }
 
     func testClampKeepsCharactersWhole() {

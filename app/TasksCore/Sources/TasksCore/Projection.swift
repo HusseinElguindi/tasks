@@ -19,7 +19,8 @@ public final class Projection {
     public let dayModel: DayModel
     public var day: Day { dayModel.day }
 
-    // MARK: Indexes (spec §9 table). Task buckets ignore archive state; Today and the sidebar iterate activeLists.
+    // MARK: Indexes (spec §9 table). Task buckets ignore whether their list is deleted; everything that shows what's
+    // live (Today, the views, counts, Move to) iterates activeLists, so a deleted list's tasks count as deleted (§28).
 
     /// Open, non-deleted tasks of each list, by (order, id), headings included: the list's rows in order.
     private(set) var open: [EntityID: Bucket] = [:]
@@ -33,8 +34,8 @@ public final class Projection {
     public let todayDone = Bucket()
     /// Lists with `archivedAt == nil`, by (order, id).
     public let activeLists = Bucket()
-    /// Archived lists, most recently archived first.
-    public let archivedLists = Bucket()
+    /// Deleted lists, in Trash (`archivedAt` set, design/INTERACTIONS-v2.md §28), most recently deleted first.
+    public let deletedLists = Bucket()
 
     struct TaskPlacement: Equatable {
         var list: EntityID
@@ -47,7 +48,7 @@ public final class Projection {
 
     struct ListPlacement: Equatable {
         var active: SortKey?
-        var archived: SortKey?
+        var deleted: SortKey?
     }
 
     private(set) var taskPlacement: [EntityID: TaskPlacement] = [:]
@@ -102,9 +103,63 @@ public final class Projection {
     public func completedTasks(in list: EntityID) -> Bucket { bucket(in: &completed, list) }
     public func todayTasks(in list: EntityID) -> Bucket { bucket(in: &today, list) }
 
+    /// A live list: it exists and isn't in Trash.
     public func isActive(list id: EntityID) -> Bool {
         guard let l = list(id) else { return false }
         return l.archivedAt == nil
+    }
+
+    /// A list in Trash (§28): `archivedAt` is the moment it was deleted.
+    public func isDeleted(list id: EntityID) -> Bool { list(id)?.archivedAt != nil }
+
+    /// A task is live only if it isn't deleted and its list is live (SPEC §5 rule 5, §28). A task in a deleted list
+    /// counts as deleted everywhere that decides what's live; restoring the list brings it back as it was.
+    public func isLive(task id: EntityID) -> Bool {
+        guard let t = task(id) else { return false }
+        return !t.deleted && isActive(list: t.list)
+    }
+
+    /// One thing in Trash (§22, §28): a deleted list, or a task deleted on its own (wherever its list is), with when
+    /// it was deleted.
+    public struct TrashEntry: Hashable, Sendable {
+        public enum Item: Hashable, Sendable { case list(EntityID), task(EntityID) }
+        public var item: Item
+        public var deletedAt: Int
+
+        public var id: EntityID {
+            switch item {
+            case .list(let id), .task(let id): id
+            }
+        }
+    }
+
+    /// The `at` of the op that last touched a task, which for a deleted task is its deletion: nothing edits a trashed
+    /// task, so the last op is the one that set `deleted` (§22's `deletedAt`).
+    public static func deletedAt(_ t: TaskItem) -> Int { t.updatedAt }
+
+    /// What Trash holds, newest deleted first (§28): each deleted list once, at its `archivedAt`, and each task
+    /// deleted on its own at its deletion. A deleted list's other tasks aren't listed: they're under it. A task deleted
+    /// before its list stays a row of its own, and stays deleted when the list is restored. Headings aren't listed:
+    /// they're only a name, and ⌘Z brings them back (§23). One pass over the tasks: no bucket holds deleted ones.
+    public func trash() -> [TrashEntry] {
+        var out: [TrashEntry] = []
+        for id in deletedLists.ids {
+            if let at = list(id)?.archivedAt { out.append(TrashEntry(item: .list(id), deletedAt: at)) }
+        }
+        for id in allTaskIDs {
+            guard let t = task(id), t.deleted, !t.isHeading, list(t.list) != nil else { continue }
+            out.append(TrashEntry(item: .task(id), deletedAt: Self.deletedAt(t)))
+        }
+        out.sort { $0.deletedAt != $1.deletedAt ? $0.deletedAt > $1.deletedAt : $0.id < $1.id }
+        return out
+    }
+
+    /// The tasks a deleted list took with it, as Trash shows them under its row (§28): its open tasks in its order,
+    /// then its completed ones, newest first. Headings stay out (they're in the opened list), and so do tasks deleted
+    /// on their own: they're rows of their own.
+    public func tasksInDeletedList(_ list: EntityID) -> [EntityID] {
+        let open = openTasks(in: list).ids.filter { task($0)?.isHeading == false }
+        return open + completedTasks(in: list).ids
     }
 
     /// The open tasks of a list with their keys, for computing new keys (spec §3).
@@ -356,8 +411,8 @@ public final class Projection {
     }
 
     private func placement(for l: TaskList) -> ListPlacement {
-        if let a = l.archivedAt { return ListPlacement(active: nil, archived: .descending(a, l.id)) }
-        return ListPlacement(active: .manual(l.order, l.id), archived: nil)
+        if let a = l.archivedAt { return ListPlacement(active: nil, deleted: .descending(a, l.id)) }
+        return ListPlacement(active: .manual(l.order, l.id), deleted: nil)
     }
 
     /// Re-places every dirty entity and pushes changed fields into cached models, then flushes bucket edits.
@@ -401,9 +456,9 @@ public final class Projection {
         let old = listPlacement[id]
         if new != old {
             if old?.active != new?.active { edit(activeLists, remove: old?.active, insert: new?.active) }
-            if old?.archived != new?.archived { edit(archivedLists, remove: old?.archived, insert: new?.archived) }
+            if old?.deleted != new?.deleted { edit(deletedLists, remove: old?.deleted, insert: new?.deleted) }
             listPlacement[id] = new
-            // Archiving or (re)creating a list changes which of its tasks count as done today.
+            // Deleting, restoring or (re)creating a list changes which of its tasks count as done today.
             if (old?.active != nil) != (new?.active != nil), let bucket = completed[id] {
                 for key in bucket.keys {
                     if -key.time < day.start { break }
@@ -436,17 +491,17 @@ public final class Projection {
 
         listPlacement = [:]
         var active: [SortKey] = []
-        var archived: [SortKey] = []
+        var deleted: [SortKey] = []
         for id in allListIDs {
             guard let l = list(id) else { continue }
             let p = placement(for: l)
             listPlacement[id] = p
             if let k = p.active { active.append(k) }
-            if let k = p.archived { archived.append(k) }
+            if let k = p.deleted { deleted.append(k) }
             listModels[id]?.update(from: l)
         }
         activeLists.replace(with: active.sorted())
-        archivedLists.replace(with: archived.sorted())
+        deletedLists.replace(with: deleted.sorted())
 
         taskPlacement = [:]
         var openKeys: [EntityID: [SortKey]] = [:]

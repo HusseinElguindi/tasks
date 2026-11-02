@@ -156,18 +156,53 @@ extension Store {
         return perform([listOp(id, Patch(notes: notes))], undoManager: undoManager, actionName: name ?? "Edit List Notes")
     }
 
-    /// "Delete list" is archiving: one op, whatever the list size; its tasks are untouched (spec §2).
+    /// Delete List (design/INTERACTIONS-v2.md §28): one op, `archivedAt` = now, whatever the list holds. Its tasks
+    /// aren't touched: while it's in Trash they count as deleted (SPEC §2), and they come back with it.
     @discardableResult
-    public func archive(list id: EntityID, name: String? = nil, undoManager: UndoManager? = nil) -> Bool {
+    public func deleteList(_ id: EntityID, name: String? = nil, undoManager: UndoManager? = nil) -> Bool {
         guard projection.list(id)?.archivedAt == nil else { return false }
-        return perform([listOp(id, Patch(archivedAt: .some(nowMs)))], undoManager: undoManager, actionName: name ?? "Archive List")
+        return perform([listOp(id, Patch(archivedAt: .some(nowMs)))], undoManager: undoManager, actionName: name ?? "Delete List")
     }
 
-    /// Unarchiving restores the list to its old sidebar spot, by its old key.
+    /// Restore List: `archivedAt: null`, one op. The list goes back to its old place by its old key, with everything
+    /// it held; a task deleted on its own before stays deleted.
     @discardableResult
-    public func unarchive(list id: EntityID, name: String? = nil, undoManager: UndoManager? = nil) -> Bool {
+    public func restoreList(_ id: EntityID, name: String? = nil, undoManager: UndoManager? = nil) -> Bool {
         guard projection.list(id)?.archivedAt != nil else { return false }
-        return perform([listOp(id, Patch(archivedAt: .some(nil)))], undoManager: undoManager, actionName: name ?? "Unarchive List")
+        return perform([listOp(id, Patch(archivedAt: .some(nil)))], undoManager: undoManager, actionName: name ?? "Restore List")
+    }
+
+    /// The tasks Put Back can take out of Trash (§22, §28): deleted ones, and ones whose list is deleted. Headings come
+    /// back only with ⌘Z or their list (§23).
+    public func trashedTasks(_ ids: [EntityID]) -> [EntityID] {
+        ids.filter { id in projection.task(id).map { !$0.isHeading && ($0.deleted || !projection.isActive(list: $0.list)) } ?? false }
+    }
+
+    /// Put Back (§22): without `list`, `deleted: false`, and the task returns to its list at its old place; a task
+    /// whose list is in Trash has no place to go back to, so it's skipped. "Put back in" `list` (§28): at the bottom of
+    /// that live list, in the order given, `set {list, order}` plus `deleted: false` where it was deleted on its own.
+    /// Returns whether anything was written.
+    @discardableResult
+    public func putBack(_ ids: [EntityID], in list: EntityID? = nil, name: String? = nil, undoManager: UndoManager? = nil) -> Bool {
+        let ids = trashedTasks(ids)
+        if let list, !projection.isActive(list: list) { return false }
+        let now = nowMs
+        var ops: [Op] = []
+        let moving = list.map { l in ids.filter { projection.task($0)?.list != l } } ?? []
+        if let list, !moving.isEmpty {
+            // At the bottom of the other list, in the order they were in (as Move does); re-keyed neighbours too.
+            let movingSet = Set(moving)
+            for item in Ordering.append(moving, after: projection.orderedOpenTasks(in: list)) {
+                var p = Patch(list: list, order: item.order)
+                if movingSet.contains(item.id), projection.task(item.id)?.deleted == true { p.deleted = false }
+                ops.append(Op(id: newID(), at: now, type: .taskUpdate, target: item.id, set: p))
+            }
+        }
+        for id in ids where !moving.contains(id) {
+            guard let t = projection.task(id), t.deleted, projection.isActive(list: t.list) else { continue }
+            ops.append(Op(id: newID(), at: now, type: .taskUpdate, target: id, set: Patch(deleted: false)))
+        }
+        return perform(ops, undoManager: undoManager, actionName: name ?? (ids.count > 1 ? "Put Back \(ids.count) Tasks" : "Put Back"))
     }
 
     @discardableResult
