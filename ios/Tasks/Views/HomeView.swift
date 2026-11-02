@@ -69,14 +69,14 @@ struct SourceRow: View {
                 store.tile(for: source, palette: p)
                 Text(store.title(source))
                     .font(Typo.row)
-                    .foregroundStyle(current || !sidebar ? p.ink : p.ink2)
+                    .foregroundStyle(current || !sidebar ? p.ink : p.inkSecondary)
                     .lineLimit(1)
                 Spacer(minLength: 8)
                 if let count, count > 0 {
                     Text("\(count)")
                         .font(Typo.row)
                         .monospacedDigit()
-                        .foregroundStyle(source == .today ? p.ink2 : p.ink3)
+                        .foregroundStyle(source == .today ? p.inkSecondary : p.inkTertiary)
                 }
             }
             .padding(.leading, Metric.rowPad)

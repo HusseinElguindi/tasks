@@ -57,20 +57,20 @@ struct ListScreen: View {
                     .foregroundStyle(p.ink)
                     .lineLimit(1)
                 if let sub = subtitle {
-                    Text(sub).font(Typo.body).foregroundStyle(p.ink3).lineLimit(1).padding(.top, 4)
+                    Text(sub).font(Typo.body).foregroundStyle(p.inkTertiary).lineLimit(1).padding(.top, 4)
                 }
             }
             if case let .list(id) = source, let notes = store.list(id)?.notes, !notes.isEmpty {
                 Text(notes)
                     .font(Typo.notes)
                     .lineSpacing(5)
-                    .foregroundStyle(p.ink2)
+                    .foregroundStyle(p.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 2)
             }
             if source == .trash {
                 Text("Deleted tasks and lists stay here, read-only, until you restore them.")
-                    .font(Typo.notes).lineSpacing(5).foregroundStyle(p.ink2)
+                    .font(Typo.notes).lineSpacing(5).foregroundStyle(p.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

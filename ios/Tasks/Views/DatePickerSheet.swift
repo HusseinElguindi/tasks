@@ -77,7 +77,7 @@ struct DatePickerSheet: View {
 
             HStack(spacing: 0) {
                 ForEach(Array(["S", "M", "T", "W", "T", "F", "S"].enumerated()), id: \.offset) { _, d in
-                    Text(d).font(.system(size: 11, weight: .semibold)).foregroundStyle(p.ink3).frame(maxWidth: .infinity)
+                    Text(d).font(.system(size: 11, weight: .semibold)).foregroundStyle(p.inkTertiary).frame(maxWidth: .infinity)
                 }
             }
             .padding(.horizontal, 14)
@@ -121,9 +121,9 @@ struct DatePickerSheet: View {
                 quick("Next Week", nextWeek, symbol: "arrow.right.circle.fill", tint: p.list(.magenta))
                 if current != nil {
                     Button { choose(nil) } label: {
-                        Text("Clear").font(.system(size: 14, weight: .medium)).foregroundStyle(p.ink2)
+                        Text("Clear").font(.system(size: 14, weight: .medium)).foregroundStyle(p.inkSecondary)
                             .padding(.horizontal, 12).frame(height: 32)
-                            .overlay(Capsule().strokeBorder(p.lineSep, lineWidth: 1))
+                            .overlay(Capsule().strokeBorder(p.lineSeparator, lineWidth: 1))
                             .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
@@ -168,9 +168,9 @@ struct DatePickerSheet: View {
                 Text("\(Day.cal.component(.day, from: d))")
                     .font(.system(size: 16, weight: selected || isToday ? .semibold : .regular))
                     .monospacedDigit()
-                    .foregroundStyle(selected ? p.onAccent : isToday ? p.accentText : otherMonth ? p.inkQ : p.ink)
+                    .foregroundStyle(selected ? p.onAccent : isToday ? p.accentText : otherMonth ? p.inkQuiet : p.ink)
                 if marked && !selected {
-                    Circle().fill(target.kind == .when ? p.attn : p.ink3).frame(width: 4, height: 4).offset(y: 13)
+                    Circle().fill(target.kind == .when ? p.attention : p.inkTertiary).frame(width: 4, height: 4).offset(y: 13)
                 }
             }
             .frame(maxWidth: .infinity, minHeight: rowH)
@@ -185,22 +185,22 @@ struct DatePickerSheet: View {
         HStack(spacing: 8) {
             Image(systemName: target.kind == .when ? "calendar" : "flag.fill")
                 .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(p.ink3)
+                .foregroundStyle(p.inkTertiary)
             if let c = current {
                 Text(Day.full(c)).font(Typo.body).foregroundStyle(p.ink)
-                Text("· " + Day.relative(c)).font(Typo.body).foregroundStyle(p.ink3)
+                Text("· " + Day.relative(c)).font(Typo.body).foregroundStyle(p.inkTertiary)
                 if target.kind == .deadline, Day.tone(c) == .due || Day.tone(c) == .late {
-                    Text("· " + Day.deadlineLabel(c)).font(Typo.body).foregroundStyle(Day.tone(c) == .late ? p.danger : p.attn)
+                    Text("· " + Day.deadlineLabel(c)).font(Typo.body).foregroundStyle(Day.tone(c) == .late ? p.danger : p.attention)
                 }
             } else {
-                Text(target.kind == .when ? "No date · it waits in Undated" : "No deadline").font(Typo.body).foregroundStyle(p.ink3)
+                Text(target.kind == .when ? "No date · it waits in Undated" : "No deadline").font(Typo.body).foregroundStyle(p.inkTertiary)
             }
             Spacer()
         }
         .lineLimit(1)
         .padding(.horizontal, 22)
         .frame(height: 50)
-        .overlay(alignment: .top) { Rectangle().fill(p.lineSep).frame(height: 1).padding(.horizontal, 20) }
+        .overlay(alignment: .top) { Rectangle().fill(p.lineSeparator).frame(height: 1).padding(.horizontal, 20) }
         .padding(.top, 6)
     }
 

@@ -65,9 +65,8 @@ final class Store {
     /// Screenshots: keep a notice and a just-checked row on screen instead of letting them go.
     var holdTransient = false                        // iPad and Mac: detail inline, not a sheet
 
-    // Appearance
-    var themeID = "default"
-    var appearance: Appearance = .dark
+    // Appearance: the Mac's one theme, in System (the default, as on the Mac), Light or Dark
+    var appearance: Appearance = .system
     var style: InterfaceStyle = .classic
 
     struct ListEditor: Identifiable { let id = UUID(); var listID: String?; var name: String }

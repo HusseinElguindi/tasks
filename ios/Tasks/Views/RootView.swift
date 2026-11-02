@@ -116,7 +116,7 @@ struct HomeBar: View {
             Button { store.showSettings = true } label: {
                 Image(systemName: "slider.horizontal.3")
                     .font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(p.ink2)
+                    .foregroundStyle(p.inkSecondary)
                     .frame(width: 52, height: Metric.barHeight)
                     .contentShape(Rectangle())
             }
@@ -257,7 +257,7 @@ extension View {
         presentationDetents([.height(560), .large]).presentationDragIndicator(.visible)
     }
 
-    /// Applies the chosen theme: the derived palette, the interface style, the accent as tint and the colour scheme.
+    /// Applies the theme: the appearance's palette, the interface style, the accent as tint and the colour scheme.
     func themed(_ store: Store) -> some View { modifier(Themed(store: store)) }
 
     func listEditorAlert() -> some View { modifier(ListEditorAlert()) }
@@ -268,7 +268,7 @@ struct Themed: ViewModifier {
     @Environment(\.colorScheme) private var scheme
     func body(content: Content) -> some View {
         let dark = store.appearance == .system ? scheme == .dark : store.appearance == .dark
-        let pal = Palette.make(store.themeID, dark: dark)
+        let pal = Palette.make(dark: dark)
         content
             .environment(store)
             .environment(\.palette, pal)

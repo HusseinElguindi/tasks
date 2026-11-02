@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Settings: the theme cards, Light / Dark / System, and Classic or Glass, in Pane's sections and cards.
+/// Settings: System / Light / Dark and Classic or Glass, in Pane's sections and cards. One theme, the Mac's.
 struct SettingsView: View {
     @Environment(Store.self) private var store
     @Environment(\.palette) private var p
@@ -21,21 +21,6 @@ struct SettingsView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    Section("Theme") {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 96, maximum: 130), spacing: 12)], spacing: 16) {
-                            ForEach(TasksTheme.all) { t in
-                                ThemeCard(theme: t, dark: p.isDark, selected: store.themeID == t.id) {
-                                    store.themeID = t.id
-                                }
-                            }
-                        }
-                        .padding(14)
-                        .frame(maxWidth: .infinity)
-                        .background(p.base, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        Text(TasksTheme.byID(store.themeID).mood + ".")
-                            .font(Typo.meta).foregroundStyle(p.ink3).padding(.leading, 4)
-                    }
-
                     Section("Appearance") {
                         VStack(spacing: 0) {
                             stacked("Appearance", "System follows the phone’s Light and Dark.") {
@@ -70,18 +55,17 @@ struct SettingsView: View {
             }
         }
         .background(p.ground)
-        .animation(Motion.natural, value: store.themeID)
     }
 
     private var divider: some View {
-        Rectangle().fill(p.lineSep).frame(height: 1).padding(.horizontal, 14)
+        Rectangle().fill(p.lineSeparator).frame(height: 1).padding(.horizontal, 14)
     }
 
     private func row<T: View>(_ title: String, _ description: String, @ViewBuilder trailing: () -> T) -> some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title).font(Typo.body).foregroundStyle(p.ink)
-                Text(description).font(Typo.meta).foregroundStyle(p.ink2).fixedSize(horizontal: false, vertical: true)
+                Text(description).font(Typo.meta).foregroundStyle(p.inkSecondary).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 8)
             trailing()
@@ -94,7 +78,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title).font(Typo.body).foregroundStyle(p.ink)
-                Text(description).font(Typo.meta).foregroundStyle(p.ink2).fixedSize(horizontal: false, vertical: true)
+                Text(description).font(Typo.meta).foregroundStyle(p.inkSecondary).fixedSize(horizontal: false, vertical: true)
             }
             control()
         }
@@ -107,53 +91,5 @@ struct SettingsView: View {
             Text(title).font(.system(size: 15, weight: .semibold)).foregroundStyle(p.ink).padding(.leading, 4)
             content()
         }
-    }
-}
-
-/// Pane's ThemeTile: a small window in that theme's own palette, its name under it.
-struct ThemeCard: View {
-    let theme: TasksTheme
-    let dark: Bool
-    let selected: Bool
-    let action: () -> Void
-    @Environment(\.palette) private var ui
-
-    var body: some View {
-        let p = Palette.make(theme.id, dark: dark)
-        let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
-        Button(action: action) {
-            VStack(spacing: 8) {
-                VStack(alignment: .leading, spacing: 7) {
-                    HStack(spacing: 5) {
-                        Text("Aa").font(.system(size: 19)).foregroundStyle(p.ink)
-                        Spacer(minLength: 0)
-                        RoundedRectangle(cornerRadius: 2).fill(p.accent).frame(width: 5, height: 16)
-                    }
-                    HStack(spacing: 5) {
-                        Circle().fill(p.accent).frame(width: 9, height: 9)
-                        Capsule().fill(p.ink2).frame(height: 3)
-                    }
-                    HStack(spacing: 5) {
-                        Circle().strokeBorder(p.lineField, lineWidth: 1).frame(width: 9, height: 9)
-                        Capsule().fill(p.ink3).frame(width: 34, height: 3)
-                        Spacer(minLength: 0)
-                        Capsule().fill(p.dangerTint).frame(width: 16, height: 7)
-                    }
-                }
-                .padding(10)
-                .frame(height: 72)
-                .frame(maxWidth: .infinity)
-                .background(p.base, in: shape)
-                .overlay(shape.strokeBorder(p.linePaneDim, lineWidth: 1))
-                .overlay(shape.inset(by: -3.5).strokeBorder(selected ? ui.accent : .clear, lineWidth: 2.5))
-                Text(theme.name)
-                    .font(.system(size: 13, weight: selected ? .semibold : .regular))
-                    .foregroundStyle(selected ? ui.ink : ui.ink2)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(theme.name) theme")
-        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }

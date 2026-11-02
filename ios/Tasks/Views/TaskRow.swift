@@ -28,12 +28,12 @@ struct TaskRow: View {
                         Text(task.title.isEmpty ? "New Task" : task.title)
                             .font(Typo.row)
                             .foregroundStyle(titleColor)
-                            .strikethrough(settled, color: p.inkQ)
+                            .strikethrough(settled, color: p.inkQuiet)
                             .lineLimit(1)
                         if !task.notes.isEmpty && !settled {
                             Image(systemName: "text.alignleft")
                                 .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(p.inkQ)
+                                .foregroundStyle(p.inkQuiet)
                                 .accessibilityLabel("Has notes")
                         }
                     }
@@ -44,7 +44,7 @@ struct TaskRow: View {
                 if let name = whereName {
                     Text(name)
                         .font(Typo.quiet)
-                        .foregroundStyle(p.ink3)
+                        .foregroundStyle(p.inkTertiary)
                         .lineLimit(1)
                         .layoutPriority(-1)
                         .padding(.trailing, task.deadline == nil ? 0 : 8)
@@ -61,9 +61,9 @@ struct TaskRow: View {
     }
 
     private var titleColor: Color {
-        if settled { return p.ink3 }
-        if trashed { return p.ink2 }
-        return task.title.isEmpty ? p.ink3 : p.ink
+        if settled { return p.inkTertiary }
+        if trashed { return p.inkSecondary }
+        return task.title.isEmpty ? p.inkTertiary : p.ink
     }
 
     private func showWhen(_ w: Date) -> Bool {
@@ -96,12 +96,12 @@ struct HeadingRow: View {
         HStack(spacing: 8) {
             Text(heading.title).font(Typo.heading).foregroundStyle(p.ink).lineLimit(1)
             Spacer(minLength: 0)
-            if count > 0 { Text("\(count)").font(Typo.chip).monospacedDigit().foregroundStyle(p.ink3) }
+            if count > 0 { Text("\(count)").font(Typo.chip).monospacedDigit().foregroundStyle(p.inkTertiary) }
         }
         .padding(.horizontal, Metric.rowPad)
         .padding(.top, 20)
         .padding(.bottom, 9)
-        .hairline(p.lineSep, leading: Metric.rowPad, trailing: Metric.rowPad)
+        .hairline(p.lineSeparator, leading: Metric.rowPad, trailing: Metric.rowPad)
         .padding(.bottom, 4)
         .accessibilityAddTraits(.isHeader)
     }
@@ -125,11 +125,11 @@ struct CompletedToggleRow: View {
                     .font(.system(size: 12, weight: .semibold))
                     .rotationEffect(.degrees(open ? 90 : 0))
                     .frame(width: 22)
-                Text("Completed").font(Typo.rowMedium).foregroundStyle(p.ink2)
-                Text("\(count)").font(Typo.row).monospacedDigit().foregroundStyle(p.ink3)
+                Text("Completed").font(Typo.rowMedium).foregroundStyle(p.inkSecondary)
+                Text("\(count)").font(Typo.row).monospacedDigit().foregroundStyle(p.inkTertiary)
                 Spacer()
             }
-            .foregroundStyle(p.ink3)
+            .foregroundStyle(p.inkTertiary)
             .padding(.leading, Metric.rowPad)
             .frame(minHeight: Metric.rowHeight)
         }
@@ -150,17 +150,17 @@ struct DeletedListRow: View {
     var body: some View {
         Button { toggle() } label: {
             HStack(spacing: 0) {
-                ListTile(content: .mono(list.mono), hue: p.list(list.hue))
+                ListTile(content: .mono(list.mono), hue: p.tile(list.hue))
                     .frame(width: 44)
                     .padding(.leading, Metric.rowPad - 11)
                     .padding(.trailing, Metric.titleGap - 11)
-                Text(list.name).font(Typo.rowMedium).foregroundStyle(p.ink2).lineLimit(1)
+                Text(list.name).font(Typo.rowMedium).foregroundStyle(p.inkSecondary).lineLimit(1)
                 Text(count == 1 ? "1 task" : "\(count) tasks")
-                    .font(Typo.quiet).foregroundStyle(p.ink3).padding(.leading, 8)
+                    .font(Typo.quiet).foregroundStyle(p.inkTertiary).padding(.leading, 8)
                 Spacer(minLength: 8)
                 Image(systemName: "chevron.right")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(p.ink3)
+                    .foregroundStyle(p.inkTertiary)
                     .rotationEffect(.degrees(open ? 90 : 0))
                     .frame(width: 30, height: 30)
             }
@@ -192,7 +192,7 @@ struct DraftRow: View {
                 .padding(.leading, Metric.rowPad - 11)
                 .padding(.trailing, Metric.titleGap - 11)
             TextField("New Task", text: Binding(get: { store.draft?.title ?? "" }, set: { store.draft?.title = $0 }),
-                      prompt: Text("New Task").foregroundStyle(p.ink3))
+                      prompt: Text("New Task").foregroundStyle(p.inkTertiary))
                 .font(Typo.row)
                 .foregroundStyle(p.ink)
                 .focused($focused)
@@ -222,9 +222,9 @@ struct EmptyState: View {
     @Environment(\.palette) private var p
     var body: some View {
         VStack(spacing: 8) {
-            Image(systemName: symbol).font(.system(size: 28, weight: .light)).foregroundStyle(p.inkQ).padding(.bottom, 4)
-            Text(title).font(.system(size: 17, weight: .medium)).foregroundStyle(p.ink2)
-            Text(message).font(Typo.body).foregroundStyle(p.ink3).multilineTextAlignment(.center).frame(maxWidth: 280)
+            Image(systemName: symbol).font(.system(size: 28, weight: .light)).foregroundStyle(p.inkQuiet).padding(.bottom, 4)
+            Text(title).font(.system(size: 17, weight: .medium)).foregroundStyle(p.inkSecondary)
+            Text(message).font(Typo.body).foregroundStyle(p.inkTertiary).multilineTextAlignment(.center).frame(maxWidth: 280)
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 80)

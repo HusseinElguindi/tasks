@@ -40,9 +40,9 @@ struct TaskDetailView: View {
                         .padding(.leading, -10)
                         .padding(.top, -10)
                         .padding(.trailing, 2)
-                        TextField("New Task", text: binding(\.title), prompt: Text("New Task").foregroundStyle(p.ink3), axis: .vertical)
+                        TextField("New Task", text: binding(\.title), prompt: Text("New Task").foregroundStyle(p.inkTertiary), axis: .vertical)
                             .font(Typo.detailTitle)
-                            .foregroundStyle(t.isDone ? p.ink2 : p.ink)
+                            .foregroundStyle(t.isDone ? p.inkSecondary : p.ink)
                             .focused($focus, equals: .title)
                             .submitLabel(.done)
                             .disabled(trashed)
@@ -57,13 +57,13 @@ struct TaskDetailView: View {
                     }
                     .padding(.top, 14)
 
-                    Rectangle().fill(p.lineSep).frame(height: 1).padding(.top, 12).padding(.bottom, 14)
+                    Rectangle().fill(p.lineSeparator).frame(height: 1).padding(.top, 12).padding(.bottom, 14)
 
                     NotesEditor(text: binding(\.notes), readOnly: trashed, focus: $focus)
 
                     Text(meta(t))
                         .font(Typo.meta)
-                        .foregroundStyle(p.ink3)
+                        .foregroundStyle(p.inkTertiary)
                         .padding(.top, 18)
                 }
                 .padding(.horizontal, 22)
@@ -78,8 +78,8 @@ struct TaskDetailView: View {
     private func topBar(_ t: TaskItem, trashed: Bool) -> some View {
         HStack(spacing: 8) {
             if let l = store.list(t.listID) {
-                ListTile(content: .mono(l.mono), hue: p.list(l.hue), scale: 0.85)
-                Text(l.name).font(Typo.body).foregroundStyle(p.ink2).lineLimit(1)
+                ListTile(content: .mono(l.mono), hue: p.tile(l.hue), scale: 0.85)
+                Text(l.name).font(Typo.body).foregroundStyle(p.inkSecondary).lineLimit(1)
             }
             Spacer()
             if trashed {
@@ -107,11 +107,11 @@ struct TaskDetailView: View {
 
     private func trashBanner(_ t: TaskItem) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: "trash").foregroundStyle(p.ink2)
+            Image(systemName: "trash").foregroundStyle(p.inkSecondary)
             VStack(alignment: .leading, spacing: 2) {
                 Text("Deleted \(Day.monthDay(t.deletedAt ?? store.list(t.listID)?.deletedAt ?? Date()))").font(Typo.body).foregroundStyle(p.ink)
                 Text(t.deletedWithList || t.deletedAt == nil ? "Deleted with \(store.list(t.listID)?.name ?? "its list"). Restore the list to bring it back." : "Read-only until you restore it.")
-                    .font(Typo.meta).foregroundStyle(p.ink2)
+                    .font(Typo.meta).foregroundStyle(p.inkSecondary)
             }
             Spacer(minLength: 8)
             if t.deletedAt != nil && !t.deletedWithList {
@@ -132,7 +132,7 @@ struct TaskDetailView: View {
             Image(systemName: symbol).font(.system(size: 14, weight: .medium)).frame(width: 18)
             Text(word).font(Typo.body)
         }
-        .foregroundStyle(p.ink2)
+        .foregroundStyle(p.inkSecondary)
         .frame(width: 104, alignment: .leading)
     }
 
@@ -148,10 +148,10 @@ struct TaskDetailView: View {
             } label: {
                 HStack(spacing: 8) {
                     if let l = store.list(t.listID) {
-                        ListTile(content: .mono(l.mono), hue: p.list(l.hue), scale: 0.85)
+                        ListTile(content: .mono(l.mono), hue: p.tile(l.hue), scale: 0.85)
                         Text(l.name).font(Typo.body).foregroundStyle(p.ink)
                     }
-                    Image(systemName: "chevron.up.chevron.down").font(.system(size: 10, weight: .semibold)).foregroundStyle(p.ink3)
+                    Image(systemName: "chevron.up.chevron.down").font(.system(size: 10, weight: .semibold)).foregroundStyle(p.inkTertiary)
                 }
                 .padding(.vertical, 6).padding(.horizontal, 8)
                 .contentShape(Rectangle())
@@ -183,7 +183,7 @@ struct TaskDetailView: View {
                     .lineLimit(1)
                 if !trashed {
                     Button { store.setDate(t.id, kind, nil) } label: {
-                        Image(systemName: "xmark").font(.system(size: 11, weight: .semibold)).foregroundStyle(p.ink3)
+                        Image(systemName: "xmark").font(.system(size: 11, weight: .semibold)).foregroundStyle(p.inkTertiary)
                             .frame(width: 30, height: 30).contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -200,8 +200,8 @@ struct TaskDetailView: View {
         return Day.diff(d) <= 1 ? "" : Day.relative(d)
     }
     private func relColor(_ d: Date, _ kind: DateKind) -> Color {
-        guard kind == .deadline else { return p.ink3 }
-        switch Day.tone(d) { case .late: return p.danger; case .due: return p.attn; default: return p.ink3 }
+        guard kind == .deadline else { return p.inkTertiary }
+        switch Day.tone(d) { case .late: return p.danger; case .due: return p.attention; default: return p.inkTertiary }
     }
 
     private func meta(_ t: TaskItem) -> String {
@@ -227,7 +227,7 @@ struct BarIcon: View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(p.ink2)
+                .foregroundStyle(p.inkSecondary)
                 .frame(width: 34, height: 34)
                 .background(p.fillControl, in: Circle())
                 .contentShape(Circle())
@@ -241,8 +241,8 @@ struct NothingSelected: View {
     @Environment(\.palette) private var p
     var body: some View {
         VStack(spacing: 6) {
-            Text("Nothing selected").font(.system(size: 15, weight: .medium)).foregroundStyle(p.ink2)
-            Text("Select a task to see it here.").font(Typo.meta).foregroundStyle(p.ink3)
+            Text("Nothing selected").font(.system(size: 15, weight: .medium)).foregroundStyle(p.inkSecondary)
+            Text("Select a task to see it here.").font(Typo.meta).foregroundStyle(p.inkTertiary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -276,7 +276,7 @@ struct NotesEditor: View {
             if !editing {
                 Group {
                     if text.isEmpty {
-                        Text("Notes").font(Typo.detailNotes).foregroundStyle(p.ink3)
+                        Text("Notes").font(Typo.detailNotes).foregroundStyle(p.inkTertiary)
                     } else {
                         MarkdownNotes(text: $text, readOnly: readOnly)
                     }
@@ -303,18 +303,18 @@ struct MarkdownNotes: View {
                         Button { toggle(i) } label: {
                             Image(systemName: checked ? "checkmark.square.fill" : "square")
                                 .font(.system(size: 16, weight: .regular))
-                                .foregroundStyle(checked ? p.accent : p.inkQ)
+                                .foregroundStyle(checked ? p.accent : p.inkQuiet)
                         }
                         .buttonStyle(.plain)
                         .disabled(readOnly)
                         .accessibilityLabel(checked ? "Checked" : "Unchecked")
                         rich(rest)
-                            .foregroundStyle(checked ? p.ink3 : p.ink)
-                            .strikethrough(checked, color: p.inkQ)
+                            .foregroundStyle(checked ? p.inkTertiary : p.ink)
+                            .strikethrough(checked, color: p.inkQuiet)
                     }
                 } else if line.hasPrefix("- ") || line.hasPrefix("* ") {
                     HStack(alignment: .firstTextBaseline, spacing: 9) {
-                        Text("•").foregroundStyle(p.ink3).frame(width: 16)
+                        Text("•").foregroundStyle(p.inkTertiary).frame(width: 16)
                         rich(String(line.dropFirst(2)))
                     }
                 } else if line.isEmpty {

@@ -2,47 +2,46 @@ import SwiftUI
 
 // MARK: - List tile
 
-/// Rex's 5:4 program tile: a monogram in the list's colour, or a view's glyph, on tile-fill with a 0.5pt ring.
+/// The Mac's tile colours (B, COLOR.md §2): the hue of the list's slot, or of a view, with its monogram or glyph in
+/// white. Flat: the Mac's lit finish (TileArt) comes with the shared theme code, not copied.
 struct ListTile: View {
     enum Content { case mono(String), symbol(String) }
     let content: Content
     let hue: Color
     var scale: CGFloat = 1
-    @Environment(\.palette) private var p
 
     var body: some View {
         let w = Metric.tileW * scale, h = Metric.tileH * scale
-        let shape = RoundedRectangle(cornerRadius: 5 * scale, style: .continuous)
         ZStack {
             switch content {
             case let .mono(m):
                 Text(m)
                     .font(.system(size: 13 * scale, weight: .bold, design: .monospaced))
-                    .foregroundStyle(hue)
             case let .symbol(s):
                 Image(systemName: s)
                     .font(.system(size: 12.5 * scale, weight: .semibold))
-                    .foregroundStyle(hue)
             }
         }
+        .foregroundStyle(.white)
         .frame(width: w, height: h)
-        .background(p.tileFill, in: shape)
-        .overlay(shape.strokeBorder(p.tileRing, lineWidth: 0.5))
+        .background(hue, in: RoundedRectangle(cornerRadius: 5 * scale, style: .continuous))
         .accessibilityHidden(true)
     }
 }
 
 extension Store {
+    /// A view's tile is the Mac's (`Route.tileHue`): Today the accent's, Upcoming magenta, Undated cyan, Completed green,
+    /// the Trash the ink slot's graphite.
     @MainActor func tile(for source: Source, palette p: Palette, scale: CGFloat = 1) -> ListTile {
         switch source {
-        case .today: ListTile(content: .symbol("sun.max.fill"), hue: p.list(.yellow), scale: scale)
-        case .upcoming: ListTile(content: .symbol("calendar"), hue: p.list(.magenta), scale: scale)
-        case .undated: ListTile(content: .symbol("square.stack"), hue: p.list(.cyan), scale: scale)
-        case .completed: ListTile(content: .symbol("checkmark.circle"), hue: p.list(.green), scale: scale)
-        case .trash: ListTile(content: .symbol("trash"), hue: p.ink2, scale: scale)
+        case .today: ListTile(content: .symbol("sun.max.fill"), hue: p.tileToday, scale: scale)
+        case .upcoming: ListTile(content: .symbol("calendar"), hue: p.tile(.magenta), scale: scale)
+        case .undated: ListTile(content: .symbol("square.stack"), hue: p.tile(.cyan), scale: scale)
+        case .completed: ListTile(content: .symbol("checkmark.circle"), hue: p.tile(.green), scale: scale)
+        case .trash: ListTile(content: .symbol("trash"), hue: p.tile(.ink), scale: scale)
         case let .list(id):
-            if let l = list(id) { ListTile(content: .mono(l.mono), hue: p.list(l.hue), scale: scale) }
-            else { ListTile(content: .mono("?"), hue: p.ink3, scale: scale) }
+            if let l = list(id) { ListTile(content: .mono(l.mono), hue: p.tile(l.hue), scale: scale) }
+            else { ListTile(content: .mono("?"), hue: p.tile(.ink), scale: scale) }
         }
     }
 }
@@ -61,8 +60,9 @@ struct CheckShape: Shape {
     }
 }
 
-/// A 22pt ring. Its cue: danger when overdue, attention when due today, accent-text when planned for today and seen
-/// outside Today; both at once is the double ring. Checking fills it with the accent and draws the mark.
+/// A 22pt ring. Its cue: danger when overdue, attention when due today, `plan` (blue: COLOR.md §1 split it from the warm
+/// accent) when planned for today and seen outside Today; both at once is the double ring. Checking fills it with the
+/// accent and draws the mark.
 struct Checkbox: View {
     let checked: Bool
     var cue: Store.Cue = .init(tone: nil, planned: false)
@@ -78,7 +78,7 @@ struct Checkbox: View {
                 Circle().fill(checked ? p.accent : .clear)
                 Circle().strokeBorder(checked ? p.accent : ringColor, lineWidth: 1.5)
                 if !checked && cue.planned && cue.tone != nil {
-                    Circle().strokeBorder(p.accentText, lineWidth: 1.25).padding(size * 0.19)
+                    Circle().strokeBorder(p.plan, lineWidth: 1.25).padding(size * 0.19)
                 }
                 CheckShape()
                     .trim(from: 0, to: checked ? 1 : 0)
@@ -107,9 +107,9 @@ struct Checkbox: View {
     }
 
     private var ringColor: Color {
-        if placeholder { return p.inkQ }
-        if let t = cue.tone { return t == .late ? p.danger : p.attn }
-        if cue.planned { return p.accentText }
+        if placeholder { return p.inkQuiet }
+        if let t = cue.tone { return t == .late ? p.danger : p.attention }
+        if cue.planned { return p.plan }
         return p.lineField
     }
 }
@@ -134,7 +134,7 @@ struct QuietWhen: View {
                 .font(.system(size: 10.5, weight: .medium))
             Text(Day.whenLabel(date)).font(Typo.quiet).monospacedDigit()
         }
-        .foregroundStyle(p.ink3)
+        .foregroundStyle(p.inkTertiary)
         .fixedSize()
         .accessibilityElement(children: .combine)
         .accessibilityLabel("When \(Day.whenLabel(date))")
@@ -152,7 +152,7 @@ struct DeadlineChip: View {
         HStack(spacing: large ? 5 : 4) {
             Image(systemName: "flag.fill")
                 .font(.system(size: large ? 11 : 9.5, weight: .semibold))
-                .foregroundStyle(tone == .soon ? p.attn : fg(tone))
+                .foregroundStyle(tone == .soon ? p.attention : fg(tone))
             Text(large ? Day.monthDay(date) : Day.deadlineLabel(date))
                 .font(large ? Typo.chipLarge : Typo.chip)
                 .monospacedDigit()
@@ -166,8 +166,8 @@ struct DeadlineChip: View {
         .accessibilityLabel("Deadline \(Day.deadlineLabel(date))")
     }
 
-    private func fg(_ t: Tone) -> Color { t == .late ? p.danger : t == .due ? p.attn : p.ink2 }
-    private func bg(_ t: Tone) -> Color { t == .late ? p.dangerTint : t == .due ? p.attnTint : p.fillControl }
+    private func fg(_ t: Tone) -> Color { t == .late ? p.danger : t == .due ? p.attention : p.inkSecondary }
+    private func bg(_ t: Tone) -> Color { t == .late ? p.dangerTint : t == .due ? p.attentionTint : p.fillControl }
 }
 
 /// The detail pane's date capsule: the date, or a ghost "Add date".
@@ -189,12 +189,12 @@ struct DateChip: View {
             }
         }
         .font(Typo.chipLarge)
-        .foregroundStyle(active ? p.accentText : date == nil ? p.ink3 : p.ink)
+        .foregroundStyle(active ? p.accentText : date == nil ? p.inkTertiary : p.ink)
         .padding(.horizontal, 12)
         .frame(height: 32)
         .background {
             if active { Capsule().fill(p.accentTint) }
-            else if date == nil { Capsule().strokeBorder(p.lineSep, lineWidth: 1) }
+            else if date == nil { Capsule().strokeBorder(p.lineSeparator, lineWidth: 1) }
             else { Capsule().fill(p.fillControl) }
         }
         .contentShape(Capsule())
@@ -205,9 +205,9 @@ struct DateChip: View {
         return n <= 0 ? "Today" : n == 1 ? "Tomorrow" : Day.full(d)
     }
     private func iconColor(_ d: Date) -> Color {
-        if kind == .when { return Day.diff(d) <= 0 ? p.accentText : p.ink2 }
+        if kind == .when { return Day.diff(d) <= 0 ? p.accentText : p.inkSecondary }
         let t = Day.tone(d)
-        return t == .late ? p.danger : (t == .due || t == .soon) ? p.attn : p.ink2
+        return t == .late ? p.danger : (t == .due || t == .soon) ? p.attention : p.inkSecondary
     }
 }
 
@@ -222,7 +222,7 @@ struct RowStyle: ButtonStyle {
         configuration.label
             .background {
                 RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous)
-                    .fill(configuration.isPressed ? p.press : selected ? (focused ? p.sel : p.selDim) : .clear)
+                    .fill(configuration.isPressed ? p.press : selected ? (focused ? p.fillRowSelected : p.fillRowSelectedDim) : .clear)
                     .animation(configuration.isPressed ? nil : .easeOut(duration: 0.085), value: configuration.isPressed)
             }
             .contentShape(RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous))
@@ -265,8 +265,8 @@ struct GroupLabel: View {
     @Environment(\.palette) private var p
     var body: some View {
         HStack(spacing: 6) {
-            Text(title).font(Typo.label).foregroundStyle(quiet ? p.inkQ : p.ink3)
-            if let sub { Text(sub).font(Typo.quiet).foregroundStyle(p.inkQ) }
+            Text(title).font(Typo.label).foregroundStyle(quiet ? p.inkQuiet : p.inkTertiary)
+            if let sub { Text(sub).font(Typo.quiet).foregroundStyle(p.inkQuiet) }
             Spacer(minLength: 0)
         }
         .lineLimit(1)

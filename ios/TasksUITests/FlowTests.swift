@@ -93,22 +93,23 @@ final class FlowTests: XCTestCase {
         shot("flow-trash")
     }
 
-    func testSettingsThemes() {
+    /// One theme, the Mac's: Settings changes the appearance and the interface style.
+    func testSettingsAppearance() {
         app.launch()
         app.buttons["Settings"].firstMatch.tap()
         sleep(1)
-        app.buttons["Harbor theme"].firstMatch.tap()
+        app.buttons["Dark"].firstMatch.tap()
         sleep(1)
-        shot("flow-settings-harbor")
+        shot("flow-settings-dark")
         app.buttons["Light"].firstMatch.tap()
         sleep(1)
-        shot("flow-settings-harbor-light")
+        shot("flow-settings-light")
         app.buttons["Glass"].firstMatch.tap()
         sleep(1)
         shot("flow-settings-glass")
         app.buttons["Done"].firstMatch.tap()
         sleep(1)
-        shot("flow-home-harbor-glass")
+        shot("flow-home-light-glass")
     }
 
     func testScrollFold() {

@@ -16,13 +16,12 @@ struct TasksApp: App {
 /// Deep links for screenshots and demos:
 ///   -screen home | today | upcoming | undated | completed | trash | list:<id> | detail:<taskID> | when:<taskID>
 ///           | deadline:<taskID> | settings | newtask | notice | swipe
-///   -theme default|paper|contrast|dusk|harbor|iris|moss   -appearance system|light|dark   -style classic|glass
+///   -appearance system|light|dark   -style classic|glass
 ///   -expand <listID> (opens a deleted list in Trash)   -completed <listID> (opens a list's Completed)
 ///   -hold YES (keeps notices and just-checked rows on screen, for screenshots)
 enum LaunchArguments {
     @MainActor static func apply(to store: Store) async {
         let d = UserDefaults.standard
-        if let t = d.string(forKey: "theme") { store.themeID = t }
         if let a = d.string(forKey: "appearance"), let v = Appearance(rawValue: a) { store.appearance = v }
         if let s = d.string(forKey: "style"), let v = InterfaceStyle(rawValue: s) { store.style = v }
         if let e = d.string(forKey: "expand") { store.expandedTrash.insert(e) }

@@ -57,8 +57,7 @@ Mac-only CLI, and building there writes `.swiftpm/` into `app/TasksCore`. (The `
 | Argument | Values |
 |---|---|
 | `-screen` | `home` `today` `upcoming` `undated` `completed` `trash` `list:<id>` `detail:<taskID>` `when:<taskID>` `deadline:<taskID>` `settings` `newtask` `notice` |
-| `-theme` | `default` `paper` `contrast` `dusk` `harbor` `iris` `moss` |
-| `-appearance` | `system` `light` `dark` |
+| `-appearance` | `system` (the default) `light` `dark` |
 | `-style` | `classic` `glass` |
 | `-expand <listID>` | opens a deleted list in Trash (`w26`, `move`) |
 | `-completed <listID>` | opens a list's Completed |
@@ -68,13 +67,15 @@ List ids: `inbox` `school` `phys` `tasks` `home` `errands`. Task ids are in `Tas
 
 ## Layout
 
-- `Tasks/Theme/Palette.swift`: the theme engine, ported from `themes.js`. Seven themes, each in dark and light,
-  every token mixed from base, ink and accent, then checked against the contrast floors. Default pins Rex's values.
+- `Tasks/Theme/Theme.swift`: the Mac's one theme, Rex with the Ember accent, copied from `app/Tasks/Theme/Theme.swift`
+  until the theme code is shared; keep it identical. `Tasks/Theme/Palette.swift`: its tokens for one appearance, by the
+  Mac's names, as SwiftUI colours. Tiles are flat in the Mac's tile colours; the Mac's lit finish comes with the
+  shared code.
 - `Tasks/Theme/Metrics.swift`: the phone's row grid (48pt rows, 22pt rings), type and motion.
 - `Tasks/Model/`: lists, headings, tasks; the store with every action and the lines each view shows; sample data
   with dates relative to today.
 - `Tasks/Views/`: home, list screen, rows, task detail, the When and Deadline picker, settings, and the root (a stack
   on iPhone, three panes on iPad).
-- `TasksUITests/FlowTests.swift`: adds tasks, completes and undoes, swipes, edits a date, deletes a list, changes theme.
+- `TasksUITests/FlowTests.swift`: adds tasks, completes and undoes, swipes, edits a date, deletes a list, changes the appearance.
 - `Tools/MakeIcon.swift`: renders the app icon from the 04 · Log mark.
 - `Tools/shot.sh`, `Tools/screenshots.sh`: screenshots on a simulator from the launch arguments above.
