@@ -55,6 +55,10 @@ its tasks, one row on the day it was deleted that expands, until it's restored. 
 https://claude.ai/artifact/JEqsvymjkNwNHkfDGbqzQw. §28 is folded into the sections it replaces; where they disagree,
 §28 wins.
 
+**Zoom Pane (`docs/TASK-zoom-pane.md`): built (§29; the user, 2026-11-01).** Rex's Zoom Pane, ⇧⌘↩ or a button
+beside the detail pane's ×: the detail pane takes the list pane's room too, and the list hides until it's unzoomed.
+The sidebar stays as it is.
+
 **A sidebar footer (`docs/TASK-design-sidebar-footer.md`): proposed, not built (§27).** Three directions for a foot
 under the sidebar; the recommendation (+ New List and Settings) leaves §26 where it is.
 
@@ -283,7 +287,7 @@ Everything in the top 50pt is centered on one line, **y = 25**:
 | Sidebar toggle | 28pt circle, center (107, 25), glyph 16pt in `ink-secondary` **Rex** | `css:92` |
 | Each pane's header | 34 tall starting 8 from the window's top, so the title and the icon buttons center on 25 | `css:144`, `css:147` |
 | List pane's top right | + (New Task ⌘N) and the split button (Show/Hide Details ⌘D), 26×26, 2 apart, 8 from the pane's edge | `dc:53`, `dc:54` |
-| Detail pane's top right | trash (Delete ⌘⌫) and × (Hide Details ⌘D) | `dc:135`, `dc:137` |
+| Detail pane's top right | trash (Delete ⌘⌫), zoom (Zoom Pane ⇧⌘↩, §29) and × (Hide Details ⌘D) | `dc:135`, `dc:137` |
 
 So the window controls, the sidebar toggle, the pane titles and the buttons at each pane's top right read as one row.
 In AppKit: hidden title bar, and move `standardWindowButton(.closeButton …)` to those centers (v1 already places them
@@ -329,15 +333,15 @@ while the list pane's right edge moves on the same curve; closing runs it backwa
 | Trigger | Result |
 |---|---|
 | ⌘D, the header's split button, a row's › | Show the detail pane (⌘D and the button toggle; the button is `ink-secondary` while it's open) |
-| Esc with nothing else to cancel, the pane's × | Hide it |
+| Esc with nothing else to cancel (a zoom ends first, §29), the pane's × | Hide it |
 | Adding a task (§6) | Show it with the new task |
 | Double-click or Return on a task with Edit tasks on "Open in detail pane" (§7) | Show it with that task, the caret in its title |
 | Selection changes while it's open | It shows the new selection at once (no animation) |
 | Several tasks selected | "3 tasks selected" (15/20 semibold), the List, When and Deadline rows that apply to all, "Mixed" where they differ |
 | Nothing selected | "No task selected" / "Select a task to see its notes and dates.", 40% down |
 
-Header of the detail pane: the task's list tile (small) and name in `ink-secondary`, regular weight; trash and × at the
-right `dc:129–139`.
+Header of the detail pane: the task's list tile (small) and name in `ink-secondary`, regular weight; trash, zoom (§29)
+and × at the right `dc:129–139`.
 
 ### Resizing the panes
 
@@ -1019,6 +1023,7 @@ over 100 ms; they go at once on a press or when the pointer leaves, and never du
 | ⌘Z / ⇧⌘Z | Undo / redo |
 | ⌘1–⌘9 | The sidebar's first nine rows: Today, Upcoming, Undated, then the first six lists (§22); hold ⌘ to see them |
 | ⌃⌘S | Show or hide the sidebar |
+| ⇧⌘↩ | Zoom or unzoom the detail pane (§29; the user, 2026-11-01) |
 | ↑ ↓ ⇧↑ ⇧↓ ⌘↑ ⌘↓ Home End ⌘A | Selection (§5) |
 | Page Up, Page Down | Scroll the list a page |
 | Letters | Type-to-select (tasks or lists, by focus) |
@@ -1031,7 +1036,7 @@ over 100 ms; they go at once on a press or when the pointer leaves, and never du
 | ⇧⌘M | Move to… (⌘1–⌘9 inside it) |
 | ⌥⌘↑ ⌥⌘↓ | Move the selection (or the sidebar list) up or down |
 | ⌘⌫ | Delete tasks; with the sidebar focused, delete the list (the menu item reads "Delete List" then); in Trash, Put Back (a deleted list: Restore List; a task whose list is in Trash: Put back in) (§28) |
-| Esc | Cancel or finish the innermost thing: drag, menu, popover, edit, then the detail pane, then the selection |
+| Esc | Cancel or finish the innermost thing: drag, menu, popover, edit, then a zoom (§29), then the detail pane, then the selection |
 | ⌘R / ⌘, | Sync now / Settings (unchanged) |
 
 **In text fields** the field's own keys win: Space, Return, ⌘⌫, ⌘Z and the arrows edit text. The menu commands still
@@ -1039,11 +1044,13 @@ work from a task's fields, as menu key equivalents do on the Mac: ⌘N (§6), �
 ⌘1–⌘9, which first end the edit the way a press elsewhere would, then run. A new task that's still untitled isn't a task
 yet, so only ⌘D (it's dropped and the pane hides), ⌘1–⌘9 (dropped, then go), ⇧⌘N (dropped, a new list starts) and
 ⌃⌘S (the sidebar toggles, the caret stays) do anything there
-(`dc:1769–1789`).
+(`dc:1769–1789`). ⇧⌘↩ works from every field and the untitled task alike, and like ⌃⌘S it leaves the caret where it
+is (§29).
 
 Menu bar: File ▸ New Task ⌘N, New Heading ⌥⌘N, New List ⇧⌘N · Edit ▸ Undo, Redo, Select All · Task ▸ Show Details ⌘D, Complete ⌘K,
 When… ⌘S, When: Today ⌘T, Deadline… ⇧⌘D, Move to… ⇧⌘M, Move Up ⌥⌘↑, Move Down ⌥⌘↓, Delete ⌘⌫ · View ▸ Today ⌘1,
-Upcoming ⌘2, Undated ⌘3, lists ⌘4–⌘9, Completed, Trash, Show/Hide Sidebar ⌃⌘S.
+Upcoming ⌘2, Undated ⌘3, lists ⌘4–⌘9, Completed, Trash, Show/Hide Sidebar ⌃⌘S, Zoom Pane ⇧⌘↩ (Unzoom Pane while zoomed,
+§29).
 
 ---
 
@@ -2337,3 +2344,113 @@ about the list view was copied, and the Trash pane didn't change.
   takes the keys); a click on a row there (nothing selects); Labs folded by its chevron, then still folded in the list
   pane once restored; Page Down; Esc (the pane closes, Trash has the keys); a click on the row with ⌘D; Restore in the
   banner (the selection moves on, "Restored PHYS 122"); 420pt, the 340pt minimum and an 860pt window; dark and light.
+
+---
+
+## 29. Zoom Pane
+
+Built (the user, 2026-11-01; `docs/TASK-zoom-pane.md`): "i would like a feature to zoom into a task. Rex has it like
+this … let's focus on zoom for now. basically just make it the main tab." Rex's pane header has split, split, stack,
+**zoom** and ×; the zoom button's tooltip reads "Zoom Pane ⇧⌘↩" (`docs/feedback/rex-zoom-pane.png`). Only zoom is in
+scope; splits and moving panes are for later. Then, the same day: "zoom pane should still respect the sidebar. the user
+can collapse it if they want afterwards."
+
+### What it does
+
+- **Zoom** gives the detail pane the list pane's room too. Whatever it shows (a task, several, a heading, a deleted
+  list, or nothing) runs from where the list pane started (the sidebar's edge, or the 8pt gutter with the sidebar
+  hidden) to the window's right gutter. The list pane hides. The window doesn't change.
+- **The sidebar stays as it is.** Open stays open and hidden stays hidden; ⌃⌘S and the toggle work as always while
+  zoomed, and the zoomed pane's left edge follows the sidebar on `sidebar`. Unzooming leaves the sidebar alone.
+- **Unzoom** puts the list back as it was: the same widths (a zoom never writes them), the same selection, the same
+  scroll, and the keys where they are. The list keeps its width and its place under the zoomed pane, so its rows
+  never reflow or scroll.
+- **Only the detail pane zooms.** Rex zooms any pane, but with the sidebar staying, zooming the list would only hide
+  the detail pane, which ⌘D already does. So ⇧⌘↩ zooms the detail pane from the list or the sidebar as well, and gives
+  it the keys (a caret already in the pane stays put).
+- **Not in a narrow window** (under ~900pt): the detail pane is already in the list's place, so there's nothing to
+  zoom over. The button and the menu item are disabled, the button drawn at 45% (§16's disabled; Rex draws pane-header
+  actions that don't apply fainter). A window narrowed while zoomed unzooms.
+- **A moment, not a mode.** Per window, and never kept: the next launch, and the next time the pane opens, aren't
+  zoomed.
+
+### The button
+
+| | |
+|---|---|
+| Where | The detail pane's header, just before × (Rex's order), after trash, Put Back or Restore List. 26×26, 2 apart, like its neighbours (§4) |
+| Glyph | `zoom`: two arrows out to the top-left and bottom-right corners, apart in the middle, as Rex's. Zoomed, `unzoom`: the same two pointing in, their heads short of the middle. 16-unit view box, 1.5 strokes, drawn at 14pt like the other header glyphs |
+| States | §16's header icon buttons: `ink-quiet` at rest, `ink-secondary` on the `hover` fill, `press` at once. Zoomed it's *on* (`ink-secondary`), as the split button is while the pane is open |
+| Tooltip | "Zoom Pane ⇧⌘↩"; zoomed, "Unzoom Pane ⇧⌘↩". Rex's words for the first; `design/REX-REFERENCE.md` has none for the second (Rex's changelog calls its zoomed pane's button "restore"), so "Unzoom Pane" mirrors it. VoiceOver reads the same names |
+
+### Keys and the menu
+
+- **⇧⌘↩** (Rex's key) zooms and unzooms. It's View ▸ **Zoom Pane**, after Show/Hide Sidebar, reading **Unzoom Pane**
+  while zoomed. No clash in §17: ⌘↩ (a title's commit) and ↩ are taken, ⇧⌘↩ isn't, and neither the title nor the notes
+  bind it.
+- **From a text field** it works as ⌃⌘S does: the caret stays, since zooming changes the layout, not the task. An
+  untitled new task zooms too.
+- **Esc** ends an edit first, then the zoom, then (next time) the pane, as §17's order says.
+- **While zoomed** the keys stay in the zoomed pane, and the hidden list's selection still moves under them: ↑ ↓ (⇧, ⌘),
+  Home, End and type-select move it, and the pane shows the task they land on. Return edits the title there (Edit
+  tasks ▸ Open in detail pane); with Rename in the list it renames in the row, which needs the list, so the zoom ends.
+  Page Up and Page Down do nothing on a task, since they'd scroll the hidden list; on a deleted list they scroll it,
+  as before (§28).
+- **The keys never rest in the hidden list.** Tab to the sidebar keeps the zoom, since the sidebar is on screen.
+  Anything that gives the list the keys ends it: ⇧Tab, ⌘A, Return with Rename in the list, Tab from the sidebar.
+
+### What ends it
+
+| Trigger | Result |
+|---|---|
+| ⇧⌘↩, the button, View ▸ Unzoom Pane, Esc | The list comes back; the keys stay in the pane |
+| × or ⌘D (Hide Details) | The pane closes, and its zoom with it: it slides out (§4) while the list comes back on the same curve |
+| The list taking the keys | Unzoom, with the list focused |
+| Another view: ⌘1–⌘9, a sidebar row (or ↑ ↓ there), an undo that goes back to another view | Unzoom: the list comes back already showing it (the view switches at once, the list's return animates) |
+| The window narrowing past ~900pt | Unzoom |
+| ⌃⌘S, the toggle | Nothing ends: the sidebar hides or shows, and the zoomed pane follows its edge |
+
+### When the zoomed task changes
+
+- **↑ ↓ and type-select:** the pane shows the next task, still zoomed.
+- **Completed** (⌘K, Space, its checkbox): it stays shown, checked, as unzoomed. It leaves the open rows after 1.5 s
+  (§8), but it stays selected, so the pane keeps it.
+- **Deleted** (⌘⌫, the trash button): the selection moves to the next row as in the list (§9) and the zoomed pane shows
+  it. With nothing left the pane closes, and the zoom ends with it. The notice shows at the zoomed pane's bottom right,
+  since the list pane, where it lives, is covered.
+- **Deleted elsewhere** (another Mac, the CLI): "No task selected", still zoomed, as it would read unzoomed.
+
+### Motion
+
+- On `natural`, the detail pane's own open and close (`.smooth(duration: 0.3)`; the prototype's `dur-natural`,
+  `ease-natural`). The brief named `dur-layout`, but the open and close use `natural`, and the zoom matches them.
+- The pane's left edge moves to the list's. The list stays at its width and in its place underneath, and fades to 0
+  on the same curve, so the pane slides over it. Unzoom runs it backwards.
+- With the sidebar hidden, the pane's header inset grows from 12 to the list's collapsed inset (124, or 156 with the
+  sync cloud, §26) on the same curve, so its tile and title clear the traffic lights and the toggle.
+- Reduce Motion: at once.
+
+### Pane focus
+
+Zoomed, the detail pane is the only pane, so its look follows Settings ▸ Highlight focused pane for one pane (§4): with
+Always it's lit while it has the keys, and with Two panes or Never it takes the neutral look. That change rides the zoom
+on `natural`, as becoming the only pane does when the list pane is alone.
+
+### As built (2026-11-01)
+
+- **State:** `WindowState.zoomed` (and `narrow`, set by `MainLayout`). The rules live where the state changes: the
+  keys moving to the list end the zoom (`focus`), the pane closing ends it (`detailOpen`), and `go` ends it on another
+  view. `WindowActions.setZoom`, `toggleZoom` and `canZoom`; View ▸ Zoom Pane in `TasksCommands`.
+- **Layout** (`MainLayout`): the panes' HStack has no spacing; the list carries the gutter on its right. Zoomed, the
+  list keeps `PaneGeometry.listWidth` and its room closes to 0 with it leading-aligned, so the detail pane, drawn
+  after it, slides over it; it fades, takes no presses and leaves VoiceOver (`zoomedAway`). The divider between them
+  is off while zoomed.
+- **Glyphs:** `Glyph.zoom` and `Glyph.unzoom`.
+- **Debug steps:** `act:zoom`, `act:tip` / `act:tipoff` (the button's tooltip, where its hover shows it),
+  `key:CODE:cmdshift`, `menukey:RET` (⇧⌘↩'s menu item).
+- **Checked** (scratch Tasks Dev, demo data, `-debugScript`, light and dark): zoom and unzoom with the sidebar open and
+  hidden, and the toggle while zoomed; ↑ and a delete while zoomed (next task, notice in the pane); Tab to the sidebar
+  (stays zoomed), then to the list (unzooms); Esc; ⌘1 and Today (unzooms); Hide Details while zoomed; an 860pt window
+  (disabled); the motion frame by frame. The menu item and its ⇧⌘↩ are registered (`menukey:RET` finds "Zoom Pane");
+  a background run can't fire SwiftUI commands, so the key itself was checked through the same action.
+- **The prototype** has no zoom: it draws the detail pane at its fixed width, and this section is the reference.
