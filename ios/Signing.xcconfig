@@ -1,0 +1,4 @@
+// Code signing for running on a device. The team isn't checked in: put it in Signing.local.xcconfig next to this file
+// (it's ignored), one line, `DEVELOPMENT_TEAM = <team id>` (Xcode ▸ Settings ▸ Accounts, or the Team menu under
+// Signing & Capabilities). Without it the app still builds and runs in the simulator.
+#include? "Signing.local.xcconfig"

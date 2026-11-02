@@ -2,7 +2,7 @@
 
 Two parts:
 1. **Server infra** on Cloudflare (Workers / Durable Objects / D1 as appropriate).
-2. **SwiftUI app — macOS only for now (no iOS).**
+2. **SwiftUI app — macOS, and iOS (iPhone and iPad).** (Was macOS only; iOS added by the user on 2026-11-02.)
 
 **Simplicity is key**, in both design and architecture.
 
