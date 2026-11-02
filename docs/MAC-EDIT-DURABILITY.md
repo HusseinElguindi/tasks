@@ -4,7 +4,11 @@ The question (docs/TASK-mac-edit-durability.md): can the Mac lose an in-progress
 three ways.** ⌘Q, logout and restart lose any field that is being edited. Closing the window loses every
 rename-in-place field. Sync arriving while a field is open gets its change reverted, even if the user typed nothing.
 Nothing is debounced: every field writes one op when its session ends, so a crash loses everything typed since the
-session began. Once an op is committed it reaches the disk reliably. No app code was changed.
+session began. Once an op is committed it reaches the disk reliably.
+
+**Status: fixed in `app/Tasks` (fixes 1–3 below, approved by the user 2026-11-02; fix 4 skipped).** "The fix" at the end
+says what changed and shows the same cases again. The rule is now in design/INTERACTIONS-v2.md §7, When an edit is
+written. Everything up to "The fix" is the investigation as it was, before the change.
 
 ## How each field commits
 
@@ -87,3 +91,43 @@ Evidence for each column:
 
 Durability below the app (no `fsync` of `pending.jsonl`) can lose the last few seconds on a kernel panic or power
 cut. Ops sync about 1 s after they're made, so I don't recommend a TasksCore change for it.
+
+## The fix (2026-11-02)
+
+All of it is in `app/Tasks`. TasksCore is unchanged.
+
+- **Sync revert (fix 1).** `Window/EditSession.swift` has the rule for every field: write only if the text differs
+  from where the session began, and from the model's value now. The detail title (`TitleFieldView.finish`) and the
+  notes (`NotesField.Coordinator.endEditing`) compare against the `original` their sessions already kept.
+  `WindowState.Rename` gains `original`, set by `startRename`, `startListRename`, `startHeadingRename` and
+  `startTitleRename`, and `commitRename` compares against it. When nothing is written, the title and the notes show
+  the model's value, which may be one that synced in. Esc on an existing title puts back the model's title rather
+  than the session's original.
+- **Quit, logout, restart (fix 2).** `WindowState.windows` is a weak list of the main windows' states. The
+  `willTerminate` observer (AppModel.swift) calls `WindowActions.endAllEdits(store:)`, which runs `endEdits()` in
+  each window, before `persistNow()`.
+- **Close window (fix 3).** `MainLayout` runs `endEdits()` on its window's `NSWindow.willCloseNotification`
+  (RootView.swift).
+- **Tests.** `TasksTests/EditSessionTests.swift` (8 cases) covers the rule, and `EditSession.swift` is compiled into
+  the logic-test bundle (project.yml).
+
+The same cases, re-run with the Debug build the same way as above (own data directories, `-debugScript`, a quit
+Apple event, an Accessibility close, and `wrangler dev` on 127.0.0.1:8791 with a throwaway token and the Debug CLI):
+
+| Case | Before | After |
+|---|---|---|
+| ⌘Q mid-edit: detail title, new task, detail notes, inline rename, new heading, new list, sidebar list rename, list title | nothing written | each writes its op (`task.update`, `task.create`, `task.update` notes, `task.update`, heading `task.create`, `list.create`, `list.update` ×2) |
+| ⌘Q with the caret in the title and then the notes, nothing typed | nothing | nothing (no spurious op) |
+| Quit Apple event (logout / restart) mid-edit, detail title | nothing written | `task.update` "AlphaXYZ" |
+| Close window mid-edit: the four rename fields and a new heading or list | lost | each writes its op. The title, notes and new task still do. |
+| Sync renames T1 while the caret sits in its title, untouched | server back to "T1" | server keeps "Remote1", and the field shows "Remote1" |
+| The same for notes, the inline rename, the sidebar list rename and the list's large title | reverted | the remote value stays (notes history: no `app` write) |
+| Typed "Y" into T2 while a remote rename arrived | "T2Y" | "T2Y" (typed text still wins) |
+| Esc on a title after a remote rename | field showed the stale title | field shows "Remote6", nothing written |
+
+Builds and tests: Debug and Release build into `app/.build/DerivedData`. `xcodebuild test` passes the app's logic
+tests (16, the 8 new ones included). `swift test` in TasksCore passes 176 tests (1 skipped, the live-server one) and
+the CLI's 36.
+
+Still not covered, by decision: a crash, `kill -9` or power loss while a field is open loses that session, and
+switching apps doesn't write the open field (fix 4, skipped).
