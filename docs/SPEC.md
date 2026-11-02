@@ -10,9 +10,9 @@ In v1:
 
 - Tasks with a title, Markdown notes, an optional `when` date and an optional `deadline` date.
 - Lists. Every task belongs to exactly one list and can be moved. An **Inbox** is created on first launch, and it's an ordinary list.
-- **Archiving** lists. That's what "deleting" a list means.
+- **Deleting** lists: a deleted list waits in Trash with its tasks until it's restored (§2).
 - **Drag-to-reorder** for tasks within a list and for lists in the sidebar.
-- A **Today** screen (rollup), a screen per list, and an Archive screen.
+- A **Today** screen (rollup), a screen per list, and Trash, which holds deleted tasks and lists.
 - A macOS app, single user, offline-first, synced across the user's Macs through an append-only log on Cloudflare.
 
 Not in v1: iOS, recurring tasks, reminders/notifications, times of day, tags, subtasks, search, attachments, multiple users, hard deletes, and server-side snapshots/compaction. See §11 (Later).
@@ -43,12 +43,12 @@ Not in v1: iOS, recurring tasks, reminders/notifications, times of day, tags, su
 | `id`    | UUID string | Generated on the client, lowercase (§5 "Ids"). |
 | `name`  | String      | Max 200 chars. Duplicates allowed. |
 | `order` | String      | Fractional index key in the sidebar (§3). |
-| `archivedAt` | Epoch ms (Int)? | Null = active. Set when the user archives the list. Lists are never deleted. |
+| `archivedAt` | Epoch ms (Int)? | Null = live. Set when the user deletes the list (§2): the moment it was deleted. The name is Archive's, kept: the field, the ops and the server are unchanged. |
 | `notes` | String      | Markdown, max 20,000 chars, shown under the list's title. Empty by default. |
 
 ### Inbox: an ordinary list, seeded once
 
-So that a new user can add tasks straight away, the app creates an "Inbox" list. After it's created, nothing in the app treats it differently from any other list. It can be renamed, reordered and archived like the rest.
+So that a new user can add tasks straight away, the app creates an "Inbox" list. After it's created, nothing in the app treats it differently from any other list. It can be renamed, reordered and deleted like the rest.
 
 - **Seeding:** on launch, if the state (confirmed + pending) has no list with the id `00000000-0000-0000-0000-000000000001`, the client performs one op:
 
@@ -61,7 +61,7 @@ So that a new user can add tasks straight away, the app creates an "Inbox" list.
   - The server's op-id dedup stores it once.
   - Even without dedup, the second create would be ignored, because the first create wins (§5 rule 1).
   - Either way there's one Inbox. Tasks a second Mac adds to its Inbox while offline land in the same list once synced, because they reference the same list id.
-- A renamed or archived Inbox stays that way. The seed is a create, and a create never overwrites an existing list.
+- A renamed or deleted Inbox stays that way. The seed is a create, and a create never overwrites an existing list.
 
 ### Default list: the top of the sidebar
 
@@ -69,19 +69,22 @@ New tasks created outside a list (Today's `+`, ⌘N in Today) go to the selected
 
 - There's no setting or field, because the default comes from order the user already controls.
 - A synced "default list" setting would need a new kind of entity, and an `isDefault` field on lists would need an "exactly one" rule that concurrent edits can break.
-- If the default list is archived, the next active list takes over automatically.
-- If every list is archived, adding a task asks the user to create a list or unarchive one.
+- If the default list is deleted, the next live list takes over automatically.
+- If every list is deleted, adding a task asks the user to create a list or restore one from Trash.
 - Today's `+` names its target in its tooltip ("New Task in Inbox ⌘N"), so the rule is discoverable. The sidebar doesn't mark the default.
 
-### Archiving lists
+### Deleting lists
 
-"Deleting" a list archives it, like archiving a finished course along with its tasks.
+Deleting a list takes its tasks with it into Trash, and restoring it brings everything back (design/INTERACTIONS-v2.md
+§28). There's one concept, deleted: Archive is gone.
 
-- **Representation:** one field on the list, `archivedAt`. Its tasks are **not** rewritten. Each task inherits visibility from its list at query time. Archiving and unarchiving are one op each, whatever the list size, and the tasks come back exactly as they were (order, dates, completion).
-- **Effect:** an archived list and all its tasks drop out of the sidebar, Today and "Move to…" targets. Everything stays in the log and in state.
-- **Undo:** ⌘Z clears `archivedAt`. So does the Unarchive button.
-- **Where they're viewed:** an **Archive** item at the bottom of the sidebar, shown only when at least one list is archived. It lists archived lists, most recently archived first, with their archive date. Opening one shows the normal list screen with an "Archived" banner and an Unarchive button. Nothing is read-only, and there are no special editing rules.
-- **Concurrency:** a task moved into a list that another Mac archived at the same time is archived with it, and shows up in the Archive. Unarchiving restores the list to its old sidebar spot, by its old key.
+- **Representation:** one field on the list, `archivedAt`, set to the moment it was deleted. Its tasks are **not** rewritten. A task is **live** only if it isn't deleted and its list is live, decided at query time. Deleting and restoring are one op each, whatever the list size, and the tasks come back exactly as they were (order, dates, completion).
+- **Effect:** a task in a deleted list counts as deleted everywhere that decides what's live: the sidebar, Today and its count, Upcoming, Undated, Completed, find, search, type-select, "Move to…" and drag targets. Everything stays in the log and in state.
+- **A task deleted on its own** before its list stays deleted when the list is restored. It shows in Trash on its own, on the day it was deleted.
+- **Undo:** ⌘Z clears `archivedAt`. So do Restore in Trash and the deleted list's banner.
+- **Where they're viewed:** Trash, which is always in the sidebar. A deleted list is one row on the day it was deleted, among the deleted tasks, newest first. It expands to show its tasks, and opens as its list screen with a "Deleted" banner and a Restore button.
+- **Read-only:** a deleted list and its tasks don't take edits, as nothing in Trash does: an edit to something deleted is an edit nobody sees. A single task can be taken out of a deleted list into a live one ("Put back in", a move).
+- **Concurrency:** a task moved into a list that another Mac deleted at the same time is deleted with it, and shows up under that list in Trash. Restoring puts the list back in its old sidebar spot, by its old key.
 
 ### Dates: calendar dates, no times, no time zones
 
@@ -155,7 +158,7 @@ Completing a task doesn't touch `order`. Completed tasks are listed by `complete
   - That's one update op per item, pushed in one request.
   - It takes ~150 inserts at the exact same spot to trigger, so in practice it almost never runs.
 - The server appends a request atomically, so a rebalance lands as one contiguous block of the log. If two Macs rebalance concurrently, the later block wins for every item it touched, and both converge.
-- Rebalance skips completed tasks and archived lists. One that comes back (uncompleted or unarchived) after a rebalance sorts by its old key, which may not be its original spot. That's rare, and a drag fixes it.
+- Rebalance skips completed tasks and deleted lists. One that comes back (uncompleted or restored) after a rebalance sorts by its old key, which may not be its original spot. That's rare, and a drag fixes it.
 
 ## 4. Screens
 
@@ -214,9 +217,9 @@ The sidebar, top to bottom:
 
 - **Today**, pinned. It isn't a list and can't be dragged.
 - **Active lists** in manual order. They're draggable, and tasks can be dropped onto a list to move them there.
-- **Archive**, at the bottom, only when something is archived (§2).
+- **Trash**, at the bottom with the other views, always shown: deleted tasks and deleted lists (§2).
 
-"Delete list" in the UI is labeled **Archive**.
+"Delete list" in the UI is **Delete List**, and a deleted list is restored from Trash.
 
 ## 5. Sync: the append-only log
 
@@ -224,7 +227,7 @@ The sidebar, top to bottom:
 
 - **The server is a dumb, ordered log.** It stores ops and hands them back. It never interprets them, so there is exactly one reducer, written in Swift on the client.
 - **Log order is the only clock.** Every Mac replays the same ops in the same order through the same deterministic reducer and ends up in the same state. Wall clocks are never used to resolve conflicts.
-- **Ops are field patches.** There are no separate `move`/`complete`/`reorder`/`delete`/`archive` ops. A move is `set: {list, order}`, completing is `set: {completedAt}`, deleting a task is `set: {deleted: true}`, and archiving a list is `set: {archivedAt}`.
+- **Ops are field patches.** There are no separate `move`/`complete`/`reorder`/`delete`/`archive` ops. A move is `set: {list, order}`, completing is `set: {completedAt}`, deleting a task is `set: {deleted: true}`, and deleting a list is `set: {archivedAt}`.
 
 ### Op schema
 
@@ -267,8 +270,8 @@ Apply ops in `seq` order:
 1. `*.create` on an id that already exists (live or deleted): ignored. The first create wins.
 2. `*.update`: each key in `set` overwrites. The last write in log order wins **per field**, so concurrent edits to different fields both survive. (Position is written as `list` + `order` together, see §3.)
 3. `*.update` on an unknown id: ignored.
-4. `deleted` (tasks) and `archivedAt` (lists) are ordinary fields. The entity stays in state and is only hidden by queries. A concurrent edit on another Mac doesn't touch these fields, so it never brings anything back. Only an explicit `deleted: false` / `archivedAt: null` does (undo, §6; Unarchive).
-5. Visibility is decided at query time, not in the reducer. A task is visible only if it isn't deleted and its list exists and isn't archived. So archiving cascades with no per-task ops, and unarchiving brings every task back unchanged.
+4. `deleted` (tasks) and `archivedAt` (lists) are ordinary fields. The entity stays in state and is only hidden by queries. A concurrent edit on another Mac doesn't touch these fields, so it never brings anything back. Only an explicit `deleted: false` / `archivedAt: null` does (undo, §6; Put Back and Restore).
+5. Visibility is decided at query time, not in the reducer. A task is live only if it isn't deleted and its list exists and isn't deleted (`archivedAt` null). So deleting a list cascades with no per-task ops, and restoring it brings every task back unchanged.
 6. Unknown op types and unknown `set` keys are ignored, so old clients survive new ops. Values with the wrong type are ignored per key.
 
 Known trade-offs, which are acceptable for a personal app:
@@ -637,7 +640,7 @@ Server snapshots would mean either running the reducer on the server in TypeScri
 
 ### Deletes
 
-Deleting a task sets `deleted: true`. Lists are never deleted, only archived (§2). Either way the entity stays in state and every op stays in the log forever. Hard deletes are deferred (§11).
+Deleting a task sets `deleted: true`. Deleting a list sets `archivedAt` (§2). Either way the entity stays in state and every op stays in the log forever. Hard deletes are deferred (§11).
 
 ## 6. The Git analogy: what we adopt
 
@@ -699,7 +702,7 @@ The protocol trusts a bare index ("give me everything after `k`"). If the server
 - Undo needs deletes to be reversible. So **delete becomes an ordinary field** (`deleted: true`) instead of a terminal tombstone with its own op type.
 - That *removes* two op types (`task.delete`, `list.delete`) and the special "terminal" reducer rule. Lists use `archivedAt` the same way (§2).
 - Behavior is unchanged otherwise: concurrent edits don't touch `deleted`, so a delete still sticks unless explicitly undone.
-- Undoing an archive restores the list's tasks too (§5 rule 5).
+- Undoing a list's delete restores its tasks too (§5 rule 5).
 - Undo is last-writer-wins like any write. Undoing an edit that another Mac has since changed overwrites that change. That's acceptable for one user.
 
 **Ordering keys (§3) under all of this:**
@@ -824,7 +827,7 @@ Files in Application Support:
 - `cursor`.
 - `hash`: the hash of entry `cursor − 1`.
 - `logOffset`: the byte offset in `log.jsonl` where entry `cursor` starts.
-- The confirmed `AppState`: every task and list, including deleted and archived ones.
+- The confirmed `AppState`: every task and list, including deleted ones.
 
 **Format: JSON, using the same `Codable` types.**
 
@@ -862,7 +865,7 @@ Bump `schema` whenever the shape of `AppState` or the reducer's semantics change
 
 ```
 Op               Codable value type matching §5.
-AppState         struct { tasks: [ID: Task], lists: [ID: TaskList] }   // confirmed; deleted/archived included
+AppState         struct { tasks: [ID: Task], lists: [ID: TaskList] }   // confirmed; deleted ones included
                  mutating func apply(_ op: Op) -> ID?    // the reducer: pure; returns the one id it changed, nil if ignored
 FractionalIndex  keyBetween(a, b), keysBetween(a, b, n)  // §3, pure
 Store            @MainActor; owns confirmed AppState, cursor, base, pending ops and the projection
@@ -885,8 +888,8 @@ Unit tests cover the pure parts with fixed inputs:
 - **Snapshot:** loading the snapshot and applying the tail equals a full replay. A corrupt, missing or old-schema snapshot falls back correctly.
 - **409 recovery:** against a server that was wiped, restored to an older point (and grown since), or healthy with a damaged client log, the server ends up holding every op id any Mac ever had, and all Macs converge. The rebase test includes restores at random points. A crash after each recovery step still ends there. Unknown keys in recovered log ops are re-pushed byte for byte.
 - **Ordering:** ties, rebalance, concurrent moves replayed in both orders.
-- **Today predicate:** midnight, both dates set, completed yesterday, list archived.
-- **Seeding:** two Macs seeding offline and then syncing in either order end up with one Inbox. A renamed or archived Inbox survives a re-seed.
+- **Today predicate:** midnight, both dates set, completed yesterday, list deleted.
+- **Seeding:** two Macs seeding offline and then syncing in either order end up with one Inbox. A renamed or deleted Inbox survives a re-seed.
 - **Benchmarks:** see §9.
 
 The theme comes from `PaneTheme.swift`. Screen design follows the design directions in `design/`.
@@ -900,7 +903,7 @@ The goal is that every regular operation costs time proportional to what changed
 **Every op touches exactly one entity:** its `target`.
 
 - The reducer changes only that entity and returns its id.
-- Cross-entity effects (an archived list hides its tasks) are handled by which lists the views iterate (§9 indexes), never by rewriting entities.
+- Cross-entity effects (a deleted list hides its tasks) are handled by which lists the views iterate (§9 indexes), never by rewriting entities.
 
 That property makes per-entity rebase, per-entity index updates and per-row redraws possible.
 
@@ -972,14 +975,14 @@ The projection keeps these indexes and updates them from changed ids. No view bo
 
 | Index | Contents | Sorted by |
 |-------|----------|-----------|
-| `open[list]` | Open, non-deleted tasks of each list (archived lists included) | `(order, id)` |
+| `open[list]` | Open, non-deleted tasks of each list (deleted lists included) | `(order, id)` |
 | `completed[list]` | Completed, non-deleted tasks of each list | `completedAt` desc |
 | `today[list]` | Open tasks of each list that match the Today predicate | `(order, id)` |
 | `todayDone` | Tasks completed today that match the Today predicate | `completedAt` |
 | `activeLists` | Lists with `archivedAt == nil` | `(order, id)` |
-| `archivedLists` | Archived lists | `archivedAt` desc |
+| `deletedLists` | Deleted lists, which Trash reads | `archivedAt` desc |
 
-- **Archiving costs nothing.** The task indexes ignore archive state. Today and the sidebar iterate `activeLists` only, so archiving moves one list between `activeLists` and `archivedLists`. An archived list's screen reads the same `open`/`completed` buckets.
+- **Deleting a list costs nothing.** The task indexes ignore whether a list is deleted. Today, the views and the sidebar iterate `activeLists` only, so deleting moves one list between `activeLists` and `deletedLists`. A deleted list's row and screen in Trash read the same `open`/`completed` buckets. Trash's one scan for tasks deleted on their own runs only when a bucket changes.
 - **One changed task:** compare its old and new placement (which buckets, which sort key). If nothing changed, do nothing. Otherwise remove the id from the old bucket and binary-search-insert it into the new one. That's O(log k) plus a memmove for a bucket of k ids, microseconds even for thousands.
 - **Batches** (rebalance, first sync): if a batch touches more than ~1/8 of a bucket, re-sort that bucket once instead.
 - **Midnight:** Today membership depends on the date. Incremental updates use the current `today`. When the day changes, `today` and `todayDone` are rebuilt in one pass over open tasks and tasks completed in the last day: O(n), ~1 ms at 10k tasks.
@@ -1043,17 +1046,17 @@ Until S4, everything runs locally (`vitest`, `wrangler dev`) and no Cloudflare r
 | C2 | Projection: pending overlay, fast-path and general-path rebase, indexes, model registry. | The randomized rebase test (§8) and the incremental-vs-rebuilt index check. |
 | C3 | Persistence: `log.jsonl`, `pending.jsonl`, the snapshot and its fallback, write ordering, the `409` recovery's file steps (§5). | Snapshot and crash tests, including a crash after each recovery step (§8); launch and edit benchmarks (§9). |
 | C4 | `SyncClient`: chunking, the error table, backoff, `409` recovery. | Against `wrangler dev` from S3, or a stub that serves the fixtures: every row of the error table. Recovery against a wiped, a restored and a healthy server (§8). |
-| C5 | UI with the Pane theme and `design/`: sidebar, Today, list screens, Archive, drag, ⌘Z, the token setting. | Manual testing plus the remaining §9 benchmarks. |
+| C5 | UI with the Pane theme and `design/`: sidebar, Today, list screens, Archive (since replaced by deleted lists in Trash), drag, ⌘Z, the token setting. | Manual testing plus the remaining §9 benchmarks. |
 
 C1 has a hard dependency: §9's projection relies on the reducer returning the single changed id, so C1 has to provide that before C2 starts.
 
-**End-to-end check (after S4 and C5):** run two app instances against the deployed Worker, then edit, reorder and archive on both, online and offline. The two instances run on one Mac with separate data directories, via a `-dataDirectory <path>` launch argument that exists for testing only. Done means both instances converge, and each matches a fresh third instance that syncs from 0. Then wipe the server log (a fresh local `wrangler dev` state, not the deployed Worker) and check that both instances recover it with nothing lost.
+**End-to-end check (after S4 and C5):** run two app instances against the deployed Worker, then edit, reorder and delete lists on both, online and offline. The two instances run on one Mac with separate data directories, via a `-dataDirectory <path>` launch argument that exists for testing only. Done means both instances converge, and each matches a fresh third instance that syncs from 0. Then wipe the server log (a fresh local `wrangler dev` state, not the deployed Worker) and check that both instances recover it with nothing lost.
 
 ## 11. Later
 
 Deferred on purpose. Each is additive and needs no change to what v1 stores.
 
-- **Hard deletes:** permanently removing deleted tasks and archived lists.
+- **Hard deletes:** permanently removing deleted tasks and lists (no Empty Trash yet).
   - The log keeps everything, so a real purge means rewriting history, like `git filter-repo`: rebuild the log without the purged entities, which gives a new hash chain.
   - Every Mac's `base` then mismatches, so each gets a `409`. But `409` recovery (§5) re-pushes every op a Mac knows, which would put the purged ops straight back. A purge therefore needs its own signal, e.g. a distinct error that tells Macs to drop ops for the purged ids before recovering.
   - The other open design work is producing the rewritten log on the server, which needs reduced state there (a server snapshot).
@@ -1066,4 +1069,4 @@ Deferred on purpose. Each is additive and needs no change to what v1 stores.
 
 ## 12. Open questions
 
-None open. List deletion is resolved as archiving (§2).
+None open. List deletion is resolved as a deleted list in Trash, on Archive's `archivedAt` (§2).
