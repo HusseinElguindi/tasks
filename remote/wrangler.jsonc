@@ -17,7 +17,7 @@
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Replica", "Auth"] }],
   // workers-oauth-provider's storage: clients, grants, tokens (hashed). Before the first deploy:
   // `npx wrangler kv namespace create OAUTH_KV`, then put its id here. Locally it's simulated.
-  "kv_namespaces": [{ "binding": "OAUTH_KV" }],
+  "kv_namespaces": [{ "binding": "OAUTH_KV", "id": "41fd874ed879428d85dba446153cf9b8" }],
   // Code mode: each tasks_run script runs in a fresh isolate (src/codemode.ts).
   "worker_loaders": [{ "binding": "LOADER" }],
   // The main Worker (server/), unchanged: POST /v1/sync with Bearer SYNC_TOKEN.
