@@ -114,7 +114,12 @@ final class WindowState {
     var detailWidth = PaneWidth.detail.stored
     /// Lists whose "› Completed" row is open. Local like a heading's collapse, and kept across launches (v2 feedback 15).
     var completedOpen: Set<EntityID> = Set(UserDefaults.standard.stringArray(forKey: WindowState.completedOpenKey) ?? []) {
-        didSet { if completedOpen != oldValue { UserDefaults.standard.set(completedOpen.sorted(), forKey: Self.completedOpenKey) } }
+        didSet {
+            guard completedOpen != oldValue else { return }
+            UserDefaults.standard.set(completedOpen.sorted(), forKey: Self.completedOpenKey)
+            host?.completedOpen = completedOpen
+            detailList?.completedOpen = completedOpen
+        }
     }
     static let completedOpenKey = "completedOpenLists"
     /// Today's Completed group is collapsed (v2 feedback 15): local, kept across launches, never synced.
@@ -144,7 +149,12 @@ final class WindowState {
     /// Collapsed headings (§23): local to the Mac like a window's size, kept in UserDefaults by heading id, never synced.
     /// A new heading starts open.
     var collapsed: Set<EntityID> = Set(UserDefaults.standard.stringArray(forKey: WindowState.collapsedKey) ?? []) {
-        didSet { if collapsed != oldValue { UserDefaults.standard.set(collapsed.sorted(), forKey: Self.collapsedKey) } }
+        didSet {
+            guard collapsed != oldValue else { return }
+            UserDefaults.standard.set(collapsed.sorted(), forKey: Self.collapsedKey)
+            host?.collapsed = collapsed
+            detailList?.collapsed = collapsed
+        }
     }
     static let collapsedKey = "collapsedHeadings"
     /// Holding ⌘ for 450 ms shows ⌘1–⌘9 in the sidebar.
@@ -156,7 +166,18 @@ final class WindowState {
     @ObservationIgnored let viewDates = ViewDates()
     @ObservationIgnored var viewItemsCache: (key: ViewItems.CacheKey, items: ViewItems)?
     /// Popovers, notices and tooltips: their own observable so they never redraw the panes.
-    let overlays = Overlays()
+    let overlays: Overlays
+
+    /// A deleted list shown in the detail pane has a window state of its own (`detailListState`), so the list pane's
+    /// view draws it there as it draws any list (§28 Opening). `host` is the window's: the child uses its overlays,
+    /// and the two share their folds, each writing them through to the other. `detailList` is the child, while the
+    /// detail pane shows it.
+    @ObservationIgnored weak var host: WindowState?
+    @ObservationIgnored var detailList: WindowState?
+
+    init(overlays: Overlays = Overlays()) {
+        self.overlays = overlays
+    }
 
     // Not observed: the AppKit views and timers.
     /// The colors for this window's appearance (set by RootView), for AppKit code that draws (menus' tiles).

@@ -2,8 +2,9 @@ import AppKit
 import TasksCore
 
 // Delete List (design/INTERACTIONS-v2.md §28): a list's `archivedAt` is its deletion. A deleted list lives in Trash
-// with its tasks, one row on the day it was deleted that expands like a heading and opens read-only; restoring it puts
-// everything back as it was. Its tasks count as deleted everywhere that decides what's live (TasksCore's `isLive`).
+// with its tasks, one row on the day it was deleted that expands like a heading and opens read-only in the detail pane;
+// restoring it puts everything back as it was. Its tasks count as deleted everywhere that decides what's live
+// (TasksCore's `isLive`).
 
 /// The two verbs that take something out of Trash. The user kept the design's split: a list is **restored**, a task is
 /// **put back** (the Finder's word). Each verb is spelled here once, so unifying them is a one-line change:
@@ -30,17 +31,35 @@ enum TrashVerb {
 }
 
 extension WindowState {
-    /// In Trash, or in a deleted list opened from it: what's shown reads but doesn't edit (§22, §28).
+    /// In Trash, or in a deleted list: what's shown reads but doesn't edit (§22, §28).
     @MainActor
     func inTrash(_ p: Projection) -> Bool {
         route == .trash || deletedListOpen(p) != nil
     }
 
-    /// The deleted list open in the list pane (§28 Opening), if that's what's showing.
+    /// The deleted list this state shows, if that's what's showing: the detail pane's (`detailListState`), or the list
+    /// pane's when its list was deleted elsewhere while open (the CLI, another Mac).
     @MainActor
     func deletedListOpen(_ p: Projection) -> EntityID? {
         guard let id = route.listID, p.isDeleted(list: id) else { return nil }
         return id
+    }
+
+    /// The window state the detail pane shows a deleted list with (§28 Opening, the user 2026-11-01): the list pane's
+    /// own view on its own route, so it draws the banner, the title, the notes, the headings and the rows as the list
+    /// pane would, read-only. It uses this window's overlays and shares its folds (`collapsed`, `completedOpen`). It
+    /// has no selection (its rows are display-only: the window's selection stays the list's row in Trash, so the keys
+    /// and the menu bar keep acting on that), and its view never takes the keys: the detail pane's own key handling does.
+    @MainActor
+    func detailListState(_ id: EntityID) -> WindowState {
+        if let s = detailList, s.route == .list(id) { return s }
+        let s = WindowState(overlays: overlays)
+        s.host = self
+        s.route = .list(id)
+        s.focus = .detail
+        s.palette = palette
+        detailList = s
+        return s
     }
 }
 
@@ -78,10 +97,12 @@ extension WindowActions {
 
     // MARK: Restoring a list (§28 Restoring)
 
-    /// Restore in the banner or the detail pane, ↶, Restore List in its menu, or ⌘⌫ on its row: one op, and the list
-    /// is back in its old place in Lists with everything it held. From its row the selection moves on as for Put Back;
-    /// from the opened pane the pane becomes the live list in place.
+    /// Restore in the banner, ↶, Restore List in its menu, or ⌘⌫ on its row: one op, and the list is back in its old
+    /// place in Lists with everything it held. From Trash (its row, or the detail pane showing it) the selection moves
+    /// on as for Put Back; from the list pane, showing a list deleted elsewhere, the pane becomes the live list in place.
     func restoreList(_ id: EntityID) {
+        // The detail pane's banner: as from the row, since the row is what's selected.
+        if let host = window.host { WindowActions(store: store, window: host).restoreList(id); return }
         guard let l = p.list(id), l.archivedAt != nil else { return }
         endEdits()
         let fromRow = window.route == .trash
@@ -102,13 +123,19 @@ extension WindowActions {
 
     // MARK: Opening and expanding (§28 Expanding, Opening)
 
-    /// Return, a double-click, or Open: the list's own pane, read-only. Trash stays current in the sidebar.
+    /// Return, a double-click, or Open: the list in the detail pane, its own list view read-only under the banner,
+    /// with Trash staying in the middle and the row selected (the user, 2026-11-01). The detail pane takes the keys, so
+    /// Esc or closing it gives them back to Trash. Selecting the row with the pane open shows it there too.
     func openDeletedList(_ id: EntityID) {
         guard p.isDeleted(list: id) else { return }
-        go(.list(id), focus: .list)
+        if window.route != .trash { go(.trash, select: [id]) } else { select([id]) }
+        window.taskList?.scrollToVisible(id)
+        window.focus = .detail
+        if window.detailOpen { focus(.detail) } else { openDetail() }
     }
 
-    /// Esc with nothing left to cancel, or pressing Trash: back to Trash with the list's row selected.
+    /// A list deleted elsewhere while open in the list pane: Esc with nothing left to cancel, or pressing Trash, goes
+    /// to Trash with the list's row selected.
     func leaveDeletedList() {
         guard let id = window.deletedListOpen(p) else { return }
         go(.trash, select: [id], focus: .list)
@@ -191,7 +218,7 @@ extension Menus {
         ])
     }
 
-    /// A heading in a deleted list opened from Trash: it folds, and that's all (§28).
+    /// A heading in a deleted list shown in the list pane: it folds, and that's all (§28).
     static func readOnlyHeading(_ ids: [EntityID], actions a: WindowActions) -> NSMenu {
         let heads = ids.filter(a.isHeading)
         let collapse = !heads.allSatisfy { a.window.collapsed.contains($0) }

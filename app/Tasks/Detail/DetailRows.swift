@@ -82,7 +82,7 @@ struct DetailProps: View {
 }
 
 /// One 32pt row; `content` gets whether the row is hovered (it reveals a date's ×).
-struct PropRow<Value: View>: View {
+private struct PropRow<Value: View>: View {
     let glyph: Glyph
     let label: String
     @ViewBuilder var content: (Bool) -> Value

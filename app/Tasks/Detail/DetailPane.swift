@@ -3,8 +3,8 @@ import SwiftUI
 import TasksCore
 
 /// The detail pane (§4, §6, §7; the prototype's dc:112–166, css:252–289). It shows the selection: one task (or the
-/// new task being added), several ("3 tasks selected" with the rows that apply to all), or none. Its open and close are
-/// v1's, done by `MainLayout`.
+/// new task being added), several ("3 tasks selected" with the rows that apply to all), a deleted list's row in Trash
+/// (the list itself, §28), or none. Its open and close are v1's, done by `MainLayout`.
 struct DetailPane: View {
     let store: Store
     @Bindable var window: WindowState
@@ -29,7 +29,13 @@ struct DetailPane: View {
         .background(
             KeySink(register: { window.detailKeySink = $0 },
                     onKey: { key($0, actions: actions) },
-                    onFocus: { if window.focus != .detail { window.focus = .detail } })
+                    onFocus: { if window.focus != .detail { window.focus = .detail } },
+                    // Opened on a deleted list with Return or a double-click: the pane has the keys (§28 Opening).
+                    onAttach: { sink in
+                        if window.focus == .detail, WindowActions(store: store, window: window).selectedDeletedList != nil {
+                            DispatchQueue.main.async { sink.takeKeys() }
+                        }
+                    })
                 .frame(width: 0, height: 0)
         )
         .onAppear { takeTitleRequest() }
@@ -69,8 +75,8 @@ struct DetailPane: View {
 
     @ViewBuilder
     private func content(_ items: [DetailItem], actions: WindowActions, size: CGSize) -> some View {
-        if items.isEmpty, let id = actions.selectedDeletedList, let list = store.projection.listModel(id) {
-            DeletedListDetail(store: store, list: list, actions: actions)
+        if items.isEmpty, let id = actions.selectedDeletedList {
+            DeletedListInDetail(store: store, window: window, id: id)
                 .id(id)
         } else if items.count == 1 {
             SingleDetail(store: store, window: window, item: items[0], refs: refs, actions: actions, viewport: size.height)
@@ -202,13 +208,13 @@ struct DetailPane: View {
             return true
         }
         if k == 116 || k == 121 {
-            // Page Up, Page Down scroll the list a page.
-            window.taskList?.keyDown(with: e)
+            // Page Up, Page Down scroll the list a page: a deleted list's here, else the list pane's.
+            (window.detailList?.taskList ?? window.taskList)?.keyDown(with: e)
             return true
         }
         if (k == 36 || k == 76) && plain {
             // Return edits the selected task as Settings ▸ Edit tasks says: its title here, or renamed in its row (the
-            // list takes the keys). A deleted list's row in Trash opens it (§28).
+            // list takes the keys). A deleted list's row in Trash is already shown here (§28).
             let ids = a.targetIDs
             if let id = a.selectedDeletedList {
                 a.openDeletedList(id)
@@ -221,7 +227,8 @@ struct DetailPane: View {
             return true
         }
         if k == 49 && plain {
-            // Space completes or uncompletes, once per press (v2 feedback 18); on a deleted list's row it expands (§28).
+            // Space completes or uncompletes, once per press (v2 feedback 18); on a deleted list's row it expands it in
+            // Trash (§28).
             if !e.isARepeat { if let id = a.selectedDeletedList { a.toggleTrashExpanded([id]) } else { a.toggleComplete() } }
             return true
         }
@@ -263,7 +270,7 @@ private struct DetailHeader: View {
         let deletedList = items.isEmpty ? actions.selectedDeletedList : nil
         HStack(spacing: 8) {
             if deletedList != nil {
-                // A deleted list's summary: the Trash glyph and "Trash" (§28).
+                // A deleted list: the Trash glyph and "Trash", where it is (§28).
                 GlyphView(glyph: .trash, size: 14, color: tk.inkSecondary.swiftUI)
                 Text("Trash").font(Font(TK.Font.body)).foregroundStyle(tk.inkSecondary.swiftUI).lineLimit(1).frame(height: 16)
             } else if let first {
@@ -308,6 +315,26 @@ private struct DetailHeader: View {
         .padding(.leading, TK.M.headerInset)
         .padding(.trailing, 8)
         .frame(height: TK.M.header)
+    }
+}
+
+// MARK: - A deleted list
+
+/// A deleted list's row selected in Trash, or opened from it (§28 Opening, the user 2026-11-01): the list pane's own
+/// view, on the list's window state (`WindowState.detailListState`), so it's the list exactly as it opens in the list
+/// pane: the banner with Restore, the large title with its tile and "In Trash", the notes, the headings (which fold)
+/// and the rows, all read-only. The pane's 340pt minimum is wider than the list pane's own 220pt one, so it fits as a
+/// narrow list does: the banner's words take two lines, the notes wrap, and a long title fades at the row's end.
+private struct DeletedListInDetail: View {
+    let store: Store
+    let window: WindowState
+    let id: EntityID
+    @Environment(\.tk) private var tk
+
+    var body: some View {
+        let list = window.detailListState(id)
+        TaskListRepresentable(store: store, window: list, palette: tk)
+            .onDisappear { if window.detailList === list { window.detailList = nil } }
     }
 }
 

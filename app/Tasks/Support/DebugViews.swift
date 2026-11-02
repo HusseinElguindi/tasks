@@ -18,7 +18,8 @@ import TasksCore
 ///     act:trace:MS:/path.txt   (for MS ms, before each commit: the rows' and labels' on-screen y, the drag copy's
 ///                               origin and opacity, and the lit label; one line per turn that changed)
 ///     act:deletelist:<list>   act:restorelist:<list>   act:selectlist:<list>   act:expand:<list>   act:collapse-list:<list>
-///     act:openlist:<list>   act:takeout   (⌘⌫ in Trash)   act:leave   (Esc out of a deleted list)   (§28)
+///     act:openlist:<list>   (in the detail pane)   act:takeout   (⌘⌫ in Trash)   act:leave   (Esc out of a list deleted
+///     while open in the list pane)   (§28)
 @MainActor
 enum DebugViews {
     static func act(_ arg: String, window w: WindowState, store: Store) {

@@ -6,6 +6,8 @@ import SwiftUI
 final class KeySinkView: NSView {
     var onKey: ((NSEvent) -> Bool)?
     var onFocus: (() -> Void)?
+    /// It's in a window now: a pane that opens with the keys takes them here.
+    var onAttach: ((KeySinkView) -> Void)?
 
     override var acceptsFirstResponder: Bool { true }
 
@@ -18,6 +20,11 @@ final class KeySinkView: NSView {
         if onKey?(event) != true { super.keyDown(with: event) }
     }
 
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window != nil { onAttach?(self) }
+    }
+
     func takeKeys() {
         guard let w = window, w.firstResponder !== self else { return }
         w.makeFirstResponder(self)
@@ -28,11 +35,13 @@ struct KeySink: NSViewRepresentable {
     let register: (KeySinkView) -> Void
     let onKey: (NSEvent) -> Bool
     var onFocus: () -> Void = {}
+    var onAttach: (KeySinkView) -> Void = { _ in }
 
     func makeNSView(context: Context) -> KeySinkView {
         let v = KeySinkView()
         v.onKey = onKey
         v.onFocus = onFocus
+        v.onAttach = onAttach
         register(v)
         return v
     }

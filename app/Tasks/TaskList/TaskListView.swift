@@ -84,9 +84,14 @@ final class TaskListView: NSView {
     private var landing: EntityID?
     private var autoscrollTimer: Timer?
 
+    /// The detail pane's deleted list (`hosted`): its window state lives only as long as the pane shows it, so the
+    /// view keeps it while the view does.
+    private var hostedState: WindowState?
+
     init(store: Store, window: WindowState) {
         self.store = store
         self.state = window
+        if window.host != nil { hostedState = window }
         super.init(frame: .zero)
         wantsLayer = true
         scroll.drawsBackground = false
@@ -114,8 +119,11 @@ final class TaskListView: NSView {
     required init?(coder: NSCoder) { fatalError() }
 
     var actions: WindowActions { WindowActions(store: store, window: state) }
+    /// A deleted list shown in the detail pane (§28 Opening): its rows are display-only and it never takes the keys;
+    /// the detail pane has them, acting on the list's row in Trash. Its headings fold and its banner restores.
+    private var hosted: Bool { state.host != nil }
     override var isFlipped: Bool { true }
-    override var acceptsFirstResponder: Bool { true }
+    override var acceptsFirstResponder: Bool { !hosted }
 
     override func becomeFirstResponder() -> Bool {
         if state.focus != .list { state.focus = .list }
@@ -1150,6 +1158,9 @@ final class TaskListView: NSView {
 
     private func setHover(_ t: Target?) {
         let old = hover
+        // In the detail pane a row doesn't select, so it doesn't light up either.
+        var t = t
+        if hosted, case .row = t { t = nil }
         hover = t
         var hoveredRow: EntityID?
         var part: TaskRowView.Part?
@@ -1212,9 +1223,16 @@ final class TaskListView: NSView {
             if case .label(_, part: .plus) = t { return true }
             return false
         }()
-        if !keepsCaret {
+        if !keepsCaret && !hosted {
             a.endEdits()
             if state.focus != .list { a.focus(.list) } else { takeKeys() }
+        }
+        // In the detail pane only the heading's chevron, the Completed row and the banner's Restore take a press.
+        if hosted {
+            switch t {
+            case .row, .head(_, .body), .head(_, .plus): press = nil; return
+            default: break
+            }
         }
         press = (t, p, event)
         switch t {
@@ -1239,7 +1257,7 @@ final class TaskListView: NSView {
             case .body:
                 pendingCollapse = nil
                 if event.clickCount == 2, a.isDeletedListRow(id) {
-                    // A double-click opens a deleted list, read-only (§28).
+                    // A double-click opens a deleted list in the detail pane, read-only (§28).
                     a.openDeletedList(id)
                     press = nil
                     return
@@ -1407,6 +1425,8 @@ final class TaskListView: NSView {
     }
 
     func pointerRightDown(_ event: NSEvent) {
+        // Nothing in the detail pane's deleted list has a menu: its rows don't select (§28 Opening).
+        if hosted { return }
         let p = doc.convert(event.locationInWindow, from: nil)
         if case .head(let id, _) = target(at: p), store.projection.task(id) != nil {
             let a = actions
