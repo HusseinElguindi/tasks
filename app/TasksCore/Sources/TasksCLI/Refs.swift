@@ -31,22 +31,27 @@ struct RefIndex {
 struct Resolver {
     let p: Projection
 
-    func task(_ ref: String, includeDeleted: Bool = false) throws -> TaskItem {
+    /// A live task (not deleted, and its list not deleted, §28); with `includeDeleted`, any task; with
+    /// `inDeletedLists`, a live one or one whose list is deleted (what `move --to` takes out, as Put back in).
+    func task(_ ref: String, includeDeleted: Bool = false, inDeletedLists: Bool = false) throws -> TaskItem {
         let r = ref.trimmingCharacters(in: .whitespaces)
         guard !r.isEmpty else { throw CLIError(kind: .notFound, message: "An empty task ref.", field: "task") }
-        if let t = p.task(r) { return try visible(t, ref: r, includeDeleted) }
+        func allowed(_ t: TaskItem) -> Bool {
+            includeDeleted || p.isLive(task: t.id) || (inDeletedLists && p.isDeleted(list: t.list))
+        }
+        if let t = p.task(r) {
+            guard allowed(t) else { throw gone(t, ref: r) }
+            return t
+        }
         let lower = r.lowercased()
         guard lower.count >= 4 else {
             throw CLIError(kind: .notFound, message: "No task \(r). A ref is an id or an id prefix of at least 4 characters.", field: "task")
         }
         let matches = p.allTaskIDs.filter { $0.hasPrefix(lower) }.compactMap(p.task)
-        let live = matches.filter { !$0.deleted }
-        let pool = includeDeleted ? matches : live
+        let pool = matches.filter(allowed)
         if pool.count == 1 { return pool[0] }
         if pool.isEmpty {
-            if let gone = matches.first, matches.count == 1 {
-                throw CLIError(kind: .notFound, message: "Task \(r) (\"\(gone.title)\") is deleted; tasks restore \(r) brings it back.", field: "task")
-            }
+            if let t = matches.first, matches.count == 1 { throw gone(t, ref: r) }
             throw CLIError(kind: .notFound, message: "No task \(r).", field: "task")
         }
         let refs = RefIndex(p.allTaskIDs)
@@ -55,19 +60,29 @@ struct Resolver {
                        field: "task", candidates: pool.map(\.id).sorted())
     }
 
-    private func visible(_ t: TaskItem, ref: String, _ includeDeleted: Bool) throws -> TaskItem {
-        if t.deleted && !includeDeleted {
-            throw CLIError(kind: .notFound, message: "Task \(ref) (\"\(t.title)\") is deleted; tasks restore \(ref) brings it back.", field: "task")
+    /// Why a task that exists isn't live: deleted on its own, or in a deleted list (§28).
+    private func gone(_ t: TaskItem, ref: String) -> CLIError {
+        if let l = p.list(t.list), l.archivedAt != nil {
+            return CLIError(kind: .notFound, message: "Task \(ref) (\"\(t.title)\") is in \(l.name), which is deleted; "
+                            + Self.deletedListHint(l, task: ref), field: "task")
         }
-        return t
+        return CLIError(kind: .notFound, message: "Task \(ref) (\"\(t.title)\") is deleted; tasks restore \(ref) brings it back.", field: "task")
     }
 
-    func tasks(_ refs: [String], includeDeleted: Bool = false) throws -> [TaskItem] {
+    /// How a task in a deleted list comes back: with its list, or on its own into another.
+    static func deletedListHint(_ l: TaskList, task ref: String) -> String {
+        "tasks list restore \(quoted(l.name)) brings it back with its list, or tasks move \(ref) --to LIST puts it in another."
+    }
+
+    /// A list name as a shell argument: quoted when it has a space.
+    static func quoted(_ name: String) -> String { name.contains(" ") ? "\"\(name)\"" : name }
+
+    func tasks(_ refs: [String], includeDeleted: Bool = false, inDeletedLists: Bool = false) throws -> [TaskItem] {
         var seen = Set<String>()
-        return try refs.map { try task($0, includeDeleted: includeDeleted) }.filter { seen.insert($0.id).inserted }
+        return try refs.map { try task($0, includeDeleted: includeDeleted, inDeletedLists: inDeletedLists) }.filter { seen.insert($0.id).inserted }
     }
 
-    /// A list by id, then by name (case-insensitive; active lists first, then archived ones), then by id prefix.
+    /// A list by id, then by name (case-insensitive; live lists first, then deleted ones), then by id prefix.
     func list(_ ref: String) throws -> TaskList {
         let r = ref.trimmingCharacters(in: .whitespaces)
         guard !r.isEmpty else { throw CLIError(kind: .notFound, message: "An empty list ref.", field: "list") }
@@ -92,7 +107,7 @@ struct Resolver {
 
     private func ambiguous(_ r: String, _ lists: [TaskList], by: String) -> CLIError {
         let refs = RefIndex(p.allListIDs)
-        let names = lists.sorted { $0.id < $1.id }.map { "\(refs.ref($0.id)) \"\($0.name)\"\($0.archivedAt != nil ? " (archived)" : "")" }
+        let names = lists.sorted { $0.id < $1.id }.map { "\(refs.ref($0.id)) \"\($0.name)\"\($0.archivedAt != nil ? " (deleted)" : "")" }
         return CLIError(kind: .ambiguous, message: "\"\(r)\" matches \(lists.count) lists: \(names.joined(separator: ", ")). Use an id prefix.",
                         field: "list", candidates: lists.map(\.id).sorted())
     }

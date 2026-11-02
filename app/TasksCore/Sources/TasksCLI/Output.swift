@@ -17,12 +17,14 @@ enum Shapes {
         Field(name: "notes", ts: "string /* Markdown */"), Field(name: "when", ts: "CalendarDate | null"),
         Field(name: "deadline", ts: "CalendarDate | null"), Field(name: "done", ts: "boolean"),
         Field(name: "completedAt", ts: "number | null"), Field(name: "deleted", ts: "boolean"),
+        Field(name: "listDeleted", ts: "true /* only when its list is deleted (in Trash): the task counts as deleted, and comes back with the list */", optional: true),
         Field(name: "createdAt", ts: "number"), Field(name: "updatedAt", ts: "number"),
     ]
     static let list: [Field] = [
         Field(name: "id", ts: "string"), Field(name: "ref", ts: "string"), Field(name: "name", ts: "string"),
         Field(name: "notes", ts: "string /* Markdown, under the list's title */"),
-        Field(name: "archivedAt", ts: "number | null"), Field(name: "open", ts: "number /* open tasks, headings not counted */"),
+        Field(name: "archivedAt", ts: "number | null /* when it was deleted (it's in Trash); null: in the sidebar */"),
+        Field(name: "open", ts: "number /* open tasks, headings not counted */"),
     ]
     static let change: [Field] = [
         Field(name: "batch", ts: "string | null /* null when nothing changed */"), Field(name: "summary", ts: "string"),
@@ -50,16 +52,18 @@ struct Render {
 
     // MARK: JSON
 
-    /// `kind` is there only on a heading (INTERACTIONS-v2 §23), so a task's JSON is what it was before headings.
+    /// `kind` is there only on a heading (INTERACTIONS-v2 §23), and `listDeleted` only in a deleted list (§28), so a
+    /// task's JSON is otherwise what it was before either.
     func task(_ t: TaskItem) -> JSON {
         var m: [JSON.Member] = [.init(key: "id", value: .string(t.id)), .init(key: "ref", value: .string(taskRefs.ref(t.id)))]
         if t.isHeading { m.append(.init(key: "kind", value: .string(Patch.heading))) }
         let rest = JSON(["list": .string(t.list),
                          "listName": .string(listName(t.list)), "title": .string(t.title), "notes": .string(t.notes),
                          "when": .str(t.when?.string), "deadline": .str(t.deadline?.string), "done": .bool(t.completedAt != nil),
-                         "completedAt": .num(t.completedAt), "deleted": .bool(t.deleted), "createdAt": .int(t.createdAt),
-                         "updatedAt": .int(t.updatedAt)])
+                         "completedAt": .num(t.completedAt), "deleted": .bool(t.deleted)])
         if case .object(let r) = rest { m += r }
+        if p.isDeleted(list: t.list) { m.append(.init(key: "listDeleted", value: .bool(true))) }
+        m += [.init(key: "createdAt", value: .int(t.createdAt)), .init(key: "updatedAt", value: .int(t.updatedAt))]
         return .object(m)
     }
 
@@ -76,9 +80,11 @@ struct Render {
     func rows(_ tasks: [TaskItem], inToday: Bool = false, showList: Bool = false, indent: String = "  ") -> [String] {
         let width = min(36, tasks.map(\.title.count).max() ?? 0)
         return tasks.map { t in
-            let mark = t.deleted ? "✕" : t.completedAt != nil ? "●" : "○"
+            // A task in a deleted list counts as deleted (§28).
+            let gone = t.deleted || p.isDeleted(list: t.list)
+            let mark = gone ? "✕" : t.completedAt != nil ? "●" : "○"
             var chips: [String] = []
-            if t.completedAt == nil, !t.deleted {
+            if t.completedAt == nil, !gone {
                 if let w = t.when {
                     let chip = DateLabel.whenChip(w, today: today)
                     if !(inToday && chip == "Today") { chips.append(chip) }
@@ -88,7 +94,7 @@ struct Render {
                     chips.append("⚑ " + DateLabel.deadlineChip(d, today: today).text)
                 }
             }
-            if showList { chips.append(listName(t.list)) }
+            if showList { chips.append(listName(t.list) + (p.isDeleted(list: t.list) ? " (deleted)" : "")) }
             let title = t.title.isEmpty ? "(untitled)" : t.title
             let pad = String(repeating: " ", count: max(0, width - title.count))
             let tail = chips.isEmpty ? "" : "  " + pad + chips.joined(separator: "  ")
@@ -122,11 +128,11 @@ struct Render {
     func listRow(_ l: TaskList) -> String {
         let open = p.openTaskCount(in: l.id)
         var line = "  \(listRefs.ref(l.id))  \(l.name)  \(open)"
-        if let a = l.archivedAt { line += "  archived \(archivedDate(a))" }
+        if let a = l.archivedAt { line += "  deleted \(deletedDate(a))" }
         return line
     }
 
-    func archivedDate(_ ms: Int) -> String {
+    func deletedDate(_ ms: Int) -> String {
         DateLabel.monthDay(CalendarDate(Date(timeIntervalSince1970: Double(ms) / 1000)))
     }
 
@@ -134,14 +140,15 @@ struct Render {
         var out = ["\(taskRefs.ref(t.id))  \(t.title.isEmpty ? "(untitled)" : t.title)"]
         func line(_ k: String, _ v: String) { out.append("  " + k.padding(toLength: 10, withPad: " ", startingAt: 0) + v) }
         line("id", t.id)
-        line("list", "\(listName(t.list))\(p.list(t.list)?.archivedAt != nil ? " (archived)" : "")")
+        line("list", "\(listName(t.list))\(p.isDeleted(list: t.list) ? " (deleted)" : "")")
         if t.isHeading {
             // A heading has no completion and no dates (§23).
             line("kind", "heading")
-            line("status", t.deleted ? "deleted" : "open")
+            line("status", t.deleted ? "deleted" : p.isDeleted(list: t.list) ? "deleted with its list" : "open")
             line("open", "\(openTasks(under: t.id)) open tasks under it")
         } else {
-            line("status", t.deleted ? "deleted" : t.completedAt != nil ? "done" : "open")
+            let status = t.completedAt != nil ? "done" : "open"
+            line("status", t.deleted ? "deleted" : p.isDeleted(list: t.list) ? "\(status), deleted with its list" : status)
             line("when", t.when.map { "\($0.string) (\(DateLabel.long($0, today: today)), \(DateLabel.relative($0, today: today)))" } ?? "—")
             line("deadline", t.deadline.map { "\($0.string) (\(DateLabel.long($0, today: today)), \(DateLabel.deadlineWords($0, today: today)))" } ?? "—")
         }
@@ -186,7 +193,7 @@ struct Describe {
 
     private enum Kind: Int, CaseIterable {
         case newTask, delete, restore, complete, uncomplete, move, when, removeWhen, deadline, removeDeadline,
-             rename, notes, reorder, newList, renameList, listNotes, archive, unarchive, moveList
+             rename, notes, reorder, newList, renameList, listNotes, deleteList, restoreList, moveList
     }
 
     func summary(_ changes: [EntityChange]) -> String {
@@ -221,8 +228,8 @@ struct Describe {
             var k: [Kind] = []
             if b.name != a.name { k.append(.renameList) }
             if b.notes != a.notes { k.append(.listNotes) }
-            if b.archivedAt == nil && a.archivedAt != nil { k.append(.archive) }
-            if b.archivedAt != nil && a.archivedAt == nil { k.append(.unarchive) }
+            if b.archivedAt == nil && a.archivedAt != nil { k.append(.deleteList) }
+            if b.archivedAt != nil && a.archivedAt == nil { k.append(.restoreList) }
             if b.order != a.order { k.append(.moveList) }
             return k
         }
@@ -270,8 +277,8 @@ struct Describe {
         case .newList: return lists.count == 1 ? "New List \(listQuote)" : "New \(lists.count) Lists"
         case .renameList: return lists.count == 1 ? "Rename List to \(listQuote)" : "Rename \(lists.count) Lists"
         case .listNotes: return lists.count == 1 ? "Edit List Notes on \(listQuote)" : "Edit List Notes (\(lists.count) lists)"
-        case .archive: return lists.count == 1 ? "Archive List \(listQuote)" : "Archive \(lists.count) Lists"
-        case .unarchive: return lists.count == 1 ? "Unarchive List \(listQuote)" : "Unarchive \(lists.count) Lists"
+        case .deleteList: return lists.count == 1 ? "Delete List \(listQuote)" : "Delete \(lists.count) Lists"
+        case .restoreList: return lists.count == 1 ? "Restore List \(listQuote)" : "Restore \(lists.count) Lists"
         case .moveList: return lists.count == 1 ? "Move List \(listQuote)" : "Move \(lists.count) Lists"
         }
     }
@@ -297,7 +304,7 @@ struct Describe {
                 if let b, b.name != a.name { f.append("name: \(quote(b.name)) → \(quote(a.name))") }
                 if let b, b.notes != a.notes { f.append("notes edited") }
                 if b == nil, !a.notes.isEmpty { f.append("notes") }
-                if b?.archivedAt != a.archivedAt { f.append(a.archivedAt == nil ? "unarchived" : "archived") }
+                if b?.archivedAt != a.archivedAt { f.append(a.archivedAt == nil ? "restored" : "deleted") }
                 if let b, b.order != a.order { f.append("sidebar position") }
                 return f.isEmpty ? nil : head + "  " + f.joined(separator: "; ")
             }

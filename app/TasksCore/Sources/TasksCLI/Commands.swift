@@ -79,6 +79,9 @@ struct Command: @unchecked Sendable {
     var returns: String = "Change"
     var needs: Needs = .synced
     var writes = false
+    /// An old name kept so saved scripts and habits still work (§28's archive → delete): it runs, but `tasks help`,
+    /// `tasks.d.ts` and docs/AGENTS.md don't show it.
+    var hidden = false
     let run: @MainActor (Context, Args) async throws -> Reply
 
     func param(_ name: String) -> Param? { params.first { $0.name == name } }
@@ -134,9 +137,13 @@ enum Commands {
                 signature: [.param("list")], returns: "{ list: List; open: Task[] /* rows in order: headings have kind \"heading\" */; completed: Task[] }") { c, a in
             let (j, t) = try c.listJSON(a.text("list"), done: a.bool("done")); return .value(j, t)
         },
-        Command(name: "archive", usage: "", doc: "Archived lists, most recently archived first.",
-                example: "tasks archive", section: .views, method: "archive", returns: "List[]") { c, _ in
-            let (j, t) = try c.archiveJSON(); return .value(j, t)
+        Command(name: "deleted", usage: "", doc: "Deleted lists, in Trash, most recently deleted first. Their tasks count as deleted: find --deleted shows them.",
+                example: "tasks deleted", section: .views, method: "deletedLists", returns: "List[]") { c, _ in
+            let (j, t) = try c.deletedListsJSON(); return .value(j, t)
+        },
+        Command(name: "archive", usage: "", doc: "Deleted lists (the old name of tasks deleted).",
+                example: "tasks deleted", section: .views, method: "archive", returns: "List[]", hidden: true) { c, _ in
+            let (j, t) = try c.deletedListsJSON(); return .value(j, t)
         },
         Command(name: "show", usage: "<task> [--history]", doc: "One task: every field and its notes (the detail pane). Deleted tasks too.",
                 example: "tasks show 3f9a2c --history", section: .views, method: "task",
@@ -147,7 +154,7 @@ enum Commands {
             let r = Render(try c.p)
             return .value(r.task(t), r.detail(t, history: a.bool("history") ? try c.historyLines(t.id) : []))
         },
-        Command(name: "find", usage: "<text> [--list L] [--done | --open] [--deleted]", doc: "Tasks whose title or notes contain the text (any list; read-only). Empty text matches everything. Headings aren't tasks: tasks ls lists them.",
+        Command(name: "find", usage: "<text> [--list L] [--done | --open] [--deleted]", doc: "Tasks whose title or notes contain the text (any list; read-only). Empty text matches everything. --deleted adds deleted tasks, and the tasks of deleted lists (they have listDeleted). Headings aren't tasks: tasks ls lists them.",
                 example: "tasks find dentist --ids", section: .views, method: "find",
                 params: [Param(name: "text", type: .text, optional: true), Param(name: "list", type: .listRef, optional: true),
                          Param(name: "done", type: .bool, optional: true), Param(name: "deleted", type: .bool, optional: true)],
@@ -230,7 +237,7 @@ enum Commands {
             try c.setDeadline(try a.refs("tasks"), try c.date(a["date"] ?? .null, field: "date")); return .change
         },
         Command(name: "move", usage: "<task>… [--to L] [--top | --bottom | --up | --down | --after REF | --before REF]",
-                doc: "Move tasks to another list (they land at the bottom, in the order given), or to a place: next to an open task or a heading (in its list; --after a heading is the top of its section), the top or bottom, or one row up or down. A heading moves on its own, with its section: --before another heading, --after a row (after that row's section), --top, --bottom, --up, --down.",
+                doc: "Move tasks to another list (they land at the bottom, in the order given), or to a place: next to an open task or a heading (in its list; --after a heading is the top of its section), the top or bottom, or one row up or down. A task in a deleted list takes --to only: it goes to the bottom of that list (the app's Put back in). A heading moves on its own, with its section: --before another heading, --after a row (after that row's section), --top, --bottom, --up, --down.",
                 example: "tasks move 3f9a2c 77b0e1 --to School", section: .tasks, method: "move",
                 params: [Param(name: "tasks", type: .refs), Param(name: "list", type: .listRef, optional: true), Param(name: "place", type: .place, optional: true)],
                 positionals: ["tasks"], flags: [Flag(name: "to", param: "list", kind: .value("L"))] + placeFlags,
@@ -242,7 +249,7 @@ enum Commands {
                 positionals: ["tasks"], signature: [.param("tasks")], writes: true) { c, a in
             try c.delete(try a.refs("tasks")); return .change
         },
-        Command(name: "restore", usage: "<task>…", doc: "Bring back deleted tasks.", example: "tasks restore 3f9a2c",
+        Command(name: "restore", usage: "<task>…", doc: "Bring back deleted tasks. A task whose list is deleted comes back with its list (tasks list restore), or goes to another with move --to.", example: "tasks restore 3f9a2c",
                 section: .tasks, method: "restore", params: [Param(name: "tasks", type: .refs)], positionals: ["tasks"],
                 signature: [.param("tasks")], writes: true) { c, a in
             try c.restore(try a.refs("tasks")); return .change
@@ -288,15 +295,25 @@ enum Commands {
                 flags: placeFlags, signature: [.param("list"), .param("place")], writes: true) { c, a in
             try c.moveList(try a.required("list"), try c.place(a["place"])); return .change
         },
-        Command(name: "list archive", usage: "<list>", doc: "Archive a list (the app's \"delete list\"). Its tasks are kept and come back with it.",
-                example: "tasks list archive School", section: .lists, method: "archiveList", params: [Param(name: "list", type: .listRef)],
+        Command(name: "list delete", usage: "<list>", doc: "Delete a list: it goes to Trash with its tasks, which count as deleted until it's restored. One change, whatever it holds.",
+                example: "tasks list delete School", section: .lists, method: "deleteList", params: [Param(name: "list", type: .listRef)],
                 positionals: ["list"], signature: [.param("list")], writes: true) { c, a in
-            try c.archiveList(try a.required("list")); return .change
+            try c.deleteList(try a.required("list")); return .change
         },
-        Command(name: "list unarchive", usage: "<list>", doc: "Unarchive a list, back to its old place in the sidebar.",
-                example: "tasks list unarchive School", section: .lists, method: "unarchiveList", params: [Param(name: "list", type: .listRef)],
+        Command(name: "list restore", usage: "<list>", doc: "Restore a deleted list to its old place in the sidebar, with everything it held. Tasks deleted on their own before stay deleted.",
+                example: "tasks list restore School", section: .lists, method: "restoreList", params: [Param(name: "list", type: .listRef)],
                 positionals: ["list"], signature: [.param("list")], writes: true) { c, a in
-            try c.unarchiveList(try a.required("list")); return .change
+            try c.restoreList(try a.required("list")); return .change
+        },
+        Command(name: "list archive", usage: "<list>", doc: "Delete a list (the old name of tasks list delete).",
+                example: "tasks list delete School", section: .lists, method: "archiveList", params: [Param(name: "list", type: .listRef)],
+                positionals: ["list"], signature: [.param("list")], writes: true, hidden: true) { c, a in
+            try c.deleteList(try a.required("list")); return .change
+        },
+        Command(name: "list unarchive", usage: "<list>", doc: "Restore a deleted list (the old name of tasks list restore).",
+                example: "tasks list restore School", section: .lists, method: "unarchiveList", params: [Param(name: "list", type: .listRef)],
+                positionals: ["list"], signature: [.param("list")], writes: true, hidden: true) { c, a in
+            try c.restoreList(try a.required("list")); return .change
         },
 
         // MARK: History and sync
@@ -365,7 +382,8 @@ enum Commands {
     ]
 
     static func named(_ name: String) -> Command? { all.first { $0.name == name } }
-    static var methods: [Command] { all.filter { $0.method != nil } }
+    /// The methods `tasks.d.ts` declares; `method(_:)` also finds the hidden old names.
+    static var methods: [Command] { all.filter { $0.method != nil && !$0.hidden } }
     static func method(_ name: String) -> Command? { all.first { $0.method == name } }
 
     /// Every flag that takes a value, so argv can be split before the command is known.
@@ -431,7 +449,7 @@ enum Parser {
         } else if positionals.isEmpty {
             command = Commands.named("help")!
         } else if positionals[0] == "list" {
-            throw CLIError.usage("tasks list takes add, rename, notes, move, archive or unarchive. (The sidebar is tasks lists.)")
+            throw CLIError.usage("tasks list takes add, rename, notes, move, delete or restore. (The sidebar is tasks lists.)")
         } else if positionals[0] == "heading" {
             throw CLIError.usage("tasks heading takes add. Rename, notes, move and delete take a heading like a task.")
         } else {
@@ -530,7 +548,7 @@ enum Help {
         ]
         for s in Section.allCases {
             lines += ["", s.rawValue]
-            for c in Commands.all where c.section == s {
+            for c in Commands.all where c.section == s && !c.hidden {
                 let head = "  tasks \(c.name)\(c.usage.isEmpty ? "" : " " + c.usage)"
                 lines.append(head)
                 lines.append("      " + c.doc)

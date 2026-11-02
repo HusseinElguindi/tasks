@@ -26,9 +26,9 @@ There are two ways to use it:
 | `tasks today` | Today: open tasks with When today or earlier, or due today or overdue, by list in sidebar order; then those completed today |
 | `tasks lists` | The sidebar: active lists with their open counts |
 | `tasks ls School [--done]` | One list: its notes, then its rows in order, headings as `# 4f2a1c  Labs` lines with their tasks indented under them (`--done` adds the completed tasks). In `--json`, `open` holds the rows in order and a heading has `kind: "heading"`. No list means the first |
-| `tasks archive` | Archived lists |
+| `tasks deleted` | Deleted lists, in Trash, most recently deleted first |
 | `tasks show 3f9a2c [--history]` | Every field and the notes (Markdown); `--history` adds who changed it and when |
-| `tasks find milk [--list L] [--done \| --open] [--deleted]` | Tasks whose title or notes contain the text, in any list (never headings: `tasks ls` lists them) |
+| `tasks find milk [--list L] [--done \| --open] [--deleted]` | Tasks whose title or notes contain the text, in any live list (never headings: `tasks ls` lists them). `--deleted` adds deleted tasks and the tasks of deleted lists, which have `listDeleted: true` |
 | `tasks date "next fri"` | What a date phrase means today, without writing |
 | `tasks log [--actor 'agent:*'] [--since 2h] [--task T]` | What changed, newest first, with who did it and the undo command |
 
@@ -47,10 +47,11 @@ Every read pulls first, so it's current. `--cached` reads the replica without th
 | `tasks move 3f9a2c … --to School` | To another list, at the bottom, in the order given |
 | `tasks move 3f9a2c --top \| --bottom \| --up \| --down \| --after R \| --before R` | Reorder (`--after`/`--before` an open task or a heading, in its list; `--after` a heading is the top of its section) |
 | `tasks move 4f2a1c --before H \| --after R \| --top \| --bottom \| --up \| --down` | Move a heading with its section (below) |
-| `tasks delete 3f9a2c …` / `tasks restore …` | Delete, or bring back. Deleting a heading keeps its tasks |
+| `tasks delete 3f9a2c …` / `tasks restore …` | Delete, or bring back. Deleting a heading keeps its tasks. A task in a deleted list comes back with its list, or with `tasks move 3f9a2c --to L` (to the bottom of L) |
 | `tasks heading add Labs [--list L] [--notes TEXT\|-] [--before R \| --after R \| --top]` | A new heading, at the bottom of the list or the place given (below) |
 | `tasks list notes School "Lectures **MWF**"` / `tasks list notes School - < notes.md` / `--append` | Replace or extend a list's notes: the Markdown under its title |
-| `tasks list add School [--top \| --after L]`, `tasks list rename School "School 2026"`, `tasks list move School --after Work`, `tasks list archive School`, `tasks list unarchive School` | Lists. Archiving is the app's "delete list": the tasks come back with it |
+| `tasks list add School [--top \| --after L]`, `tasks list rename School "School 2026"`, `tasks list move School --after Work` | Lists |
+| `tasks list delete School` / `tasks list restore School` | Delete a list, or bring it back. A deleted list goes to Trash with its tasks: they count as deleted (not in `today`, `find`, counts or refs) and come back as they were when it's restored. A task deleted on its own before stays deleted |
 | `tasks sync` | Sync now |
 
 - **Refs:** a task or list id, a unique id prefix of at least 4 characters (output shows 6), or a list's name.
@@ -60,8 +61,9 @@ Every read pulls first, so it's current. `--cached` reads the replica without th
   checks one first.
 - **Many at once:** pass several refs, or `-` to read them from stdin: `tasks find milk --ids | tasks done -`.
 - **Safe to repeat:** everything except `toggle`; `add` too with `--key` (same key, same task).
-- **Limits** fail rather than clamp: titles 1,000 characters, notes 20,000, list names 200. Moving into an archived
-  list is refused.
+- **Limits** fail rather than clamp: titles 1,000 characters, notes 20,000, list names 200.
+- **Deleted lists are read-only:** adding to one, moving into it, renaming it, editing its notes or its tasks is
+  refused until `tasks list restore`. `tasks ls` and `tasks show` still read them.
 - **Headings:** a heading is a row in a list that groups the tasks under it, down to the next heading (its
   section); tasks above the first heading have none. It's a task with `kind: "heading"`: it has a ref, a title and
   notes, and `rename`, `notes`, `delete` and `restore` take it. It has no completion, dates or other list, so `done`,
@@ -111,7 +113,7 @@ return late.map((t) => t.title);
 
 The API, all awaited:
 
-- Reads: `today()`, `lists()`, `list(ref)`, `archive()`, `task(ref)`, `find({ text, list, done, deleted })`,
+- Reads: `today()`, `lists()`, `list(ref)`, `deletedLists()`, `task(ref)`, `find({ text, list, done, deleted })`,
   `date(text)`. Reads see the script's own earlier writes.
 - Tasks: `add({ title, list, notes, when, deadline, place, key })`, `rename(task, title)`, `setNotes(task, notes)`,
   `complete(tasks)`, `uncomplete(tasks)`, `toggle(tasks)`, `setWhen(tasks, date)`, `setDeadline(tasks, date)`,
@@ -119,7 +121,7 @@ The API, all awaited:
 - Headings: `addHeading({ name, list, notes, place })`; `rename`, `setNotes`, `move`, `delete` and `restore` take
   one. `list(ref).open` holds the rows in order, headings with `kind: "heading"`.
 - Lists: `addList(name, place)`, `renameList(list, name)`, `setListNotes(list, notes)`, `moveList(list, place)`,
-  `archiveList(list)`, `unarchiveList(list)`.
+  `deleteList(list)`, `restoreList(list)`.
 - `undo(batch)`, as the only change in a script.
 
 Rules:

@@ -188,7 +188,14 @@ final class CodeModeTests: CLITestCase {
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("docs/AGENTS.md")
         let guide = try String(contentsOf: url, encoding: .utf8)
-        for c in Commands.all { XCTAssertTrue(guide.contains("tasks \(c.name)"), "docs/AGENTS.md doesn't mention tasks \(c.name)") }
+        for c in Commands.all where !c.hidden {
+            XCTAssertTrue(guide.contains("tasks \(c.name)"), "docs/AGENTS.md doesn't mention tasks \(c.name)")
+        }
         for c in Commands.methods { XCTAssertTrue(guide.contains("\(c.method!)("), "docs/AGENTS.md doesn't mention \(c.method!)(") }
+        // The old names (§28's archive → delete) still run, but nothing new learns them.
+        for c in Commands.all where c.hidden {
+            XCTAssertFalse(guide.contains("tasks \(c.name)"), "docs/AGENTS.md mentions the hidden tasks \(c.name)")
+            if let m = c.method { XCTAssertFalse(guide.contains("\(m)("), "docs/AGENTS.md mentions the hidden \(m)(") }
+        }
     }
 }

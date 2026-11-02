@@ -34,7 +34,7 @@ final class HeadingTests: CLITestCase {
 
         let shown = try await json("show", labs)
         XCTAssertEqual(shown["kind"]?.stringValue, "heading")
-        XCTAssertEqual(Set(shown.keys), Set(Shapes.task.map(\.name)))
+        XCTAssertEqual(Set(shown.keys), Set(Shapes.task.map(\.name)).subtracting(["listDeleted"]))
         let task = try await json("show", try await id("Lab 1"))
         XCTAssertNil(task["kind"], "a task's JSON is what it was before headings")
         XCTAssertEqual(Set(task.keys), Set(Shapes.task.filter { !$0.optional }.map(\.name)))

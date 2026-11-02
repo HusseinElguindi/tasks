@@ -319,12 +319,100 @@ final class CLITests: CLITestCase {
         let school = try await json("ls", "School")
         XCTAssertEqual(school["open"]?.arrayValue?.map { $0["title"]?.stringValue }, ["B", "C"], "in the order given")
 
-        await tasks("list", "archive", "School")
+        await tasks("list", "delete", "School")
         let refused = await tasks("move", a, "--to", "School")
         XCTAssertEqual(refused.code, 1)
-        XCTAssertTrue(refused.err.contains("School is archived; unarchive it first"), refused.err)
+        XCTAssertTrue(refused.err.contains("School is deleted; tasks list restore School brings it back"), refused.err)
         let noop = await tasks("move", a, "--to", "Inbox")
         XCTAssertEqual(noop.out, "No change.")
+    }
+
+    /// §28: Delete List is the old archive, and a task in a deleted list counts as deleted everywhere live is decided.
+    func testDeleteAndRestoreAList() async throws {
+        await tasks("list", "add", "School")
+        await tasks("add", "Essay", "--list", "School", "--today")
+        await tasks("add", "Old notes", "--list", "School")
+        await tasks("add", "Milk")
+        let (essay, old) = (try await id("Essay"), try await id("Old notes"))
+        await tasks("delete", old)
+        let deleted = await tasks("list", "delete", "School")
+        XCTAssertEqual(deleted.code, 0, deleted.err)
+        XCTAssertTrue(deleted.out.contains("Delete List \"School\""), deleted.out)
+
+        // Gone from what's live: the sidebar, Today, find, refs.
+        let lists = try await json("lists")
+        XCTAssertEqual(lists.arrayValue?.map { $0["name"]?.stringValue }, ["Inbox"])
+        let today = try await json("today")
+        XCTAssertEqual(today["groups"]?.arrayValue?.count, 0)
+        let live = try await json("find", "")
+        XCTAssertEqual(live.arrayValue?.map { $0["title"]?.stringValue }, ["Milk"])
+        let done = await tasks("done", essay)
+        XCTAssertEqual(done.code, 1)
+        XCTAssertTrue(done.err.contains("is in School, which is deleted; tasks list restore School brings it back"), done.err)
+        let refusals = [await tasks("add", "Nope", "--list", "School"), await tasks("list", "rename", "School", "X"),
+                        await tasks("list", "notes", "School", "x"), await tasks("restore", essay), await tasks("restore", old)]
+        for refused in refusals { XCTAssertEqual(refused.code, 1, refused.out) }
+        XCTAssertTrue(refusals[4].err.contains("is in School, which is deleted"), refusals[4].err)
+
+        // In Trash: tasks deleted, and find --deleted, each marked with its deleted list.
+        let trash = try await json("deleted")
+        XCTAssertEqual(trash.arrayValue?.map { $0["name"]?.stringValue }, ["School"])
+        XCTAssertNotNil(trash.arrayValue?.first?["archivedAt"]?.intValue)
+        let all = try await json("find", "", "--deleted")
+        let marked = Dictionary(uniqueKeysWithValues: (all.arrayValue ?? []).map { ($0["title"]!.stringValue!, $0["listDeleted"]?.boolValue) })
+        XCTAssertEqual(marked, ["Milk": nil, "Essay": true, "Old notes": true])
+        let school = try await json("ls", "School")
+        XCTAssertEqual(school["open"]?.arrayValue?.map { $0["title"]?.stringValue }, ["Essay"], "a deleted list still reads")
+        let lsText = await tasks("ls", "School")
+        XCTAssertTrue(lsText.out.contains("✕"), lsText.out)
+
+        // Restore: back with everything it held; the one deleted on its own stays deleted.
+        let restored = await tasks("list", "restore", "School")
+        XCTAssertTrue(restored.out.contains("Restore List \"School\""), restored.out)
+        let back = try await json("lists"), todayBack = try await json("today"), oldShown = try await json("show", old)
+        XCTAssertEqual(back.arrayValue?.map { $0["name"]?.stringValue }, ["Inbox", "School"])
+        XCTAssertEqual(todayBack["groups"]?.arrayValue?.first?["tasks"]?.arrayValue?.map { $0["title"]?.stringValue }, ["Essay"])
+        XCTAssertEqual(oldShown["deleted"]?.boolValue, true)
+        XCTAssertNil(oldShown["listDeleted"])
+        let again = await tasks("list", "restore", "School")
+        XCTAssertEqual(again.out, "No change.")
+
+        // The old names still work, hidden from help and tasks.d.ts.
+        let archived = await tasks("list", "archive", "School")
+        XCTAssertEqual(archived.code, 0)
+        let archive = try await json("archive")
+        XCTAssertEqual(archive.arrayValue?.map { $0["name"]?.stringValue }, ["School"])
+        let unarchived = await tasks("list", "unarchive", "School")
+        XCTAssertEqual(unarchived.code, 0)
+        let help = await tasks("help")
+        XCTAssertTrue(help.out.contains("tasks list delete") && help.out.contains("tasks deleted"))
+        XCTAssertFalse(help.out.contains("archive"), help.out)
+        let dts = TypeScript.declarations()
+        XCTAssertFalse(dts.contains("archive(") || dts.contains("archiveList(") || dts.contains("unarchiveList("), dts)
+    }
+
+    /// Put back in (§28) from the CLI: move --to takes a task out of a deleted list, to the bottom of a live one.
+    func testMoveOutOfADeletedList() async throws {
+        await tasks("list", "add", "School")
+        await tasks("add", "A", "--list", "School")
+        await tasks("add", "B", "--list", "School")
+        await tasks("add", "Kept")
+        let (a, b) = (try await id("A"), try await id("B"))
+        await tasks("delete", b)
+        await tasks("list", "delete", "School")
+        let placed = await tasks("move", a, "--top")
+        XCTAssertEqual(placed.code, 1)
+        XCTAssertTrue(placed.err.contains("can only go to the bottom of another list, with --to"), placed.err)
+        let moved = await tasks("move", a, b, "--to", "Inbox")
+        XCTAssertEqual(moved.code, 0, moved.err)
+        let inbox = try await json("ls", "Inbox")
+        XCTAssertEqual(inbox["open"]?.arrayValue?.map { $0["title"]?.stringValue }, ["Kept", "A", "B"])
+        let ops = server.ops.suffix(2)
+        XCTAssertNil(ops.first?.set.deleted, "A went with its list: list and order only")
+        XCTAssertEqual(ops.last?.set.deleted, false, "B was deleted on its own")
+        await tasks("list", "restore", "School")
+        let school = try await json("ls", "School")
+        XCTAssertEqual(school["open"]?.arrayValue?.count, 0, "they stay where they went")
     }
 
     func testLimitsFailRatherThanClamp() async throws {
@@ -398,9 +486,13 @@ final class CLITests: CLITestCase {
         s.tasks["t1"] = t
         s.tasks["h1"] = h
         s.lists["l1"] = l
+        s.lists["l2"] = TaskList(id: "l2", name: "School", order: "a1", archivedAt: 5)
+        let d = TaskItem(id: "t2", list: "l2", order: "a0", title: "in a deleted list")
+        s.tasks["t2"] = d
         let r = Render(Projection(confirmed: s, day: Day(containing: now, calendar: calendar)))
         XCTAssertEqual(r.task(t).keys, Shapes.task.filter { !$0.optional }.map(\.name))
-        XCTAssertEqual(r.task(h).keys, Shapes.task.map(\.name))
+        XCTAssertEqual(r.task(h).keys, Shapes.task.map(\.name).filter { $0 != "listDeleted" })
+        XCTAssertEqual(r.task(d).keys, Shapes.task.map(\.name).filter { $0 != "kind" })
         XCTAssertEqual(r.list(l).keys, Shapes.list.map(\.name))
     }
 

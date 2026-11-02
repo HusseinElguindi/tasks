@@ -247,6 +247,7 @@ extension Context {
         guard let listID = explicit?.id ?? anchorTask?.list ?? s.defaultListID else {
             throw CLIError(kind: .noActiveList, message: "There's no active list to add to. Add one with tasks list add NAME.")
         }
+        if let explicit { try refuseDeleted(explicit, field: "list") }
         guard let newID = s.createTask(id: taskID, title: title, notes: notes, in: listID, when: when?.value,
                                        deadline: deadline?.value) else {
             throw CLIError(kind: .noActiveList, message: "There's no active list to add to.")
@@ -339,10 +340,20 @@ extension Context {
         try writable().delete(ids)
     }
 
-    /// `deleted: false`, for when there's no undo stack to bring a task back.
+    /// `deleted: false`, for when there's no undo stack to bring a task back. A task whose list is deleted has no
+    /// place to go back to (§28): that fails, naming the list.
     func restore(_ refs: [String]) throws {
         try requireUnfixed()
-        let gone = try resolve.tasks(refs, includeDeleted: true).filter(\.deleted)
+        let r = try resolve
+        let tasks = try r.tasks(refs, includeDeleted: true)
+        for t in tasks {
+            if let l = try p.list(t.list), l.archivedAt != nil {
+                let ref = RefIndex(try p.allTaskIDs).ref(t.id)
+                throw CLIError.invalid("Task \(ref) (\"\(t.title)\") is in \(l.name), which is deleted; "
+                                       + Resolver.deletedListHint(l, task: ref), field: "tasks")
+            }
+        }
+        let gone = tasks.filter(\.deleted)
         guard !gone.isEmpty else { return }
         let s = try writable()
         s.perform(gone.map { Op(id: s.newID(), at: env.nowMs, type: .taskUpdate, target: $0.id, set: Patch(deleted: false)) })
@@ -351,23 +362,34 @@ extension Context {
     func move(_ refs: [String], list: String?, place: Place?) throws {
         try requireUnfixed()
         let r = try resolve
-        let tasks = try r.tasks(refs)
+        let tasks = try r.tasks(refs, inDeletedLists: true)
         let ids = tasks.map(\.id)
         guard list != nil || place != nil else {
             throw CLIError.invalid("Say where: a list (--to) or a place (--top, --after REF, --up…).", field: "to")
         }
         let target = try list.map(r.list)
+        if let target { try refuseDeleted(target, field: "to") }
+        // Out of a deleted list (§28's Put back in): to the bottom of a live list, nothing else.
+        let trashed = tasks.filter { (try? p.isDeleted(list: $0.list)) == true }
+        if let first = trashed.first {
+            let l = try p.list(first.list)!
+            guard trashed.count == tasks.count else {
+                throw CLIError.invalid("Some of these are in \(l.name), which is deleted: move those on their own, with --to.", field: "tasks")
+            }
+            guard !first.isHeading, !trashed.contains(where: \.isHeading) else {
+                throw CLIError.invalid("\(l.name) is deleted, and a heading stays in its list; tasks list restore \(Resolver.quoted(l.name)) brings it back.", field: "tasks")
+            }
+            guard let target, place == nil || place == .bottom else {
+                throw CLIError.invalid("\(l.name) is deleted: its tasks can only go to the bottom of another list, with --to.", field: "to")
+            }
+            try writable().putBack(ids, in: target.id)
+            return
+        }
         if tasks.contains(where: \.isHeading) {
             try moveHeading(tasks, to: target, place: place)
             return
         }
-        func refuseArchived(_ listID: EntityID) throws {
-            if let l = try p.list(listID), l.archivedAt != nil, tasks.contains(where: { $0.list != listID }) {
-                throw CLIError.invalid("\(l.name) is archived; unarchive it first.", field: "to")
-            }
-        }
         guard let place else {
-            try refuseArchived(target!.id)
             try writable().move(ids, to: target!.id)
             return
         }
@@ -392,7 +414,6 @@ extension Context {
             if let target, target.id != anchorTask.list {
                 throw CLIError.invalid("\(a) is in \(try p.list(anchorTask.list)?.name ?? "another list"), not \(target.name).", field: "place")
             }
-            try refuseArchived(anchorTask.list)
             let at: Ordering.Anchor = if case .after = place { .after(anchorTask.id) } else { .before(anchorTask.id) }
             try writable().reorder(ids, in: anchorTask.list, at: at)
         case .top, .bottom:
@@ -400,7 +421,6 @@ extension Context {
             guard let listID = target?.id ?? (lists.count == 1 ? lists.first : nil) else {
                 throw CLIError.invalid("The tasks are in different lists; say which with --to.", field: "to")
             }
-            try refuseArchived(listID)
             try writable().reorder(ids, in: listID, at: place == .top ? .top : .bottom)
         }
     }
@@ -490,9 +510,7 @@ extension Context {
         guard let listID = explicit?.id ?? anchorRow?.list ?? s.defaultListID else {
             throw CLIError(kind: .noActiveList, message: "There's no active list to add to. Add one with tasks list add NAME.")
         }
-        if let l = s.projection.list(listID), l.archivedAt != nil {
-            throw CLIError.invalid("\(l.name) is archived; unarchive it first.", field: "list")
-        }
+        if let l = s.projection.list(listID) { try refuseDeleted(l, field: "list") }
         let anchor: Ordering.Anchor
         switch place {
         case .top: anchor = .top
@@ -517,6 +535,7 @@ extension Context {
     func setListNotes(_ ref: String, _ notes: String, append: Bool) throws {
         try requireUnfixed()
         let l = try resolve.list(ref)
+        try refuseDeleted(l, field: "list")
         var text = notes
         if append, !l.notes.isEmpty { text = l.notes + (l.notes.hasSuffix("\n") ? "" : "\n") + notes }
         text = try Self.text(text, field: "notes", max: 20000, nonEmpty: false)
@@ -539,13 +558,14 @@ extension Context {
         try requireUnfixed()
         let name = try Self.text(name, field: "name", max: 200, nonEmpty: true)
         let l = try resolve.list(ref)
+        try refuseDeleted(l, field: "list")
         try writable().rename(list: l.id, to: name)
     }
 
     func moveList(_ ref: String, _ place: Place?) throws {
         try requireUnfixed()
         let l = try resolve.list(ref)
-        guard l.archivedAt == nil else { throw CLIError.invalid("\(l.name) is archived, so it isn't in the sidebar.", field: "list") }
+        guard l.archivedAt == nil else { throw CLIError.invalid("\(l.name) is deleted, so it isn't in the sidebar.", field: "list") }
         guard let place else { throw CLIError.invalid("Give a place: top, bottom, up, down, or after/before a list.", field: "place") }
         if let anchor = try listAnchor(place, moving: l) { try writable().reorderLists([l.id], at: anchor) }
     }
@@ -565,23 +585,31 @@ extension Context {
             return i + 1 < items.count ? .after(items[i + 1].id) : nil
         case .after(let ref), .before(let ref):
             let other = try resolve.list(ref)
-            guard other.archivedAt == nil else { throw CLIError.invalid("\(other.name) is archived.", field: "place") }
+            guard other.archivedAt == nil else { throw CLIError.invalid("\(other.name) is deleted.", field: "place") }
             if other.id == moving?.id { throw CLIError.invalid("A list can't be placed next to itself.", field: "place") }
             if case .after = place { return .after(other.id) }
             return .before(other.id)
         }
     }
 
-    func archiveList(_ ref: String) throws {
+    /// Delete List (§28): `archivedAt` = now, one op. Its tasks count as deleted until it's restored.
+    func deleteList(_ ref: String) throws {
         try requireUnfixed()
         let l = try resolve.list(ref)
         try writable().deleteList(l.id)
     }
 
-    func unarchiveList(_ ref: String) throws {
+    /// Restore List: back to its old place with everything it held; tasks deleted on their own stay deleted.
+    func restoreList(_ ref: String) throws {
         try requireUnfixed()
         let l = try resolve.list(ref)
         try writable().restoreList(l.id)
+    }
+
+    /// A deleted list takes nothing (§28): it's read-only until it's restored.
+    func refuseDeleted(_ l: TaskList, field: String) throws {
+        guard l.archivedAt != nil else { return }
+        throw CLIError.invalid("\(l.name) is deleted; tasks list restore \(Resolver.quoted(l.name)) brings it back.", field: field)
     }
 
     // MARK: Views
@@ -614,11 +642,12 @@ extension Context {
         return (.array(lists.map(r.list)), lists.map(r.listRow))
     }
 
-    func archiveJSON() throws -> (JSON, [String]) {
+    /// Deleted lists, in Trash, most recently deleted first.
+    func deletedListsJSON() throws -> (JSON, [String]) {
         let p = try self.p
         let r = Render(p)
         let lists = p.deletedLists.ids.compactMap(p.list)
-        return (.array(lists.map(r.list)), lists.isEmpty ? ["  No archived lists."] : lists.map(r.listRow))
+        return (.array(lists.map(r.list)), lists.isEmpty ? ["  No deleted lists."] : lists.map(r.listRow))
     }
 
     func listJSON(_ ref: String?, done: Bool) throws -> (JSON, [String]) {
@@ -633,7 +662,7 @@ extension Context {
         }
         let open = r.tasks(p.openTasks(in: l.id).ids)
         let completed = r.tasks(p.completedTasks(in: l.id).ids)
-        var text = [l.name + (l.archivedAt.map { " · Archived \(r.archivedDate($0))" } ?? "")]
+        var text = [l.name + (l.archivedAt.map { " · Deleted \(r.deletedDate($0)), read-only: tasks list restore \(Resolver.quoted(l.name)) brings it back" } ?? "")]
         if !l.notes.isEmpty { text += l.notes.split(separator: "\n", omittingEmptySubsequences: false).map { "  " + $0 } }
         text += open.isEmpty ? ["  No open tasks."] : r.sections(open)
         if done, !completed.isEmpty {
@@ -651,8 +680,9 @@ extension Context {
         let listID = try list.map { try resolve.list($0).id }
         let rank = Dictionary(uniqueKeysWithValues: (p.activeLists.ids + p.deletedLists.ids).enumerated().map { ($1, $0) })
         let needle = text?.trimmingCharacters(in: .whitespaces) ?? ""
+        // A task in a deleted list counts as deleted (§28): only --deleted finds it.
         let matches = p.allTaskIDs.compactMap(p.task).filter { t in
-            !t.isHeading && (deleted || !t.deleted) && (listID == nil || t.list == listID) && (done == nil || (t.completedAt != nil) == done)
+            !t.isHeading && (deleted || p.isLive(task: t.id)) && (listID == nil || t.list == listID) && (done == nil || (t.completedAt != nil) == done)
                 && (needle.isEmpty || t.title.range(of: needle, options: [.caseInsensitive, .diacriticInsensitive]) != nil
                     || t.notes.range(of: needle, options: [.caseInsensitive, .diacriticInsensitive]) != nil)
         }.sorted { a, b in
