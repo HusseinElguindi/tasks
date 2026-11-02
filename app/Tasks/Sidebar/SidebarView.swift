@@ -3,7 +3,7 @@ import SwiftUI
 import TasksCore
 
 /// The sidebar (design/INTERACTIONS-v2.md §12, §14, §15; the prototype's dc:19–40, css:97–140): Today, the "Lists"
-/// label, the active lists, then the Archive group, drawn in layers on a flipped, layer-backed view. Rows start at
+/// label, the active lists, then Completed and Trash, drawn in layers on a flipped, layer-backed view. Rows start at
 /// window y 50 under the toolbar band (the traffic lights and the toggle are drawn by others), in a scroll view with
 /// no scroller.
 ///
@@ -33,7 +33,6 @@ final class SidebarView: FlippedLayerView {
     /// The sync cloud at the header row's right end (§26), in the scrolled content so it scrolls with the row.
     private var cloud: CloudHost?
     private let listsLabel = SidebarLabelLayer(title: "Lists", glyph: .plus)
-    private let archiveLabel = SidebarLabelLayer(title: "Archive", glyph: .chevronRight)
 
     private(set) var model = SidebarModel()
     private var rowLayers: [SidebarModel.Key: SidebarRowLayer] = [:]
@@ -46,18 +45,17 @@ final class SidebarView: FlippedLayerView {
     private var renderedRoute: WindowState.Route?
     private var renderedPalette: TK.Palette?
     private var renderQueued = false
-    private var archiveLabelShown = false
     private var labelsPalette: TK.Palette?
 
     private var field: InlineField?
     private var fieldID: EntityID?
 
     // Hover and presses
-    enum Label { case lists, archive }
+    enum Label { case lists }
     enum Hit: Equatable { case row(SidebarModel.Key), label(Label) }
     private var hover: Hit?
     private var hoverButton: Label?
-    /// A press on a label's button, or on the Archive label's text (`.gl`, dc:31), that acts on release inside it.
+    /// A press on a label's button, that acts on release inside it.
     private var press: (label: Label, rect: CGRect)?
     /// A press on a row that may become a list drag.
     private struct Candidate {
@@ -111,8 +109,6 @@ final class SidebarView: FlippedLayerView {
         header.position = CGPoint(x: SB.rowX, y: 0)
         host.addSublayer(header)
         host.addSublayer(listsLabel)
-        host.addSublayer(archiveLabel)
-        archiveLabel.isHidden = true
         NotificationCenter.default.addObserver(self, selector: #selector(clipScrolled(_:)), name: NSView.boundsDidChangeNotification,
                                                object: scroll.contentView)
         setAccessibilityElement(false)
@@ -280,7 +276,6 @@ final class SidebarView: FlippedLayerView {
             CATransaction.setDisableActions(true)
             for l in rowLayers.values { l.rowWidth = w }
             listsLabel.rowWidth = w
-            archiveLabel.rowWidth = w
             CATransaction.commit()
             scheduleRender()
         }
@@ -333,7 +328,8 @@ final class SidebarView: FlippedLayerView {
     /// The sidebar row a task drag of `dragged` is over (window point, top-left origin, y down): Today unless the view
     /// is Today or the Trash; Completed (it completes them) unless the view is Completed or the Trash; the Trash (it
     /// deletes them) unless the view is the Trash; an active list other than the one they're all in, or in the Trash
-    /// any list (it puts them back there). Upcoming, Undated, archived lists and labels aren't targets (dc:1183–1192,
+    /// any live list (it puts them back there). Upcoming, Undated and labels aren't targets; a deleted list isn't in the
+    /// sidebar (§28) (dc:1183–1192,
     /// dc:2445–2462). Each row takes half the 2pt gap on either side, so the target passes straight from one row to the
     /// next (v2 feedback 7).
     func dropTarget(at windowPoint: CGPoint, dragged: [EntityID]) -> WindowState.Drag.Over? {
@@ -341,7 +337,7 @@ final class SidebarView: FlippedLayerView {
               scroll.frame.contains(convert(p, from: content)) else { return nil }
         let half = (TK.M.pitch - SB.rowHeight) / 2
         guard let row = model.rows.first(where: { p.y >= $0.y - half && p.y < $0.y + SB.rowHeight + half }) else { return nil }
-        let trash = ui.route == .trash
+        let trash = ui.inTrash(store.projection)
         switch row.key {
         case .today:
             return ui.route == .today || trash ? nil : .today
@@ -353,7 +349,7 @@ final class SidebarView: FlippedLayerView {
             return nil
         case .list(let id):
             let proj = store.projection
-            guard !row.archived, !row.draft, proj.isActive(list: id),
+            guard !row.draft, proj.isActive(list: id),
                   trash || !dragged.allSatisfy({ proj.task($0)?.list == id }) else { return nil }
             return .list(id)
         }
@@ -520,7 +516,7 @@ final class SidebarView: FlippedLayerView {
             leaving.removeAll()
         }
 
-        // Labels: always "Lists"; "Archive" only when something is archived. They appear in place and move with the rows.
+        // The label: always "Lists". It moves with the rows.
         if labelsPalette != palette {
             labelsPalette = palette
             header.setPalette(palette)
@@ -528,23 +524,9 @@ final class SidebarView: FlippedLayerView {
             cloud?.rootView = headerCloud()
             foot?.rootView = sidebarFoot()
             listsLabel.setPalette(palette)
-            archiveLabel.setPalette(palette)
             listsLabel.setScaleDeep(scale)
-            archiveLabel.setScaleDeep(scale)
         }
         place(listsLabel, y: m.listsLabelY, animated: animated)
-        if let y = m.archiveLabelY {
-            if archiveLabelShown { place(archiveLabel, y: y, animated: animated) } else {
-                archiveLabel.removeAllAnimations()
-                archiveLabel.position = CGPoint(x: SB.rowX, y: y)
-            }
-            archiveLabel.isHidden = false
-            archiveLabelShown = true
-        } else {
-            archiveLabel.isHidden = true
-            archiveLabelShown = false
-        }
-        archiveLabel.setChevron(open: m.archiveOpen, animated: animated)
         updateReveals(animated: animated)
     }
 
@@ -557,10 +539,9 @@ final class SidebarView: FlippedLayerView {
         label.position = CGPoint(x: SB.rowX, y: y)
     }
 
-    /// The + shows while "Lists" is hovered; the chevron while "Archive" is hovered or the group is open.
+    /// The + shows while "Lists" is hovered.
     private func updateReveals(animated: Bool = true) {
         listsLabel.button.reveal(hover == .label(.lists), animated: animated)
-        archiveLabel.button.reveal(hover == .label(.archive) || model.archiveOpen, animated: animated)
     }
 
     // MARK: - The rename field (§7, §12; css:119–120)
@@ -665,23 +646,16 @@ final class SidebarView: FlippedLayerView {
         guard p.x >= SB.rowX, p.x < SB.rowX + rowWidth else { return nil }
         if let r = model.rows.first(where: { p.y >= $0.y && p.y < $0.y + SB.rowHeight }) { return .row(r.key) }
         if p.y >= model.listsLabelY && p.y < model.listsLabelY + SB.labelHeight { return .label(.lists) }
-        if let a = model.archiveLabelY, p.y >= a && p.y < a + SB.labelHeight { return .label(.archive) }
         let gap = (TK.M.pitch - SB.rowHeight) / 2
         if let r = model.rows.first(where: { p.y >= $0.y - gap && p.y < $0.y + SB.rowHeight + gap }) { return .row(r.key) }
         return nil
     }
 
-    private func labelY(_ l: Label) -> CGFloat? { l == .lists ? model.listsLabelY : model.archiveLabelY }
+    private func labelY(_ l: Label) -> CGFloat? { model.listsLabelY }
 
     private func buttonRect(_ l: Label) -> CGRect? {
         guard let y = labelY(l) else { return nil }
         return SB.buttonFrame(rowWidth: rowWidth).offsetBy(dx: SB.rowX, dy: y)
-    }
-
-    /// The Archive label's text button (`.gl`, dc:31): from the text's left to the label's end, 14 tall.
-    private func archiveTextRect() -> CGRect? {
-        guard let y = model.archiveLabelY else { return nil }
-        return CGRect(x: SB.rowX + SB.labelTextX, y: y + SB.labelTextTop, width: rowWidth - SB.labelTextX, height: 14)
     }
 
     func pointerMoved(to p: CGPoint?) {
@@ -737,7 +711,7 @@ final class SidebarView: FlippedLayerView {
         }
     }
 
-    private func label(_ l: Label) -> SidebarLabelLayer { l == .lists ? listsLabel : archiveLabel }
+    private func label(_ l: Label) -> SidebarLabelLayer { listsLabel }
 
     @objc private func clipScrolled(_ n: Notification) {
         refreshHover()
@@ -774,9 +748,13 @@ final class SidebarView: FlippedLayerView {
                 if let id = key.listID, model.row(key)?.draft == false { a.startListRename(id) }
                 return
             }
-            // A row opens on mouse-down, instantly, and the sidebar takes the keys (§12). The current row only focuses.
+            // A row opens on mouse-down, instantly, and the sidebar takes the keys (§12). The current row only focuses;
+            // Trash, current while a deleted list is open from it, goes back to it with that list's row selected (§28).
             a.endEdits()
-            if key != model.current { a.go(key.route, focus: .sidebar) } else { a.focus(.sidebar) }
+            if key == .trash, ui.deletedListOpen(store.projection) != nil {
+                a.leaveDeletedList()
+                a.focus(.sidebar)
+            } else if key != model.current { a.go(key.route, focus: .sidebar) } else { a.focus(.sidebar) }
             candidate = Candidate(key: key, start: localPoint(e))
         case .label(let l)?:
             a.endEdits()
@@ -784,8 +762,6 @@ final class SidebarView: FlippedLayerView {
             if let r = buttonRect(l), r.contains(p) {
                 press = (l, r)
                 label(l).button.pressed = true
-            } else if l == .archive, let r = archiveTextRect(), r.contains(p) {
-                press = (l, r)
             }
         case nil:
             a.endEdits()
@@ -803,7 +779,7 @@ final class SidebarView: FlippedLayerView {
             return
         }
         guard let c = candidate, case .list(let id) = c.key, model.renaming != id,
-              let row = model.row(c.key), !row.archived, !row.draft,
+              let row = model.row(c.key), !row.draft,
               store.projection.activeLists.ids.contains(id) else { return }
         // After 4pt of vertical movement the list lifts (dc:1679–1686).
         if abs(localPoint(e).y - c.start.y) >= TK.M.dragSlop { beginDrag(c, id: id, e) }
@@ -818,13 +794,8 @@ final class SidebarView: FlippedLayerView {
         if let pr = press {
             press = nil
             if pr.rect.contains(content.convert(e.locationInWindow, from: nil)) {
-                if pr.label == .lists {
-                    label(.lists).button.pressed = false
-                    actions.newList()
-                } else {
-                    label(.archive).button.pressed = false
-                    ui.archiveOpen.toggle()
-                }
+                label(.lists).button.pressed = false
+                actions.newList()
             } else {
                 label(pr.label).button.pressed = false
             }
@@ -990,8 +961,8 @@ final class SidebarView: FlippedLayerView {
         case 49:         // Space, once per press (v2 feedback 18)
             if !e.isARepeat { a.toggleComplete() }
             return true
-        case 51 where cmd:   // ⌘⌫ archives the open list (the menu usually has it first)
-            if let id = cur.listID { a.archive(list: id) }
+        case 51 where cmd:   // ⌘⌫ deletes the open list (§28; the menu usually has it first)
+            if let id = cur.listID { a.deleteList(id) }
             return true
         case 115, 119:   // Home, End
             a.moveSelection(e.keyCode == 115 ? .first : .last, extend: shift)
@@ -1086,13 +1057,11 @@ final class SidebarView: FlippedLayerView {
         actions.go(key.route, focus: .sidebar)
     }
 
-    var labelFrames: (lists: CGRect, archive: CGRect?) {
-        (CGRect(x: SB.rowX, y: model.listsLabelY, width: rowWidth, height: SB.labelHeight),
-         model.archiveLabelY.map { CGRect(x: SB.rowX, y: $0, width: rowWidth, height: SB.labelHeight) })
+    var listsLabelFrame: CGRect {
+        CGRect(x: SB.rowX, y: model.listsLabelY, width: rowWidth, height: SB.labelHeight)
     }
 
     func accessibilityNewList() { actions.newList() }
-    func accessibilityToggleArchive() { ui.archiveOpen.toggle() }
 
     #if DEBUG
     /// For the debug script: what's on screen, by presentation values.
@@ -1109,7 +1078,7 @@ final class SidebarView: FlippedLayerView {
             let tc = pres.sublayers?.compactMap { $0 as? TextLayer }.first?.presentation()?.foregroundColor
             out.append("\(name) y=\(String(format: "%.1f", pres.position.y)) op=\(String(format: "%.2f", pres.opacity))\(leaving[key] != nil ? " leaving" : "") title=\(tc.map { NSColor(cgColor: $0)?.description ?? "" } ?? "")")
         }
-        out.append("label Lists y=\(listsLabel.presentation()?.position.y ?? listsLabel.position.y) Archive y=\(archiveLabel.presentation()?.position.y ?? archiveLabel.position.y) hidden=\(archiveLabel.isHidden) chevron=\(archiveLabel.button.glyph.presentation()?.value(forKeyPath: "transform.rotation.z") ?? 0) reveal=\(listsLabel.button.presentation()?.opacity ?? 0)/\(archiveLabel.button.presentation()?.opacity ?? 0)")
+        out.append("label Lists y=\(listsLabel.presentation()?.position.y ?? listsLabel.position.y) reveal=\(listsLabel.button.presentation()?.opacity ?? 0)")
         if let lift { out.append("lift y=\((lift.presentation() ?? lift).position.y) x=\((lift.presentation() ?? lift).position.x)") }
         out.append("route=\(ui.route.listID.flatMap { p.list($0)?.name } ?? ui.route.viewName ?? "") sel=\(ui.selection.count) hover=\(String(describing: hover)) button=\(String(describing: hoverButton)) drag=\(String(describing: ui.drag)) hints=\(ui.cmdHints) rename=\(String(describing: ui.rename)) focus=\(ui.focus) fr=\(window?.firstResponder.map { "\(type(of: $0))" } ?? "-")")
         if let f = field { out.append("field frame=\(f.frame) text='\(f.stringValue)'") }
@@ -1182,19 +1151,12 @@ final class SidebarContentView: FlippedLayerView {
             el.setAccessibilityParent(self)
             out.append(el)
         }
-        let labels = owner.labelFrames
+        let lists = owner.listsLabelFrame
         let plus = SidebarAXElement(role: .button) { [weak owner] in owner?.accessibilityNewList() }
         plus.setAccessibilityLabel("New List")
-        plus.setAccessibilityFrameInParentSpace(SB.buttonFrame(rowWidth: labels.lists.width).offsetBy(dx: labels.lists.minX, dy: labels.lists.minY))
+        plus.setAccessibilityFrameInParentSpace(SB.buttonFrame(rowWidth: lists.width).offsetBy(dx: lists.minX, dy: lists.minY))
         plus.setAccessibilityParent(self)
         out.insert(plus, at: min(1, out.count))
-        if let a = labels.archive {
-            let toggle = SidebarAXElement(role: .button) { [weak owner] in owner?.accessibilityToggleArchive() }
-            toggle.setAccessibilityLabel("Show or hide archived lists")
-            toggle.setAccessibilityFrameInParentSpace(a)
-            toggle.setAccessibilityParent(self)
-            out.append(toggle)
-        }
         axElements = out
     }
 }

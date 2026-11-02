@@ -122,7 +122,12 @@ final class WindowState {
         didSet { if todayDoneCollapsed != oldValue { UserDefaults.standard.set(todayDoneCollapsed, forKey: Self.todayDoneCollapsedKey) } }
     }
     static let todayDoneCollapsedKey = "todayCompletedCollapsed"
-    var archiveOpen = false
+    /// Deleted lists expanded in Trash, showing their tasks under their row (§28). Local like a heading's collapse, and
+    /// kept across launches; they start collapsed.
+    var trashExpanded: Set<EntityID> = Set(UserDefaults.standard.stringArray(forKey: WindowState.trashExpandedKey) ?? []) {
+        didSet { if trashExpanded != oldValue { UserDefaults.standard.set(trashExpanded.sorted(), forKey: Self.trashExpandedKey) } }
+    }
+    static let trashExpandedKey = "trashExpandedLists"
     var pins: [EntityID: Pin] = [:]
     var draft: Draft?
     var rename: Rename?

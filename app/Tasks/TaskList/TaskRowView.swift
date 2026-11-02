@@ -42,12 +42,22 @@ struct RowModel: Equatable {
     var trashed = false
     /// A heading's drag copy (§23, css:479–481): no checkbox, its name semibold at the checkbox's edge.
     var heading = false
+    /// A deleted list's row in Trash (§28, `del.css` `.lrow`): its tile centred on the checkbox's column, its name in
+    /// 13/16 medium, its count in the list-name slot, and a chevron at the end, always shown, where a task's › goes.
+    var deletedList: DeletedList?
+    struct DeletedList: Equatable {
+        var monogram: String
+        var slot: Int
+        var expanded: Bool
+    }
+    /// A deleted list's task, expanded under its row: indented 26, so its box starts under the list's name (§28).
+    var indent: CGFloat = 0
 }
 
 /// A task row (css:159–188): a 30pt shape, 10 in from the pane's sides, radius 8. Checkbox at 10, the title 10 after
 /// it with its last 24pt fading out, chips 8 after the title, the › slot always kept, 5 from the right edge.
 final class TaskRowView: NSView {
-    enum Part: Equatable { case body, check, chip(Overlays.Picker.Field), open }
+    enum Part: Equatable { case body, check, chip(Overlays.Picker.Field), open, disclosure }
     enum Style { case row, lifted }
 
     private(set) var model: RowModel?
@@ -72,6 +82,10 @@ final class TaskRowView: NSView {
     private let deadlineChip = ChipLayer()
     private var chipFrames: [(Overlays.Picker.Field, CGRect)] = []
     let open = IconButtonLayer(.chevronRight, size: TK.M.openButton, glyphSize: 12)
+    /// A deleted list's tile and its disclosure chevron (§28).
+    private let tile = TileLayer()
+    let disclosure = IconButtonLayer(.chevronRight, size: TK.M.openButton, glyphSize: 12)
+    private var disclosureDown: Bool?
     private(set) var titleFrame: CGRect = .zero
 
     private var hoveredPart: Part?
@@ -109,8 +123,12 @@ final class TaskRowView: NSView {
         layer.addSublayer(open)
         open.setInstant { open.opacity = 0 }
         open.reveal(false, animated: false)
+        tile.isHidden = true
+        disclosure.isHidden = true
+        layer.addSublayer(tile)
+        layer.addSublayer(disclosure)
         for l in [selection, flash, ring, check, title, hintGlyph, hintCount, strike, whereLabel, whereSuffixLabel, open, whereMask, titleMask,
-                  whenChip, deadlineChip] as [CALayer] {
+                  whenChip, deadlineChip, tile, disclosure] as [CALayer] {
             l.actions = Self.noActions
         }
     }
@@ -162,13 +180,20 @@ final class TaskRowView: NSView {
         ring.borderColor = palette.focus.cgColor
         ring.frame = CGRect(x: 0, y: 0, width: width, height: TK.M.row)
 
-        // Checkbox at x 10, centered.
-        check.position = CGPoint(x: TK.M.rowPadLeft + TK.M.check / 2, y: TK.M.row / 2)
+        // Checkbox at x 10 (36 under a deleted list), centered.
+        let padLeft = TK.M.rowPadLeft + m.indent
+        check.position = CGPoint(x: padLeft + TK.M.check / 2, y: TK.M.row / 2)
+        // A deleted list's tile, 20×16, centred on the checkbox's column (so its name starts where titles do).
+        if let dl = m.deletedList {
+            tile.set(monogram: dl.monogram, hue: palette.tile(slot: dl.slot), palette: palette, glyph: .sun)
+            tile.position = CGPoint(x: padLeft + TK.M.check / 2, y: TK.M.row / 2)
+        }
+        tile.isHidden = m.deletedList == nil
         CATransaction.commit()
         check.set(on: m.done, placeholder: m.draft, cue: m.cue, palette: palette, animated: anim)
         // `set` puts the opacity back each time; a trashed row's box is at 60%.
         if m.trashed { check.setInstant { check.opacity = 0.6 } }
-        check.isHidden = m.heading
+        check.isHidden = m.heading || m.deletedList != nil
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -178,7 +203,25 @@ final class TaskRowView: NSView {
         if style == .row {
             open.position = CGPoint(x: right - TK.M.openButton / 2, y: TK.M.row / 2)
             open.setPalette(palette)
+            disclosure.position = open.position
+            disclosure.setPalette(palette)
             right -= TK.M.openButton + TK.M.openGap
+        }
+        disclosure.isHidden = m.deletedList == nil || style != .row
+        if let dl = m.deletedList {
+            // Turns 90° in 200 ms ease-out (§28, as a heading's).
+            let down = dl.expanded
+            if disclosureDown != down || !same {
+                let angle = down ? CGFloat.pi / 2 : 0
+                if same, disclosureDown != nil, anim, !TK.CA.reduce {
+                    disclosure.glyph.animate("transform.rotation.z", to: angle, TK.CA.chevronT)
+                } else {
+                    disclosure.glyph.setInstant { disclosure.glyph.setValue(angle, forKeyPath: "transform.rotation.z") }
+                }
+                disclosureDown = down
+            }
+        } else {
+            disclosureDown = nil
         }
         // The Deadline at the right, always shown (§24): a date never truncates. `.chips` keeps its 8pt margin even
         // when there's none.
@@ -196,10 +239,11 @@ final class TaskRowView: NSView {
         // Deadline never does; the list name after the title keeps up to `whereKeep` and then truncates with the
         // title's end fade; space beyond the keeps goes to the title first, then to the list name. Nothing is drawn
         // over the leading content or past the row.
-        let titleX = m.heading ? TK.M.rowPadLeft : TK.M.rowPadLeft + TK.M.check + TK.M.titleGap
+        let titleX = m.heading ? TK.M.rowPadLeft : padLeft + TK.M.check + TK.M.titleGap
         let color = (m.done || m.untitled) ? palette.inkTertiary : m.trashed ? palette.inkSecondary : palette.ink
-        let text = m.untitled ? "New Task" : m.title
-        title.set(text, font: m.heading ? HeadingRowView.font : TK.Font.body,
+        let text = m.deletedList != nil ? (m.title.isEmpty ? "Untitled" : m.title) : m.untitled ? "New Task" : m.title
+        // A deleted list's name is medium: the row holds things (§28).
+        title.set(text, font: m.heading ? HeadingRowView.font : m.deletedList != nil ? TK.Font.bodyMedium : TK.Font.body,
                   color: same ? (title.foregroundColor.flatMap(NSColor.init(cgColor:)) ?? color) : color)
         let hintW = layoutHint(m, palette)
         let hintSpace = hintW > 0 ? hintW + 6 : 0
@@ -300,7 +344,13 @@ final class TaskRowView: NSView {
         let notesLabel = !m.notes.hasNotes ? nil : m.notes.total > 0 ? "\(m.notes.checked) of \(m.notes.total) checked" : "Has notes"
         let whereFull = m.whereText.map { $0 + (m.whereSuffix ?? "") }
         let dates = [m.when, m.deadline].compactMap { $0.map { $0.tip.isEmpty ? $0.content.text : $0.tip } }
-        setAccessibilityLabel(([text, notesLabel].compactMap { $0 } + dates + [whereFull].compactMap { $0 }).joined(separator: ", "))
+        if let dl = m.deletedList {
+            // "School, deleted list, 11 tasks, collapsed" (§28).
+            setAccessibilityLabel([text, "deleted list", m.whereText ?? "", dl.expanded ? "expanded" : "collapsed"].filter { !$0.isEmpty }
+                .joined(separator: ", "))
+        } else {
+            setAccessibilityLabel(([text, notesLabel].compactMap { $0 } + dates + [whereFull].compactMap { $0 }).joined(separator: ", "))
+        }
         setAccessibilitySelected(m.selected)
     }
 
@@ -309,6 +359,7 @@ final class TaskRowView: NSView {
     /// The part under a point in the row's own coordinates.
     func part(at p: CGPoint) -> Part {
         guard let m = model else { return .body }
+        if m.deletedList != nil { return style == .row && disclosure.frame.contains(p) ? .disclosure : .body }
         if style == .row, m.openAllowed, open.frame.insetBy(dx: 0, dy: 0).contains(p) { return .open }
         if m.trashed { return .body }
         for (field, f) in chipFrames where f.contains(p) { return .chip(field) }
@@ -370,6 +421,7 @@ final class TaskRowView: NSView {
         hoveredPart = p
         check.hovered = p == .check
         open.hovered = p == .open
+        disclosure.hovered = p == .disclosure
         whenChip.hovered = p == .chip(.when)
         deadlineChip.hovered = p == .chip(.deadline)
     }
@@ -377,6 +429,7 @@ final class TaskRowView: NSView {
     func setPressed(_ part: Part?) {
         check.setPressedIfChanged(part == .check)
         open.pressed = part == .open
+        disclosure.pressed = part == .disclosure
         whenChip.pressed = part == .chip(.when)
         deadlineChip.pressed = part == .chip(.deadline)
     }
@@ -410,8 +463,9 @@ final class TaskRowView: NSView {
     }
 
     private func updateOpen(animated: Bool) {
-        let show = rowHovered && (model?.openAllowed ?? false) && style == .row
-        open.isHidden = !(model?.openAllowed ?? false)
+        let allowed = (model?.openAllowed ?? false) && model?.deletedList == nil
+        let show = rowHovered && allowed && style == .row
+        open.isHidden = !allowed
         open.reveal(show, animated: animated)
     }
 
@@ -437,9 +491,21 @@ final class TaskRowView: NSView {
     private lazy var openElement = PressElement(role: .button, parent: self)
     private lazy var whenElement = PressElement(role: .button, parent: self)
     private lazy var deadlineElement = PressElement(role: .button, parent: self)
+    private lazy var disclosureElement = PressElement(role: .disclosureTriangle, parent: self)
+    /// A deleted list's chevron, for VoiceOver.
+    var onDisclosure: (() -> Void)?
 
     override func accessibilityChildren() -> [Any]? {
         guard let m = model, style == .row else { return [] }
+        if let dl = m.deletedList {
+            // "Expand School" or "Collapse School" (§28).
+            disclosureElement.setAccessibilityLabel((dl.expanded ? "Collapse " : "Expand ") + m.title)
+            disclosureElement.setAccessibilityValue(dl.expanded ? 1 : 0)
+            let f = disclosure.frame
+            disclosureElement.setAccessibilityFrameInParentSpace(CGRect(x: f.minX, y: bounds.height - f.maxY, width: f.width, height: f.height))
+            disclosureElement.onPress = onDisclosure
+            return [disclosureElement]
+        }
         let title = m.untitled ? "New Task" : m.title
         checkElement.setAccessibilityLabel((m.done ? "Mark not done: " : "Complete: ") + title + (m.done ? "" : m.cue.words))
         checkElement.setAccessibilityValue(m.done ? 1 : 0)
@@ -847,11 +913,11 @@ final class EmptyStateView: NSView {
     }
 }
 
-// MARK: - The archived list's banner (css:287–289, §12, §21)
+// MARK: - A deleted list's banner (css:287–289, §28): it's in Trash, read-only until it's restored
 
 final class BannerView: NSView {
     private let bg = CALayer()
-    private let icon = GlyphLayer(.archive, size: 14)
+    private let icon = GlyphLayer(.trash, size: 14)
     private let text = CATextLayer()
     private let button = CALayer()
     private let buttonLabel = TextLayer()
@@ -887,16 +953,17 @@ final class BannerView: NSView {
 
     /// Lays the banner out in `width`; returns its height.
     @discardableResult
-    func configure(archivedOn: String, palette: TK.Palette, width: CGFloat) -> CGFloat {
+    func configure(deletedOn: String, palette: TK.Palette, width: CGFloat) -> CGFloat {
         self.palette = palette
-        let bw = 12 + TextLayer.width("Unarchive", font: TK.Font.body) + 12
+        let verb = TrashVerb.list
+        let bw = 12 + TextLayer.width(verb.title, font: TK.Font.body) + 12
         let textX: CGFloat = 12 + 14 + 10
         let textW = max(0, width - textX - 10 - bw - 10)
         let para = NSMutableParagraphStyle()
         para.minimumLineHeight = 16
         para.maximumLineHeight = 16
-        let s = NSMutableAttributedString(string: "Archived \(archivedOn)", attributes: [.font: TK.Font.body, .foregroundColor: palette.ink, .paragraphStyle: para])
-        s.append(NSAttributedString(string: " · Not in Today or Move to. Everything still edits.", attributes: [.font: TK.Font.small, .foregroundColor: palette.inkSecondary, .paragraphStyle: para]))
+        let s = NSMutableAttributedString(string: "Deleted \(deletedOn)", attributes: [.font: TK.Font.body, .foregroundColor: palette.ink, .paragraphStyle: para])
+        s.append(NSAttributedString(string: " · Read-only until you \(verb.untilYou).", attributes: [.font: TK.Font.small, .foregroundColor: palette.inkSecondary, .paragraphStyle: para]))
         let th = ceil(s.boundingRect(with: CGSize(width: textW, height: 400), options: [.usesLineFragmentOrigin]).height)
         let h = max(24, th) + 18
         layer?.setInstant {
@@ -907,7 +974,7 @@ final class BannerView: NSView {
             icon.color = palette.inkSecondary
             icon.position = CGPoint(x: 12 + 7, y: h / 2)
             button.frame = CGRect(x: width - 10 - bw, y: (h - 24) / 2, width: bw, height: 24)
-            buttonLabel.set("Unarchive", font: TK.Font.body, color: palette.accentText)
+            buttonLabel.set(verb.title, font: TK.Font.body, color: palette.accentText)
             buttonLabel.place(x: 12, lineTop: 4, lineHeight: 16, width: bw)
             restyle()
         }

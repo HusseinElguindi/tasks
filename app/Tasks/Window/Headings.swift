@@ -15,7 +15,7 @@ extension WindowActions {
     /// ⌥⌘N, or New Heading Above in a task's menu: above the first selected row, which becomes the heading's first
     /// task, or at the bottom. It shows in its row, renaming, until Return writes it (dc:3371–3383).
     func newHeading() {
-        guard case .list(let listID) = window.route, p.list(listID) != nil else { return }
+        guard case .list(let listID) = window.route, p.isActive(list: listID) else { return }
         endEdits()
         let L = layout
         let before = L.order.first { window.selection.contains($0) && !L.isDone($0) && p.task($0) != nil }
@@ -28,7 +28,7 @@ extension WindowActions {
 
     /// Double-click, Return, or Rename in its menu: always in place (Settings ▸ Edit tasks is about tasks).
     func startHeadingRename(_ id: EntityID, caret: WindowState.Rename.Caret = .all) {
-        guard let t = p.task(id), t.isHeading, !t.deleted else { return }
+        guard let t = p.task(id), t.isHeading, !t.deleted, !inTrash else { return }
         endEdits()
         select([id])
         window.focus = .list
@@ -37,7 +37,7 @@ extension WindowActions {
 
     /// Double-clicking the large title, or the band's once the list has scrolled (it scrolls back up first).
     func startTitleRename() {
-        guard case .list(let id) = window.route, let l = p.list(id) else { return }
+        guard case .list(let id) = window.route, let l = p.list(id), l.archivedAt == nil else { return }
         endEdits()
         window.taskList?.scrollToTop()
         window.focus = .list
@@ -48,7 +48,7 @@ extension WindowActions {
 
     /// Click into them, Add Notes or Edit Notes in its menu, or Tab from its rename.
     func editHeadingNotes(_ id: EntityID) {
-        guard isHeading(id) else { return }
+        guard isHeading(id), !inTrash else { return }
         endEdits()
         select([id])
         expand(id)

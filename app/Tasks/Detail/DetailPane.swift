@@ -40,15 +40,16 @@ struct DetailPane: View {
         .accessibilityLabel("Task details")
     }
 
-    /// The selection minus deleted tasks (in the Trash, only deleted ones, §22); the draft when it's what's selected
-    /// (dc:1611, 1930).
+    /// The selection minus trashed tasks (in Trash, and a deleted list opened from it, only trashed ones: deleted, or
+    /// in a deleted list, §22, §28); the draft when it's what's selected (dc:1611, 1930).
     private var selectedItems: [DetailItem] {
         if let d = window.draft, window.selection == [d.id] { return [DetailItem(d)] }
         let p = store.projection
-        let trash = window.route == .trash
+        let trash = window.inTrash(p)
         return window.selection.sorted().compactMap { id -> DetailItem? in
             // Headings aren't tasks: they have no details of their own (§23).
-            guard id != window.draft?.id, let m = p.taskModel(id), m.deleted == trash, !m.isHeading else { return nil }
+            guard id != window.draft?.id, let m = p.taskModel(id), (m.deleted || !p.isActive(list: m.list)) == trash, !m.isHeading
+            else { return nil }
             return DetailItem(m)
         }
     }
@@ -68,7 +69,10 @@ struct DetailPane: View {
 
     @ViewBuilder
     private func content(_ items: [DetailItem], actions: WindowActions, size: CGSize) -> some View {
-        if items.count == 1 {
+        if items.isEmpty, let id = actions.selectedDeletedList, let list = store.projection.listModel(id) {
+            DeletedListDetail(store: store, list: list, actions: actions)
+                .id(id)
+        } else if items.count == 1 {
             SingleDetail(store: store, window: window, item: items[0], refs: refs, actions: actions, viewport: size.height)
                 .id(items[0].id)
         } else if items.count > 1 {
@@ -97,7 +101,7 @@ struct DetailPane: View {
                     .lineLimit(1)
                     .frame(height: 16)
                 Text(heads.count == 1 ? headingLine(heads[0]) : heads.count > 1 ? "Headings have no notes or dates here."
-                     : "Select a task to see its notes and dates.")
+                     : window.route == .trash ? "Select a task or a list to see it here." : "Select a task to see its notes and dates.")
                     .font(Font(TK.Font.small))
                     .foregroundStyle(tk.inkTertiary.swiftUI)
                     .multilineTextAlignment(.center)
@@ -204,9 +208,11 @@ struct DetailPane: View {
         }
         if (k == 36 || k == 76) && plain {
             // Return edits the selected task as Settings ▸ Edit tasks says: its title here, or renamed in its row (the
-            // list takes the keys).
+            // list takes the keys). A deleted list's row in Trash opens it (§28).
             let ids = a.targetIDs
-            if ids.count == 1 {
+            if let id = a.selectedDeletedList {
+                a.openDeletedList(id)
+            } else if ids.count == 1 {
                 a.editTask(ids[0], caret: .all)
             } else if ids.isEmpty {
                 a.focus(.list)
@@ -215,8 +221,8 @@ struct DetailPane: View {
             return true
         }
         if k == 49 && plain {
-            // Space completes or uncompletes, once per press (v2 feedback 18).
-            if !e.isARepeat { a.toggleComplete() }
+            // Space completes or uncompletes, once per press (v2 feedback 18); on a deleted list's row it expands (§28).
+            if !e.isARepeat { if let id = a.selectedDeletedList { a.toggleTrashExpanded([id]) } else { a.toggleComplete() } }
             return true
         }
         if k == 0 && cmd && !shift {
@@ -254,8 +260,13 @@ private struct DetailHeader: View {
         let sameList = first.map { f in items.allSatisfy { $0.list == f.list } } ?? false
         let list = sameList ? first.flatMap { store.projection.listModel($0.list) } : nil
         let inert = items.count == 1 && items[0].isDraft && items[0].title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let deletedList = items.isEmpty ? actions.selectedDeletedList : nil
         HStack(spacing: 8) {
-            if let first {
+            if deletedList != nil {
+                // A deleted list's summary: the Trash glyph and "Trash" (§28).
+                GlyphView(glyph: .trash, size: 14, color: tk.inkSecondary.swiftUI)
+                Text("Trash").font(Font(TK.Font.body)).foregroundStyle(tk.inkSecondary.swiftUI).lineLimit(1).frame(height: 16)
+            } else if let first {
                 TileView(monogram: list?.monogram ?? "…", hue: list.map { tk.tile(slot: $0.colorSlot) } ?? tk.tile(.ink), size: .small)
                 Text(list != nil ? actions.listName(first.list) : "Several lists")
                     .font(Font(TK.Font.body))
@@ -266,10 +277,17 @@ private struct DetailHeader: View {
             }
             Spacer(minLength: 0)
             HStack(spacing: 2) {
-                if !items.isEmpty && window.route == .trash {
-                    // In the Trash, Put Back replaces Delete (§22, dc:120).
-                    HeaderIconButton(glyph: .putBack, tip: items.count > 1 ? "Put Back \(items.count) Tasks" : "Put Back", keys: "⌘⌫",
-                                     overlays: window.overlays) { actions.putBack(ids) }
+                if let id = deletedList {
+                    HeaderIconButton(glyph: .putBack, tip: "\(TrashVerb.list.title) List", keys: "⌘⌫", overlays: window.overlays) {
+                        actions.restoreList(id)
+                    }
+                } else if !items.isEmpty && actions.inTrash {
+                    // In Trash, Put Back replaces Delete (§22, dc:120); for a task whose list is in Trash it pops "Put back
+                    // in" (§28).
+                    let verb = TrashVerb.task
+                    let into = ids.contains(where: actions.homeIsDeleted)
+                    HeaderIconButton(glyph: .putBack, tip: into ? "\(verb.title) in…" : items.count > 1 ? "\(verb.title) \(items.count) Tasks" : verb.title,
+                                     keys: "⌘⌫", overlays: window.overlays) { actions.takeOutOfTrash(ids) }
                 } else if !items.isEmpty {
                     HeaderIconButton(glyph: .trash, tip: items.count > 1 ? "Delete \(items.count) Tasks" : "Delete", keys: "⌘⌫",
                                      overlays: window.overlays) { actions.delete(ids) }
@@ -313,8 +331,9 @@ private struct SingleDetail: View {
 
     var body: some View {
         let inert = item.isDraft && item.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        // The Trash reads but doesn't edit: the title, the rows and the notes are deaf to the pointer (§22, css:429–430).
-        let readOnly = window.route == .trash
+        // Trash reads but doesn't edit, nor does a deleted list opened from it: the title, the rows and the notes are
+        // deaf to the pointer (§22, §28, css:429–430).
+        let readOnly = actions.inTrash
         ScrollView(.vertical) {
             DetailColumn(minHeight: max(0, viewport - 8 - 18), flexIndex: 3, flexMin: 12 + 120) {
                 titleRow(inert: inert, readOnly: readOnly)
@@ -370,13 +389,17 @@ private struct SingleDetail: View {
         }
     }
 
-    /// "Created Oct 26 · Completed Oct 30" (dc:1964); in the Trash "Created Aug 20 · Deleted Oct 28" (dc:2437). The notes'
-    /// length from 18,000 characters: " · 19,412 / 20,000" (design/MARKDOWN.md §8, dc:2624).
+    /// "Created Oct 26 · Completed Oct 30" (dc:1964); in the Trash "Created Aug 20 · Deleted Oct 28" (dc:2437), and for
+    /// a task that went with its list "Deleted with School, Nov 1" (§28). The notes' length from 18,000 characters:
+    /// " · 19,412 / 20,000" (design/MARKDOWN.md §8, dc:2624).
     private var meta: String {
         func day(_ ms: Int) -> String { DateLabel.monthDay(CalendarDate(Date(timeIntervalSince1970: TimeInterval(ms) / 1000))) }
         var s = "Created " + day(item.createdAt)
-        if window.route == .trash, let t = store.projection.task(item.id), t.deleted {
+        let p = store.projection
+        if actions.inTrash, let t = p.task(item.id), t.deleted {
             s += " · Deleted " + day(ViewItems.deletedAt(t))
+        } else if actions.inTrash, let t = p.task(item.id), let l = p.list(t.list), let at = l.archivedAt {
+            s += " · Deleted with " + actions.listName(l.id) + ", " + day(at)
         } else if let done = item.completedAt {
             s += " · Completed " + day(done)
         }

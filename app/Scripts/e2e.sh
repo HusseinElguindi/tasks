@@ -36,8 +36,8 @@ phase1)
   run A $GOOD A1 '[]' -demoData YES
   run B $GOOD B1 '[]'
   same A1 B1
-  # Offline edits on A: reorder, archive, rename, create.
-  run A $DEAD A2 '[{"reorder":"Print ECE 358 formula sheet","list":"School"},{"archive":"Errands"},{"rename":"Write sync log spec","to":"Write sync log spec v2"},{"createTask":"Offline on A","list":"Home","when":"today"}]'
+  # Offline edits on A: reorder, delete a list, rename, create.
+  run A $DEAD A2 '[{"reorder":"Print ECE 358 formula sheet","list":"School"},{"deleteList":"Errands"},{"rename":"Write sync log spec","to":"Write sync log spec v2"},{"createTask":"Offline on A","list":"Home","when":"today"}]'
   # Online edits on B, then more offline edits on B.
   run B $GOOD B2 '[{"createTask":"From B","list":"School"},{"complete":"Book flu shot"},{"reorder":"Water the plants","list":"Home","before":"Fix the bathroom fan"},{"move":"Look into a standing desk","to":"Tasks app"},{"reorderList":"Home"}]'
   run B $DEAD B3 '[{"rename":"Pick up prescription","to":"Pick up prescription (B offline)"},{"reorder":"Ask about co-op interview slots","list":"School"}]'

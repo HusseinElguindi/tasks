@@ -15,6 +15,8 @@ struct HeadingModel: Equatable {
     var paneFocused = true
     var renaming = false
     var dragSource = false
+    /// In a deleted list opened from Trash: no + (nothing is added there), only the chevron (§28).
+    var readOnly = false
 }
 
 /// A heading row: on the 32pt pitch in the row's 30pt shape, 10 in from the pane's sides. The name is 13/16 semibold
@@ -147,7 +149,7 @@ final class HeadingRowView: NSView {
     func part(at p: CGPoint) -> Part {
         guard let m = model, !m.renaming else { return .body }
         if chevron.frame.contains(p) { return .chevron }
-        if plus.frame.contains(p) { return .plus }
+        if plus.frame.contains(p), !m.readOnly { return .plus }
         return .body
     }
 
@@ -171,7 +173,7 @@ final class HeadingRowView: NSView {
     /// Hover fades both in on `hoverIn` and out on `hoverOut`; a collapsed heading keeps its chevron. Renaming hides them.
     private func updateReveal(animated: Bool) {
         let renaming = model?.renaming ?? false
-        plus.reveal(hovered && !renaming, animated: animated)
+        plus.reveal(hovered && !renaming && !(model?.readOnly ?? false), animated: animated)
         chevron.reveal((hovered || (model?.collapsed ?? false)) && !renaming, animated: animated)
     }
 
@@ -181,7 +183,7 @@ final class HeadingRowView: NSView {
 
 /// The top of the list pane, scrolling with the rows (§23 The list's title): the list's or the view's tile (20×16),
 /// 9 apart from the name in 20/26 semibold `ink` with −0.2 tracking, on a 30pt line 4 below the band; Today's
-/// date or "Archived" after it in `ink-tertiary`. A list's notes sit 4 below the title, in the notes editor (the list
+/// date or "In Trash" after it in `ink-tertiary`. A list's notes sit 4 below the title, in the notes editor (the list
 /// adds it as a subview), with a "Notes" placeholder in `ink-quaternary` that fades in only on hover, while renaming,
 /// or with the caret in them.
 final class ListTitleView: NSView {
@@ -252,7 +254,7 @@ final class ListTitleView: NSView {
             tile.position = CGPoint(x: x + 10, y: lineTop + 15)
             x += 20 + 9
         }
-        // The name keeps up to 160 (all of a shorter one), then the date or "Archived" after it gives way, then the
+        // The name keeps up to 160 (all of a shorter one), then the date or "In Trash" after it gives way, then the
         // name; both end in an ellipsis, as the prototype's `.lhn` and `.lhs` do (css:441–442, v2 feedback 16).
         let titleNat = ceil(TextLayer.width(c.title, font: Self.font) + abs(Self.kern) * CGFloat(c.title.count)) + 2
         let subNat = c.sub.map { ceil(TextLayer.width($0, font: TK.Font.body)) + 2 } ?? 0

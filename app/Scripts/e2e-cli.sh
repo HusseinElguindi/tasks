@@ -46,7 +46,7 @@ app_state() {
 }
 cli_state() {
   jq -S -n --argjson t "$(cli find "" --deleted --json --cached)" --argjson a "$(cli lists --json --cached)" \
-    --argjson b "$(cli archive --json --cached)" \
+    --argjson b "$(cli deleted --json --cached)" \
     '{tasks: [$t[] | {id, list, title, when, deadline, done, deleted}] | sort_by(.id),
       lists: [($a + $b)[] | {id, name, archived: (.archivedAt != null)}] | sort_by(.id)}'
 }

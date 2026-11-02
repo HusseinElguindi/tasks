@@ -124,24 +124,23 @@ enum Menus {
         return menu(items)
     }
 
-    /// A task in the Trash: Show Details, Put Back, Put Back in ▸ (§22, dc:2422–2430).
+    /// A task in Trash: Show Details, Put Back, Put Back in ▸ (§22, dc:2422–2430). One whose list is in Trash has
+    /// nowhere to go back to: Show Details ⌘D · Put Back in ▸ (§28).
     static func trash(_ ids: [EntityID], actions a: WindowActions) -> NSMenu {
         let p = a.p
         let tasks = ids.compactMap(p.task)
         let n = tasks.count
+        let verb = TrashVerb.task
         var items: [NSMenuItem] = []
         if n == 1, let t = tasks.first {
             items.append(Item("Show Details", key: "d") { a.select([t.id]); a.openDetail() })
-            items.append(.separator())
         }
-        items.append(Item(n == 1 ? "Put Back" : "Put Back \(n) Tasks", key: "\u{8}") { a.putBack(ids) })
-        let into = NSMenuItem(title: "Put Back in", action: nil, keyEquivalent: "")
-        into.submenu = menu([header("Put back in")] + p.activeLists.ids.map { listID in
-            let item = Item(fit(a.listName(listID))) { a.putBack(ids, in: listID) }
-            if let m = p.listModel(listID) { item.image = tileImage(monogram: m.monogram, slot: m.colorSlot, palette: a.window.palette) }
-            if n == 1 && tasks[0].list == listID { item.state = .on }
-            return item
-        })
+        if !ids.contains(where: a.homeIsDeleted) {
+            if n == 1 { items.append(.separator()) }
+            items.append(Item(n == 1 ? verb.title : "\(verb.title) \(n) Tasks", key: "\u{8}") { a.putBack(ids) })
+        }
+        let into = NSMenuItem(title: "\(verb.title) in", action: nil, keyEquivalent: "")
+        into.submenu = menu([header("\(verb.sentence) in")] + putBackInItems(ids, actions: a))
         items.append(into)
         return menu(items)
     }
@@ -192,17 +191,12 @@ enum Menus {
         menu(items).popUp(positioning: nil, at: point, in: view)
     }
 
-    // MARK: Lists (dc:1061–1078)
+    // MARK: Lists (dc:1061–1078, §28 `Del-Menu-List`)
 
     static func list(_ id: EntityID, actions a: WindowActions) -> NSMenu {
         let p = a.p
-        guard let l = p.list(id) else { return NSMenu() }
-        if l.archivedAt != nil {
-            return menu([
-                Item("Unarchive") { a.unarchive(list: id) },
-                Item("Rename", key: returnKey, modifiers: []) { a.startListRename(id) },
-            ])
-        }
+        // A deleted list isn't in the sidebar; its row in Trash has its own menu (§28).
+        guard p.isActive(list: id) else { return NSMenu() }
         let lists = p.activeLists.ids
         let i = lists.firstIndex(of: id) ?? 0
         return menu([
@@ -215,7 +209,7 @@ enum Menus {
             Item("Move Up", key: String(UnicodeScalar(NSUpArrowFunctionKey)!), modifiers: [.command, .option], enabled: i > 0) { a.moveListBy(id, -1) },
             Item("Move Down", key: String(UnicodeScalar(NSDownArrowFunctionKey)!), modifiers: [.command, .option], enabled: i < lists.count - 1) { a.moveListBy(id, 1) },
             .separator(),
-            Item("Archive", key: "\u{8}") { a.archive(list: id) },
+            Item("Delete List", key: "\u{8}") { a.deleteList(id) },
         ])
     }
 

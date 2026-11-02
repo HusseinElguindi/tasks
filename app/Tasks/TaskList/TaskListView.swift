@@ -320,18 +320,33 @@ final class TaskListView: NSView {
                 let untitled = draft.title.isEmpty
                 m = RowModel(id: id, title: draft.title, untitled: untitled, done: false, draft: true)
                 if let when = draft.when, !(inToday && when <= today), when != groupDay { m.when = .when(when, today: today) }
+            } else if L.listRows.contains(id), let l = p.listModel(id) {
+                // A deleted list in Trash: one row, with "11 tasks" in the list-name slot (§28).
+                m = RowModel(id: id, title: l.name, untitled: false, done: false, draft: false)
+                m.trashed = true
+                m.deletedList = .init(monogram: l.monogram, slot: l.colorSlot, expanded: state.trashExpanded.contains(id))
+                m.whereText = Self.deletedListCount(p, id)
+                if L.groupKind(id) == .month, let at = l.archivedAt { m.whereSuffix = " · " + Self.monthDay(at) }
             } else if let t = p.taskModel(id) {
                 m = RowModel(id: id, title: t.title, untitled: t.title.isEmpty, done: t.isDone, draft: false)
                 m.notes = t.notesSummary
+                // Trashed: deleted, or in a deleted list (§28).
+                let trashed = t.deleted || !p.isActive(list: t.list)
                 // Done and trashed rows show no dates and no ring (§24, §22).
-                if !t.isDone, !t.deleted {
+                if !t.isDone, !trashed {
                     if let when = t.when, !(inToday && when <= today), when != groupDay { m.when = .when(when, today: today) }
                     if let dl = t.deadline { m.deadline = .deadline(dl, today: today, groupDay: groupDay) }
                     m.cue = .init(when: t.when, deadline: t.deadline, today: today, inToday: inToday)
                 }
                 if inToday && L.isDone(id) { m.whereText = actions.listName(t.list) }
                 if state.route.isView, let w = viewWhere(L, id: id, list: t.list) { m.whereText = w.name; m.whereSuffix = w.suffix }
-                m.trashed = t.deleted
+                m.trashed = trashed
+                // Under its deleted list's row: indented, and no list name (§28).
+                if L.childOf[id] != nil {
+                    m.indent = 26
+                    m.whereText = nil
+                    m.whereSuffix = nil
+                }
             } else {
                 continue
             }
@@ -346,6 +361,7 @@ final class TaskListView: NSView {
             if let picker, picker.ids.contains(id) { m.pickerField = picker.field }
             if isNew {
                 let a = actions
+                v.onDisclosure = { a.toggleTrashExpanded([id]) }
                 v.onCheck = { a.toggleComplete([id]) }
                 v.onChip = { [weak self] field in self?.openChip(id, field) }
                 v.onOpen = { a.select([id]); a.openDetail() }
@@ -556,7 +572,8 @@ final class TaskListView: NSView {
             completedRow.isHidden = true
         }
         // The empty states: never clickable; 34% down (40pt for All done).
-        if let kind = L.empty, !(kind == .list && state.route.listID.flatMap { p.list($0)?.archivedAt } != nil) {
+        // A deleted list shows no empty state (§28).
+        if let kind = L.empty, !(kind == .list && state.deletedListOpen(p) != nil) {
             empty.isHidden = false
             empty.configure(kind, palette: palette, width: width)
             let visibleH = scroll.contentView.bounds.height
@@ -567,15 +584,27 @@ final class TaskListView: NSView {
         }
         let allDone = L.empty == .allDone && !empty.isHidden
         if state.allDone != allDone { state.allDone = allDone }
-        // An archived list's banner, 6 from the header, 10 in from the sides.
+        // A deleted list's banner, 6 from the header, 10 in from the sides (§28).
         if let id = state.route.listID, let l = p.list(id), let at = l.archivedAt {
             banner.isHidden = false
-            let date = CalendarDate(Date(timeIntervalSince1970: TimeInterval(at) / 1000))
-            let h = banner.configure(archivedOn: DateLabel.monthDay(date), palette: palette, width: rowW)
+            let h = banner.configure(deletedOn: Self.monthDay(at), palette: palette, width: rowW)
             banner.frame = CGRect(x: TK.M.rowInset, y: 6, width: rowW, height: h)
         } else {
             banner.isHidden = true
         }
+    }
+
+    /// "11 tasks", "1 task"; with none open "4 completed"; an empty list "Empty" (§28).
+    static func deletedListCount(_ p: Projection, _ id: EntityID) -> String {
+        let open = p.openTaskCount(in: id)
+        if open > 0 { return open == 1 ? "1 task" : "\(open) tasks" }
+        let done = p.completedTasks(in: id).count
+        return done > 0 ? "\(done) completed" : "Empty"
+    }
+
+    /// "Nov 1", from epoch ms.
+    static func monthDay(_ ms: Int) -> String {
+        DateLabel.monthDay(CalendarDate(Date(timeIntervalSince1970: TimeInterval(ms) / 1000)))
     }
 
     /// The list's name after the title in Upcoming, Completed and Trash; in a month group, the day too (dc:2321–2327),
@@ -599,6 +628,7 @@ final class TaskListView: NSView {
     private func renderHeadings(_ L: TaskLayout, needed: [EntityID], rowW: CGFloat, animate: Bool, now: CFTimeInterval,
                                 selection: Set<EntityID>, paneFocused: Bool, rename: WindowState.Rename?,
                                 dragIDs: Set<EntityID>) {
+        let readOnly = state.inTrash(store.projection)
         let p = store.projection
         let neededSet = Set(needed)
         for (id, v) in heads where !neededSet.contains(id) {
@@ -635,7 +665,7 @@ final class TaskListView: NSView {
             let title = renaming && rename?.newHeading != nil ? "" : (p.taskModel(id)?.title ?? "")
             let m = HeadingModel(id: id, title: title, collapsed: state.collapsed.contains(id), count: folded[id] ?? 0,
                                  selected: selection.contains(id) && !dragIDs.contains(id), paneFocused: paneFocused,
-                                 renaming: renaming, dragSource: dragIDs.contains(id))
+                                 renaming: renaming, dragSource: dragIDs.contains(id), readOnly: readOnly)
             if v.model != m || paletteChanged || isNew || v.frame.width != rowW {
                 v.configure(m, palette: palette, width: rowW, animated: !isNew && animate)
             }
@@ -673,10 +703,13 @@ final class TaskListView: NSView {
         var keep: Set<NotesHost.Target> = []
         let width = paneNotesWidth
         if case .list(let lid) = state.route, let l = p.listModel(lid) {
+            // A deleted list with no notes has no notes to show, and none can be written (§28).
             let t = NotesHost.Target.list(lid)
-            keep.insert(t)
-            let e = paneEditor(t, notes: l.notes, parent: titleView)
-            state.noteHeights[TaskLayout.listNotesKey(lid)] = measure(e, width: width)
+            if !(l.isDeleted && l.notes.isEmpty) {
+                keep.insert(t)
+                let e = paneEditor(t, notes: l.notes, parent: titleView)
+                state.noteHeights[TaskLayout.listNotesKey(lid)] = measure(e, width: width)
+            }
             for h in p.headings(in: lid).ids {
                 guard let m = p.taskModel(h) else { continue }
                 let target = NotesHost.Target.task(h)
@@ -710,7 +743,7 @@ final class TaskListView: NSView {
 
     private func paneHost(_ target: NotesHost.Target, notes: String) -> NotesHost {
         let a = actions
-        return NotesHost(store: store, window: state, target: target, notes: notes, inert: state.route == .trash,
+        return NotesHost(store: store, window: state, target: target, notes: notes, inert: state.inTrash(store.projection),
                          palette: palette, inDetail: false,
                          onLayoutChange: { [weak self] in self?.paneNotesChanged(target) },
                          backToTitle: {
@@ -772,7 +805,7 @@ final class TaskListView: NSView {
                 let show = nh > 0 && L.y(hid) != nil && !dragIDs.contains(hid)
                 let layer = e.view.layer
                 if show, let hy = L.y(hid) {
-                    e.view.inert = state.route == .trash
+                    e.view.inert = state.inTrash(store.projection)
                     let y = hy + TK.M.pitch
                     let f = CGRect(x: TK.M.rowInset + TK.M.rowPadLeft, y: y, width: w, height: max(19, nh - 6))
                     if !e.shown {
@@ -823,7 +856,7 @@ final class TaskListView: NSView {
             let m = p.listModel(id)
             let name = m?.name ?? ""
             c = .init(mark: .tile(monogram: m?.monogram ?? "·", slot: m?.colorSlot ?? ListModel.slot(for: id)),
-                      title: name.isEmpty ? "New List" : name, sub: m?.isArchived == true ? "Archived" : nil, renaming: renaming)
+                      title: name.isEmpty ? "New List" : name, sub: m?.isDeleted == true ? "In Trash" : nil, renaming: renaming)
         case .today:
             c = .init(mark: .view(.today), title: "Today", sub: DateLabel.long(today, today: today))
         default:
@@ -1205,8 +1238,14 @@ final class TaskListView: NSView {
             switch part {
             case .body:
                 pendingCollapse = nil
+                if event.clickCount == 2, a.isDeletedListRow(id) {
+                    // A double-click opens a deleted list, read-only (§28).
+                    a.openDeletedList(id)
+                    press = nil
+                    return
+                }
                 if event.clickCount == 2 {
-                    if let task = store.projection.task(id), task.completedAt == nil || task.deleted, id != state.draft?.id {
+                    if let task = store.projection.task(id), task.completedAt == nil || a.isTrashed(id), id != state.draft?.id {
                         let local = rows[id].map { CGPoint(x: p.x - $0.frame.minX, y: p.y - $0.frame.minY) } ?? p
                         let caret = rows[id]?.caretIndex(at: local)
                         a.editTask(id, caret: caret.map { .at($0) } ?? .end)
@@ -1219,7 +1258,7 @@ final class TaskListView: NSView {
                 // A double-click on a checkbox is one click: its second press would toggle the task straight back
                 // (v2 feedback 18).
                 press = nil
-            case .check, .chip, .open:
+            case .check, .chip, .open, .disclosure:
                 rows[id]?.setPressed(part)
             }
         case .label(let key, part: let part) where part != .body:
@@ -1232,7 +1271,8 @@ final class TaskListView: NSView {
             // double-click adds a task, as ⌘N does.
             press = nil
             if event.clickCount == 2 {
-                if !state.route.noAdd { a.newTask() }
+                // Not in a deleted list: nothing is added there (§28).
+                if !state.route.noAdd && !a.inTrash { a.newTask() }
             } else if !editing, !state.selection.isEmpty {
                 state.selection = []
             }
@@ -1337,6 +1377,8 @@ final class TaskListView: NSView {
                 a.select([id])
                 a.focus(.list)
                 a.openDetail()
+            case .disclosure:
+                a.toggleTrashExpanded([id])
             }
         case .label(let key, part: .plus):
             labels[key]?.setPressed(nil)
@@ -1357,7 +1399,7 @@ final class TaskListView: NSView {
             }
         case .banner:
             banner.setButtonState(hovered: inside, pressed: false)
-            if inside, let id = state.route.listID { a.unarchive(list: id) }
+            if inside, let id = state.route.listID { a.restoreList(id) }
         default: break
         }
         pendingCollapse = nil
@@ -1373,7 +1415,9 @@ final class TaskListView: NSView {
             if !state.selection.contains(id) { a.select([id]) }
             a.focus(.list)
             let ids = a.targetIDs.filter(a.isHeading)
-            NSMenu.popUpContextMenu(Menus.heading(ids.isEmpty ? [id] : ids, actions: a), with: event, for: doc)
+            // In a deleted list a heading only folds: Collapse or Expand (§28).
+            let menu = a.inTrash ? Menus.readOnlyHeading(ids.isEmpty ? [id] : ids, actions: a) : Menus.heading(ids.isEmpty ? [id] : ids, actions: a)
+            NSMenu.popUpContextMenu(menu, with: event, for: doc)
             return
         }
         guard case .row(let id, _) = target(at: p), id != state.draft?.id else { return }
@@ -1382,6 +1426,11 @@ final class TaskListView: NSView {
         state.overlays.hideTip()
         if !state.selection.contains(id) { a.select([id]) }
         a.focus(.list)
+        if a.isDeletedListRow(id) {
+            a.select([id])
+            NSMenu.popUpContextMenu(Menus.deletedList(id, actions: a), with: event, for: doc)
+            return
+        }
         let ids = state.selection.contains(id) ? a.targetIDs : [id]
         NSMenu.popUpContextMenu(Menus.task(ids, actions: a), with: event, for: doc)
     }
@@ -1415,10 +1464,15 @@ final class TaskListView: NSView {
         case 119: a.moveSelection(.last, extend: shift); return true  // End
         case 116: pageScroll(-1); return true // Page Up
         case 121: pageScroll(1); return true  // Page Down
-        case 123: // ←
-            if !cmd { a.focus(.sidebar) }
+        case 123: // ←: collapses a deleted list in Trash, or from one of its tasks goes up to it (§28, the Finder's)
+            if !cmd, !trashLeft(a) { a.focus(.sidebar) }
+            return true
+        case 124 where !cmd: // →: expands a deleted list in Trash
+            if let id = a.selectedDeletedList, !state.trashExpanded.contains(id) { a.toggleTrashExpanded([id], to: true) }
             return true
         case 36, 76: // Return
+            // A deleted list's row opens it (§28).
+            if let id = a.selectedDeletedList { a.openDeletedList(id); return true }
             let ids = a.targetIDs
             a.focus(.list)
             if ids.count == 1 { a.editTask(ids[0], caret: .all) } else if ids.isEmpty { a.moveSelection(.by(1), extend: false) }
@@ -1429,11 +1483,14 @@ final class TaskListView: NSView {
             // On headings, collapse or expand: a heading has nothing to complete (§23). Today's Completed label, when
             // it's what's selected, the same (v2 feedback 15).
             let ids = a.targetIDs
-            if state.route == .today, state.selection == [TaskLayout.doneGroup] { a.toggleTodayDone() }
+            let lists = state.route == .trash ? state.selection.filter(store.projection.isDeleted(list:)) : []
+            if !lists.isEmpty { a.toggleTrashExpanded(Array(lists)) }
+            else if state.route == .today, state.selection == [TaskLayout.doneGroup] { a.toggleTodayDone() }
             else if !ids.isEmpty, ids.allSatisfy(a.isHeading) { a.toggleCollapse(ids) } else { a.toggleComplete() }
             return true
-        case 53: // Esc
+        case 53: // Esc; with nothing left to cancel in a deleted list, back to Trash with its row selected (§28)
             if state.overlays.picker != nil { a.closePicker() } else if state.detailOpen { a.closeDetail() } else if !state.selection.isEmpty { state.selection = [] }
+            else if state.deletedListOpen(store.projection) != nil { a.leaveDeletedList() }
             return true
         case 48: // Tab
             if shift { a.focus(.sidebar) } else { a.focus(state.detailOpen ? .detail : .sidebar) }
@@ -1451,6 +1508,20 @@ final class TaskListView: NSView {
 
     override func selectAll(_ sender: Any?) { actions.selectAll() }
 
+    /// ← in Trash: a selected expanded deleted list collapses; a task under one selects its row. False otherwise.
+    private func trashLeft(_ a: WindowActions) -> Bool {
+        guard state.route == .trash, let L = currentLayout else { return false }
+        if let id = a.selectedDeletedList {
+            guard state.trashExpanded.contains(id) else { return false }
+            a.toggleTrashExpanded([id], to: false)
+            return true
+        }
+        guard state.selection.count == 1, let id = state.selection.first, let list = L.childOf[id] else { return false }
+        a.select([list])
+        scrollToVisible(list)
+        return true
+    }
+
     // MARK: - Drag (§14, dc:1161–1259)
 
     private struct DragSession {
@@ -1464,6 +1535,8 @@ final class TaskListView: NSView {
     }
 
     private func beginDrag(_ id: EntityID, event: NSEvent, now: NSEvent) {
+        // A deleted list's row can't be dragged, and nothing in an opened one reorders: its headings stay (§28).
+        if let L = currentLayout, L.listRows.contains(id) || (L.isHeading(id) && actions.inTrash) { press = nil; return }
         if let L = currentLayout, L.isHeading(id) { beginHeadingDrag(id, event: event, now: now, in: L); return }
         guard let L = currentLayout, let gid = L.group(id), gid != TaskLayout.doneGroup, id != state.draft?.id,
               let g = L.groups.first(where: { $0.listID == gid }), let v = rows[id], let model = v.model else {
@@ -1472,9 +1545,10 @@ final class TaskListView: NSView {
         }
         // Upcoming's rows go onto any day; in Completed and Trash only the sidebar takes them (§22). The selected rows of
         // the grabbed row's group travel, in every view (dc:1208).
-        let mode: WindowState.Drag.Mode = state.route == .upcoming ? .days : state.route.noAdd ? .sidebarOnly : .group
-        // Selected headings don't travel with tasks (a heading drags its own section).
-        var ids = state.selection.contains(id) ? L.order.filter { state.selection.contains($0) && L.group($0) == gid && $0 != state.draft?.id && !L.isHeading($0) } : [id]
+        // A deleted list opened from Trash is Trash's: its tasks drag out to a list in the sidebar (§28).
+        let mode: WindowState.Drag.Mode = state.route == .upcoming ? .days : state.route.noAdd || actions.inTrash ? .sidebarOnly : .group
+        // Selected headings don't travel with tasks (a heading drags its own section), nor do deleted lists' rows.
+        var ids = state.selection.contains(id) ? L.order.filter { state.selection.contains($0) && L.group($0) == gid && $0 != state.draft?.id && !L.isHeading($0) && !L.listRows.contains($0) } : [id]
         if !ids.contains(id) { ids = [id] }
         let firstIdx = g.ids.firstIndex(of: ids[0]) ?? 0
         let target = g.ids[..<firstIdx].filter { !ids.contains($0) }.count

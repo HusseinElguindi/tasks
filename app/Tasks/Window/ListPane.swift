@@ -54,8 +54,9 @@ struct ListPaneHeader: View {
                     .font(Font(TK.Font.bodyMedium))
                     .foregroundStyle((lit ? tk.ink : tk.inkSecondary).swiftUI)
                     .lineLimit(1)
-                if list.isArchived {
-                    Text("Archived").font(Font(TK.Font.body)).foregroundStyle(tk.inkSecondary.swiftUI).lineLimit(1)
+                if list.isDeleted {
+                    // A deleted list opened from Trash (§28): "In Trash" after the band title, as after the large one.
+                    Text("In Trash").font(Font(TK.Font.body)).foregroundStyle(tk.inkTertiary.swiftUI).lineLimit(1)
                 }
             } else if window.route.isView {
                 // A view's header is Today's: its tile (B), its name, no subtitle (§22).
@@ -83,8 +84,8 @@ struct ListPaneHeader: View {
             .onTapGesture(count: 2) { if listID != nil { actions.startTitleRename() } }
             Spacer(minLength: 0)
             HStack(spacing: 2) {
-                // Completed and Trash have no + (§22).
-                if !window.route.noAdd {
+                // Completed and Trash have no + (§22), nor has a deleted list (§28).
+                if !window.route.noAdd && !(list?.isDeleted ?? false) {
                     HeaderIconButton(glyph: .plus, tip: newTip, keys: "⌘N", overlays: window.overlays) { actions.newTask() }
                 }
                 HeaderIconButton(glyph: .split, tip: window.detailOpen ? "Hide Details" : "Show Details", keys: "⌘D",

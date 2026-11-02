@@ -7,7 +7,7 @@ import TasksCore
 /// calls the UI makes, syncs, writes its state, and quits.
 ///
 ///     Tasks -dataDirectory /tmp/a -serverURL http://127.0.0.1:8791 -syncToken … \
-///           -debugActions '[{"createTask":"Milk","list":"Inbox"},{"archive":"Errands"}]' -debugDumpTo /tmp/a.json
+///           -debugActions '[{"createTask":"Milk","list":"Inbox"},{"deleteList":"Errands"}]' -debugDumpTo /tmp/a.json
 ///
 /// Tasks and lists are named by title. Never compiled into release builds.
 @MainActor
@@ -76,10 +76,11 @@ enum DebugAutomation {
             } else {
                 store.reorder([id], in: l, at: .top)
             }
-        } else if let l = list(a["archive"], store) {
-            store.archive(list: l)
-        } else if let l = list(a["unarchive"], store) {
-            store.unarchive(list: l)
+        } else if let l = list(a["deleteList"] ?? a["archive"], store) {
+            // Delete List (§28); "archive" is its old name, kept for older scripts.
+            store.deleteList(l)
+        } else if let l = list(a["restoreList"] ?? a["unarchive"], store) {
+            store.restoreList(l)
         } else if let l = list(a["reorderList"], store) {
             if let after = list(a["after"], store) { store.reorderLists([l], at: .after(after)) } else { store.reorderLists([l], at: .top) }
         } else {

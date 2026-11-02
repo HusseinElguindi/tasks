@@ -61,7 +61,7 @@ struct TaskLayout {
     var labelInfo: [EntityID: LabelInfo] = [:]
 
     // Headings and the title block (design/INTERACTIONS-v2.md §23).
-    /// The title block's top (under an archived list's banner) and height: the large title, and a list's notes.
+    /// The title block's top (under a deleted list's banner, §28) and height: the large title, and a list's notes.
     var headY: CGFloat = 0
     var titleHeight: CGFloat = 0
     /// Heading rows (a new one being named included). A heading's slot is its air, its row and its notes; `yList`
@@ -70,8 +70,12 @@ struct TaskLayout {
     var slotH: [EntityID: CGFloat] = [:]
     /// A heading's notes height under its row (0 when it shows none), at its row's top + 32.
     var noteH: [EntityID: CGFloat] = [:]
-    /// Tasks folded under a collapsed heading: not laid out, kept so they can fold into it and unfold from it.
+    /// Tasks folded under a collapsed heading: not laid out, kept so they can fold into it and unfold from it. In
+    /// Trash, a collapsed deleted list's tasks, folded under its row (§28).
     var folded: [EntityID: EntityID] = [:]
+    /// Trash (§28): the deleted lists' rows, and each expanded list's tasks under it, by their list.
+    var listRows: Set<EntityID> = []
+    var childOf: [EntityID: EntityID] = [:]
 
     static let doneGroup = "\u{1}done"
     /// A list's "› Completed" row, as what its closed tasks fold into.
@@ -97,7 +101,7 @@ struct TaskLayout {
     static func titleBlockHeight(notes: CGFloat?) -> CGFloat {
         4 + 30 + (notes.map { 4 + max(19, $0) } ?? 0) + 12
     }
-    /// An archived list's banner sits above the title block.
+    /// A deleted list's banner sits above the title block (§28: the large title starts at 60).
     static let bannerBlock: CGFloat = 60
 
     func y(_ id: EntityID) -> CGFloat? { index[id].map { yList[$0] } }
@@ -142,7 +146,10 @@ struct TaskLayout {
         var titleNotes: CGFloat?
         var newHeading: EntityID?
         var newHeadingBefore: EntityID?
-        var archived: Bool
+        /// The list is deleted: its banner sits above the title (§28).
+        var deleted: Bool
+        /// Trash: the deleted lists that show their tasks under their row (§28).
+        var expanded: [EntityID] = []
         var completedOpen: Bool
         var pins: [EntityID: WindowState.Pin]
         var draft: WindowState.Draft?
@@ -156,12 +163,13 @@ struct TaskLayout {
     static func make(store: Store, window: WindowState) -> TaskLayout {
         let p = store.projection
         var lists: [[EntityID]] = []
-        var archived = false
+        var deleted = false
         var completedOpen = false
+        var expanded: [EntityID] = []
         switch window.route {
         case .list(let id):
             lists = [p.openTasks(in: id).ids, p.completedTasks(in: id).ids, p.headings(in: id).ids]
-            archived = p.list(id)?.archivedAt != nil
+            deleted = p.isDeleted(list: id)
             completedOpen = window.completedOpen.contains(id)
         case .today:
             let active = p.activeLists.ids
@@ -169,14 +177,18 @@ struct TaskLayout {
             for l in active { lists.append(p.todayTasks(in: l).ids) }
             // Today's Completed group folds like a heading (v2 feedback 15).
             completedOpen = !window.todayDoneCollapsed
-        case .upcoming, .undated, .completed, .trash:
+        case .trash:
+            // An expanded deleted list's rows follow its buckets (§28).
+            expanded = p.deletedLists.ids.filter(window.trashExpanded.contains)
+            for l in expanded { lists += [p.openTasks(in: l).ids, p.completedTasks(in: l).ids] }
+        case .upcoming, .undated, .completed:
             break
         }
         let view = ViewItems.read(store: store, window: window)
         // The draft's title doesn't move rows.
         var draft = window.draft
         if let title = draft?.title { draft?.title = title.isEmpty ? "" : "x" }
-        var inputs = Inputs(route: window.route, lists: lists, archived: archived, completedOpen: completedOpen,
+        var inputs = Inputs(route: window.route, lists: lists, deleted: deleted, expanded: expanded, completedOpen: completedOpen,
                             pins: window.pins, draft: draft, drag: window.drag, day: p.day.date, view: view)
         if case .list(let id) = window.route {
             let heads = lists[2]
@@ -188,7 +200,9 @@ struct TaskLayout {
                     if shown, !inputs.collapsed.contains(h) { inputs.noteHeights[h] = window.noteHeights[h] ?? 19 }
                 }
             }
-            inputs.titleNotes = window.noteHeights[TaskLayout.listNotesKey(id)] ?? 19
+            // A deleted list's empty notes take no room: they can't be written (§28).
+            let emptyDeleted = deleted && (p.listModel(id)?.notes.isEmpty ?? true)
+            inputs.titleNotes = emptyDeleted ? nil : window.noteHeights[TaskLayout.listNotesKey(id)] ?? 19
             if let r = window.rename, let n = r.newHeading, n.list == id {
                 inputs.newHeading = r.id
                 inputs.newHeadingBefore = n.before
@@ -209,7 +223,7 @@ struct TaskLayout {
             return buildView(store: store, inputs: inputs)
         case .list(let listID):
             var L = TaskLayout(key: listID, top: 0)
-            L.headY = inputs.archived ? bannerBlock : 0
+            L.headY = inputs.deleted ? bannerBlock : 0
             L.titleHeight = titleBlockHeight(notes: inputs.titleNotes)
             L.top = L.headY + L.titleHeight
             var open = inputs.lists[0]

@@ -7,7 +7,8 @@ import TasksCore
 /// (a selection, a hover) costs nothing: what it depends on is the cache key, read and so observed each time.
 struct ViewItems: Equatable {
     var ids: [EntityID] = []
-    /// Upcoming: the day each task reaches Today. Completed and Trash: the local day it was completed or deleted.
+    /// Upcoming: the day each task reaches Today. Completed and Trash: the local day it was completed or deleted. In
+    /// Trash an id is a task deleted on its own or a deleted list (§28).
     var days: [CalendarDate] = []
     /// Upcoming and Undated: each task's list, by its place in the sidebar, and its key in that list.
     var ranks: [Int] = []
@@ -29,7 +30,7 @@ struct ViewItems: Equatable {
 
     /// The `at` of the op that last touched a task, which for a task in the Trash is its deletion: nothing edits a
     /// trashed task, so the last op is the one that set `deleted` (the prototype's `deletedAt`, dc:952).
-    static func deletedAt(_ t: TaskItem) -> Int { t.updatedAt }
+    static func deletedAt(_ t: TaskItem) -> Int { Projection.deletedAt(t) }
 
     /// The day a task reaches Today: the earlier of its dates (SPEC §4, either date brings it in).
     static func upDay(when: CalendarDate?, deadline: CalendarDate?) -> CalendarDate? {
@@ -56,7 +57,10 @@ struct ViewItems: Equatable {
         case .completed:
             key.buckets = active.map { p.completedTasks(in: $0).ids }
         default:
-            key.buckets = active.flatMap { [p.openTasks(in: $0).ids, p.completedTasks(in: $0).ids] }
+            // Trash changes with a delete or a put back in any list, live or deleted, and with a list deleted or
+            // restored (§28).
+            let deleted = p.deletedLists.ids
+            key.buckets = (active + deleted).flatMap { [p.openTasks(in: $0).ids, p.completedTasks(in: $0).ids] } + [deleted]
         }
         if let c = window.viewItemsCache, c.key == key { return c.items }
         let v = build(store: store, key: key, dates: window.viewDates.entries)
@@ -119,18 +123,12 @@ struct ViewItems: Equatable {
             v.stamps = items.map(\.stamp)
             v.days = items.map { CalendarDate(Date(timeIntervalSince1970: TimeInterval($0.stamp) / 1000)) }
         default:
-            // No bucket holds deleted tasks: this scan runs only when a list's open or completed tasks change.
-            let activeSet = Set(active)
-            var items: [(id: EntityID, stamp: Int)] = []
-            for id in p.allTaskIDs {
-                // A heading isn't listed in Trash: it's only a name, and ⌘Z brings it back (§23).
-                guard let t = p.task(id), t.deleted, !t.isHeading, activeSet.contains(t.list) else { continue }
-                items.append((id, deletedAt(t)))
-            }
-            items.sort { $0.stamp != $1.stamp ? $0.stamp > $1.stamp : $0.id < $1.id }
+            // Deleted lists and the tasks deleted on their own, wherever their list is, newest first (§28). No bucket
+            // holds deleted tasks: this scan runs only when a list's open or completed tasks change.
+            let items = p.trash()
             v.ids = items.map(\.id)
-            v.stamps = items.map(\.stamp)
-            v.days = items.map { CalendarDate(Date(timeIntervalSince1970: TimeInterval($0.stamp) / 1000)) }
+            v.stamps = items.map(\.deletedAt)
+            v.days = items.map { CalendarDate(Date(timeIntervalSince1970: TimeInterval($0.deletedAt) / 1000)) }
         }
         return v
     }
@@ -308,6 +306,27 @@ extension TaskLayout {
                 }
                 if index[b.id] == nil { index[b.id] = buckets.count; buckets.append((b.id, b.kind, b.info, [])) }
                 buckets[index[b.id]!].ids.append(id)
+            }
+            if route == .trash {
+                // A deleted list is one row; expanded, its tasks follow it in the group, open then completed, and
+                // collapsed they're folded under it, so they unfold from it and fold back into it (§28, §23).
+                let expanded = Set(inputs.expanded)
+                for i in buckets.indices {
+                    var ids: [EntityID] = []
+                    for id in buckets[i].ids {
+                        ids.append(id)
+                        guard p.list(id) != nil else { continue }
+                        L.listRows.insert(id)
+                        let kids = p.tasksInDeletedList(id)
+                        if expanded.contains(id) {
+                            ids += kids
+                            for k in kids { L.childOf[k] = id }
+                        } else {
+                            for k in kids { L.folded[k] = id }
+                        }
+                    }
+                    buckets[i].ids = ids
+                }
             }
             for b in buckets { group(b.id, b.info, b.ids, kind: b.kind) }
             if v.ids.isEmpty { L.empty = route == .completed ? .completed : .trash }

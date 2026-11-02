@@ -17,6 +17,8 @@ import TasksCore
 ///     act:dates:/path.txt   (appends every row's When, Deadline and ring as shown, §24)
 ///     act:trace:MS:/path.txt   (for MS ms, before each commit: the rows' and labels' on-screen y, the drag copy's
 ///                               origin and opacity, and the lit label; one line per turn that changed)
+///     act:deletelist:<list>   act:restorelist:<list>   act:selectlist:<list>   act:expand:<list>   act:collapse-list:<list>
+///     act:openlist:<list>   act:takeout   (⌘⌫ in Trash)   act:leave   (Esc out of a deleted list)   (§28)
 @MainActor
 enum DebugViews {
     static func act(_ arg: String, window w: WindowState, store: Store) {
@@ -45,6 +47,14 @@ enum DebugViews {
         case "delete": a.delete()
         case "putback": a.putBack()
         case "putbackin": if let l = list(rest) { a.putBack(in: l) }
+        case "deletelist": if let l = list(rest) { a.deleteList(l) }
+        case "restorelist": if let l = list(rest) { a.restoreList(l) }
+        case "selectlist": if let l = list(rest) { a.select([l]) }
+        case "expand": if let l = list(rest) { a.toggleTrashExpanded([l], to: true) }
+        case "collapse-list": if let l = list(rest) { a.toggleTrashExpanded([l], to: false) }
+        case "openlist": if let l = list(rest) { a.openDeletedList(l) }
+        case "takeout": a.takeOutOfTrash()
+        case "leave": a.leaveDeletedList()
         case "move": if let l = list(rest) { a.move(to: l) }
         case "when": a.setDate(nil, .when, date(rest))
         case "deadline": a.setDate(nil, .deadline, date(rest))
@@ -65,7 +75,8 @@ enum DebugViews {
                         + (i.submenu.map { " ▸ [" + titles($0) + "]" } ?? "")
                 }.joined(separator: ", ")
             }
-            append("menu \(a.routeName(w.route)): " + titles(Menus.task(a.targetIDs, actions: a)), to: rest)
+            let menu = a.selectedDeletedList.map { Menus.deletedList($0, actions: a) } ?? Menus.task(a.targetIDs, actions: a)
+            append("menu \(a.routeName(w.route)): " + titles(menu), to: rest)
         case "rows": append(rows(w, store: store), to: rest)
         case "sync": store.requestSync(force: true)
         // §24: the day turning over, as at midnight: Today and every date's words and rings move to the new day
@@ -130,12 +141,16 @@ enum DebugViews {
         let p = store.projection
         let a = WindowActions(store: store, window: w)
         let L = TaskLayout.make(store: store, window: w)
-        var out = "route=\(a.routeName(w.route)) sel=\(w.selection.compactMap { p.task($0)?.title }.sorted()) detail=\(w.detailOpen) draft=\(w.draft.map { "'\($0.title)' \($0.when?.string ?? "-") \(a.listName($0.list))" } ?? "-") empty=\(L.empty.map { "\($0)" } ?? "-") notice=\(w.overlays.notice.map { "'\($0.text)'" } ?? "-") hints=\(w.cmdHints)"
+        var out = "route=\(a.routeName(w.route))\(w.deletedListOpen(p) != nil ? " (in Trash)" : "") sel=\(w.selection.compactMap { p.task($0)?.title ?? p.list($0)?.name }.sorted()) detail=\(w.detailOpen) draft=\(w.draft.map { "'\($0.title)' \($0.when?.string ?? "-") \(a.listName($0.list))" } ?? "-") empty=\(L.empty.map { "\($0)" } ?? "-") notice=\(w.overlays.notice.map { "'\($0.text)'" } ?? "-") hints=\(w.cmdHints)"
         var items: [(CGFloat, String)] = L.order.map { id in
             let t = p.task(id)
             let flags = (t?.completedAt != nil ? " done" : "") + (t?.deleted == true ? " deleted" : "")
                 + (L.isHeading(id) ? " #heading" + (w.collapsed.contains(id) ? " collapsed" : "") + ((L.noteH[id] ?? 0) > 0 ? " notes=\(Int(L.noteH[id]!))" : "") : "")
-            return (L.yList[L.index[id]!], "  \(Int(L.yList[L.index[id]!])) \(t?.title ?? (id == w.draft?.id ? "<draft>" : id))\(flags) when=\(t?.when?.string ?? "-") dl=\(t?.deadline?.string ?? "-") list=\(t.map { a.listName($0.list) } ?? "-")")
+            if L.listRows.contains(id), let l = p.list(id) {
+                return (L.yList[L.index[id]!], "  \(Int(L.yList[L.index[id]!])) [list] \(l.name) \(TaskListView.deletedListCount(p, id))\(w.trashExpanded.contains(id) ? " expanded" : "")")
+            }
+            let child = L.childOf[id].map { " under=" + a.listName($0) } ?? ""
+            return (L.yList[L.index[id]!], "  \(Int(L.yList[L.index[id]!])) \(t?.title ?? (id == w.draft?.id ? "<draft>" : id))\(flags)\(child) when=\(t?.when?.string ?? "-") dl=\(t?.deadline?.string ?? "-") list=\(t.map { a.listName($0.list) } ?? "-")")
         }
         for (key, y) in L.labels {
             let info = L.labelInfo[key]

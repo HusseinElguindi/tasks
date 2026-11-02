@@ -37,8 +37,8 @@ enum SB {
     static let buttonTop: CGFloat = 6
     /// `S.height = y + 16` (dc:700): the content ends 16 below the last row.
     static let bottomPad: CGFloat = 16
-    /// The gap above the Archive label (dc:695).
-    static let archiveGap: CGFloat = 8
+    /// The gap above Completed and Trash (dc:695).
+    static let groupGap: CGFloat = 8
     /// `.sbhead`: the brand header, 34 tall at the top of the content, and Today 6 below it (v2 feedback 12).
     static let headerHeight: CGFloat = 34
     static let headerGap: CGFloat = 6
@@ -69,10 +69,9 @@ struct SidebarModel {
         /// nil: Today's or a view's glyph (§22).
         var monogram: String?
         var slot = 0
-        /// "" when zero or archived; "⌘3" while ⌘ is held (`hint`).
+        /// "" when zero; "⌘3" while ⌘ is held (`hint`).
         var count = ""
         var hint = false
-        var archived = false
         var current = false
         var drop = false
         var editing = false
@@ -89,9 +88,6 @@ struct SidebarModel {
 
     var rows: [Row] = []
     var listsLabelY: CGFloat = 0
-    /// nil when nothing is archived.
-    var archiveLabelY: CGFloat?
-    var archiveOpen = false
     var height: CGFloat = 0
     /// Where the first active list sits (`S.listTop`).
     var listTop: CGFloat = 0
@@ -99,7 +95,8 @@ struct SidebarModel {
     var active: [EntityID] = []
     var route: WindowState.Route = .today
     var current: Key = .today
-    /// ↑ ↓ walk these: Today, the active lists, then the archived ones while the group is open (dc:735).
+    /// ↑ ↓ walk these: Today, the views, the active lists, Completed and Trash (dc:735). A deleted list isn't here:
+    /// it's in Trash (§28).
     var keys: [Key] = []
     var renaming: EntityID?
     var sidebarVisible = true
@@ -111,9 +108,9 @@ struct SidebarModel {
         let pitch = TK.M.pitch
         var m = SidebarModel()
         m.route = w.route
-        m.current = w.route
+        // A deleted list opened from Trash is in Trash: Trash stays current (§28).
+        m.current = w.deletedListOpen(p) != nil ? .trash : w.route
         m.sidebarVisible = w.sidebarVisible
-        m.archiveOpen = w.archiveOpen
         let rename = w.rename?.kind == .list ? w.rename : nil
         m.renaming = rename?.id
         let over = w.drag?.over
@@ -123,7 +120,6 @@ struct SidebarModel {
         var active = stored
         if let r = rename, r.isNewList, !active.contains(r.id) { active.append(r.id) }
         m.active = active
-        let archived = p.archivedLists.ids
 
         // ⌘1–⌘9 on the first nine rows, top to bottom (the draft has none), in place of the counts (§22).
         let numbered = hints ? Array(WindowState.Route.sidebarOrder(p).prefix(9)) : []
@@ -132,12 +128,11 @@ struct SidebarModel {
             return "⌘\(i + 1)"
         }
 
-        func listRow(_ id: EntityID, y: CGFloat, archived: Bool) -> Row {
+        func listRow(_ id: EntityID, y: CGFloat) -> Row {
             let key = Key.list(id)
             let editing = rename?.id == id
             var row = Row(key: key, y: y, name: "")
             row.editing = editing
-            row.archived = archived
             row.current = m.current == key
             row.drop = over == .list(id)
             row.dragSource = drag?.id == id
@@ -199,29 +194,18 @@ struct SidebarModel {
         let target = drag.map { min(max($0.target, 0), others.count) } ?? -1
         for (i, id) in others.enumerated() {
             let slot = CGFloat(i + (drag != nil && i >= target ? 1 : 0))
-            m.rows.append(listRow(id, y: y + slot * pitch, archived: false))
+            m.rows.append(listRow(id, y: y + slot * pitch))
         }
         if let d = drag, active.contains(d.id) {
-            m.rows.append(listRow(d.id, y: y + CGFloat(target) * pitch, archived: false))
+            m.rows.append(listRow(d.id, y: y + CGFloat(target) * pitch))
         }
         y += CGFloat(active.count) * pitch
-        y += SB.archiveGap
+        y += SB.groupGap
+        // The sidebar ends at Completed and Trash; Trash is always shown, so a deleted list is always somewhere (§28).
         viewRow(.completed)
         viewRow(.trash)
-
-        if !archived.isEmpty {
-            y += SB.archiveGap
-            m.archiveLabelY = y
-            y += pitch
-            if w.archiveOpen {
-                for id in archived {
-                    m.rows.append(listRow(id, y: y, archived: true))
-                    y += pitch
-                }
-            }
-        }
         m.height = y + SB.bottomPad
-        m.keys = WindowState.Route.sidebarOrder(p) + (w.archiveOpen ? archived.map(Key.list) : [])
+        m.keys = WindowState.Route.sidebarOrder(p)
         return m
     }
 }

@@ -20,10 +20,11 @@ struct WindowActions {
     /// The open view's rows as they stand (cheap: a pass over its buckets).
     var layout: TaskLayout { TaskLayout.make(store: store, window: window) }
 
-    /// The selected tasks that exist (never the draft), top to bottom. In the Trash, the deleted ones (§22).
+    /// The selected tasks that exist (never the draft), top to bottom. In Trash (and a deleted list opened from it),
+    /// the trashed ones: deleted, or in a deleted list (§22, §28). A deleted list's own row isn't a task.
     var targetIDs: [EntityID] {
-        let trash = window.route == .trash
-        let sel = window.selection.filter { id in id != window.draft?.id && p.task(id).map { $0.deleted == trash } == true }
+        let trash = inTrash
+        let sel = window.selection.filter { id in id != window.draft?.id && p.task(id) != nil && isTrashed(id) == trash }
         guard !sel.isEmpty else { return [] }
         let order = layout.order
         var ids = order.filter(sel.contains)
@@ -92,7 +93,11 @@ struct WindowActions {
         settleNow()
         var route = route
         if case .list(let id) = route, p.list(id) == nil { route = .today }
-        let sel = selection.filter { p.task($0).map { $0.deleted == (route == .trash) } == true }
+        // Restoring a list from inside it, then undoing: the pane it was made from is the deleted list's, still there.
+        let trash = route == .trash || route.listID.map(p.isDeleted) == true
+        let sel = selection.filter { id in
+            (p.task(id) != nil && isTrashed(id) == trash) || (route == .trash && p.isDeleted(list: id))
+        }
         if route != window.route {
             go(route, select: Array(sel))
         } else {
@@ -218,7 +223,8 @@ struct WindowActions {
             }
             return
         }
-        if let id = layout.order.first(where: { (p.task($0)?.title.lowercased() ?? "").hasPrefix(buf) }) {
+        // A deleted list's row in Trash goes by its name (§28).
+        if let id = layout.order.first(where: { ((p.task($0)?.title ?? p.list($0)?.name)?.lowercased() ?? "").hasPrefix(buf) }) {
             select([id])
             focus(.list)
             window.taskList?.scrollToVisible(id)
@@ -287,8 +293,8 @@ struct WindowActions {
 
     /// `under`: a heading's +, which adds at the end of its section (§23).
     func newTask(in listID: EntityID? = nil, day: CalendarDate? = nil, under: EntityID? = nil) {
-        // Completed and Trash add in the default list (§22).
-        if window.route.noAdd { addInDefault(); return }
+        // Completed and Trash add in the default list (§22), and so does a deleted list opened from Trash (§28).
+        if window.route.noAdd || inTrash { addInDefault(); return }
         if untitledDraft, let d = window.draft {
             // Already adding and nothing typed: back to that title. From another Today group's +, the draft moves there;
             // from another day's, to that day.
@@ -359,8 +365,9 @@ struct WindowActions {
     /// caret at the end of its title, and only focuses the title if the pane already shows it; "Rename in the list"
     /// renames it in its row with `caret`.
     func editTask(_ id: EntityID, caret: WindowState.Rename.Caret = .all) {
-        // The Trash reads but doesn't edit: Return and a double-click show the task in the detail pane (§22).
-        if window.route == .trash {
+        // Trash reads but doesn't edit, and so does a deleted list opened from it: Return and a double-click show the
+        // task in the detail pane (§22, §28).
+        if inTrash {
             select([id])
             openDetail()
             return
@@ -379,7 +386,7 @@ struct WindowActions {
     // MARK: - Renaming in place (§7, dc:760–809)
 
     func startRename(_ id: EntityID, caret: WindowState.Rename.Caret = .all) {
-        guard let t = p.task(id), !t.deleted else { return }
+        guard let t = p.task(id), !t.deleted, !inTrash else { return }
         endEdits()
         select([id])
         window.focus = .list
@@ -387,7 +394,8 @@ struct WindowActions {
     }
 
     func startListRename(_ id: EntityID) {
-        guard let l = p.list(id) else { return }
+        // A deleted list is read-only until it's restored (§28).
+        guard let l = p.list(id), l.archivedAt == nil else { return }
         endEdits()
         window.focus = .sidebar
         window.rename = .init(kind: .list, id: id, caret: .all, text: l.name)
@@ -457,7 +465,7 @@ struct WindowActions {
     // MARK: - Completing (§8, dc:883–899)
 
     func toggleComplete(_ ids: [EntityID]? = nil) {
-        guard window.route != .trash else { return }
+        guard !inTrash else { return }
         // A heading has nothing to complete (§23).
         let ids = (ids ?? targetIDs).filter { p.task($0).map { !$0.isHeading } == true }
         let tasks = ids.compactMap(p.task)
@@ -500,8 +508,8 @@ struct WindowActions {
     // MARK: - Deleting (§9, dc:910–918)
 
     func delete(_ ids: [EntityID]? = nil) {
-        // ⌘⌫ in the Trash is Put Back, as in the Finder (§22).
-        if window.route == .trash { putBack(ids); return }
+        // ⌘⌫ in Trash takes things out, as in the Finder (§22, §28): Put Back, Put back in, or Restore List.
+        if inTrash { takeOutOfTrash(ids); return }
         let ids = (ids ?? targetIDs).filter { p.task($0).map { !$0.deleted } == true }
         guard !ids.isEmpty else { return }
         let next = nextSelection(afterRemoving: ids)
@@ -522,7 +530,7 @@ struct WindowActions {
     // MARK: - Moving between lists (§10, dc:919–929)
 
     func move(_ ids: [EntityID]? = nil, to list: EntityID) {
-        guard window.route != .trash else { return }
+        guard !inTrash else { return }
         if let d = window.draft, (ids ?? Array(window.selection)) == [d.id] {
             window.draft?.list = list
             return
@@ -569,7 +577,7 @@ struct WindowActions {
 
     /// ⌥⌘↑ ⌥⌘↓ (dc:962–975).
     func moveSelectionBy(_ delta: Int) {
-        if viewMoveBy(delta) { return }
+        if viewMoveBy(delta) || inTrash { return }
         // A heading moves with its section, past the previous or next one (§23).
         if let h = targetIDs.first(where: isHeading) { moveSectionBy(h, delta); return }
         let L = layout
@@ -588,7 +596,7 @@ struct WindowActions {
     // MARK: - Dates (§11, dc:930–941)
 
     func setDate(_ ids: [EntityID]? = nil, _ field: Overlays.Picker.Field, _ date: CalendarDate?) {
-        guard window.route != .trash else { return }
+        guard !inTrash else { return }
         let ids = (ids ?? targetIDs).filter { p.task($0).map { !$0.isHeading } == true }
         guard !ids.isEmpty else { return }
         let name = field == .when ? (date == nil ? "Remove When" : "Set When") : (date == nil ? "Remove Deadline" : "Set Deadline")
@@ -637,21 +645,6 @@ struct WindowActions {
         overlays.picker = nil
         window.focus = .sidebar
         window.rename = .init(kind: .list, id: id, caret: .all, text: "", isNewList: true, colorSlot: ListModel.slot(for: id))
-    }
-
-    func archive(list id: EntityID) {
-        guard let l = p.list(id), l.archivedAt == nil else { return }
-        let name = l.name
-        guard undoable("Archive List", { store.archive(list: id, undoManager: undo) }) else { return }
-        if window.route == .list(id) {
-            if let first = p.activeLists.ids.first { go(.list(first)) } else { go(.today) }
-        }
-        overlays.showNotice("Archived \(name.isEmpty ? "Untitled" : name)", undo: true)
-    }
-
-    func unarchive(list id: EntityID) {
-        guard p.list(id)?.archivedAt != nil else { return }
-        undoable("Unarchive List") { store.unarchive(list: id, undoManager: undo) }
     }
 
     /// Puts `id` at `target` among the other active lists.

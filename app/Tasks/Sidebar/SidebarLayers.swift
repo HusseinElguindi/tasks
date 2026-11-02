@@ -4,7 +4,7 @@ import QuartzCore
 // The sidebar's layers (css:107–140, 240–243). Geometry is y down, in points; every layer's top-left is its position
 // (anchor point zero), so the rows can spring on `position.y`.
 
-// MARK: - A row (Today, a list, an archived list)
+// MARK: - A row (Today, a view, a list)
 
 /// The 209×30 capsule (`.sbi.srow`), its tile, title and count, in each state of the §12 table.
 final class SidebarRowLayer: CALayer {
@@ -62,8 +62,7 @@ final class SidebarRowLayer: CALayer {
 
         let hue = r.monogram == nil ? r.key.tileHue(p) : p.tile(slot: r.slot)
         tile.set(monogram: r.monogram, hue: hue, palette: p, glyph: r.key.glyph ?? .sun)
-        // An archived list's tile is at 55% (COLOR.md §2).
-        tile.opacity = r.archived ? 0.55 : 1
+        tile.opacity = 1
         tile.position = CGPoint(x: SB.tileX + tile.bounds.width / 2, y: SB.rowHeight / 2)
 
         let bg: NSColor? = r.drop ? p.accentTint : r.editing ? p.fillControl : r.current ? p.fillStrong : nil
@@ -109,15 +108,14 @@ final class SidebarRowLayer: CALayer {
         setTitleColor(titleColor)
     }
 
-    /// css:107–117: rest `ink-secondary`, hovered or current `ink`; archived `ink-tertiary` (`ink` hovered or current);
-    /// a drop target `accent-text`; being renamed `ink`.
+    /// css:107–117: rest `ink-secondary`, hovered or current `ink`; a drop target `accent-text`; being renamed `ink`.
     private var titleColor: NSColor {
         guard let r = row else { return palette.inkSecondary }
         let p = palette
         if r.editing { return p.ink }
         if r.drop { return p.accentText }
         if hovered || r.current { return p.ink }
-        return r.archived ? p.inkTertiary : p.inkSecondary
+        return p.inkSecondary
     }
 
     private func setTitleColor(_ c: NSColor) {
@@ -127,15 +125,14 @@ final class SidebarRowLayer: CALayer {
     }
 }
 
-// MARK: - A group label ("Lists" with its +, "Archive" with its chevron)
+// MARK: - A group label ("Lists" with its +)
 
 /// `.glabel` (css:131–139): a 32pt slot, 11/14 semibold `ink-tertiary` 12 in and 10 down; its button (`.gbtn`) is
-/// revealed while the label is hovered (`hoverIn` / `hoverOut`), and for the Archive chevron while the group is open.
+/// revealed while the label is hovered (`hoverIn` / `hoverOut`).
 final class SidebarLabelLayer: CALayer {
     let text = TextLayer()
     let button: IconButtonLayer
     private(set) var titleText = ""
-    private var chevronOpen = false
     var rowWidth: CGFloat = SB.rowWidth(sidebar: TK.M.sidebar) {
         didSet {
             guard rowWidth != oldValue else { return }
@@ -170,18 +167,6 @@ final class SidebarLabelLayer: CALayer {
         text.place(x: SB.labelTextX, lineTop: SB.labelTextTop, lineHeight: 14, width: rowWidth - SB.labelTextX)
         text.masksToBounds = true
         button.setPalette(p)
-    }
-
-    /// The chevron turns 90° in 200 ms ease-out (css:138–139).
-    func setChevron(open: Bool, animated: Bool) {
-        guard open != chevronOpen else { return }
-        chevronOpen = open
-        let angle: CGFloat = open ? .pi / 2 : 0
-        if animated {
-            button.glyph.animate("transform.rotation.z", to: angle, TK.CA.chevronT)
-        } else {
-            button.glyph.setInstant { button.glyph.setValue(angle, forKeyPath: "transform.rotation.z") }
-        }
     }
 }
 

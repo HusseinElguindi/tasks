@@ -71,8 +71,9 @@ struct TasksCommands: Commands {
 
     private var pickerOpen: Bool { window?.overlays.picker != nil }
 
-    /// The Trash reads but doesn't edit: only Put Back and Show Details act on its tasks (§22).
-    private var inTrash: Bool { window?.route == .trash }
+    /// Trash reads but doesn't edit, and so does a deleted list opened from it: only Put Back, Restore and Show
+    /// Details act there (§22, §28).
+    private var inTrash: Bool { actions?.inTrash ?? false }
 
     /// Text is being typed somewhere: ⌘⌫ belongs to the field.
     private var typing: Bool {
@@ -94,7 +95,7 @@ struct TasksCommands: Commands {
             // §23: headings live in lists, so it does nothing in Today and the views.
             Button("New Heading") { run { $0.newHeading() } }
                 .keyboardShortcut("n", modifiers: [.command, .option])
-                .disabled(window?.route.listID == nil)
+                .disabled(window?.route.listID == nil || inTrash)
             Button("New List") { actions?.newList() }
                 .keyboardShortcut("n", modifiers: [.command, .shift])
                 .disabled(actions == nil)
@@ -138,9 +139,11 @@ struct TasksCommands: Commands {
                 .keyboardShortcut(.downArrow, modifiers: [.command, .option])
                 .disabled(actions == nil || typing)
             Divider()
-            Button(window?.focus == .sidebar ? "Archive List" : window?.route == .trash ? "Put Back" : deleteTitle) { run { $0.deleteOrArchive() } }
+            // One key, two meanings: the same item reads "Delete List" while the sidebar has focus (§28).
+            Button(deleteTitle) { run { $0.deleteOrDeleteList() } }
                 .keyboardShortcut(.delete)
-                .disabled(actions == nil || typing || (window?.focus != .sidebar && !hasTarget))
+                .disabled(actions == nil || typing || (window?.focus == .sidebar ? !sidebarListOpen
+                                                       : !hasTarget && actions?.selectedDeletedList == nil))
         }
         CommandGroup(before: .sidebar) {
             // The sidebar's first nine rows, top to bottom: Today, Upcoming, Undated, then the lists (§22).
@@ -168,9 +171,21 @@ struct TasksCommands: Commands {
         return WindowState.Route.sidebarOrder(a.p).prefix(9).map(a.routeName)
     }
 
-    /// "Delete Heading" with only headings selected (§23).
+    /// The open view is a live list, for Delete List from the sidebar.
+    private var sidebarListOpen: Bool {
+        guard let a = actions, let id = a.window.route.listID else { return false }
+        return a.p.isActive(list: id)
+    }
+
+    /// "Delete List" with the sidebar focused; in Trash "Restore List", "Put Back in…" or "Put Back" (§28); "Delete
+    /// Heading" with only headings selected (§23).
     private var deleteTitle: String {
         guard let a = actions else { return "Delete" }
+        if a.window.focus == .sidebar { return "Delete List" }
+        if a.inTrash {
+            if a.selectedDeletedList != nil { return "\(TrashVerb.list.title) List" }
+            return a.targetIDs.contains(where: a.homeIsDeleted) ? "\(TrashVerb.task.title) in…" : TrashVerb.task.title
+        }
         let ids = a.targetIDs
         return !ids.isEmpty && ids.allSatisfy(a.isHeading) ? (ids.count > 1 ? "Delete Headings" : "Delete Heading") : "Delete"
     }
@@ -195,16 +210,17 @@ extension WindowActions {
     /// ⌥⌘↑ ⌥⌘↓: the selected tasks, or the open list when the sidebar has the keys.
     func moveUpDown(_ delta: Int) {
         if window.focus == .sidebar {
-            if let id = window.route.listID, p.list(id)?.archivedAt == nil { moveListBy(id, delta) }
+            if let id = window.route.listID, p.isActive(list: id) { moveListBy(id, delta) }
         } else {
             moveSelectionBy(delta)
         }
     }
 
-    /// ⌘⌫: delete the selected tasks; with the sidebar focused, archive the open list.
-    func deleteOrArchive() {
+    /// ⌘⌫: delete the selected tasks; with the sidebar focused, delete the open list (§28); in Trash, take out what's
+    /// selected.
+    func deleteOrDeleteList() {
         if window.focus == .sidebar {
-            if let id = window.route.listID { archive(list: id) }
+            if let id = window.route.listID, p.isActive(list: id) { deleteList(id) }
         } else {
             delete()
         }

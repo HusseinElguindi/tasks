@@ -59,9 +59,11 @@ struct DetailProps: View {
         let list = sameList ? store.projection.listModel(first.list) : nil
         VStack(alignment: .leading, spacing: 0) {
             PropRow(glyph: .lines, label: "List") { _ in
+                // A task whose list is in Trash: "School  In Trash" (§28).
                 ListPopup(monogram: list?.monogram ?? "…",
                           hue: list.map { tk.tile(slot: $0.colorSlot) } ?? tk.tile(.ink),
-                          name: list.map { _ in actions.listName(first.list) } ?? "Mixed") { anchor in
+                          name: list.map { _ in actions.listName(first.list) } ?? "Mixed",
+                          note: list?.isDeleted == true ? "In Trash" : nil) { anchor in
                     popListMenu(ids: ids, current: items.count == 1 ? first.list : nil, anchor: anchor)
                 }
             }
@@ -80,7 +82,7 @@ struct DetailProps: View {
 }
 
 /// One 32pt row; `content` gets whether the row is hovered (it reveals a date's ×).
-private struct PropRow<Value: View>: View {
+struct PropRow<Value: View>: View {
     let glyph: Glyph
     let label: String
     @ViewBuilder var content: (Bool) -> Value
@@ -320,6 +322,7 @@ private struct ListPopup: View {
     let monogram: String
     let hue: NSColor
     let name: String
+    var note: String? = nil
     let action: (CGRect) -> Void
     @State private var hovered = false
     @State private var frame: CGRect = .zero
@@ -330,6 +333,9 @@ private struct ListPopup: View {
             HStack(spacing: 6) {
                 TileView(monogram: monogram, hue: hue, size: .small)
                 Text(name).font(Font(TK.Font.body)).foregroundStyle(tk.ink.swiftUI).lineLimit(1).frame(height: 16)
+                if let note {
+                    Text(note).font(Font(TK.Font.small)).foregroundStyle(tk.inkTertiary.swiftUI).lineLimit(1).frame(height: 16)
+                }
                 GlyphView(glyph: .upDown, size: 12, color: tk.inkTertiary.swiftUI)
             }
             .padding(.leading, 4)

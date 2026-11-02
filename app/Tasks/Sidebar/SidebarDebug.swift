@@ -4,7 +4,6 @@ import Foundation
 
 /// Debug aids for checking the sidebar without the screen or the real pointer (never compiled into release builds):
 ///
-///     -debugArchiveOpen YES       the Archive group starts open
 ///     -debugCmdHints YES          ⌘1–⌘9 shown in place of the counts
 ///     -debugHover X,Y             hovers the sidebar at that window point (top-left origin), as the tracker would
 ///     -debugSidebarScript "<steps>"   runs semicolon-separated steps 1.5 s after launch, then quits:
@@ -17,7 +16,6 @@ import Foundation
 extension SidebarView {
     func runDebugIfRequested() {
         let d = UserDefaults.standard
-        if d.bool(forKey: "debugArchiveOpen") { ui.archiveOpen = true }
         if d.bool(forKey: "debugCmdHints") { ui.cmdHints = true }
         if let h = d.string(forKey: "debugHover") {
             let xy = h.split(separator: ",").compactMap { Double($0) }
@@ -91,11 +89,11 @@ extension SidebarView {
                     print("ax \(doc?.accessibilityRole()?.rawValue ?? "-") '\(doc?.accessibilityLabel() ?? "")': " + kids.map {
                         "\($0.accessibilityRole()?.rawValue ?? "?"):\($0.accessibilityLabel() ?? "")\($0.accessibilityValue().map { "=\($0)" } ?? "")\($0.isAccessibilitySelected() ? "*" : "")"
                     }.joined(separator: ", "))
-                case "archive", "unarchive":
+                case "deletelist", "restorelist":
                     let p = self.store.projection
                     if let id = p.allListIDs.first(where: { p.list($0)?.name == arg }) {
                         let a = WindowActions(store: self.store, window: self.ui)
-                        if parts[0] == "archive" { a.archive(list: id) } else { a.unarchive(list: id) }
+                        if parts[0] == "deletelist" { a.deleteList(id) } else { a.restoreList(id) }
                     }
                 case "wait":
                     try? await Task.sleep(for: .milliseconds(Int(arg) ?? 100))

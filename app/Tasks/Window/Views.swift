@@ -57,7 +57,7 @@ extension WindowState.Route {
         }
     }
 
-    /// The sidebar, top to bottom, without the archive (dc:2236–2240). ⌘1–⌘9 open its first nine rows.
+    /// The sidebar, top to bottom (dc:2236–2240): no deleted list, it's in Trash (§28). ⌘1–⌘9 open its first nine rows.
     @MainActor
     static func sidebarOrder(_ p: Projection) -> [WindowState.Route] {
         [.today, .upcoming, .undated] + p.activeLists.ids.map { .list($0) } + [.completed, .trash]
@@ -66,7 +66,6 @@ extension WindowState.Route {
 
 extension WindowActions {
     var route: WindowState.Route { window.route }
-    var inTrash: Bool { window.route == .trash }
 
     /// The name of a sidebar row: a view's, or a list's.
     func routeName(_ r: WindowState.Route) -> String {
@@ -165,42 +164,5 @@ extension WindowActions {
     func completeTasks(_ ids: [EntityID]) {
         let open = ids.filter { p.task($0)?.completedAt == nil }
         if !open.isEmpty { toggleComplete(open) }
-    }
-
-    // MARK: Put Back (dc:2411–2421)
-
-    /// `deleted: false` (SPEC §5): the task returns to its list at its old place, with its dates and completion; or,
-    /// given `list`, at the bottom of that list. The selection moves on, as a delete's does.
-    func putBack(_ ids: [EntityID]? = nil, in list: EntityID? = nil) {
-        let ids = (ids ?? targetIDs).filter { p.task($0)?.deleted == true }
-        guard !ids.isEmpty else { return }
-        endEdits()
-        let next = nextSelection(afterRemoving: ids)
-        let homes = Set(ids.compactMap { list ?? p.task($0)?.list })
-        let title = p.task(ids[0])?.title ?? ""
-        var ops: [Op] = []
-        let now = nowMs
-        let moving = list.map { l in ids.filter { p.task($0)?.list != l } } ?? []
-        if let list, !moving.isEmpty {
-            // At the bottom of the other list, in the order they were in (as Move does).
-            for item in Ordering.append(moving, after: p.orderedOpenTasks(in: list)) {
-                if moving.contains(item.id) {
-                    ops.append(Op(id: store.newID(), at: now, type: .taskUpdate, target: item.id,
-                                  set: Patch(list: list, order: item.order, deleted: false)))
-                } else {
-                    ops.append(Op(id: store.newID(), at: now, type: .taskUpdate, target: item.id, set: Patch(list: list, order: item.order)))
-                }
-            }
-        }
-        for id in ids where !moving.contains(id) {
-            ops.append(Op(id: store.newID(), at: now, type: .taskUpdate, target: id, set: Patch(deleted: false)))
-        }
-        let name = ids.count > 1 ? "Put Back \(ids.count) Tasks" : "Put Back"
-        guard undoable(name, { store.perform(ops, undoManager: undo, actionName: name) }) else { return }
-        select(next)
-        overlays.picker = nil
-        let text = ids.count > 1 ? "Put back \(ids.count) tasks" : "Put back \(quote(title))"
-        overlays.showNotice(text + (homes.count == 1 ? " in \(listName(homes.first!))" : ""), undo: true)
-        if window.detailOpen && next.isEmpty { closeDetail() }
     }
 }
