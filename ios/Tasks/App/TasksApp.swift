@@ -18,17 +18,22 @@ struct TasksApp: App {
                     Color(.systemBackground).ignoresSafeArea()
                 }
             }
-            .task { if app == nil { app = await Launch.open() } }
+            .task {
+                guard app == nil else { return }
+                let opened = await Launch.open()
+                app = opened
+                opened.startSync()
+            }
             .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in app?.store.refreshDay() }
             .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in app?.store.refreshDay() }
             .onReceive(NotificationCenter.default.publisher(for: .NSSystemClockDidChange)) { _ in app?.store.refreshDay() }
         }
         .onChange(of: phase) { _, now in
-            guard let store = app?.store else { return }
+            guard let app else { return }
             switch now {
-            case .active: store.refreshDay()
-            case .background: store.persistNow()
-            default: break
+            case .active: app.cameToFront()
+            case .background: app.inFront = false; app.store.persistNow()
+            default: app.inFront = false
             }
         }
     }
@@ -60,14 +65,15 @@ enum Launch {
             let clock = MovableClock()
             let store = await Store.open(directory: dir, clock: clock.storeClock)
             SampleData.seed(store, clock: clock)
-            return AppModel(store: store)
+            return AppModel(store: store, isSample: true)
         }
         return AppModel(store: await Store.open(directory: dataDirectory()))
     }
 }
 
 /// Deep links for screenshots and demos:
-///   -sampleData YES (the sample lists and tasks, in a scratch store of their own)
+///   -sampleData YES (the sample lists and tasks, in a scratch store of their own; never synced)
+///   -serverURL <url> (overrides Settings without saving); Debug only: -syncToken <a local server's throwaway token>
 ///   -screen home | today | upcoming | undated | completed | trash | list:<id> | detail:<taskID> | when:<taskID>
 ///           | deadline:<taskID> | settings | newtask | notice
 ///   -appearance system|light|dark   -style classic|glass

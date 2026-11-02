@@ -25,9 +25,11 @@ struct HomeView: View {
             Color.clear.frame(height: 14).listRow()
             SourceRow(source: .completed, sidebar: sidebar).listRow()
             SourceRow(source: .trash, sidebar: sidebar).listRow()
+            if let s = app.syncSummary { SyncLine(text: s).listRow() }
             Color.clear.frame(height: sidebar ? 60 : Metric.bottomClearance).listRow()
         }
         .listStyle(.plain)
+        .refreshable { await app.syncNow() }
         .scrollContentBackground(.hidden)
         .environment(\.defaultMinListRowHeight, 0)
         .background(AppBackground())
@@ -49,6 +51,23 @@ struct HomeView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Tasks")
         .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// How sync is doing, quietly, under the views (the Mac's sync indicator, in words). Pull down to sync now.
+struct SyncLine: View {
+    let text: String
+    @Environment(\.palette) private var p
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "icloud").font(.system(size: 12, weight: .medium))
+            Text(text).font(Typo.meta).lineLimit(1)
+        }
+        .foregroundStyle(p.inkTertiary)
+        .padding(.leading, Metric.rowPad + 2)
+        .padding(.top, 14)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Sync: " + text)
     }
 }
 

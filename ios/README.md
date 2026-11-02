@@ -6,7 +6,22 @@ change (ops, undo), Today, the views' grouping (`ViewGroups`), dates and their l
 the Mac's own code. The app adds only the screens and their state (`Tasks/Model/AppModel.swift`).
 
 Its data is in the app's Application Support: `Tasks` for Release builds, `Tasks Dev` for Debug ones (they share one
-container on iOS, so they keep their data apart, as the Mac's two apps do). Nothing syncs yet.
+container on iOS, so they keep their data apart, as the Mac's two apps do).
+
+## Sync
+
+Settings ▸ Sync: the server URL (`https://tasks.elguindi.workers.dev` unless changed) and the token, the Worker's
+`API_TOKEN`, pasted once into a secure field and kept in the Keychain (service `com.elguindi.Tasks.sync`, account
+`API_TOKEN`, this device only); it's never shown again. TasksCore syncs about a second after each change; the app
+also syncs at launch, on coming to the front, every 30 s while in front, and on pull to refresh. Nothing syncs in
+the background. Home shows how it's going under the views; Settings shows the status and has Sync Now.
+
+Debug builds only talk to a local `wrangler dev` (`localhost` or `127.0.0.1`), as the Mac's do, unless the
+`allowRemoteServer` default is set; the sample data never syncs. To try it against `server/` (`pnpm dev`, with a
+throwaway `API_TOKEN` in its `.dev.vars`), launch with `-serverURL http://127.0.0.1:8787 -syncToken <that token>`
+(Debug only), or type them into Settings. `testSyncTokenInSettings` does the Settings path when
+`TEST_RUNNER_SYNC_TEST_TOKEN` holds that throwaway token, and skips otherwise. XCTest writes what it types into its
+log and result bundle, so use it only with a local throwaway token, and delete `build/Logs/Test` afterwards.
 
 Bundle id `com.elguindi.Tasks` (UI tests: `com.elguindi.TasksUITests`). iOS 26.
 
@@ -61,6 +76,8 @@ Mac-only CLI, and building there writes `.swiftpm/` into `app/TasksCore`. (The `
 |---|---|
 | `-sampleData YES` | the sample lists and tasks, made with the Store's own actions in a scratch store (`Library/Caches/Sample Data`), fresh at each launch; never the app's data |
 | `-dataDirectory <path>` | the store's folder (testing) |
+| `-serverURL <url>` | the sync server, over Settings, without saving |
+| `-syncToken <token>` | Debug only: a local server's throwaway token, over the Keychain |
 | `-screen` | `home` `today` `upcoming` `undated` `completed` `trash` `list:<id>` `detail:<taskID>` `when:<taskID>` `deadline:<taskID>` `settings` `newtask` `notice` |
 | `-appearance` | `system` (the default) `light` `dark`; wins over Settings without being saved |
 | `-style` | `classic` `glass` |
@@ -82,6 +99,7 @@ With `-sampleData`, lists go by short names: `inbox` `school` `phys` `tasks` `ho
   notice and its Undo, the draft, the appearance, rows checked a moment ago) and the actions, each a Store action.
 - `Tasks/Model/Lines.swift`: what each view shows, read from the projection's buckets and grouped by `ViewGroups`.
 - `Tasks/Model/SampleData.swift`: the sample, made with Store actions on a clock it moves, dates relative to today.
+- `Tasks/Model/Sync.swift`: the Keychain, the sync config and triggers, and what Home and Settings say about sync.
 - `Tasks/App/TasksApp.swift`: opening the store, the day and background triggers, the launch arguments.
 - `Tasks/Views/`: home, list screen, rows, task detail, the When and Deadline picker, settings, and the root (a stack
   on iPhone, three panes on iPad). `MarkdownView.swift` draws notes from TasksCore's Markdown reading.

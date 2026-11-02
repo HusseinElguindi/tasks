@@ -22,6 +22,7 @@ struct ListScreen: View {
                 .listRow()
         }
         .listStyle(.plain)
+        .refreshable { await app.syncNow() }
         .scrollContentBackground(.hidden)
         .environment(\.defaultMinListRowHeight, 0)
         .background { if !app.isSplit { AppBackground() } }

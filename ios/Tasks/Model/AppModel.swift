@@ -94,6 +94,22 @@ final class AppModel {
         didSet { UserDefaults.standard.set(style.rawValue, forKey: Keys.style) }
     }
 
+    // Sync (Sync.swift)
+    /// The Worker's base URL. A `-serverURL` launch argument overrides it without saving (UserDefaults' argument
+    /// domain), as on the Mac.
+    var serverURL: String {
+        didSet {
+            UserDefaults.standard.set(serverURL, forKey: SyncKeys.serverURL)
+            applyConfig()
+        }
+    }
+    /// A token is saved in the Keychain (its value is never shown, logged or kept anywhere else).
+    var hasToken: Bool
+    /// The `-sampleData` store: never synced.
+    let isSample: Bool
+    /// In front (scenePhase active): the 30 s syncs run only then.
+    @ObservationIgnored var inFront = true
+
     static let todayDone = "today"
 
     struct ListEditor: Identifiable { let id = UUID(); var listID: EntityID?; var name: String }
@@ -103,11 +119,14 @@ final class AppModel {
         static let style = "style"
     }
 
-    init(store: Store) {
+    init(store: Store, isSample: Bool = false) {
         self.store = store
+        self.isSample = isSample
         let d = UserDefaults.standard
         appearance = d.string(forKey: Keys.appearance).flatMap(Appearance.init(rawValue:)) ?? .system
         style = d.string(forKey: Keys.style).flatMap(InterfaceStyle.init(rawValue:)) ?? .classic
+        serverURL = d.string(forKey: SyncKeys.serverURL) ?? Self.defaultServer
+        hasToken = Keychain.token() != nil
     }
 
     // MARK: Lookups

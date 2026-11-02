@@ -137,6 +137,33 @@ final class FlowTests: XCTestCase {
         shot("flow-edit-title-done")
     }
 
+    /// Settings ▸ Sync against a local `wrangler dev`: the token typed into the SecureField goes to the Keychain and sync
+    /// runs on it; after a relaunch it's still there. Runs only when TEST_RUNNER_SYNC_TEST_TOKEN holds that server's
+    /// throwaway token (it never comes from here), and takes no screenshots.
+    func testSyncTokenInSettings() throws {
+        guard let token = ProcessInfo.processInfo.environment["SYNC_TEST_TOKEN"], !token.isEmpty else {
+            throw XCTSkip("No local server token (TEST_RUNNER_SYNC_TEST_TOKEN).")
+        }
+        app.launchArguments = ["-dataDirectory", "~/Library/Caches/Sync Test", "-serverURL", "http://127.0.0.1:8787",
+                               "-appearance", "dark", "-style", "classic"]
+        app.launch()
+        app.buttons["Settings"].firstMatch.tap()
+        let field = app.secureTextFields["Token"].firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 3))
+        field.tap()
+        field.typeText(token)
+        app.buttons["Save"].firstMatch.tap()
+        let synced = app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Up to date'")).firstMatch
+        XCTAssertTrue(synced.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Saved in the Keychain."].exists)
+
+        app.terminate()
+        app.launch()
+        app.buttons["Settings"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Saved in the Keychain."].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Up to date'")).firstMatch.waitForExistence(timeout: 10))
+    }
+
     func testScrollFold() {
         app.launch()
         app.buttons["PHYS 122, 10"].firstMatch.tap()

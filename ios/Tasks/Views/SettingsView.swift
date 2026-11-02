@@ -1,12 +1,17 @@
 import SwiftUI
 import TasksCore
 
-/// Settings: System / Light / Dark and Classic or Glass, in Pane's sections and cards. One theme, the Mac's.
+/// Settings: the sync server and token (Keychain), System / Light / Dark and Classic or Glass, in Pane's sections and
+/// cards. One theme, the Mac's.
 struct SettingsView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     @Environment(\.colorScheme) private var scheme
     @Environment(\.dismiss) private var dismiss
+    @State private var server = ""
+    @State private var token = ""
+    @FocusState private var field: Field?
+    private enum Field { case server, token }
 
     var body: some View {
         @Bindable var app = app
@@ -22,6 +27,51 @@ struct SettingsView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
+                    Section("Sync") {
+                        VStack(spacing: 0) {
+                            stacked("Server URL", "The Worker's address. Sync starts once both are set.") {
+                                TextField("https://tasks.example.workers.dev", text: $server)
+                                    .font(Typo.body)
+                                    .keyboardType(.URL)
+                                    .textContentType(.URL)
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled()
+                                    .submitLabel(.done)
+                                    .focused($field, equals: .server)
+                                    .onSubmit(saveServer)
+                                    .padding(.horizontal, 12).frame(height: 38)
+                                    .background(p.fillControl, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                    .accessibilityLabel("Server URL")
+                            }
+                            divider
+                            stacked("Token", app.hasToken ? "Saved in the Keychain." : "The API_TOKEN secret, pasted once.") {
+                                HStack(spacing: 10) {
+                                    SecureField(app.hasToken ? "••••••••" : "Token", text: $token)
+                                        .font(Typo.body)
+                                        .textContentType(.password)
+                                        .textInputAutocapitalization(.never)
+                                        .autocorrectionDisabled()
+                                        .submitLabel(.done)
+                                        .focused($field, equals: .token)
+                                        .onSubmit(saveToken)
+                                        .padding(.horizontal, 12).frame(height: 38)
+                                        .background(p.fillControl, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                        .accessibilityLabel("Token")
+                                    Button("Save", action: saveToken)
+                                        .buttonStyle(CapsuleButtonStyle(kind: .tinted, height: 34))
+                                        .disabled(token.isEmpty)
+                                }
+                            }
+                            divider
+                            row("Status", app.syncStatus) {
+                                Button("Sync Now") { app.store.requestSync(force: true) }
+                                    .buttonStyle(CapsuleButtonStyle(kind: .neutral, height: 32))
+                                    .disabled(app.store.config == nil)
+                            }
+                        }
+                        .background(p.base, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+
                     Section("Appearance") {
                         VStack(spacing: 0) {
                             stacked("Appearance", "System follows the phone’s Light and Dark.") {
@@ -56,9 +106,25 @@ struct SettingsView: View {
             }
         }
         .background(p.ground)
+        .onAppear { server = app.serverURL }
+        .onChange(of: field) { old, _ in if old == .server { saveServer() } }
+        .onDisappear(perform: saveServer)
     }
 
     private var lists: [ListModel] { app.activeLists }
+
+    private func saveServer() {
+        let s = server.trimmingCharacters(in: .whitespacesAndNewlines)
+        if s != app.serverURL { app.serverURL = s }
+    }
+
+    /// Into the Keychain, then out of the field: the token is never shown again.
+    private func saveToken() {
+        guard !token.isEmpty else { return }
+        app.setToken(token)
+        token = ""
+        field = nil
+    }
     private var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0" }
 
     private var divider: some View {

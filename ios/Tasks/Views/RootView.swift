@@ -11,6 +11,12 @@ struct RootView: View {
         }
         .onAppear { app.isSplit = size == .regular }
         .onChange(of: size) { _, s in app.isSplit = s == .regular }
+        // TasksCore's own notices ("A change couldn't be saved."), as the app's.
+        .onChange(of: app.store.notice) { _, n in
+            guard let n else { return }
+            app.show(Notice(text: n, undo: nil))
+            app.store.notice = nil
+        }
     }
 }
 
