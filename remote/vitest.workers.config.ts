@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [
     cloudflareTest({
       wrangler: { configPath: "./wrangler.jsonc" },
-      miniflare: { bindings: { SYNC_TOKEN: TOKEN, DEV_TOKEN: "test-dev-token" }, serviceBindings: { SYNC: syncHandler, GOLDEN: goldenHandler } },
+      miniflare: { bindings: { SYNC_TOKEN: TOKEN, SETUP_SECRET: "test-setup-secret" }, serviceBindings: { SYNC: syncHandler, GOLDEN: goldenHandler } },
     }),
   ],
   test: {

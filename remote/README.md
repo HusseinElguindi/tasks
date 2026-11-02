@@ -3,9 +3,10 @@
 The remote MCP server: a second Worker, separate from `server/`, that is one more replica of the log, like the CLI.
 The plan is in `docs/REMOTE-MCP-PLAN.md`.
 
-So far (phases 1–3): the TypeScript port of what a replica needs, checked against the Swift, the Replica Durable
-Object that syncs it with the main Worker, and `/mcp`, the local `tasks mcp`'s two tools with each script on Worker
-Loader. OAuth comes in phase 4; until then `/mcp` takes `Authorization: Bearer <DEV_TOKEN>`.
+It is: the TypeScript port of what a replica needs, checked against the Swift; the Replica Durable Object that syncs
+it with the main Worker; `/mcp`, the local `tasks mcp`'s two tools with each script on Worker Loader; and OAuth in
+front of it, where the owner approves each client with a passkey. Deploying is in `docs/REMOTE-MCP-PLAN.md`
+("For later").
 
 - `src/core/`: TasksCore's ops and their canonical JSON, the wire format and error table, the reducer and inverse
   ops, ordering and fractional keys (the `fractional-indexing` package TasksCore's port came from), calendar dates,
@@ -26,16 +27,20 @@ Loader. OAuth comes in phase 4; until then `/mcp` takes `Authorization: Bearer <
   `Host` (an `RpcTarget`) that answers its `tasks.*` calls from the run's fork. TypeScript is stripped by sucrase and
   error positions mapped back through its source map. The CLI's limits: 10 s (a host timer, a deadline on every call,
   and `limits.cpuMs` in production; locally a busy loop isn't stopped, see the plan), 100 KB, 200 log lines, 500 ops.
-- `src/mcp.ts`, `src/index.ts`: MCP over Streamable HTTP (JSON replies, no SSE): `initialize`, `ping`, `tools/list`,
-  `tools/call` with the same instructions, tool text and replies as MCP.swift (a test reads MCP.swift).
+- `src/mcp.ts`: MCP over Streamable HTTP (JSON replies, no SSE): `initialize`, `ping`, `tools/list`, `tools/call`
+  with the same instructions, tool text and replies as MCP.swift (a test reads MCP.swift).
+- `src/index.ts`, `src/auth.ts`, `src/pages.ts`: OAuth 2.1 (`@cloudflare/workers-oauth-provider`): `/register` (DCR)
+  and Client ID Metadata Documents, `/authorize` (consent), `/token`, the discovery metadata, and `/mcp` as the
+  protected route. `/setup` takes `SETUP_SECRET` once to make the owner's passkey (`@simplewebauthn/server`), then
+  closes. Consent needs that passkey. Each client writes as `agent:<its domain or name>`, e.g. `agent:claude-ai`.
 
 ```sh
 pnpm install
 pnpm test           # both suites below
 pnpm test:node      # the fixtures, the contract, and parity with the Swift
-pnpm test:workers   # in workerd: the Replica DO syncing with local server/s, the CLI scenarios on Worker Loader, /mcp
+pnpm test:workers   # in workerd: the Replica DO and sync, the CLI scenarios on Worker Loader, /mcp, OAuth + passkey
 pnpm typecheck
-pnpm smoke          # server/ and tasks-mcp under two wrangler devs, then MCP over HTTP (dummy tokens)
+pnpm smoke          # server/ and tasks-mcp under two wrangler devs: passkey, OAuth, then MCP (dummy secrets)
 pnpm parity         # regenerate test/golden (Swift goldens, then a CLI capture against a local server), gzipped
 ```
 
@@ -44,7 +49,8 @@ The Worker tests' `SYNC` binding is a function in Node (`test/workers/servers.ts
 asks), or one real `wrangler dev` of `server/`. It can also answer with the server's own fixture responses
 (`fixtures/sync`), to drive the 401, 404, 400, 409, 413 and `invalid_op` paths. Nothing touches Cloudflare.
 
-`remote/.dev.vars` (gitignored) holds dummy `SYNC_TOKEN` and `DEV_TOKEN` values for local runs.
+`remote/.dev.vars` (gitignored) holds dummy `SYNC_TOKEN` and `SETUP_SECRET` values for local runs. In a browser,
+open `http://localhost:8787/setup` (not 127.0.0.1: a passkey can't be made for an IP address).
 
 Parity comes from two generators that never change `app/` or `server/`:
 

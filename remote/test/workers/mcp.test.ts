@@ -1,13 +1,17 @@
 // /mcp over HTTP, end to end: the Worker, the Replica DO ("main"), scripts on Worker Loader, and a local server/.
 
+import { reset } from "cloudflare:test";
 import { exports } from "cloudflare:workers";
 import { beforeAll, describe, expect, it } from "vitest";
 import { declarations } from "../../src/cli/commands.ts";
 import { Host } from "../../src/codemode.ts";
 import { INSTRUCTIONS, TOOLS } from "../../src/mcp.ts";
+import { SoftAuthenticator } from "./authenticator.ts";
 import { freshServer, serverLog } from "./helpers.ts";
+import { connect, setUp } from "./oauth.ts";
 
-const TOKEN = "test-dev-token";
+// A client named "dev", connected through OAuth with the owner's passkey: it writes as agent:dev.
+let TOKEN = "";
 const post = (body: unknown, headers: Record<string, string> = { Authorization: `Bearer ${TOKEN}` }) =>
   exports.default.fetch("https://tasks-mcp.example/mcp", {
     method: "POST",
@@ -30,22 +34,26 @@ async function runTool(script: string, dryRun?: boolean) {
 }
 
 beforeAll(async () => {
+  await reset();
   await freshServer();
+  const owner = new SoftAuthenticator();
+  expect((await setUp(owner)).status).toBe(200);
+  TOKEN = (await connect("dev", owner)).accessToken;
 });
 
 describe("the endpoint", () => {
-  it("needs the bearer token", async () => {
+  it("needs an OAuth access token", async () => {
     expect((await post({ jsonrpc: "2.0", id: 1, method: "ping" }, {})).status).toBe(401);
     const wrong = await post({ jsonrpc: "2.0", id: 1, method: "ping" }, { Authorization: "Bearer nope" });
     expect(wrong.status).toBe(401);
-    expect(wrong.headers.get("WWW-Authenticate")).toBe("Bearer");
+    expect(wrong.headers.get("WWW-Authenticate")).toMatch(/^Bearer /);
   });
 
   it("is POST only, at /mcp only", async () => {
     const get = await exports.default.fetch("https://tasks-mcp.example/mcp", { headers: { Authorization: `Bearer ${TOKEN}` } });
     expect(get.status).toBe(405);
     expect(get.headers.get("Allow")).toBe("POST");
-    expect((await exports.default.fetch("https://tasks-mcp.example/")).status).toBe(404);
+    expect((await exports.default.fetch("https://tasks-mcp.example/nope")).status).toBe(404);
   });
 
   it("answers a parse error, notifications with 202, and batches", async () => {

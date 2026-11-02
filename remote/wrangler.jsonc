@@ -7,10 +7,17 @@
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "durable_objects": {
-    "bindings": [{ "name": "REPLICA", "class_name": "Replica" }]
+    "bindings": [
+      // The replica of the log every client shares (idFromName("main")).
+      { "name": "REPLICA", "class_name": "Replica" },
+      // The owner's passkey and the one-time registration (idFromName("owner")).
+      { "name": "AUTH", "class_name": "Auth" }
+    ]
   },
-  // Not deployed yet: later phases add their classes to v1 until the first deploy.
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Replica"] }],
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Replica", "Auth"] }],
+  // workers-oauth-provider's storage: clients, grants, tokens (hashed). Before the first deploy:
+  // `npx wrangler kv namespace create OAUTH_KV`, then put its id here. Locally it's simulated.
+  "kv_namespaces": [{ "binding": "OAUTH_KV" }],
   // Code mode: each tasks_run script runs in a fresh isolate (src/codemode.ts).
   "worker_loaders": [{ "binding": "LOADER" }],
   // The main Worker (server/), unchanged: POST /v1/sync with Bearer SYNC_TOKEN.
@@ -21,7 +28,8 @@
     // Numeric date phrases ("3/4"): md or dm, the CLI's TASKS_DATE_ORDER.
     "DATE_ORDER": "md"
   },
-  // The main Worker's API_TOKEN. Locally a dummy one in .dev.vars, against a local server/.
-  "secrets": { "required": ["SYNC_TOKEN"] },
+  // SYNC_TOKEN: the main Worker's API_TOKEN. SETUP_SECRET: opens /setup for the first passkey (then unused).
+  // Locally, dummy ones in .dev.vars.
+  "secrets": { "required": ["SYNC_TOKEN", "SETUP_SECRET"] },
   "observability": { "enabled": true }
 }
