@@ -135,7 +135,7 @@ public final class Projection {
 
     /// The `at` of the op that last touched a task, which for a deleted task is its deletion: nothing edits a trashed
     /// task, so the last op is the one that set `deleted` (§22's `deletedAt`).
-    public static func deletedAt(_ t: TaskItem) -> Int { t.updatedAt }
+    nonisolated public static func deletedAt(_ t: TaskItem) -> Int { t.updatedAt }
 
     /// What Trash holds, newest deleted first (§28): each deleted list once, at its `archivedAt`, and each task
     /// deleted on its own at its deletion. A deleted list's other tasks aren't listed: they're under it. A task deleted
