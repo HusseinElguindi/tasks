@@ -13,9 +13,9 @@ In v1:
 - **Deleting** lists: a deleted list waits in Trash with its tasks until it's restored (§2).
 - **Drag-to-reorder** for tasks within a list and for lists in the sidebar.
 - A **Today** screen (rollup), a screen per list, and Trash, which holds deleted tasks and lists.
-- A macOS app, single user, offline-first, synced across the user's Macs through an append-only log on Cloudflare.
+- A macOS app and an iOS app (iPhone and iPad), single user, offline-first, synced across the user's devices through an append-only log on Cloudflare.
 
-Not in v1: iOS, recurring tasks, reminders/notifications, times of day, tags, subtasks, search, attachments, multiple users, hard deletes, and server-side snapshots/compaction. See §11 (Later).
+Not in v1: recurring tasks, reminders/notifications, times of day, tags, subtasks, search in the apps (on the Mac and on iOS alike), attachments, multiple users, hard deletes, and server-side snapshots/compaction. See §11 (Later).
 
 ## 2. Data model
 
@@ -796,7 +796,7 @@ If more users ever matter, the token maps to a user id, the DO is named by that 
 
 ### Platform
 
-One macOS app target, **macOS 14+**, the minimum `design/PaneTheme.swift` already sets. It uses a `NavigationSplitView` with a sidebar (Today, then the lists). Sync keeps several Macs in step. Nothing here depends on AppKit-only APIs beyond what SwiftUI provides, so an iOS target stays possible later without changing the model or sync.
+One macOS app target, **macOS 14+**, the minimum `design/PaneTheme.swift` already sets. It uses a `NavigationSplitView` with a sidebar (Today, then the lists). Sync keeps several Macs in step. The model, persistence and sync are the `TasksCore` package, which the iOS app (below) runs on as well.
 
 ### Local store: the log, plus a snapshot cache
 
@@ -893,6 +893,15 @@ Unit tests cover the pure parts with fixed inputs:
 - **Benchmarks:** see §9.
 
 The theme comes from `PaneTheme.swift`. Screen design follows the design directions in `design/`.
+
+### iOS client
+
+`ios/`, one SwiftUI app for iPhone and iPad (**iOS 26+**, Swift 6), on the same `TasksCore` as the Mac: the files above, the reducer, the projection, Today, ordering, dates, Markdown and sync are the Mac's own code, so the two can't disagree. The app adds only its screens and their state. Where a rule the screens need lived in the Mac app (the views' grouping, `ViewGroups`; list numbering in notes), it moved into `TasksCore` for both.
+
+- **Screens:** a stack on iPhone (home, a list, details in a sheet), the Mac's three panes on iPad. The Mac's one theme, its colours copied until the theme code is shared.
+- **Data:** the same files in the app's Application Support: `Tasks`, or `Tasks Dev` for Debug builds.
+- **Sync:** the same token, pasted once into Settings and kept in the Keychain; the Mac's triggers (launch, coming to the front, every 30 s while in front, pull to refresh), and nothing in the background. Debug builds talk only to a local server.
+- **Notes** show rendered at rest and as plain text while editing (the Mac edits them live, `design/MARKDOWN.md`).
 
 ## 9. Performance: view layer, indexes, budget
 
@@ -1064,7 +1073,8 @@ Deferred on purpose. Each is additive and needs no change to what v1 stores.
 - **Realtime:** a WebSocket "head is now N" poke from the DO (§5).
 - **Per-task history view** (§6).
 - ~~**Block Markdown rendering** for notes (§2).~~ Built (`design/MARKDOWN.md`).
-- **iOS, multiple users, Sign in with Apple** (§7, §8).
+- **Multiple users, Sign in with Apple** (§7).
+- **Search** in the apps: one `TasksCore` feature for the Mac, iOS and the CLI, planned together.
 - **Early notice for deadlines:** a "Due soon" group at the bottom of Today. It lists deadlines in the next N days (a setting, default 3) that aren't planned for today, each with "Do today" (sets `when` to today), and collapses like Completed. Display only, no model change. Tasks already enter Today on their due date (§4), so this is only about notice ahead of it. Tabled by the user on 2026-10-31.
 
 ## 12. Open questions
