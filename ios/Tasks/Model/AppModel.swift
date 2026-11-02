@@ -74,14 +74,31 @@ final class AppModel {
     /// Deleted lists opened in Trash.
     var expandedTrash: Set<EntityID> = []
     var notice: Notice?
+    /// The new-task row. It lives only while its list is on screen and nothing else is opened: leaving the list,
+    /// opening a task, a date, Settings or a list's name ends it (`endDraft`), as on the Mac (INTERACTIONS-v2 §6, "The
+    /// pointer while adding": anything else writes a title, then does that; an untitled one is dropped).
     var draft: Draft?
-    var path: [Source] = []
-    var selection: Source? = .today           // the split view's sidebar
-    var selectedTask: EntityID?               // the split view's detail
-    var detailTask: EntityID?                 // the phone's detail sheet
-    var dateTarget: DateTarget?
-    var showSettings = false
-    var listEditor: ListEditor?
+    var path: [Source] = [] {                 // the phone's stack
+        didSet { if !isSplit { endDraft(unlessShowing: path.last) } }
+    }
+    var selection: Source? = .today {         // the split view's sidebar
+        didSet { if isSplit { endDraft(unlessShowing: selection) } }
+    }
+    var selectedTask: EntityID? {             // the split view's detail
+        didSet { if selectedTask != nil { endDraft() } }
+    }
+    var detailTask: EntityID? {               // the phone's detail sheet
+        didSet { if detailTask != nil { endDraft() } }
+    }
+    var dateTarget: DateTarget? {
+        didSet { if dateTarget != nil { endDraft() } }
+    }
+    var showSettings = false {
+        didSet { if showSettings { endDraft() } }
+    }
+    var listEditor: ListEditor? {
+        didSet { if listEditor != nil { endDraft() } }
+    }
     var isSplit = false                       // iPad: detail inline, not a sheet
     /// Screenshots: keep a notice and a just-checked row on screen instead of letting them go.
     var holdTransient = false
@@ -274,18 +291,44 @@ final class AppModel {
         if let id { open(.list(id)) }
     }
 
-    // MARK: The draft
+    // MARK: The draft (INTERACTIONS-v2 §6): nothing is written until it has a title
 
     func startDraft(_ source: Source) {
         animate(Motion.layout) { draft = Draft(source: source) }
     }
 
-    /// Commits the draft row. A title makes the task, at the top of its list, and starts another row; an empty one
-    /// cancels. Today's has a When of today, Upcoming's tomorrow; outside a list it goes to the default list.
-    func commitDraft() {
+    /// Return: a title makes the task, at the top of its list, and opens the next row; an empty row ends adding.
+    func submitDraft() {
         guard let d = draft else { return }
+        animate(Motion.layout) { draft = write(d) ? Draft(source: d.source) : nil }
+    }
+
+    /// Done with the row any other way: a tap outside it, a swipe, leaving the list, opening something else, the app
+    /// going to the background. A title is written; an empty row goes without a trace (no op, no undo step).
+    func endDraft() {
+        guard let d = draft else { return }
+        animate(Motion.layout) {
+            _ = write(d)
+            draft = nil
+        }
+    }
+
+    /// Cancel: the row goes with whatever was typed, and nothing is written.
+    func cancelDraft() {
+        guard draft != nil else { return }
+        animate(Motion.layout) { draft = nil }
+    }
+
+    /// Ends the draft if its list isn't the one now shown.
+    private func endDraft(unlessShowing shown: Source?) {
+        if let d = draft, d.source != shown { endDraft() }
+    }
+
+    /// One `task.create` for a titled draft (Today's has a When of today, Upcoming's tomorrow; outside a list it goes
+    /// to the default list); false, and nothing written, for an empty one.
+    private func write(_ d: Draft) -> Bool {
         let title = d.title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !title.isEmpty else { animate(Motion.layout) { draft = nil }; return }
+        guard !title.isEmpty else { return false }
         var listID: EntityID?
         var when: CalendarDate?
         switch d.source {
@@ -294,13 +337,9 @@ final class AppModel {
         case .upcoming: when = today.adding(days: 1)
         default: break
         }
-        animate(Motion.layout) {
-            store.createTask(title: title, in: listID, at: .top, when: when, undoManager: undo)
-            draft = Draft(source: d.source)
-        }
+        store.createTask(title: title, in: listID, at: .top, when: when, undoManager: undo)
+        return true
     }
-
-    func cancelDraft() { animate(Motion.layout) { draft = nil } }
 
     // MARK: Navigation
 

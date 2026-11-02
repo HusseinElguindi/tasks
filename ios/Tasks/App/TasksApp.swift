@@ -32,7 +32,11 @@ struct TasksApp: App {
             guard let app else { return }
             switch now {
             case .active: app.cameToFront()
-            case .background: app.inFront = false; app.store.persistNow()
+            case .background:
+                // No new-task row waits in the background: a title is written (and saved, next), an empty row goes.
+                app.endDraft()
+                app.inFront = false
+                app.store.persistNow()
             default: app.inFront = false
             }
         }

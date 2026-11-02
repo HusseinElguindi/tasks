@@ -164,6 +164,174 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Up to date'")).firstMatch.waitForExistence(timeout: 10))
     }
 
+    // MARK: Adding a task: every way out of the new-task row
+
+    private var draft: XCUIElement { app.textFields["draft"] }
+
+    /// The + opens the new-task row, with the caret in it.
+    private func add(_ why: String = "the + opens the new-task row", file: StaticString = #filePath, line: UInt = #line) {
+        app.buttons["New Task"].firstMatch.tap()
+        XCTAssertTrue(draft.waitForExistence(timeout: 3), why, file: file, line: line)
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3), "\(why): keyboard up", file: file, line: line)
+    }
+
+    /// No new-task row and no keyboard: the list as it is when not adding.
+    private func assertNotAdding(_ why: String, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertTrue(draft.waitForNonExistence(timeout: 3), "no new-task row: \(why)", file: file, line: line)
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3), "no keyboard: \(why)", file: file, line: line)
+    }
+
+    private func back() {
+        app.navigationBars.firstMatch.buttons.element(boundBy: 0).tap()
+        sleep(1)
+    }
+
+    /// The home row's count: no task was written.
+    private func assertCount(_ label: String, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertTrue(app.buttons[label].firstMatch.waitForExistence(timeout: 3), "home shows \(label)", file: file, line: line)
+    }
+
+    /// Return on a title writes it and opens the next row; Return on an empty row ends adding, writing nothing.
+    func testAddReturn() {
+        app.launch()
+        app.buttons["School, 11"].firstMatch.tap()
+        add()
+        app.typeText("Book a study room for Thursday\n")
+        XCTAssertTrue(app.staticTexts["Book a study room for Thursday"].waitForExistence(timeout: 3))
+        XCTAssertTrue(draft.waitForExistence(timeout: 3), "the next row opens")
+        app.typeText("\n")
+        assertNotAdding("Return on an empty row")
+        back()
+        assertCount("School, 12")
+    }
+
+    /// A tap outside the row (the list's header) drops an empty row and writes a titled one, as a press elsewhere does
+    /// on the Mac.
+    func testAddTapOutside() {
+        app.launch()
+        app.buttons["School, 11"].firstMatch.tap()
+        add()
+        let header = app.descendants(matching: .any)["listHeader"].firstMatch
+        header.tap()
+        assertNotAdding("tap outside, empty")
+        add("the + again")
+        app.typeText("Return the library books")
+        header.tap()
+        assertNotAdding("tap outside, titled")
+        XCTAssertTrue(app.staticTexts["Return the library books"].exists, "a titled row is written")
+        shot("flow-add-tap-outside")
+        back()
+        assertCount("School, 12")
+    }
+
+    /// Swiping the list down puts the keyboard away and ends adding.
+    func testAddSwipeDown() {
+        app.launch()
+        app.buttons["School, 11"].firstMatch.tap()
+        add()
+        let start = app.descendants(matching: .any)["listHeader"].firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: 220)), withVelocity: .fast, thenHoldForDuration: 0)
+        assertNotAdding("swipe down")
+        back()
+        assertCount("School, 11")
+    }
+
+    /// Cancel, in the bar while adding, drops the row with whatever was typed.
+    func testAddCancel() {
+        app.launch()
+        app.buttons["School, 11"].firstMatch.tap()
+        add()
+        app.typeText("Not this one")
+        shot("flow-add-cancel")
+        app.navigationBars.buttons["Cancel"].firstMatch.tap()
+        assertNotAdding("Cancel")
+        XCTAssertFalse(app.staticTexts["Not this one"].exists, "nothing written")
+        XCTAssertTrue(app.buttons["List actions"].exists, "the list's menu is back")
+        back()
+        assertCount("School, 11")
+    }
+
+    /// Leaving the list ends adding: back home, another view, Settings, and back shows the list as it was. A titled row
+    /// is written on the way out (the Mac's "anything else: writes it, then does that").
+    func testAddEndsOnLeaving() {
+        app.launch()
+        // From home: the + adds in the default list (the Inbox).
+        let inbox = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Inbox'")).firstMatch
+        let before = inbox.label
+        add("the + from home")
+        back()
+        XCTAssertEqual(inbox.label, before, "nothing written")
+        inbox.tap()
+        assertNotAdding("back to the Inbox")
+        // Into a list, out to Today and Settings, and back.
+        back()
+        app.buttons["School, 11"].firstMatch.tap()
+        add()
+        back()
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Today'")).firstMatch.tap()
+        assertNotAdding("in Today")
+        back()
+        app.buttons["Settings"].firstMatch.tap()
+        sleep(1)
+        app.buttons["Done"].firstMatch.tap()
+        sleep(1)
+        app.buttons["School, 11"].firstMatch.tap()
+        assertNotAdding("back to School")
+        // Typed, then left: written, and the list shows normally.
+        add()
+        app.typeText("Water the plants")
+        back()
+        assertCount("School, 12")
+        app.buttons["School, 12"].firstMatch.tap()
+        assertNotAdding("back to School after writing")
+        XCTAssertTrue(app.staticTexts["Water the plants"].exists)
+    }
+
+    /// iPad: another view or Settings from the sidebar ends adding, and the list shows normally when picked again.
+    func testAddEndsFromSidebar() throws {
+        guard UIDevice.current.userInterfaceIdiom == .pad else { throw XCTSkip("The sidebar is iPad's.") }
+        // Landscape: the three panes side by side (in portrait the sidebar is an overlay that a tap outside closes).
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        app.launch()
+        app.buttons["School, 11"].firstMatch.tap()
+        add()
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Today'")).firstMatch.tap()
+        assertNotAdding("in Today")
+        app.buttons["School, 11"].firstMatch.tap()
+        assertNotAdding("back to School")
+        add()
+        app.typeText("Water the plants")
+        app.buttons["Settings"].firstMatch.tap()
+        sleep(1)
+        app.buttons["Done"].firstMatch.tap()
+        sleep(1)
+        assertNotAdding("after Settings")
+        XCTAssertTrue(app.staticTexts["Water the plants"].exists, "a titled row is written")
+        assertCount("School, 12")
+        shot("flow-add-ipad-sidebar")
+    }
+
+    /// The app going to the background ends adding: back in front, the list shows normally (a title was written).
+    func testAddEndsInBackground() {
+        app.launch()
+        app.buttons["School, 11"].firstMatch.tap()
+        add()
+        XCUIDevice.shared.press(.home)
+        sleep(1)
+        app.activate()
+        assertNotAdding("background, empty")
+        add("the + again")
+        app.typeText("Print the lab report")
+        XCUIDevice.shared.press(.home)
+        sleep(1)
+        app.activate()
+        assertNotAdding("background, titled")
+        XCTAssertTrue(app.staticTexts["Print the lab report"].exists, "a titled row is written")
+        back()
+        assertCount("School, 12")
+    }
+
     func testScrollFold() {
         app.launch()
         app.buttons["PHYS 122, 10"].firstMatch.tap()

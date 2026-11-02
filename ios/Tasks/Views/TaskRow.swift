@@ -213,8 +213,9 @@ struct DraftRow: View {
                 .font(Typo.row)
                 .foregroundStyle(p.ink)
                 .focused($focused)
+                .accessibilityIdentifier("draft")
                 .submitLabel(.next)
-                .onSubmit { app.commitDraft() }
+                .onSubmit { app.submitDraft() }
             Spacer(minLength: 0)
         }
         .padding(.trailing, 12)
@@ -223,10 +224,9 @@ struct DraftRow: View {
         .overlay(RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous).strokeBorder(p.accent, lineWidth: 1.5))
         .onAppear { DispatchQueue.main.async { focused = true } }
         .onChange(of: focused) { _, now in
+            // The caret left the row (a tap elsewhere, the keyboard swiped away): a title is written, an empty row goes.
             guard !now, app.draft?.token == token else { return }
-            // Leaving the row: a title commits, an empty one cancels.
-            if (app.draft?.title ?? "").trimmingCharacters(in: .whitespaces).isEmpty { app.cancelDraft() }
-            else { app.commitDraft(); app.cancelDraft() }
+            app.endDraft()
         }
     }
 }

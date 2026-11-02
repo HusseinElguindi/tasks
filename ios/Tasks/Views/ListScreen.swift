@@ -8,6 +8,11 @@ struct ListScreen: View {
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     @State private var folded = false
+    /// The new-task row's frame in the list, so a tap outside it can end adding.
+    @State private var draftFrame: CGRect?
+
+    private static let space = "rows"
+    private var adding: Bool { app.draft?.source == source }
 
     var body: some View {
         let lines = app.lines(source)
@@ -22,6 +27,14 @@ struct ListScreen: View {
                 .listRow()
         }
         .listStyle(.plain)
+        .coordinateSpace(.named(Self.space))
+        // While adding, a tap anywhere outside the new-task row ends it (as a press elsewhere does on the Mac); the tap
+        // still does what it does there (a row opens, a box checks). Not adding, the list's taps are left alone.
+        .simultaneousGesture(SpatialTapGesture(coordinateSpace: .named(Self.space)).onEnded { tap in
+            if !(draftFrame?.contains(tap.location) ?? false) { app.endDraft() }
+        }, including: adding ? .all : .subviews)
+        // A swipe on the list puts the keyboard away, which ends adding.
+        .scrollDismissesKeyboard(.immediately)
         .refreshable { await app.syncNow() }
         .scrollContentBackground(.hidden)
         .environment(\.defaultMinListRowHeight, 0)
@@ -42,7 +55,12 @@ struct ListScreen: View {
                 .opacity(folded ? 1 : 0)
                 .accessibilityHidden(!folded)
             }
-            if case let .list(id) = source {
+            if adding {
+                // While adding: Cancel drops the row with whatever was typed (the list's menu is back after).
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Cancel") { app.cancelDraft() }
+                }
+            } else if case let .list(id) = source {
                 ToolbarItem(placement: .primaryAction) { ListMenu(listID: id) }
             }
         }
@@ -80,6 +98,7 @@ struct ListScreen: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
+        .accessibilityIdentifier("listHeader")
     }
 
     private var subtitle: String? {
@@ -115,7 +134,11 @@ struct ListScreen: View {
                     Button { app.restoreList(l.id) } label: { Label("Restore List", systemImage: "arrow.uturn.backward") }
                 }
         case .draft:
-            if let token = app.draft?.token { DraftRow(token: token).id(token) }
+            if let token = app.draft?.token {
+                DraftRow(token: token)
+                    .id(token)
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: { draftFrame = $0 }
+            }
         case let .empty(title, message, symbol):
             EmptyState(title: title, message: message, symbol: symbol)
         }
