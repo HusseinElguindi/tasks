@@ -7,7 +7,7 @@ import TasksCore
 /// semicolon-separated steps 1.5 s after launch, posting events straight to the window (no HID), then quits.
 ///
 ///     click:X,Y   dbl:X,Y   cmdclick:X,Y   shiftclick:X,Y     (window points from the top left)
-///     key:CODE[:cmd|shift]   wait:MS   snap:/path.png   log:/path.txt  (appends the selection and first responder)
+///     key:CODE[:cmd|shift|cmdshift]   wait:MS   snap:/path.png   log:/path.txt  (appends the selection and first responder)
 ///     psnap:/path.png   (the layers as on screen this frame, mid-animation)
 ///     hold:CODE:N[:cmd]   (the key held: its press, N auto-repeats from 525 ms, its release)
 ///     checkclick:TITLE   checkdbl:TITLE   (a click or a double-click on that task's checkbox)
@@ -23,7 +23,7 @@ import TasksCore
 ///     picker:when|deadline   (opens the date popover for the selection)
 ///     type:TEXT   (types each character as a key press; \n and \t as Return and Tab)
 ///     mktask:TITLE|NOTES   (a new task with notes, in the open list or Inbox)
-///     menukey:z|Z:/path.txt   (the main menu's ⌘z, or ⇧⌘z for Z, sent as with the window key; appends the item and
+///     menukey:z|Z|ret|RET:/path.txt   (the main menu's ⌘z, or ⇧⌘z for Z, ⇧⌘↩ for RET, sent as with the window key; appends the item and
 ///     who took it)   event   (a pass of NSApp's event loop, as real input makes: it closes undo groups)
 ///     ncaret:A[,B]   (the notes take the keys with A..B selected)   nbox:OFFSET   (a click on the checklist box there)
 ///     nlog:/path.txt   (appends the notes' text, selection, hidden marks, session and the task's stored notes)
@@ -51,7 +51,8 @@ enum DebugScript {
                 case "key":
                     let k = arg.split(separator: ":").map(String.init)
                     guard let code = UInt16(k[0]) else { continue }
-                    let flags: NSEvent.ModifierFlags = k.count > 1 ? (k[1] == "cmd" ? .command : k[1] == "shift" ? .shift : []) : []
+                    let flags: NSEvent.ModifierFlags = k.count > 1 ? (k[1] == "cmd" ? .command : k[1] == "shift" ? .shift
+                                                                       : k[1] == "cmdshift" ? [.command, .shift] : []) : []
                     key(w, code: code, flags: flags)
                 case "hold":
                     // hold:CODE:N[:cmd] — the key held down past the repeat delay: its press, N repeats (the first
@@ -447,8 +448,10 @@ enum DebugScript {
     /// The menu item a ⌘ key equivalent picks, sent as AppKit sends it with the window key: its own target, or the
     /// first in the first responder's chain (then the window's delegate, the app and its delegate) that takes the
     /// action. A background app has no key window, so the real menu can't find one. Returns what happened.
-    private static func menuKey(_ w: NSWindow, _ key: String) -> String {
-        let shift = key != key.lowercased()
+    private static func menuKey(_ w: NSWindow, _ name: String) -> String {
+        // `ret` is ⌘↩ and `RET` ⇧⌘↩ (Zoom Pane, §29); a letter is itself, ⇧ when it's a capital.
+        let key = name.lowercased() == "ret" ? "\r" : name
+        let shift = name == "RET" || key != key.lowercased()
         func find(_ m: NSMenu) -> NSMenuItem? {
             for i in m.items {
                 if let s = i.submenu, let f = find(s) { return f }

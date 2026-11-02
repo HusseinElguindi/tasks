@@ -101,8 +101,22 @@ final class WindowState {
     /// ⇧-click and ⇧↑↓ extend from the anchor; ↑↓ move from the cursor.
     @ObservationIgnored var anchor: EntityID?
     @ObservationIgnored var cursor: EntityID?
-    var focus: Focus = .list
-    var detailOpen = false
+    var focus: Focus = .list {
+        // The keys never rest in a hidden pane (§29): moving them to the list ends the zoom, on the zoom's own curve.
+        // The sidebar stays on screen through a zoom, so it can have them.
+        didSet { if zoomed, focus == .list { withAnimation(TK.Motion.natural) { zoomed = false } } }
+    }
+    var detailOpen = false {
+        // The detail pane closing (×, ⌘D, a dropped draft, the last task deleted) takes its zoom with it (§29).
+        didSet { if !detailOpen, zoomed { zoomed = false } }
+    }
+    /// The detail pane is zoomed (§29, the user 2026-11-01): it takes the list pane's room too, and the list hides, until
+    /// ⇧⌘↩, the zoom button or Esc puts it back as it was. The sidebar stays as it is, open or hidden, and keeps its
+    /// toggle. Per window and never kept: the next launch, and the next time the pane opens, aren't zoomed.
+    var zoomed = false
+    /// The window is under ~900pt and the detail pane takes the list's place (A3's drill-in), so it has nothing to zoom
+    /// over. Set by `MainLayout`.
+    var narrow = false
     /// Settings ▸ Highlight focused pane, mirrored from `AppModel` by RootView so the AppKit list observes it too.
     var paneHighlight: AppModel.PaneHighlight = .current
     var sidebarVisible = true

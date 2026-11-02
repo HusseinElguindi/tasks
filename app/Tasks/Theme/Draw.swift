@@ -9,7 +9,7 @@ import SwiftUI
 
 enum Glyph: CaseIterable {
     case sun, sidebarLeft, split, plus, chevronRight, chevronLeft, calendar, flag, xmark, trash, lines, archive,
-         checkCircle, upDown, check, notes, checklist, layers, doneCircle, putBack
+         checkCircle, upDown, check, notes, checklist, layers, doneCircle, putBack, zoom, unzoom
 
     /// SVG path data in a 16×16 view box, y down.
     private var svg: [String] {
@@ -41,6 +41,10 @@ enum Glyph: CaseIterable {
         case .doneCircle: return ["circle 8 8 6", "M5.3 8.2l1.9 1.9 3.6-4"]
         // dc:120's half circle (a3.5 3.5 0 0 1 0 7) as two quarters, which is what the parser's arcs draw.
         case .putBack: return ["M5.5 3.5L3 6l2.5 2.5", "M3 6h6.5a3.5 3.5 0 0 1 3.5 3.5a3.5 3.5 0 0 1 -3.5 3.5H7"]
+        // Zoom Pane (§29): Rex's two arrows out to the corners, apart in the middle (docs/feedback/rex-zoom-pane.png);
+        // zoomed, the same two pointing in, their heads short of the middle.
+        case .zoom: return ["M3.5 6.75V3.5h3.25M3.5 3.5l3.75 3.75", "M12.5 9.25v3.25H9.25M12.5 12.5L8.75 8.75"]
+        case .unzoom: return ["M6.75 3.5v3.25H3.5M6.75 6.75L3 3", "M9.25 12.5V9.25h3.25M9.25 9.25L13 13"]
         }
     }
 

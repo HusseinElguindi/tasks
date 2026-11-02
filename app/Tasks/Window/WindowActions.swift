@@ -226,7 +226,8 @@ struct WindowActions {
         // A deleted list's row in Trash goes by its name (§28).
         if let id = layout.order.first(where: { ((p.task($0)?.title ?? p.list($0)?.name)?.lowercased() ?? "").hasPrefix(buf) }) {
             select([id])
-            focus(.list)
+            // From a zoomed task the keys stay in it, and it shows the task typed to (§29).
+            if !window.zoomed { focus(.list) }
             window.taskList?.scrollToVisible(id)
         }
     }
@@ -252,6 +253,8 @@ struct WindowActions {
         settleNow()
         overlays.picker = nil
         let sel = Set(ids)
+        // A zoomed task goes with its view (§29): the list comes back, already showing the new one.
+        if window.zoomed, window.route != route { setZoom(false) }
         var t = Transaction(animation: nil)
         t.disablesAnimations = true
         withTransaction(t) {
@@ -287,6 +290,25 @@ struct WindowActions {
 
     func toggleDetail() {
         if window.detailOpen { closeDetail() } else { openDetail() }
+    }
+
+    // MARK: - Zoom (§29, the user 2026-11-01: Rex's Zoom Pane ⇧⌘↩)
+
+    /// The detail pane can zoom: it's open beside the list. In a narrow window it's already in the list's place.
+    var canZoom: Bool { window.detailOpen && !window.narrow }
+
+    /// ⇧⌘↩, the zoom button or View ▸ Zoom Pane: the detail pane takes the list's room, or gives it back. From the list
+    /// or the sidebar too, since it's the one pane that zooms.
+    func toggleZoom() { setZoom(!window.zoomed) }
+
+    /// The detail pane's left edge moves to the list's on `natural` (its own open and close) and covers the list,
+    /// which keeps its width and place underneath and fades, so its rows don't reflow or scroll. Unzooming runs it
+    /// backwards. The sidebar doesn't change. Zooming gives the detail pane the keys, since the list they'd be in hides;
+    /// a caret already in the pane stays where it is. Reduce Motion: at once.
+    func setZoom(_ on: Bool) {
+        guard window.zoomed != on, !on || canZoom else { return }
+        withAnimation(TK.Motion.natural) { window.zoomed = on }
+        if on, window.focus != .detail { focus(.detail) }
     }
 
     // MARK: - Adding: a new task opens in the detail pane (§6, dc:837–872)

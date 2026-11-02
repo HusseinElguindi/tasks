@@ -40,6 +40,17 @@ enum DebugViews {
         case "frames": DebugFrames.start(rest, window: w)
         case "collapse": if let h = task(rest) { a.toggleCollapse([h]) }
         case "detail": a.toggleDetail()
+        // Zoom Pane (§29): `zoom` is ⇧⌘↩; `tip` shows the zoom button's tooltip where its hover would, after the same
+        // delay (its 26pt button sits 2 left of the ×, 8 in from the pane's right edge, on the y = 25 line); `tipoff`
+        // is the pointer leaving.
+        case "zoom": a.toggleZoom()
+        case "tipoff": w.overlays.hideTip()
+        case "tip":
+            let width = w.nsWindow?.contentView?.bounds.width ?? 0
+            let zoomed = w.zoomed
+            w.overlays.hoverTip(zoomed ? "Unzoom Pane" : "Zoom Pane", keys: "⇧⌘↩",
+                                for: CGRect(x: width - 2 * TK.M.gutter - 2 * TK.M.headerButton - 2, y: 12, width: TK.M.headerButton, height: TK.M.headerButton),
+                                windowWidth: width)
         case "rename": if let t = task(rest) { a.startRename(t) }
         case "renamelist": if let l = list(rest) { a.startListRename(l) }
         case "newlist": a.newList()

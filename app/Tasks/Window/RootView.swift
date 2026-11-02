@@ -26,7 +26,7 @@ struct RootView: View {
                         DebugKeyLog.installIfRequested()
                         DebugScript.runIfRequested(window, model: model) {
                             let titles = window.selection.compactMap { store.projection.task($0)?.title }.sorted()
-                            return "selection=\(titles) focus=\(window.focus) detail=\(window.detailOpen) draft=\(window.draft.map { "'\($0.title)'" } ?? "-") widths=\(Int(window.sidebarWidth))/\(Int(window.detailWidth)) rename=\(window.rename.map { "\($0.kind)" } ?? "-") detailEditing=\(window.detailEditing.map { "\($0)" } ?? "-") editor=\((window.nsWindow?.firstResponder as? NSTextView).map { "'\($0.string)'" } ?? "-")"
+                            return "selection=\(titles) focus=\(window.focus) detail=\(window.detailOpen) zoom=\(window.zoomed) draft=\(window.draft.map { "'\($0.title)'" } ?? "-") widths=\(Int(window.sidebarWidth))/\(Int(window.detailWidth)) rename=\(window.rename.map { "\($0.kind)" } ?? "-") detailEditing=\(window.detailEditing.map { "\($0)" } ?? "-") editor=\((window.nsWindow?.firstResponder as? NSTextView).map { "'\($0.string)'" } ?? "-")"
                         }
                         #endif
                     }
@@ -48,7 +48,8 @@ struct RootView: View {
 /// The window (§4): the sidebar on the ground, then the list pane and the detail pane with 8pt gutters. Hiding the
 /// sidebar slides the panes over it (it stays put underneath) while the traffic lights and the toggle stay where they
 /// are, on the y = 25 line with every pane's title and buttons. Under ~900pt the detail pane replaces the list
-/// (A3's drill-in). The sidebar's edge and the gap before the detail pane are dividers (`PaneGeometry`).
+/// (A3's drill-in). The sidebar's edge and the gap before the detail pane are dividers (`PaneGeometry`). A zoomed
+/// detail pane (§29) takes the list's room as well, sliding over it; the sidebar stays as it is.
 struct MainLayout: View {
     let store: Store
     @Bindable var window: WindowState
@@ -65,26 +66,42 @@ struct MainLayout: View {
             let collapsedInset = inBand && sync.showsInBand ? TK.M.headerInsetCloud : TK.M.headerInsetCollapsed
             let narrow = g.narrow
             let paneHeight = max(0, geo.size.height - 2 * TK.M.gutter)
+            let zoomed = window.zoomed && !narrow
             ZStack(alignment: .topLeading) {
                 SidebarRepresentable(store: store, window: window, palette: tk)
                     .frame(width: g.sidebar)
                     .frame(maxHeight: .infinity, alignment: .top)
                     // In Glass the panes would show it through their fills: it fades as they slide over it.
                     .opacity(style == .glass && !window.sidebarVisible ? 0 : 1)
-                HStack(spacing: TK.M.gutter) {
+                HStack(spacing: 0) {
                     if !(narrow && window.detailOpen) {
                         // The band's title makes room for the cloud on the sidebar's curve.
                         ListPane(store: store, window: window, leadingInset: window.sidebarVisible ? TK.M.headerInset : collapsedInset)
                             .animation(TK.Motion.sidebar, value: collapsedInset)
+                            // Zoomed (§29): it keeps its width and its place, and its room closes up to nothing, so the
+                            // detail pane (drawn after it) slides over it while it fades. Nothing reflows or scrolls.
+                            .frame(width: zoomed ? g.listWidth : nil)
+                            .padding(.trailing, window.detailOpen && !narrow ? TK.M.gutter : 0)
+                            .frame(width: zoomed ? 0 : nil, alignment: .leading)
+                            .zoomedAway(zoomed)
                     }
                     if window.detailOpen {
                         // v1's transition, kept exactly (§4).
-                        DetailPane(store: store, window: window, single: narrow)
-                            .frame(width: narrow ? nil : g.detail)
+                        DetailPane(store: store, window: window, single: narrow || zoomed,
+                                   leadingInset: zoomed && !window.sidebarVisible ? collapsedInset : TK.M.headerInset)
+                            .animation(TK.Motion.sidebar, value: collapsedInset)
+                            .frame(width: narrow || zoomed ? nil : g.detail)
+                            // The list pane, which shows notices, is covered: they show here (§29).
+                            .overlay(alignment: .bottomTrailing) {
+                                if zoomed {
+                                    NoticeView(overlays: window.overlays, actions: WindowActions(store: store, window: window)).padding(12)
+                                }
+                            }
                             .transition(.move(edge: .trailing).combined(with: .opacity))
                     }
                 }
                 .animation(TK.Motion.natural, value: window.detailOpen)
+                .animation(TK.Motion.natural, value: window.zoomed)
                 .padding([.top, .bottom, .trailing], TK.M.gutter)
                 .padding(.leading, g.lead)
                 if window.sidebarVisible {
@@ -109,6 +126,11 @@ struct MainLayout: View {
                     .allowsHitTesting(false)
             }
             .onAppear { window.openSettings = { openSettings() } }
+            // A window narrowed past ~900pt has the detail pane in the list's place: a zoom has nothing left to do.
+            .onChange(of: g.narrow, initial: true) { _, n in
+                if window.narrow != n { window.narrow = n }
+                if n, window.zoomed { window.zoomed = false }
+            }
         }
     }
 }
@@ -143,5 +165,14 @@ private struct CircleToolbarStyle: ButtonStyle {
                 Circle().fill((configuration.isPressed ? tk.press : hovered ? tk.fillTrack : .clear).swiftUI)
                     .animation(configuration.isPressed ? nil : TK.Motion.icon, value: hovered)
             }
+    }
+}
+
+extension View {
+    /// The pane a zoom covers (§29): it fades under the zoomed one, takes no presses and leaves VoiceOver.
+    func zoomedAway(_ away: Bool) -> some View {
+        opacity(away ? 0 : 1)
+            .allowsHitTesting(!away)
+            .accessibilityHidden(away)
     }
 }

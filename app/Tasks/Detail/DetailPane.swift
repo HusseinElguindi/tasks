@@ -8,8 +8,11 @@ import TasksCore
 struct DetailPane: View {
     let store: Store
     @Bindable var window: WindowState
-    /// Alone in the window (the narrow window's drill-in): its look follows Settings ▸ Highlight focused pane (`PaneLook`).
+    /// Alone in the window (the narrow window's drill-in, or zoomed, §29): its look follows Settings ▸ Highlight focused
+    /// pane (`PaneLook`).
     var single = false
+    /// 12, or the list pane's collapsed inset while zoomed, so its header clears the traffic lights and the toggle (§29).
+    var leadingInset: CGFloat = TK.M.headerInset
     @State private var refs = DetailRefs()
     @Environment(\.tk) private var tk
 
@@ -18,7 +21,7 @@ struct DetailPane: View {
         let items = selectedItems
         let look = PaneLook(focused: window.focus == .detail, single: single, highlight: window.paneHighlight)
         VStack(spacing: 0) {
-            DetailHeader(store: store, window: window, items: items, look: look, refs: refs, actions: actions)
+            DetailHeader(store: store, window: window, items: items, look: look, leadingInset: leadingInset, refs: refs, actions: actions)
             GeometryReader { g in
                 content(items, actions: actions, size: g.size)
             }
@@ -185,7 +188,8 @@ struct DetailPane: View {
         let plain = mods.isEmpty
         let k = e.keyCode
         if k == 53 && plain {
-            // Esc: hide the pane; the list gets the keys.
+            // Esc: unzoom (§29); else hide the pane, and the list gets the keys.
+            if window.zoomed { a.setZoom(false); return true }
             a.closeDetail()
             if window.focus == .detail { a.focus(.list) }
             return true
@@ -196,8 +200,9 @@ struct DetailPane: View {
             return true
         }
         if (k == 125 || k == 126) && !mods.contains(.option) && !mods.contains(.control) {
-            // ↓ ↑ (⇧ extends, ⌘ to the end) act on the list and move focus there.
-            a.focus(.list)
+            // ↓ ↑ (⇧ extends, ⌘ to the end) act on the list and move focus there. Zoomed, the keys stay here and the
+            // pane shows the task they move to (§29).
+            if !window.zoomed { a.focus(.list) }
             let down = k == 125
             a.moveSelection(cmd ? (down ? .last : .first) : .by(down ? 1 : -1), extend: shift)
             return true
@@ -208,8 +213,9 @@ struct DetailPane: View {
             return true
         }
         if k == 116 || k == 121 {
-            // Page Up, Page Down scroll the list a page: a deleted list's here, else the list pane's.
-            (window.detailList?.taskList ?? window.taskList)?.keyDown(with: e)
+            // Page Up, Page Down scroll the list a page: a deleted list's here, else the list pane's, which a zoom keeps
+            // where it was (§29).
+            if let list = window.detailList?.taskList { list.keyDown(with: e) } else if !window.zoomed { window.taskList?.keyDown(with: e) }
             return true
         }
         if (k == 36 || k == 76) && plain {
@@ -221,7 +227,7 @@ struct DetailPane: View {
             } else if ids.count == 1 {
                 a.editTask(ids[0], caret: .all)
             } else if ids.isEmpty {
-                a.focus(.list)
+                if !window.zoomed { a.focus(.list) }
                 a.moveSelection(.by(1), extend: false)
             }
             return true
@@ -250,18 +256,20 @@ struct DetailPane: View {
 // MARK: - Header (dc:113–123, css:145–154)
 
 /// 34 tall, centered on the window's y = 25 line: the list's small tile and name in `ink-secondary` regular, then
-/// trash (Delete ⌘⌫) and × (Hide Details ⌘D). With nothing selected only the ×.
+/// trash (Delete ⌘⌫), zoom (Zoom Pane ⇧⌘↩, §29) and × (Hide Details ⌘D). With nothing selected only zoom and ×.
 private struct DetailHeader: View {
     let store: Store
     let window: WindowState
     let items: [DetailItem]
     let look: PaneLook
+    let leadingInset: CGFloat
     let refs: DetailRefs
     let actions: WindowActions
     @Environment(\.tk) private var tk
 
     var body: some View {
         let ids = items.map(\.id)
+        let zoomed = window.zoomed
         let first = items.first
         let sameList = first.map { f in items.allSatisfy { $0.list == f.list } } ?? false
         let list = sameList ? first.flatMap { store.projection.listModel($0.list) } : nil
@@ -301,6 +309,12 @@ private struct DetailHeader: View {
                         .opacity(inert ? 0.45 : 1)
                         .allowsHitTesting(!inert)
                 }
+                // Rex's pane header: zoom just before × (docs/feedback/rex-zoom-pane.png). Zoomed, the arrows point in and
+                // it's `on`, as the split button is while the pane is open. Disabled (fainter) where it doesn't apply, as
+                // Rex draws them: a narrow window, where the pane already has the list's place.
+                HeaderIconButton(glyph: zoomed ? .unzoom : .zoom, tip: zoomed ? "Unzoom Pane" : "Zoom Pane", keys: "⇧⌘↩",
+                                 on: zoomed, disabled: !zoomed && !actions.canZoom, overlays: window.overlays) { actions.toggleZoom() }
+                    .opacity(!zoomed && !actions.canZoom ? 0.45 : 1)
                 HeaderIconButton(glyph: .xmark, tip: "Hide Details", keys: "⌘D", overlays: window.overlays) { actions.closeDetail() }
                     .background(GeometryReader { g in
                         Color.clear
@@ -311,7 +325,7 @@ private struct DetailHeader: View {
             .opacity(look.keyed ? 1 : 0.55)
             .paneLookAnimation(look)
         }
-        .padding(.leading, TK.M.headerInset)
+        .padding(.leading, leadingInset)
         .padding(.trailing, 8)
         .frame(height: TK.M.header)
     }

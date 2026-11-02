@@ -158,6 +158,11 @@ struct TasksCommands: Commands {
             Button(window?.sidebarVisible == false ? "Show Sidebar" : "Hide Sidebar") { actions?.toggleSidebar() }
                 .keyboardShortcut("s", modifiers: [.command, .control])
                 .disabled(window == nil)
+            // Rex's Zoom Pane (§29): the detail pane takes the list's room; again, the list comes back. It changes the
+            // layout only, so an edit in the pane carries on through it, as through ⌃⌘S.
+            Button(window?.zoomed == true ? "Unzoom Pane" : "Zoom Pane") { actions?.toggleZoom() }
+                .keyboardShortcut(.return, modifiers: [.command, .shift])
+                .disabled(window?.zoomed != true && (actions?.canZoom != true || pickerOpen))
             Button("Sync Now") { store?.requestSync(force: true) }
                 .keyboardShortcut("r")
                 .disabled(store == nil)

@@ -41,8 +41,12 @@ struct PaneGeometry {
         detail = narrow ? TK.M.detail : max(TK.M.detailMin, min(window.detailWidth, room))
     }
 
-    /// The detail pane is beside the list.
-    func detailBeside(_ window: WindowState) -> Bool { window.detailOpen && !narrow }
+    /// The detail pane is beside the list (neither is zoomed, §29).
+    func detailBeside(_ window: WindowState) -> Bool { window.detailOpen && !narrow && !window.zoomed }
+
+    /// The list pane's width beside the detail pane: what it keeps under a zoomed detail pane (§29), so its rows don't
+    /// reflow and it comes back as it was.
+    var listWidth: CGFloat { max(TK.M.listMin, width - lead - 2 * TK.M.gutter - detail) }
 
     /// How far each divider can go: the sidebar until the list reaches its minimum (with the detail pane as it is), the
     /// detail pane likewise.
