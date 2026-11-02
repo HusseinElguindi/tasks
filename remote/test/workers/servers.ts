@@ -13,6 +13,7 @@ import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { gunzipSync } from "node:zlib";
 import { createTestHarness } from "wrangler";
 
 export const TOKEN = "dummy-local-token";
@@ -183,4 +184,16 @@ export async function syncHandler(request: Request): Promise<Response> {
 export async function closeAll(): Promise<void> {
   for (const b of state.backends.values()) await (await b).close().catch(() => undefined);
   state.backends.clear();
+}
+
+/** GOLDEN, a test-only binding: test/golden/<name> (gunzipped), since workerd can't read files. */
+export async function goldenHandler(request: Request): Promise<Response> {
+  const name = new URL(request.url).pathname.slice(1);
+  if (!/^[a-z0-9-]+\.json$/.test(name)) return new Response("bad name", { status: 400 });
+  const dir = path.join(REMOTE, "test/golden");
+  const plain = path.join(dir, name);
+  if (fs.existsSync(plain)) return new Response(fs.readFileSync(plain));
+  const gz = plain + ".gz";
+  if (fs.existsSync(gz)) return new Response(gunzipSync(fs.readFileSync(gz)));
+  return new Response("missing", { status: 404 });
 }

@@ -11,6 +11,8 @@
   },
   // Not deployed yet: later phases add their classes to v1 until the first deploy.
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Replica"] }],
+  // Code mode: each tasks_run script runs in a fresh isolate (src/codemode.ts).
+  "worker_loaders": [{ "binding": "LOADER" }],
   // The main Worker (server/), unchanged: POST /v1/sync with Bearer SYNC_TOKEN.
   "services": [{ "binding": "SYNC", "service": "tasks" }],
   "vars": {

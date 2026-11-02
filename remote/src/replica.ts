@@ -7,6 +7,7 @@ import { Context } from "./cli/context.ts";
 import { CLIError } from "./cli/errors.ts";
 import type { Json } from "./cli/render.ts";
 import { execute, type Sandbox } from "./cli/run.ts";
+import { loaderSandbox } from "./codemode.ts";
 import { classify } from "./core/wire.ts";
 import { SyncEngine, type SyncState, type Transport } from "./replica/engine.ts";
 import { SqlReplicaStorage } from "./replica/storage.ts";
@@ -85,6 +86,11 @@ export class Replica extends DurableObject<Env> {
     const run = this.lock.then(work, work);
     this.lock = run.catch(() => undefined);
     return run;
+  }
+
+  /** A tasks_run call: the script in a Worker Loader isolate. */
+  async run(source: string, request: RunRequest): Promise<Json> {
+    return this.runScript(source, request, loaderSandbox(this.env.LOADER));
   }
 
   /** One script, as one `tasks run`: the sandbox runs it, its calls answer from this run's fork. */

@@ -3,8 +3,9 @@
 The remote MCP server: a second Worker, separate from `server/`, that is one more replica of the log, like the CLI.
 The plan is in `docs/REMOTE-MCP-PLAN.md`.
 
-So far (phases 1 and 2): the TypeScript port of what a replica needs, checked against the Swift, and the Replica
-Durable Object that syncs it with the main Worker.
+So far (phases 1–3): the TypeScript port of what a replica needs, checked against the Swift, the Replica Durable
+Object that syncs it with the main Worker, and `/mcp`, the local `tasks mcp`'s two tools with each script on Worker
+Loader. OAuth comes in phase 4; until then `/mcp` takes `Authorization: Bearer <DEV_TOKEN>`.
 
 - `src/core/`: TasksCore's ops and their canonical JSON, the wire format and error table, the reducer and inverse
   ops, ordering and fractional keys (the `fractional-indexing` package TasksCore's port came from), calendar dates,
@@ -21,13 +22,20 @@ Durable Object that syncs it with the main Worker.
   commits with the client's actor and one batch, pushes, and reports `synced`. Transient failures get three
   retries of at most 2 s inside a run; then the run reports `synced: false`, the ops stay queued, and the alarm
   retries them (1 s doubling to 60 s).
+- `src/codemode.ts`: code mode on Worker Loader. A fresh isolate per run, no network, empty env; the DO passes it a
+  `Host` (an `RpcTarget`) that answers its `tasks.*` calls from the run's fork. TypeScript is stripped by sucrase and
+  error positions mapped back through its source map. The CLI's limits: 10 s (a host timer, a deadline on every call,
+  and `limits.cpuMs` in production; locally a busy loop isn't stopped, see the plan), 100 KB, 200 log lines, 500 ops.
+- `src/mcp.ts`, `src/index.ts`: MCP over Streamable HTTP (JSON replies, no SSE): `initialize`, `ping`, `tools/list`,
+  `tools/call` with the same instructions, tool text and replies as MCP.swift (a test reads MCP.swift).
 
 ```sh
 pnpm install
 pnpm test           # both suites below
 pnpm test:node      # the fixtures, the contract, and parity with the Swift
-pnpm test:workers   # the Replica DO in workerd, syncing with local copies of server/
+pnpm test:workers   # in workerd: the Replica DO syncing with local server/s, the CLI scenarios on Worker Loader, /mcp
 pnpm typecheck
+pnpm smoke          # server/ and tasks-mcp under two wrangler devs, then MCP over HTTP (dummy tokens)
 pnpm parity         # regenerate test/golden (Swift goldens, then a CLI capture against a local server), gzipped
 ```
 
@@ -36,7 +44,7 @@ The Worker tests' `SYNC` binding is a function in Node (`test/workers/servers.ts
 asks), or one real `wrangler dev` of `server/`. It can also answer with the server's own fixture responses
 (`fixtures/sync`), to drive the 401, 404, 400, 409, 413 and `invalid_op` paths. Nothing touches Cloudflare.
 
-`remote/.dev.vars` (gitignored) holds `SYNC_TOKEN=dummy-local-token` for local runs.
+`remote/.dev.vars` (gitignored) holds dummy `SYNC_TOKEN` and `DEV_TOKEN` values for local runs.
 
 Parity comes from two generators that never change `app/` or `server/`:
 

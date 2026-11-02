@@ -8,6 +8,7 @@
     "test:node": "vitest run",
     "test:workers": "vitest run -c vitest.workers.config.ts",
     "typecheck": "tsc --noEmit",
+    "smoke": "node scripts/dev-smoke.mjs",
     "parity": "pnpm parity:swift && pnpm parity:cli && pnpm parity:gzip",
     "parity:swift": "cd parity && mise x swift -- swift run golden ../test/golden",
     "parity:cli": "cd parity && node capture-cli.mjs",
