@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "TasksCore",
-    platforms: [.macOS(.v14)],
+    platforms: [.macOS(.v14), .iOS(.v17)],
     products: [
         .library(name: "TasksCore", targets: ["TasksCore"]),
         // The agent CLI (docs/SDK-PLAN.md): another replica of the log, built on TasksCore.
