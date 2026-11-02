@@ -24,8 +24,9 @@ What it does:
 2. `npx wrangler dev --ip 127.0.0.1 --port <free> --var API_TOKEN:dummy-local-token --persist-to <scratch>/state` in
    `server/`, with `WRANGLER_SEND_METRICS=false`. It waits for `POST /v1/sync` to answer, and kills the process group
    at the end.
-3. Seeds the state with plain CLI commands as actor `cli`: 9 lists (3 archived, including an archived "Work" next to
-   an active one), headings with sections, When and Deadline dates around today, tasks done today, deleted tasks,
+3. Seeds the state with plain CLI commands as actor `cli`: 9 lists (3 deleted, including a deleted "Work" next to a
+   live one, and "Old Projects" with two tasks deleted before it), headings with sections, When and Deadline dates
+   around today, tasks done today, deleted tasks,
    Markdown notes, and two ids that share the prefix `abcd`. Two "completed earlier" updates are pushed straight to
    the server, with no actor or batch, the way the Mac app sends them, because the CLI can only complete "now".
 4. Runs each case as `tasks run --json [--dry-run] <file>` with actor `agent:parity`. That prints the JSON the MCP

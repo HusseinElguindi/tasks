@@ -24,6 +24,7 @@ export interface TaskJSON {
   done: boolean;
   completedAt: number | null;
   deleted: boolean;
+  listDeleted?: true;
   createdAt: number;
   updatedAt: number;
 }
@@ -51,14 +52,17 @@ export class Render {
     return this.p.list(id)?.name ?? "(missing list)";
   }
 
-  /** `kind` is there only on a heading, so a task's JSON is what it was before headings. */
+  /** `kind` is there only on a heading, and `listDeleted` only in a deleted list, so a task's JSON is otherwise what it
+   *  was before either. */
   task(t: TaskItem): TaskJSON {
     const out: TaskJSON = { id: t.id, ref: this.taskRefs.ref(t.id) } as TaskJSON;
     if (t.isHeading) out.kind = HEADING;
     Object.assign(out, {
       list: t.list, listName: this.listName(t.list), title: t.title, notes: t.notes, when: t.when, deadline: t.deadline,
-      done: t.completedAt !== null, completedAt: t.completedAt, deleted: t.deleted, createdAt: t.createdAt, updatedAt: t.updatedAt,
+      done: t.completedAt !== null, completedAt: t.completedAt, deleted: t.deleted,
     });
+    if (this.p.isDeleted(t.list)) out.listDeleted = true;
+    Object.assign(out, { createdAt: t.createdAt, updatedAt: t.updatedAt });
     return out;
   }
 
@@ -77,7 +81,7 @@ export type EntityChange =
   | { kind: "list"; before: TaskList | undefined; after: TaskList };
 
 const KINDS = ["newTask", "delete", "restore", "complete", "uncomplete", "move", "when", "removeWhen", "deadline",
-  "removeDeadline", "rename", "notes", "reorder", "newList", "renameList", "listNotes", "archive", "unarchive", "moveList"] as const;
+  "removeDeadline", "rename", "notes", "reorder", "newList", "renameList", "listNotes", "deleteList", "restoreList", "moveList"] as const;
 type Kind = (typeof KINDS)[number];
 
 /** Summaries in the app's undo vocabulary (INTERACTIONS-v2 §9): "Move 3 Tasks to School", "Set When: Fri, Nov 6 on …". */
@@ -126,8 +130,8 @@ export class Describe {
     const k: Kind[] = [];
     if (b.name !== a.name) k.push("renameList");
     if (b.notes !== a.notes) k.push("listNotes");
-    if (b.archivedAt === null && a.archivedAt !== null) k.push("archive");
-    if (b.archivedAt !== null && a.archivedAt === null) k.push("unarchive");
+    if (b.archivedAt === null && a.archivedAt !== null) k.push("deleteList");
+    if (b.archivedAt !== null && a.archivedAt === null) k.push("restoreList");
     if (b.order !== a.order) k.push("moveList");
     return k;
   }
@@ -175,8 +179,8 @@ export class Describe {
       case "newList": return lists.length === 1 ? `New List ${listQuote}` : `New ${lists.length} Lists`;
       case "renameList": return lists.length === 1 ? `Rename List to ${listQuote}` : `Rename ${lists.length} Lists`;
       case "listNotes": return lists.length === 1 ? `Edit List Notes on ${listQuote}` : `Edit List Notes (${lists.length} lists)`;
-      case "archive": return lists.length === 1 ? `Archive List ${listQuote}` : `Archive ${lists.length} Lists`;
-      case "unarchive": return lists.length === 1 ? `Unarchive List ${listQuote}` : `Unarchive ${lists.length} Lists`;
+      case "deleteList": return lists.length === 1 ? `Delete List ${listQuote}` : `Delete ${lists.length} Lists`;
+      case "restoreList": return lists.length === 1 ? `Restore List ${listQuote}` : `Restore ${lists.length} Lists`;
       case "moveList": return lists.length === 1 ? `Move List ${listQuote}` : `Move ${lists.length} Lists`;
     }
   }
@@ -204,7 +208,7 @@ export class Describe {
         if (b && b.name !== a.name) f.push(`name: ${this.quote(b.name)} → ${this.quote(a.name)}`);
         if (b && b.notes !== a.notes) f.push("notes edited");
         if (!b && a.notes !== "") f.push("notes");
-        if ((b?.archivedAt ?? null) !== a.archivedAt) f.push(a.archivedAt === null ? "unarchived" : "archived");
+        if ((b?.archivedAt ?? null) !== a.archivedAt) f.push(a.archivedAt === null ? "restored" : "deleted");
         if (b && b.order !== a.order) f.push("sidebar position");
         if (f.length > 0) out.push(head + "  " + f.join("; "));
       }

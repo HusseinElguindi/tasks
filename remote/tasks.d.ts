@@ -25,6 +25,7 @@ interface Task {
   done: boolean;
   completedAt: number | null;
   deleted: boolean;
+  listDeleted?: true /* only when its list is deleted (in Trash): the task counts as deleted, and comes back with the list */;
   createdAt: number;
   updatedAt: number;
 }
@@ -33,7 +34,7 @@ interface List {
   ref: string;
   name: string;
   notes: string /* Markdown, under the list's title */;
-  archivedAt: number | null;
+  archivedAt: number | null /* when it was deleted (it's in Trash); null: in the sidebar */;
   open: number /* open tasks, headings not counted */;
 }
 /** What a write did. `batch` is this run's change id (tasks log, tasks undo). */
@@ -52,11 +53,11 @@ declare const tasks: {
   lists(): Promise<List[]>;
   /** A list: its notes, then its rows in order (open tasks, and headings with the tasks under them), then completed tasks newest first. No list means the first one. */
   list(list?: Ref): Promise<{ list: List; open: Task[] /* rows in order: headings have kind "heading" */; completed: Task[] }>;
-  /** Archived lists, most recently archived first. */
-  archive(): Promise<List[]>;
+  /** Deleted lists, in Trash, most recently deleted first. Their tasks count as deleted: find --deleted shows them. */
+  deletedLists(): Promise<List[]>;
   /** One task: every field and its notes (the detail pane). Deleted tasks too. */
   task(task: Ref): Promise<Task>;
-  /** Tasks whose title or notes contain the text (any list; read-only). Empty text matches everything. Headings aren't tasks: tasks ls lists them. */
+  /** Tasks whose title or notes contain the text (any list; read-only). Empty text matches everything. --deleted adds deleted tasks, and the tasks of deleted lists (they have listDeleted). Headings aren't tasks: tasks ls lists them. */
   find(q?: { text?: string; list?: Ref; done?: boolean; deleted?: boolean }): Promise<Task[]>;
   /** What a date phrase means today, without writing anything: null if it reads as no date. */
   date(text: string): Promise<CalendarDate | null>;
@@ -76,11 +77,11 @@ declare const tasks: {
   setWhen(tasks: Ref | Ref[], date: DateInput): Promise<Change>;
   /** Set or remove the Deadline. */
   setDeadline(tasks: Ref | Ref[], date: DateInput): Promise<Change>;
-  /** Move tasks to another list (they land at the bottom, in the order given), or to a place: next to an open task or a heading (in its list; --after a heading is the top of its section), the top or bottom, or one row up or down. A heading moves on its own, with its section: --before another heading, --after a row (after that row's section), --top, --bottom, --up, --down. */
+  /** Move tasks to another list (they land at the bottom, in the order given), or to a place: next to an open task or a heading (in its list; --after a heading is the top of its section), the top or bottom, or one row up or down. A task in a deleted list takes --to only: it goes to the bottom of that list (the app's Put back in). A heading moves on its own, with its section: --before another heading, --after a row (after that row's section), --top, --bottom, --up, --down. */
   move(tasks: Ref | Ref[], to?: { list?: Ref; place?: Place }): Promise<Change>;
   /** Delete tasks. A heading goes alone: its tasks stay, under the heading above it. tasks restore (or undo) brings them back. */
   delete(tasks: Ref | Ref[]): Promise<Change>;
-  /** Bring back deleted tasks. */
+  /** Bring back deleted tasks. A task whose list is deleted comes back with its list (tasks list restore), or goes to another with move --to. */
   restore(tasks: Ref | Ref[]): Promise<Change>;
   /** New heading, a row that groups the tasks under it down to the next heading: at the bottom of the list, above --before REF, or after --after REF (after a heading, that's after its section). No list means the place's list, else the first list. Headings never show in today, find or counts. */
   addHeading(h: { name: string; list?: Ref; notes?: string; place?: Place }): Promise<Task>;
@@ -92,10 +93,10 @@ declare const tasks: {
   setListNotes(list: Ref, notes: string): Promise<Change>;
   /** Move a list in the sidebar. */
   moveList(list: Ref, place: Place): Promise<Change>;
-  /** Archive a list (the app's "delete list"). Its tasks are kept and come back with it. */
-  archiveList(list: Ref): Promise<Change>;
-  /** Unarchive a list, back to its old place in the sidebar. */
-  unarchiveList(list: Ref): Promise<Change>;
+  /** Delete a list: it goes to Trash with its tasks, which count as deleted until it's restored. One change, whatever it holds. */
+  deleteList(list: Ref): Promise<Change>;
+  /** Restore a deleted list to its old place in the sidebar, with everything it held. Tasks deleted on their own before stay deleted. */
+  restoreList(list: Ref): Promise<Change>;
   /** Undo a change from the log: by batch id, or your newest one. Fields edited since are kept and reported, unless --force. */
   undo(batch?: string): Promise<Change>;
 };

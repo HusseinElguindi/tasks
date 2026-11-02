@@ -5,7 +5,7 @@ import { daysUntil, offsetDays, parseCalendarDate, weekday } from "../src/core/c
 import { DatePhrase } from "../src/core/date-phrase.ts";
 import { dayContaining } from "../src/core/day.ts";
 import { decodeOp, opJSON, pendingFromJSON } from "../src/core/op.ts";
-import { Ordering, type Anchor, type OrderedItem } from "../src/core/ordering.ts";
+import { Ordering, utf8Compare, type Anchor, type OrderedItem } from "../src/core/ordering.ts";
 import { Projection } from "../src/core/projection.ts";
 import { AppState, Inverse, type TaskItem, type TaskList } from "../src/core/state.ts";
 import { decodeEntryLine } from "../src/core/wire.ts";
@@ -28,7 +28,8 @@ interface FoldCase {
     views: {
       day: { date: string; start: number; end: number };
       activeLists: string[];
-      archivedLists: string[];
+      deletedLists: string[];
+      liveTasks: string[];
       todayDone: string[];
       lists: Record<string, { open: string[]; headings: string[]; openCount: number; completed: string[]; today: string[]; orderedIncludingCompleted: string[] }>;
       sections: Record<string, string[]>;
@@ -56,7 +57,8 @@ describe.skipIf(!fold)("core-fold.json", () => {
       const v = c.expect.views;
       expect(p.day).toEqual(v.day);
       expect(p.activeLists()).toEqual(v.activeLists);
-      expect(p.archivedLists()).toEqual(v.archivedLists);
+      expect(p.deletedLists()).toEqual(v.deletedLists);
+      expect([...p.allTaskIDs()].filter((id) => p.isLive(id)).sort(utf8Compare)).toEqual(v.liveTasks);
       expect(p.todayDone()).toEqual(v.todayDone);
       for (const [id, want] of Object.entries(v.lists)) {
         expect({

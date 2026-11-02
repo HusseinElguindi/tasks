@@ -56,7 +56,7 @@ Parity comes from two generators that never change `app/` or `server/`:
 
 - `parity/` (Swift, depends on `../../app/TasksCore` by path): folds, views, Day, dates, DatePhrase, ordering,
   op JSON, inverses. See `parity/README.md`.
-- `parity/capture-cli.mjs`: 218 scenario scripts run through the stock `tasks run --json` against a local
+- `parity/capture-cli.mjs`: 240 scenario scripts run through the stock `tasks run --json` against a local
   `wrangler dev` of `server/` with a dummy token, with their outputs and pushed ops. See `parity/CLI-CAPTURE.md`.
 
 Config (`wrangler.jsonc`): `TIME_ZONE` (IANA, default `America/Toronto`), `DATE_ORDER` (`md` or `dm`), the `SYNC`

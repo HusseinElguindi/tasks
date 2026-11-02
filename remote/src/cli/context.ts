@@ -13,7 +13,7 @@ import { Fork, type Clock } from "./actions.ts";
 import { CLIError } from "./errors.ts";
 import { History, derivedID, groupChanges } from "./history.ts";
 import { Describe, Render, type EntityChange, type Json, type ListJSON, type TaskJSON } from "./render.ts";
-import { Resolver } from "./refs.ts";
+import { RefIndex, Resolver, deletedListHint, quotedName } from "./refs.ts";
 import { charCount, trimWhitespaces, trimWhitespacesAndNewlines, containsFolded } from "./text.ts";
 
 /** Where a task or list goes (`Ordering.Anchor`, plus up and down). */
@@ -209,6 +209,7 @@ export class Context {
     const s = this.writable();
     const listID = explicit?.id ?? anchorTask?.list ?? s.defaultListID;
     if (listID === undefined) throw new CLIError("NoActiveList", "There's no active list to add to. Add one with tasks list add NAME.");
+    if (explicit) this.refuseDeleted(explicit, "list");
     const newID = s.createTask({ id: taskID, title, notes, list: listID, when: o.when?.value ?? null, deadline: o.deadline?.value ?? null });
     if (newID === null) throw new CLIError("NoActiveList", "There's no active list to add to.");
     if (place !== null && place !== "bottom") s.reorder([newID], listID, this.anchor(place, anchorTask));
@@ -290,10 +291,19 @@ export class Context {
     this.writable().delete(ids);
   }
 
-  /** `deleted: false`, for when there's no undo stack to bring a task back. */
+  /** `deleted: false`, for when there's no undo stack to bring a task back. A task whose list is deleted has no place to
+   *  go back to: that fails, naming the list. */
   restore(refs: string[]): void {
     this.requireUnfixed();
-    const gone = this.resolve.tasks(refs, true).filter((t) => t.deleted);
+    const tasks = this.resolve.tasks(refs, true);
+    for (const t of tasks) {
+      const l = this.p.list(t.list);
+      if (l && l.archivedAt !== null) {
+        const ref = new RefIndex(this.p.allTaskIDs()).ref(t.id);
+        throw CLIError.invalid(`Task ${ref} ("${t.title}") is in ${l.name}, which is deleted; ${deletedListHint(l, ref)}`, "tasks");
+      }
+    }
+    const gone = tasks.filter((t) => t.deleted);
     if (gone.length === 0) return;
     const s = this.writable();
     s.perform(gone.map((t) => ({ id: s.newID(), at: this.clock.now(), type: "task.update", target: t.id, set: { deleted: false } })));
@@ -302,24 +312,34 @@ export class Context {
   move(refs: string[], list: string | undefined, place: Place | null): void {
     this.requireUnfixed();
     const r = this.resolve;
-    const tasks = r.tasks(refs);
+    const tasks = r.tasks(refs, false, true);
     const ids = tasks.map((t) => t.id);
     if (list === undefined && place === null) {
       throw CLIError.invalid("Say where: a list (--to) or a place (--top, --after REF, --up…).", "to");
     }
     const target = list !== undefined ? r.list(list) : undefined;
+    if (target) this.refuseDeleted(target, "to");
+    // Out of a deleted list (Put back in): to the bottom of a live list, nothing else.
+    const trashed = tasks.filter((t) => this.p.isDeleted(t.list));
+    if (trashed.length > 0) {
+      const l = this.p.list(trashed[0].list)!;
+      if (trashed.length !== tasks.length) {
+        throw CLIError.invalid(`Some of these are in ${l.name}, which is deleted: move those on their own, with --to.`, "tasks");
+      }
+      if (trashed.some((t) => t.isHeading)) {
+        throw CLIError.invalid(`${l.name} is deleted, and a heading stays in its list; tasks list restore ${quotedName(l.name)} brings it back.`, "tasks");
+      }
+      if (!target || !(place === null || place === "bottom")) {
+        throw CLIError.invalid(`${l.name} is deleted: its tasks can only go to the bottom of another list, with --to.`, "to");
+      }
+      this.writable().putBack(ids, target.id);
+      return;
+    }
     if (tasks.some((t) => t.isHeading)) {
       this.moveHeading(tasks, target, place);
       return;
     }
-    const refuseArchived = (listID: EntityID) => {
-      const l = this.p.list(listID);
-      if (l && l.archivedAt !== null && tasks.some((t) => t.list !== listID)) {
-        throw CLIError.invalid(`${l.name} is archived; unarchive it first.`, "to");
-      }
-    };
     if (place === null) {
-      refuseArchived(target!.id);
       this.writable().move(ids, target!.id);
       return;
     }
@@ -345,7 +365,6 @@ export class Context {
       if (target && target.id !== anchorTask.list) {
         throw CLIError.invalid(`${a} is in ${this.p.list(anchorTask.list)?.name ?? "another list"}, not ${target.name}.`, "place");
       }
-      refuseArchived(anchorTask.list);
       const at: Anchor = "after" in place ? { after: anchorTask.id } : { before: anchorTask.id };
       this.writable().reorder(ids, anchorTask.list, at);
       return;
@@ -354,7 +373,6 @@ export class Context {
     const lists = new Set(tasks.map((t) => t.list));
     const listID = target?.id ?? (lists.size === 1 ? [...lists][0] : undefined);
     if (listID === undefined) throw CLIError.invalid("The tasks are in different lists; say which with --to.", "to");
-    refuseArchived(listID);
     this.writable().reorder(ids, listID, place === "top" ? "top" : "bottom");
   }
 
@@ -438,7 +456,7 @@ export class Context {
     const listID = explicit?.id ?? anchorRow?.list ?? s.defaultListID;
     if (listID === undefined) throw new CLIError("NoActiveList", "There's no active list to add to. Add one with tasks list add NAME.");
     const l = s.projection.list(listID);
-    if (l && l.archivedAt !== null) throw CLIError.invalid(`${l.name} is archived; unarchive it first.`, "list");
+    if (l) this.refuseDeleted(l, "list");
     let anchor: Anchor;
     if (place === "top") anchor = "top";
     else if (place !== null && typeof place === "object" && "before" in place) anchor = { before: anchorRow!.id };
@@ -459,6 +477,7 @@ export class Context {
   setListNotes(ref: string, notes: string, append: boolean): void {
     this.requireUnfixed();
     const l = this.resolve.list(ref);
+    this.refuseDeleted(l, "list");
     let text = notes;
     if (append && l.notes !== "") text = l.notes + (l.notes.endsWith("\n") ? "" : "\n") + notes;
     text = Context.text(text, "notes", 20000, false);
@@ -479,13 +498,14 @@ export class Context {
     this.requireUnfixed();
     const v = Context.text(name, "name", 200, true);
     const l = this.resolve.list(ref);
+    this.refuseDeleted(l, "list");
     this.writable().renameList(l.id, v);
   }
 
   moveList(ref: string, place: Place | null): void {
     this.requireUnfixed();
     const l = this.resolve.list(ref);
-    if (l.archivedAt !== null) throw CLIError.invalid(`${l.name} is archived, so it isn't in the sidebar.`, "list");
+    if (l.archivedAt !== null) throw CLIError.invalid(`${l.name} is deleted, so it isn't in the sidebar.`, "list");
     if (place === null) throw CLIError.invalid("Give a place: top, bottom, up, down, or after/before a list.", "place");
     const anchor = this.listAnchor(place, l);
     if (anchor !== null) this.writable().reorderLists([l.id], anchor);
@@ -504,21 +524,29 @@ export class Context {
       return i + 1 < items.length ? { after: items[i + 1].id } : null;
     }
     const other = this.resolve.list("after" in place ? place.after : place.before);
-    if (other.archivedAt !== null) throw CLIError.invalid(`${other.name} is archived.`, "place");
+    if (other.archivedAt !== null) throw CLIError.invalid(`${other.name} is deleted.`, "place");
     if (other.id === moving?.id) throw CLIError.invalid("A list can't be placed next to itself.", "place");
     return "after" in place ? { after: other.id } : { before: other.id };
   }
 
-  archiveList(ref: string): void {
+  /** Delete List: `archivedAt` = now, one op. Its tasks count as deleted until it's restored. */
+  deleteList(ref: string): void {
     this.requireUnfixed();
     const l = this.resolve.list(ref);
-    this.writable().archive(l.id);
+    this.writable().deleteList(l.id);
   }
 
-  unarchiveList(ref: string): void {
+  /** Restore List: back to its old place with everything it held; tasks deleted on their own stay deleted. */
+  restoreList(ref: string): void {
     this.requireUnfixed();
     const l = this.resolve.list(ref);
-    this.writable().unarchive(l.id);
+    this.writable().restoreList(l.id);
+  }
+
+  /** A deleted list takes nothing: it's read-only until it's restored. */
+  refuseDeleted(l: TaskList, field: string): void {
+    if (l.archivedAt === null) return;
+    throw CLIError.invalid(`${l.name} is deleted; tasks list restore ${quotedName(l.name)} brings it back.`, field);
   }
 
   // MARK: Undo
@@ -607,7 +635,7 @@ export class Context {
         field("name", "name", (v) => (set.name = v));
         field("notes", "notes", (v) => (set.notes = v));
         field("position", "order", (v) => (set.order = v));
-        field("archive state", "archivedAt", (v) => (set.archivedAt = v));
+        field("deleted state", "archivedAt", (v) => (set.archivedAt = v));
         if (Object.keys(set).length > 0) out.push(op("list.update", id, set));
       }
     }
@@ -636,10 +664,11 @@ export class Context {
     return p.activeLists().map((id) => p.list(id)).filter((l) => l !== undefined).map((l) => r.list(l!));
   }
 
-  archiveJSON(): ListJSON[] {
+  /** Deleted lists, in Trash, most recently deleted first. */
+  deletedListsJSON(): ListJSON[] {
     const p = this.p;
     const r = new Render(p);
-    return p.archivedLists().map((id) => p.list(id)).filter((l) => l !== undefined).map((l) => r.list(l!));
+    return p.deletedLists().map((id) => p.list(id)).filter((l) => l !== undefined).map((l) => r.list(l!));
   }
 
   listJSON(ref: string | undefined): Json {
@@ -667,10 +696,11 @@ export class Context {
     const r = new Render(p);
     const listID = q.list !== undefined ? this.resolve.list(q.list).id : undefined;
     const rank = new Map<EntityID, number>();
-    [...p.activeLists(), ...p.archivedLists()].forEach((id, i) => rank.set(id, i));
+    [...p.activeLists(), ...p.deletedLists()].forEach((id, i) => rank.set(id, i));
     const needle = q.text !== undefined ? trimWhitespaces(q.text) : "";
     const matches = [...p.allTaskIDs()].map((id) => p.task(id)).filter((t): t is TaskItem => t !== undefined).filter((t) =>
-      !t.isHeading && (q.deleted || !t.deleted) && (listID === undefined || t.list === listID)
+      // A task in a deleted list counts as deleted: only `deleted` finds it.
+      !t.isHeading && (q.deleted || p.isLive(t.id)) && (listID === undefined || t.list === listID)
       && (q.done === undefined || (t.completedAt !== null) === q.done)
       && (needle === "" || containsFolded(t.title, needle) || containsFolded(t.notes, needle)));
     matches.sort((a, b) => {

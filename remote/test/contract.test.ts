@@ -47,7 +47,7 @@ describe("a run on the fixture log", () => {
     expect(out.ok).toBe(true);
     const result = out.result as { lists: number; done: boolean; keys: string[] };
     expect(result.done).toBe(true);
-    expect(result.keys).toEqual(SHAPE_KEYS.task.filter((k) => k !== "kind"));
+    expect(result.keys).toEqual(SHAPE_KEYS.task.filter((k) => k !== "kind" && k !== "listDeleted"));
     expect(out.logs).toEqual(["done true"]);
     expect(Object.keys(out)).toEqual(["ok", "result", "logs", "change", "dryRun", "diff"]);
     const change = out.change as { summary: string; tasks: unknown[]; batch: string };

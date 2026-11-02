@@ -305,13 +305,13 @@ async function seed() {
   const add = (key, argv) => { const j = s(["add", ...argv]); S.T[key] = j.id; return j; };
   const s = (argv) => { seedLog.push({ actor: SEED_ACTOR, argv }); return must(argv); };
 
-  // Lists: an archived "Garden", an archived "Work" and an active one, an archived "Old Projects".
+  // Lists: a deleted "Garden", a deleted "Work" and a live one, a deleted "Old Projects".
   S.L.Garden = s(["list", "add", "Garden"]).id;
-  s(["list", "archive", "Garden"]);
+  s(["list", "delete", "Garden"]);
   S.L.Home = s(["list", "add", "Home"]).id;
   S.L.WorkOld = s(["list", "add", "Work"]).id;
   add("legacy", ["Legacy task", "--list", S.L.WorkOld]);
-  s(["list", "archive", S.L.WorkOld]);
+  s(["list", "delete", S.L.WorkOld]);
   S.L.Work = s(["list", "add", "Work"]).id;
   S.L.PHYS = s(["list", "add", "PHYS 122"]).id;
   S.L.Errands = s(["list", "add", "Errands"]).id;
@@ -360,13 +360,15 @@ async function seed() {
   // Someday
   add("piano", ["Learn piano", "--list", "Someday"]);
   add("novel", ["Write a novel", "--list", "Someday", "--notes", "Maybe *someday*."]);
-  // Old Projects, archived with an open task due today and a done one
+  // Old Projects, deleted with an open task due today and a done one; two tasks deleted on their own before it
   add("archived", ["Archived task", "--list", "Old Projects", "--today"]);
   add("archivedDone", ["Archived done", "--list", "Old Projects"]);
+  add("oldDraft", ["Old draft", "--list", "Old Projects"]);
+  add("oldIdea", ["Old idea", "--list", "Old Projects", "--when", addDays(T, 2)]);
 
   s(["done", S.T.fridge, S.T.standup, S.T.ch7, S.T.archivedDone]);
-  s(["delete", S.T.vacuum, S.T.ticket]);
-  s(["list", "archive", "Old Projects"]);
+  s(["delete", S.T.vacuum, S.T.ticket, S.T.oldDraft, S.T.oldIdea]);
+  s(["list", "delete", "Old Projects"]);
 
   // Completed earlier, by the Mac app (no actor, no batch): the CLI can only complete "now".
   const now = Date.now();
@@ -417,9 +419,12 @@ kase("list-by-name-with-headings", { expect: "read", script: () => `return await
 kase("list-by-name-any-case", { expect: "read", script: () => `const l = await tasks.list("phys 122");\nreturn l.list;` });
 kase("list-by-full-id", { expect: "read", script: () => `return await tasks.list(${q(S.L.Home)});` });
 kase("list-by-id-prefix", { expect: "read", script: () => `return await tasks.list(${q(lp(S.L.Errands))});` });
-kase("list-name-prefers-active", { expect: "read", script: () => `// an archived list is also called Work\nreturn await tasks.list("Work");` });
-kase("list-archived", { expect: "read", script: () => `return await tasks.list("Old Projects");` });
-kase("archive", { expect: "read", script: () => `return await tasks.archive();` });
+kase("list-name-prefers-active", { expect: "read", script: () => `// a deleted list is also called Work\nreturn await tasks.list("Work");` });
+kase("list-deleted", { expect: "read", script: () => `// its tasks have listDeleted: they count as deleted\nreturn await tasks.list("Old Projects");` });
+kase("deletedLists", { expect: "read", script: () => `return await tasks.deletedLists();` });
+kase("archive-old-name", { expect: "read", script: () => `// the old name still answers, though tasks.d.ts doesn't declare it\nconst old = await tasks.archive();\nreturn { old, same: JSON.stringify(old) === JSON.stringify(await tasks.deletedLists()) };` });
+kase("task-in-deleted-list", { expect: "read", script: () => `return await tasks.task(${q(S.T.archived)});` });
+kase("task-deleted-before-its-list", { expect: "read", script: () => `return await tasks.task(${q(S.T.oldDraft)});` });
 kase("task-by-full-id", { expect: "read", script: () => `return await tasks.task(${q(S.T.article)});` });
 kase("task-by-4-char-prefix", { expect: "read", script: () => `return await tasks.task(${q(tp(S.T.cafe))});` });
 kase("task-ref-trimmed-and-lowercased", { expect: "read", script: () => `const t = await tasks.task(${q("  " + tp(S.T.report, 6).toUpperCase() + " ")});\nreturn t.title;` });
@@ -431,7 +436,8 @@ kase("find-case-and-diacritics", { expect: "read", script: () => `return await t
 kase("find-in-notes", { expect: "read", script: () => `return await tasks.find({ text: "point two" });` });
 kase("find-everything", { expect: "read", script: () => `const all = await tasks.find();\nconst blank = await tasks.find({ text: "   " });\nreturn { all, blankIsAll: blank.length === all.length };` });
 kase("find-in-list", { expect: "read", script: () => `return await tasks.find({ list: "Home" });` });
-kase("find-in-archived-list", { expect: "read", script: () => `return await tasks.find({ list: "Old Projects" });` });
+kase("find-in-deleted-list", { expect: "read", script: () => `// a task in a deleted list counts as deleted\nreturn await tasks.find({ list: "Old Projects" });` });
+kase("find-deleted-in-deleted-list", { expect: "read", script: () => `return await tasks.find({ list: "Old Projects", deleted: true });` });
 kase("find-done", { expect: "read", script: () => `return await tasks.find({ done: true });` });
 kase("find-open-in-list", { expect: "read", script: () => `return await tasks.find({ list: "Work", done: false });` });
 kase("find-with-deleted", { expect: "read", script: () => `return await tasks.find({ deleted: true });` });
@@ -457,6 +463,8 @@ kase("find-q-not-an-object", { expect: "Invalid", script: () => `return await ta
 kase("find-unknown-field", { expect: "Invalid", script: () => `return await tasks.find({ title: "lab" });` });
 kase("unknown-method-with-suggestion", { expect: "NotFound", script: () => `await tasks.compelte(${q(S.T.dentist)});` });
 kase("unknown-method-no-suggestion", { expect: "NotFound", script: () => `await tasks.frobnicate();` });
+kase("unknown-method-near-new-name", { expect: "NotFound", script: () => `await tasks.deleteLists("Home");` });
+kase("unknown-method-near-hidden-name", { expect: "NotFound", script: () => `// hidden old names are never suggested\nawait tasks.unarchive("Old Projects");` });
 kase("too-many-args", { expect: "Invalid", script: () => `return await tasks.rename(${q(S.T.dentist)}, "New", "extra");` });
 kase("ref-not-a-string", { expect: "Invalid", script: () => `return await tasks.task(42);` });
 kase("refs-array-with-a-number", { expect: "Invalid", script: () => `return await tasks.complete([${q(S.T.dentist)}, 7]);` });
@@ -494,8 +502,8 @@ kase("add-after-heading", { expect: "write", script: () => `return await tasks.a
 kase("add-dates-literal-and-null", { expect: "write", script: () => `return await tasks.add({ title: "Dentist follow-up", when: ${q(addDays(S.today, 19))}, deadline: null });` });
 kase("add-then-read-own-write", { expect: "write", script: () => `const t = await tasks.add({ title: "Read my own write", when: "today" });\nconst today = await tasks.today();\nconst found = await tasks.find({ text: "own write" });\nreturn {\n  inToday: today.groups.some((g) => g.tasks.some((x) => x.id === t.id)),\n  found: found.map((f) => f.title),\n  byRef: (await tasks.task(t.ref)).title,\n  inboxOpen: (await tasks.lists()).find((l) => l.name === "Inbox")!.open,\n};` });
 kase("add-five-in-one-batch", { expect: "write", script: () => `const ids: string[] = [];\nfor (const title of ["One", "Two", "Three", "Four", "Five"]) ids.push((await tasks.add({ title, list: "Someday" })).id);\nreturn ids.length;` });
-kase("add-to-archived-list", { expect: null, script: () => `return await tasks.add({ title: "Into the archive", list: "Old Projects" });` });
-kase("add-with-no-active-list", { expect: "NoActiveList", script: () => `for (const l of await tasks.lists()) await tasks.archiveList(l.id);\nreturn await tasks.add({ title: "Nowhere to go" });` });
+kase("add-to-deleted-list", { expect: "Invalid", script: () => `return await tasks.add({ title: "Into the trash", list: "Old Projects" });` });
+kase("add-with-no-active-list", { expect: "NoActiveList", script: () => `for (const l of await tasks.lists()) await tasks.deleteList(l.id);\nreturn await tasks.add({ title: "Nowhere to go" });` });
 kase("add-key-and-id", { expect: "Invalid", script: () => `return await tasks.add({ title: "Both", key: "k1", id: "i1" });` });
 kase("add-blank-title", { expect: "Invalid", script: () => `return await tasks.add({ title: "   " });` });
 kase("add-no-args", { expect: "Invalid", script: () => `return await tasks.add();` });
@@ -566,7 +574,16 @@ kase("move-heading-before-heading", { expect: "write", script: () => `return awa
 kase("move-heading-bottom", { expect: "write", script: () => `return await tasks.move(${q(S.H.Assignments)}, { place: "bottom" });` });
 kase("move-heading-where-it-is", { expect: null, script: () => `return await tasks.move(${q(S.H.Assignments)}, { place: "bottom" });` });
 kase("move-nowhere", { expect: "Invalid", script: () => `return await tasks.move(${q(S.T.rent)});` });
-kase("move-to-archived-list", { expect: "Invalid", script: () => `return await tasks.move(${q(S.T.rent)}, { list: "Old Projects" });` });
+kase("move-to-deleted-list", { expect: "Invalid", script: () => `return await tasks.move(${q(S.T.rent)}, { list: "Old Projects" });` });
+kase("complete-in-deleted-list", { expect: "NotFound", script: () => `return await tasks.complete(${q(S.T.archived)});` });
+kase("rename-in-deleted-list", { expect: "NotFound", script: () => `return await tasks.rename(${q(tp(S.T.archived, 6))}, "Renamed in the trash");` });
+kase("restore-in-deleted-list", { expect: "Invalid", script: () => `// deleted before its list: it has nowhere to go back to\nreturn await tasks.restore(${q(S.T.oldDraft)});` });
+kase("restore-in-deleted-list-not-deleted", { expect: "Invalid", script: () => `return await tasks.restore(${q(S.T.archived)});` });
+kase("move-out-of-deleted-list-to-a-place", { expect: "Invalid", script: () => `return await tasks.move(${q(S.T.archived)}, { place: "top" });` });
+kase("move-out-of-deleted-list-mixed", { expect: "Invalid", script: () => `return await tasks.move([${q(S.T.archived)}, ${q(S.T.rent)}], { list: "Inbox" });` });
+kase("move-out-of-deleted-list-into-deleted", { expect: "Invalid", script: () => `return await tasks.move(${q(S.T.archived)}, { list: ${q(S.L.Garden)} });` });
+kase("move-out-of-deleted-list", { expect: "write", script: () => `// Put back in: deleted before its list, so deleted: false too\nconst c = await tasks.move(${q(S.T.oldIdea)}, { list: "Someday", place: "bottom" });\nreturn { c, someday: (await tasks.list("Someday")).open.map((t) => t.title) };` });
+kase("move-out-of-deleted-list-completed", { expect: "write", script: () => `// went with its list: list and order only\nreturn await tasks.move(${q(S.T.archivedDone)}, { list: "Inbox" });` });
 kase("move-completed-to-a-place", { expect: "Invalid", script: () => `return await tasks.move(${q(S.T.standup)}, { place: "top" });` });
 kase("move-next-to-itself", { expect: "Invalid", script: () => `return await tasks.move(${q(S.T.rent)}, { place: { after: ${q(S.T.rent)} } });` });
 kase("move-up-two-tasks", { expect: "Invalid", script: () => `return await tasks.move([${q(S.T.rent)}, ${q(S.T.laundry)}], { place: "up" });` });
@@ -591,7 +608,7 @@ kase("addHeading-before-task-no-list", { expect: "write", script: () => `// no l
 kase("addHeading-after-heading", { expect: "write", script: () => `// after a heading: after its section\nreturn await tasks.addHeading({ name: "Problem sets (old)", place: { after: ${q(S.H.Readings)} } });` });
 kase("addHeading-after-task", { expect: "write", script: () => `return await tasks.addHeading({ name: "Later", list: "Work", place: { after: ${q(S.T.slides)} } });` });
 kase("addHeading-default-list", { expect: "write", script: () => `return await tasks.addHeading({ name: "Inbox heading" });` });
-kase("addHeading-archived-list", { expect: "Invalid", script: () => `return await tasks.addHeading({ name: "Nope", list: "Old Projects" });` });
+kase("addHeading-deleted-list", { expect: "Invalid", script: () => `return await tasks.addHeading({ name: "Nope", list: "Old Projects" });` });
 kase("addHeading-place-down", { expect: "Invalid", script: () => `return await tasks.addHeading({ name: "Down", list: "Home", place: "down" });` });
 
 // Lists.
@@ -614,14 +631,20 @@ kase("moveList-down", { expect: "write", script: () => `return await tasks.moveL
 kase("moveList-after", { expect: "write", script: () => `return await tasks.moveList("Groceries", { after: "Errands" });` });
 kase("moveList-before", { expect: "write", script: () => `return await tasks.moveList("Health", { before: ${q(lp(S.L.Home))} });` });
 kase("moveList-up-at-top", { expect: null, script: () => `const first = (await tasks.lists())[0];\nreturn await tasks.moveList(first.id, "up");` });
-kase("moveList-archived", { expect: "Invalid", script: () => `return await tasks.moveList("Old Projects", "top");` });
+kase("moveList-deleted", { expect: "Invalid", script: () => `return await tasks.moveList("Old Projects", "top");` });
+kase("renameList-deleted", { expect: "Invalid", script: () => `return await tasks.renameList("Old Projects", "New Projects");` });
+kase("setListNotes-deleted", { expect: "Invalid", script: () => `return await tasks.setListNotes("Old Projects", "x");` });
 kase("moveList-next-to-itself", { expect: "Invalid", script: () => `return await tasks.moveList("Home", { after: "Home" });` });
 kase("moveList-no-place", { expect: "Invalid", script: () => `return await tasks.moveList("Home");` });
-kase("archiveList", { expect: "write", script: () => `return await tasks.archiveList("Groceries");` });
-kase("archiveList-already-archived", { expect: null, script: () => `return await tasks.archiveList("Garden");` });
-kase("unarchiveList", { expect: "write", script: () => `const c = await tasks.unarchiveList("Old Projects");\nreturn { c, sidebar: (await tasks.lists()).map((l) => l.name), today: await tasks.today() };` });
-kase("unarchiveList-name-hits-active", { expect: null, script: () => `// "Work" names the active list first, so this doesn't reach the archived one\nreturn await tasks.unarchiveList("Work");` });
-kase("unarchiveList-by-id", { expect: "write", script: () => `return await tasks.unarchiveList(${q(S.L.WorkOld)});` });
+kase("deleteList", { expect: "write", script: () => `const c = await tasks.deleteList("Groceries");\nreturn { c, sidebar: (await tasks.lists()).map((l) => l.name), deleted: (await tasks.deletedLists()).map((l) => l.name) };` });
+kase("deleteList-already-deleted", { expect: null, script: () => `return await tasks.deleteList("Garden");` });
+kase("deleteList-then-views", { expect: "write", script: () => `// Home's tasks count as deleted: out of today, find and the counts\nconst c = await tasks.deleteList("Home");\nreturn {\n  c,\n  today: await tasks.today(),\n  find: (await tasks.find({ text: "rent" })).map((t) => t.title),\n  findDeleted: (await tasks.find({ text: "rent", deleted: true })).map((t) => [t.title, t.listDeleted ?? false]),\n};` });
+kase("restoreList-home", { expect: "write", script: () => `const c = await tasks.restoreList("Home");\nreturn { c, sidebar: (await tasks.lists()).map((l) => l.name), laundryInToday: (await tasks.today()).groups.some((g) => g.list.name === "Home") };` });
+kase("restoreList", { expect: "write", script: () => `// everything comes back as it was; the draft deleted before the list stays deleted\nconst c = await tasks.restoreList("Old Projects");\nreturn { c, sidebar: (await tasks.lists()).map((l) => l.name), today: await tasks.today(), old: await tasks.list("Old Projects"), draft: await tasks.task(${q(S.T.oldDraft)}) };` });
+kase("restore-after-its-list", { expect: "write", script: () => `// its list is back: the plain restore again\nreturn await tasks.restore(${q(S.T.oldDraft)});` });
+kase("restoreList-name-hits-active", { expect: null, script: () => `// "Work" names the live list first, so this doesn't reach the deleted one\nreturn await tasks.restoreList("Work");` });
+kase("restoreList-by-id", { expect: "write", script: () => `return await tasks.restoreList(${q(S.L.WorkOld)});` });
+kase("archiveList-and-unarchiveList-old-names", { expect: "write", script: () => `// the old names still run\nconst l = await tasks.addList("Alias test");\nawait tasks.archiveList(l.id);\nconst deleted = (await tasks.deletedLists()).map((x) => x.name);\nawait tasks.unarchiveList(l.id);\nreturn { deleted, sidebar: (await tasks.lists()).map((x) => x.name) };` });
 
 // Undo.
 kase("undo-target-rename", { expect: "write", script: () => `return await tasks.rename(${q(S.T.pr)}, "Review PR #42");` });
@@ -632,6 +655,7 @@ kase("undo-already-undone", { expect: "Invalid", script: () => `return await tas
 kase("undo-the-undo-is-a-redo", { expect: "write", script: () => `return await tasks.undo(${q(S.batch["undo-newest"])});` });
 kase("undo-by-batch-prefix", { expect: "write", script: () => `return await tasks.undo(${q(S.batch["move-to-list"].slice(0, 6))});` });
 kase("undo-add-list", { expect: "write", script: () => `return await tasks.undo(${q(S.batch["addList-before"])});` });
+kase("undo-delete-list", { expect: "write", script: () => `return await tasks.undo(${q(S.batch["deleteList"])});` });
 kase("undo-delete-heading", { expect: null, script: () => `// restore-heading already brought it back: nothing to change\nreturn await tasks.undo(${q(S.batch["delete-heading-keeps-its-tasks"])});` });
 kase("undo-dry-run", { expect: "write", dryRun: true, script: () => `return await tasks.undo(${q(S.batch["complete-one"])});` });
 kase("conflict-agent-edit", { expect: "write", script: () => `await tasks.rename(${q(S.T.trip)}, "Plan the trip");\nawait tasks.setWhen(${q(S.T.trip)}, "fri");\nreturn await tasks.setNotes(${q(S.T.trip)}, "Flights, then the hotel.");` });
@@ -649,12 +673,12 @@ kase("undo-batch-ref-too-short", { expect: "NotFound", script: () => `return awa
 
 // Dry runs.
 kase("dry-run-add-and-move", { expect: "write", dryRun: true, script: () => `const t = await tasks.add({ title: "Dry run task", list: "Home", when: "tomorrow" });\nawait tasks.move([t.id, ${q(S.T.rent)}], { list: "Errands" });\nawait tasks.complete(${q(S.T.laundry)});\nreturn t.id.length;` });
-kase("dry-run-lists", { expect: "write", dryRun: true, script: () => `const l = await tasks.addList("Dry list", { before: "Home" });\nawait tasks.renameList("Errands", "Errands & chores");\n// reads see the rename: the old name is gone\nawait tasks.setListNotes("Errands & chores", "x");\nawait tasks.archiveList("Someday");\nreturn l.name;` });
+kase("dry-run-lists", { expect: "write", dryRun: true, script: () => `const l = await tasks.addList("Dry list", { before: "Home" });\nawait tasks.renameList("Errands", "Errands & chores");\n// reads see the rename: the old name is gone\nawait tasks.setListNotes("Errands & chores", "x");\nawait tasks.deleteList("Someday");\nreturn l.name;` });
 kase("dry-run-no-change", { expect: "read", dryRun: true, script: () => `return (await tasks.lists()).length;` });
 kase("dry-run-error", { expect: "NotFound", dryRun: true, script: () => `await tasks.add({ title: "Dry" });\nawait tasks.complete("zzzz1234");` });
 
 // The end state, then the limits.
-kase("final-views", { expect: "read", script: () => `return {\n  today: await tasks.today(),\n  lists: await tasks.lists(),\n  archive: await tasks.archive(),\n  phys: await tasks.list("PHYS 122"),\n  inbox: await tasks.list("Inbox"),\n};` });
+kase("final-views", { expect: "read", script: () => `return {\n  today: await tasks.today(),\n  lists: await tasks.lists(),\n  deleted: await tasks.deletedLists(),\n  phys: await tasks.list("PHYS 122"),\n  inbox: await tasks.list("Inbox"),\n};` });
 kase("over-500-ops", { expect: "Limit", script: () => `for (let i = 0; i < 501; i++) await tasks.add({ title: "Bulk " + i, list: "Someday" });\nreturn "made 501";` });
 kase("over-10-seconds", { expect: "Limit", script: () => `await tasks.add({ title: "Too slow" });\nawait new Promise((r) => setTimeout(r, 30000));\nreturn "late";` });
 

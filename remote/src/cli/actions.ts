@@ -181,16 +181,48 @@ export class Fork {
     return this.perform([this.listOp(id, { notes: v })]);
   }
 
-  /** "Delete list" is archiving: one op; its tasks are untouched. */
-  archive(id: EntityID): boolean {
+  /** Delete List: one op, `archivedAt` = now. Its tasks aren't touched: they count as deleted while it's in Trash. */
+  deleteList(id: EntityID): boolean {
     if ((this.p.list(id)?.archivedAt ?? null) !== null) return false;
     return this.perform([this.listOp(id, { archivedAt: this.clock.now() })]);
   }
 
-  /** Back to its old sidebar spot, by its old key. */
-  unarchive(id: EntityID): boolean {
+  /** Restore List: back to its old sidebar spot, by its old key, with everything it held. */
+  restoreList(id: EntityID): boolean {
     if ((this.p.list(id)?.archivedAt ?? null) === null) return false;
     return this.perform([this.listOp(id, { archivedAt: null })]);
+  }
+
+  /** The tasks Put Back can take out of Trash: deleted ones, and ones whose list is deleted. Never headings. */
+  trashedTasks(ids: EntityID[]): EntityID[] {
+    return ids.filter((id) => {
+      const t = this.p.task(id);
+      return t !== undefined && !t.isHeading && (t.deleted || !this.p.isActive(t.list));
+    });
+  }
+
+  /** Put Back: without `list`, `deleted: false` back in its own (live) list; "Put back in" `list`: at the bottom of that
+   *  live list, in the order given, `{list, order}` plus `deleted: false` where it was deleted on its own. */
+  putBack(ids: EntityID[], list?: EntityID): boolean {
+    const trashed = this.trashedTasks(ids);
+    if (list !== undefined && !this.p.isActive(list)) return false;
+    const ops: Op[] = [];
+    const moving = list === undefined ? [] : trashed.filter((id) => this.p.task(id)?.list !== list);
+    if (list !== undefined && moving.length > 0) {
+      const movingSet = new Set(moving);
+      for (const k of Ordering.append(moving, this.p.orderedOpenTasks(list))) {
+        const set: Patch = { list, order: k.order };
+        if (movingSet.has(k.id) && this.p.task(k.id)?.deleted === true) set.deleted = false;
+        ops.push(this.taskOp(k.id, set));
+      }
+    }
+    for (const id of trashed) {
+      if (moving.includes(id)) continue;
+      const t = this.p.task(id);
+      if (!t || !t.deleted || !this.p.isActive(t.list)) continue;
+      ops.push(this.taskOp(id, { deleted: false }));
+    }
+    return this.perform(ops);
   }
 
   reorderLists(ids: EntityID[], anchor: Anchor): boolean {

@@ -30,6 +30,8 @@ interface Method {
   params: Param[];
   signature: MethodArg[];
   returns: string;
+  /** An old name kept so saved scripts still work: it runs, but `tasks.d.ts` doesn't declare it. */
+  hidden?: boolean;
   run: (c: Context, a: Args) => Reply;
 }
 
@@ -75,8 +77,13 @@ export const METHODS: Method[] = [
     run: (c, a) => ({ value: c.listJSON(text(a, "list")) }),
   },
   {
-    method: "archive", doc: "Archived lists, most recently archived first.", params: [], signature: [], returns: "List[]",
-    run: (c) => ({ value: c.archiveJSON() as unknown as Json }),
+    method: "deletedLists", doc: "Deleted lists, in Trash, most recently deleted first. Their tasks count as deleted: find --deleted shows them.",
+    params: [], signature: [], returns: "List[]",
+    run: (c) => ({ value: c.deletedListsJSON() as unknown as Json }),
+  },
+  {
+    method: "archive", doc: "Deleted lists (the old name of tasks deleted).", params: [], signature: [], returns: "List[]", hidden: true,
+    run: (c) => ({ value: c.deletedListsJSON() as unknown as Json }),
   },
   {
     method: "task", doc: "One task: every field and its notes (the detail pane). Deleted tasks too.",
@@ -87,7 +94,7 @@ export const METHODS: Method[] = [
     },
   },
   {
-    method: "find", doc: "Tasks whose title or notes contain the text (any list; read-only). Empty text matches everything. Headings aren't tasks: tasks ls lists them.",
+    method: "find", doc: "Tasks whose title or notes contain the text (any list; read-only). Empty text matches everything. --deleted adds deleted tasks, and the tasks of deleted lists (they have listDeleted). Headings aren't tasks: tasks ls lists them.",
     params: [P("text", "text", true), P("list", "listRef", true), P("done", "bool", true), P("deleted", "bool", true)],
     signature: [{ object: "q", fields: ["text", "list", "done", "deleted"] }], returns: "Task[]",
     run: (c, a) => ({
@@ -147,7 +154,7 @@ export const METHODS: Method[] = [
     run: (c, a) => (c.setDeadline(refs(a, "tasks"), c.date(a.date ?? null, "date")), change),
   },
   {
-    method: "move", doc: "Move tasks to another list (they land at the bottom, in the order given), or to a place: next to an open task or a heading (in its list; --after a heading is the top of its section), the top or bottom, or one row up or down. A heading moves on its own, with its section: --before another heading, --after a row (after that row's section), --top, --bottom, --up, --down.",
+    method: "move", doc: "Move tasks to another list (they land at the bottom, in the order given), or to a place: next to an open task or a heading (in its list; --after a heading is the top of its section), the top or bottom, or one row up or down. A task in a deleted list takes --to only: it goes to the bottom of that list (the app's Put back in). A heading moves on its own, with its section: --before another heading, --after a row (after that row's section), --top, --bottom, --up, --down.",
     params: [P("tasks", "refs"), P("list", "listRef", true), P("place", "place", true)],
     signature: [{ param: "tasks" }, { object: "to", fields: ["list", "place"] }], returns: "Change",
     run: (c, a) => (c.move(refs(a, "tasks"), text(a, "list"), c.place(a.place)), change),
@@ -158,7 +165,7 @@ export const METHODS: Method[] = [
     run: (c, a) => (c.delete(refs(a, "tasks")), change),
   },
   {
-    method: "restore", doc: "Bring back deleted tasks.", params: [P("tasks", "refs")], signature: [{ param: "tasks" }], returns: "Change",
+    method: "restore", doc: "Bring back deleted tasks. A task whose list is deleted comes back with its list (tasks list restore), or goes to another with move --to.", params: [P("tasks", "refs")], signature: [{ param: "tasks" }], returns: "Change",
     run: (c, a) => (c.restore(refs(a, "tasks")), change),
   },
   // Headings
@@ -188,14 +195,24 @@ export const METHODS: Method[] = [
     run: (c, a) => (c.moveList(required(a, "list"), c.place(a.place)), change),
   },
   {
-    method: "archiveList", doc: "Archive a list (the app's \"delete list\"). Its tasks are kept and come back with it.", params: [P("list", "listRef")],
-    signature: [{ param: "list" }], returns: "Change",
-    run: (c, a) => (c.archiveList(required(a, "list")), change),
+    method: "deleteList", doc: "Delete a list: it goes to Trash with its tasks, which count as deleted until it's restored. One change, whatever it holds.",
+    params: [P("list", "listRef")], signature: [{ param: "list" }], returns: "Change",
+    run: (c, a) => (c.deleteList(required(a, "list")), change),
   },
   {
-    method: "unarchiveList", doc: "Unarchive a list, back to its old place in the sidebar.", params: [P("list", "listRef")],
-    signature: [{ param: "list" }], returns: "Change",
-    run: (c, a) => (c.unarchiveList(required(a, "list")), change),
+    method: "restoreList", doc: "Restore a deleted list to its old place in the sidebar, with everything it held. Tasks deleted on their own before stay deleted.",
+    params: [P("list", "listRef")], signature: [{ param: "list" }], returns: "Change",
+    run: (c, a) => (c.restoreList(required(a, "list")), change),
+  },
+  {
+    method: "archiveList", doc: "Delete a list (the old name of tasks list delete).", params: [P("list", "listRef")],
+    signature: [{ param: "list" }], returns: "Change", hidden: true,
+    run: (c, a) => (c.deleteList(required(a, "list")), change),
+  },
+  {
+    method: "unarchiveList", doc: "Restore a deleted list (the old name of tasks list restore).", params: [P("list", "listRef")],
+    signature: [{ param: "list" }], returns: "Change", hidden: true,
+    run: (c, a) => (c.restoreList(required(a, "list")), change),
   },
   // History
   {
@@ -283,7 +300,7 @@ export function answer(c: Context, method: string, args: Json[]): CallResult {
     const m = byName.get(method);
     if (!m) {
       let near: string | undefined;
-      for (const n of METHODS.map((x) => x.method)) if (near === undefined || distance(n, method) < distance(near, method)) near = n;
+      for (const n of METHODS.filter((x) => !x.hidden).map((x) => x.method)) if (near === undefined || distance(n, method) < distance(near, method)) near = n;
       const hint = near !== undefined && distance(near, method) <= 3 ? `; did you mean ${near}?` : "";
       throw new CLIError("NotFound", `There's no tasks.${method}${hint} (tasks types lists them).`);
     }
@@ -319,12 +336,14 @@ const SHAPES: Record<"task" | "list" | "change", Field[]> = {
     { name: "notes", ts: "string /* Markdown */" }, { name: "when", ts: "CalendarDate | null" },
     { name: "deadline", ts: "CalendarDate | null" }, { name: "done", ts: "boolean" },
     { name: "completedAt", ts: "number | null" }, { name: "deleted", ts: "boolean" },
+    { name: "listDeleted", ts: "true /* only when its list is deleted (in Trash): the task counts as deleted, and comes back with the list */", optional: true },
     { name: "createdAt", ts: "number" }, { name: "updatedAt", ts: "number" },
   ],
   list: [
     { name: "id", ts: "string" }, { name: "ref", ts: "string" }, { name: "name", ts: "string" },
     { name: "notes", ts: "string /* Markdown, under the list's title */" },
-    { name: "archivedAt", ts: "number | null" }, { name: "open", ts: "number /* open tasks, headings not counted */" },
+    { name: "archivedAt", ts: "number | null /* when it was deleted (it's in Trash); null: in the sidebar */" },
+    { name: "open", ts: "number /* open tasks, headings not counted */" },
   ],
   change: [
     { name: "batch", ts: "string | null /* null when nothing changed */" }, { name: "summary", ts: "string" },
@@ -367,6 +386,7 @@ export function declarations(): string {
     "declare const tasks: {",
   ];
   for (const m of METHODS) {
+    if (m.hidden) continue;
     const args = m.signature.map((arg) => {
       if ("param" in arg) {
         const p = param(m, arg.param);

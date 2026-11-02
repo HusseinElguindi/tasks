@@ -34,7 +34,7 @@ interface Index {
   today: Map<EntityID, SortKey[]>;
   todayDone: SortKey[];
   activeLists: SortKey[];
-  archivedLists: SortKey[];
+  deletedLists: SortKey[];
 }
 
 export class Projection {
@@ -73,9 +73,22 @@ export class Projection {
     return new Set([...this.confirmed.lists.keys(), ...this.listOverlay.keys()]);
   }
 
+  /** A live list: it exists and isn't in Trash. */
   isActive(list: EntityID): boolean {
     const l = this.list(list);
     return l !== undefined && l.archivedAt === null;
+  }
+
+  /** A list in Trash: `archivedAt` is the moment it was deleted. */
+  isDeleted(list: EntityID): boolean {
+    const l = this.list(list);
+    return l !== undefined && l.archivedAt !== null;
+  }
+
+  /** A task is live only if it isn't deleted and its list is live: a task in a deleted list counts as deleted. */
+  isLive(task: EntityID): boolean {
+    const t = this.task(task);
+    return t !== undefined && !t.deleted && this.isActive(t.list);
   }
 
   /** The list's rows in order: its open tasks and its headings. */
@@ -112,9 +125,9 @@ export class Projection {
     return ids(this.idx().activeLists);
   }
 
-  /** Archived lists, most recently archived first. */
-  archivedLists(): EntityID[] {
-    return ids(this.idx().archivedLists);
+  /** Deleted lists, in Trash (`archivedAt` set), most recently deleted first. */
+  deletedLists(): EntityID[] {
+    return ids(this.idx().deletedLists);
   }
 
   orderedActiveLists(): OrderedItem[] {
@@ -228,7 +241,7 @@ export class Projection {
     const day = this.day;
     const index: Index = {
       open: new Map(), headings: new Map(), completed: new Map(), today: new Map(),
-      todayDone: [], activeLists: [], archivedLists: [],
+      todayDone: [], activeLists: [], deletedLists: [],
     };
     const push = (m: Map<EntityID, SortKey[]>, list: EntityID, k: SortKey) => {
       const a = m.get(list);
@@ -238,7 +251,7 @@ export class Projection {
     for (const id of this.allListIDs()) {
       const l = this.list(id);
       if (!l) continue;
-      if (l.archivedAt !== null) index.archivedLists.push(descending(l.archivedAt, l.id));
+      if (l.archivedAt !== null) index.deletedLists.push(descending(l.archivedAt, l.id));
       else index.activeLists.push(manual(l.order, l.id));
     }
     for (const id of this.allTaskIDs()) {
@@ -263,7 +276,7 @@ export class Projection {
     for (const m of [index.open, index.headings, index.completed, index.today]) for (const a of m.values()) sorted(a);
     sorted(index.todayDone);
     sorted(index.activeLists);
-    sorted(index.archivedLists);
+    sorted(index.deletedLists);
     this.index = index;
     return index;
   }

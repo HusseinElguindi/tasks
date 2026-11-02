@@ -114,7 +114,7 @@ export function applyToList(op: Op, list: TaskList | undefined): { list: TaskLis
   return { list, applied: false };
 }
 
-/** The confirmed state: every task and list reduced from the log, deleted and archived ones included. */
+/** The confirmed state: every task and list reduced from the log, deleted ones included. */
 export class AppState {
   tasks = new Map<EntityID, TaskItem>();
   lists = new Map<EntityID, TaskList>();
@@ -180,7 +180,7 @@ export const Inverse = {
     return null;
   },
 
-  /** Undoing a list create archives it: lists are never deleted. */
+  /** Undoing a list create deletes it, which for a list is `archivedAt` (it goes to Trash). */
   ofList(op: Op, before: TaskList | undefined, id: string, at: number): Op | null {
     if (op.type === "list.create") {
       if (before !== undefined || listCreating(op) === null) return null;

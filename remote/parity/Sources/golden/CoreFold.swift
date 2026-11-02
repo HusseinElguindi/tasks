@@ -97,7 +97,7 @@ enum CoreFold {
         ])
     }
 
-    /// Every list id there is a view for: lists that exist (active and archived) and lists tasks point at.
+    /// Every list id there is a view for: lists that exist (live and deleted) and lists tasks point at.
     static func knownLists(_ p: Projection, confirmed: AppState) -> [String] {
         var ids = p.allListIDs
         for id in p.allTaskIDs { if let t = p.task(id) { ids.insert(t.list) } }
@@ -127,7 +127,9 @@ enum CoreFold {
         return .obj([
             "day": encode(p.day),
             "activeLists": .ids(p.activeLists.ids),
-            "archivedLists": .ids(p.archivedLists.ids),
+            "deletedLists": .ids(p.deletedLists.ids),
+            // A task in a deleted list counts as deleted (INTERACTIONS-v2 §28).
+            "liveTasks": .ids(p.allTaskIDs.filter { p.isLive(task: $0) }.sorted { $0.utf8.lexicographicallyPrecedes($1.utf8) }),
             "todayDone": .ids(p.todayDone.ids),
             "lists": .obj(lists),
             "sections": .obj(sections),
@@ -198,7 +200,7 @@ enum CoreFold {
             op("task.create", "h4", #"{"list":"L","order":"a5","kind":"heading","title":"tied with t3"}"#),
         ]), pending: [], when: toronto))
 
-        // Today and todayDone across midnight, archived and missing lists.
+        // Today and todayDone across midnight, deleted and missing lists.
         out.append(Case(name: "handmade/today-boundaries", entries: lines([
             op("list.create", "A", #"{"name":"active","order":"a0"}"#),
             op("list.create", "R", #"{"name":"archived","order":"a1"}"#),
@@ -219,11 +221,28 @@ enum CoreFold {
             op("task.create", "tie-b", #"{"list":"A","order":"b0","when":"\#(today)","completedAt":\#(d.start + 100)}"#),
             op("task.create", "tie-a", #"{"list":"A","order":"b1","when":"\#(today)","completedAt":\#(d.start + 100)}"#),
         ]), pending: [
-            // Unarchive R and archive A while pending: todayDone moves with them.
+            // Restore R and delete A while pending: todayDone moves with them.
             op("list.update", "R", #"{"archivedAt":null}"#),
             op("list.update", "A", #"{"archivedAt":\#(d.start + 1)}"#),
             op("list.update", "A", #"{"archivedAt":null}"#),
             op("task.update", "c-before", #"{"completedAt":\#(d.start + 2)}"#),
+        ], when: toronto))
+
+        // Delete List (INTERACTIONS-v2 §28): a task deleted before its list stays deleted when the list is restored;
+        // while the list is deleted none of its tasks is live; one task put back in another list stays there.
+        out.append(Case(name: "handmade/deleted-list", entries: lines([
+            op("list.create", "S", #"{"name":"School","order":"a0"}"#),
+            op("list.create", "I", #"{"name":"Inbox","order":"a1"}"#),
+            op("task.create", "s-open", #"{"list":"S","order":"a0","when":"\#(today)"}"#),
+            op("task.create", "s-done", #"{"list":"S","order":"a1","when":"\#(today)","completedAt":\#(d.start + 3)}"#),
+            op("task.create", "s-old", #"{"list":"S","order":"a2"}"#),
+            op("task.update", "s-old", #"{"deleted":true}"#),
+            op("task.create", "s-out", #"{"list":"S","order":"a3"}"#),
+            op("list.update", "S", #"{"archivedAt":\#(d.start + 5)}"#),
+            op("task.update", "s-out", #"{"list":"I","order":"a0"}"#),
+        ]), pending: [
+            op("list.update", "S", #"{"archivedAt":null}"#),
+            op("list.update", "S", #"{"archivedAt":\#(d.start + 9)}"#),
         ], when: toronto))
 
         // Ties broken by id as UTF-8 bytes: in UTF-16 order "😀" sorts before "～", in UTF-8 after.
