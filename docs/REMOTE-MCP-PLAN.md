@@ -16,7 +16,8 @@ MCP client ──OAuth──▶ tasks-mcp (remote/)
                        ├─ /authorize /token /register   workers-oauth-provider; consent needs a passkey
                        ├─ /mcp                          JSON-RPC: initialize, tools/list, tools/call
                        ├─ Replica DO (SQLite)           log, cursor, pending, folded state; one run at a time
-                       │    └─ tasks_run ──▶ LOADER isolate (the script; env: { TASKS: stub }, globalOutbound: null)
+                       │    └─ tasks_run ──▶ LOADER isolate (the script; env: {}, globalOutbound: null),
+                       │                     its `tasks` calls → a Host RpcTarget passed to run(host), in the DO
                        └─ SYNC service binding ──▶ tasks Worker, POST /v1/sync (unchanged), Bearer SYNC_TOKEN
 ```
 
@@ -108,13 +109,29 @@ Parity, all generated outside the Swift package:
 **3. Code mode on Worker Loader.**
 - **The script:** TypeScript is stripped to JS with `sucrase` (types only, small). It is wrapped exactly as the CLI
   wraps it (`export default async () => {\n…\n};`), so a script runs the same in both, and its line numbers match.
-- **The isolate:** `env.LOADER.load({ mainModule: "bridge.js", modules, env: { TASKS }, globalOutbound: null })`.
-  `TASKS` is `ctx.exports.TasksApi({ props: { run } })`, a loopback entrypoint whose methods call back into the
-  Replica DO's fork for that run. The script can reach nothing else.
+- **The isolate:** `env.LOADER.load({ mainModule: "bridge.js", modules, env: {}, globalOutbound: null,
+  limits: { cpuMs: 10000 } })`, fresh for each run. The DO calls the bridge's `run(host)` over RPC, where `host` is
+  an `RpcTarget` holding that run's fork: every `tasks.*` call and console line lands on it, in the DO's memory, with
+  no second request into the DO. The script can reach nothing else. (An `RpcTarget` can't go in `env`:
+  DataCloneError. The plan's `ctx.exports` loopback also works locally but needs that second hop.)
 - **Limits:** the CLI's (10 s, 100 KB result, 200 log lines), with the same result and error shapes
-  (`{ok, result, logs, change, synced}` / `{ok: false, error: {type, message, line}}`). `dryRun` returns the diff and
-  writes nothing.
-- **To check first:** that `worker_loaders` and `ctx.exports` loopbacks work under local `wrangler dev`.
+  (`{ok, result, logs, change, synced}` / `{ok: false, error: {type, message, line, column}}`). `dryRun` returns the
+  diff and writes nothing. The 10 s are enforced three ways: a host timer (stops a script that waits), every call
+  after the deadline failing with the timeout error, and `limits.cpuMs` (a busy loop, production only).
+- **Checked first (2026-11-01), all locally:** Worker Loader under `wrangler dev`, from a Worker and from a DO, and in
+  the vitest Workers pool; `globalOutbound: null` blocks `fetch`; stacks read `script.js:line:col`; the SYNC binding
+  between two `wrangler dev` sessions (`[connected]`).
+- **Caveat, local only: a busy loop isn't stopped.** workerd doesn't enforce `limits.cpuMs` locally, and a script that
+  never yields (`while (true) {}`, or a loop of calls that each answer at once) starves the DO's timer and blocks the
+  DO until it ends, so `wrangler dev` needs a restart. A script that waits is stopped at 10 s as in the CLI. Scripts
+  come from the model, so this is an accident, not an attack; in production `limits.cpuMs` should stop it, which the
+  post-deploy check below verifies. If it doesn't, the fallback is deadline checks inserted into every loop and
+  function when the TypeScript is stripped (about half a day).
+- **Error positions:** sucrase's source map takes them back to the TypeScript, as Deno does, so all 62 positioned
+  errors in the CLI scenarios match. Lines always match; a column can differ after TypeScript-only syntax on the same
+  line, where Deno's map is coarser (it can point at an earlier token).
+- **Until phase 4,** `/mcp` takes `Authorization: Bearer <DEV_TOKEN>` (a local-only secret; unset means closed) and
+  writes as `agent:dev`.
 
 **4. OAuth and the passkey.**
 - **OAuth:** `@cloudflare/workers-oauth-provider` serves `/mcp` as its API route, plus dynamic client registration.
@@ -129,8 +146,9 @@ Parity, all generated outside the Swift package:
 
 `server/` runs unchanged under its own `wrangler dev` with `--var API_TOKEN:<dummy>` and `--persist-to` a folder in
 `remote/.wrangler/`. `tasks-mcp` runs in a second `wrangler dev`, and the dev registry resolves the `SYNC` service
-binding between the two. `remote/.dev.vars` (gitignored) holds the dummy `SYNC_TOKEN` and `SETUP_SECRET`. Nothing is
-created on Cloudflare.
+binding between the two. `remote/.dev.vars` (gitignored) holds the dummy `SYNC_TOKEN`, `DEV_TOKEN` (phase 3) and
+`SETUP_SECRET` (phase 4). `pnpm smoke` (`remote/scripts/dev-smoke.mjs`) runs exactly that, with dummy tokens and
+scratch state, then MCP over HTTP: a write, a read, an error, and the server's log. Nothing is created on Cloudflare.
 
 ## For later (not run; the coordinator asks the user)
 
@@ -142,11 +160,20 @@ npx wrangler secret put SETUP_SECRET
 npx wrangler deploy
 ```
 
-The DO migrations ship with that deploy. The main `tasks` Worker isn't touched.
+The DO migrations ship with that deploy. The main `tasks` Worker isn't touched. `DEV_TOKEN` is never set in
+production.
+
+**After the deploy: check that `limits.cpuMs` stops a busy loop** (it can't be checked locally). From a connected
+MCP client, run `tasks_run` with `while (true) {}`. Expect, within about 10–15 s,
+`{ok: false, error: {type: "Limit", message: "The script ran longer than 10 s, so it was stopped."}}`, and then a
+`tasks_run` of `return 1` answering at once (the replica isn't stuck). It writes nothing. If the first call hangs or
+the second waits, the replica is blocked: switch to the loop-guard fallback (phase 3, "Caveat").
 
 ## Risks
 
 - **Two implementations of the reducer and dates.** Parity fixtures guard them, but a later Swift change needs a
   fixture refresh (`pnpm parity`) to show up.
 - **The shared replica:** clients take turns through the run lock, so a slow script delays the next one by up to 10 s.
+- **A busy loop:** locally it blocks the replica until `wrangler dev` restarts; in production `limits.cpuMs` should
+  stop it at 10 s (the post-deploy check). Unverified until then.
 - **Dates:** `Intl` in Workers carries full time zone data. DST edges are covered by the Today fixtures.
