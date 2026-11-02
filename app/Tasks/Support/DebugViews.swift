@@ -13,6 +13,8 @@ import TasksCore
 ///     act:new   act:newday:+N   act:newin:<list>   act:title:<text>   act:commit   act:undo   act:redo
 ///     act:typesel:<letters>   (type-select in the sidebar)   act:menu:/path.txt   (the selection's context menu)
 ///     act:rows:/path.txt   (appends the route, the selection and every laid-out row and label with its window frame)
+///     act:groups:/path.txt   (appends the route, today and each group in order: its id, kind, day, name, sub, quiet and +,
+///                             then its rows by title)
 ///     act:day:+N   (the day turns over to N days from now, as at midnight; 0 puts it back)
 ///     act:dates:/path.txt   (appends every row's When, Deadline and ring as shown, §24)
 ///     act:trace:MS:/path.txt   (for MS ms, before each commit: the rows' and labels' on-screen y, the drag copy's
@@ -90,6 +92,7 @@ enum DebugViews {
             let menu = a.selectedDeletedList.map { Menus.deletedList($0, actions: a) } ?? Menus.task(a.targetIDs, actions: a)
             append("menu \(a.routeName(w.route)): " + titles(menu), to: rest)
         case "rows": append(rows(w, store: store), to: rest)
+        case "groups": append(groups(w, store: store), to: rest)
         case "sync": store.requestSync(force: true)
         // §24: the day turning over, as at midnight: Today and every date's words and rings move to the new day
         // (`act:day:+1`; `act:day:0` puts the real day back).
@@ -170,6 +173,24 @@ enum DebugViews {
             items.append((y - 0.5, "  \(Int(y)) [\(name)\(info?.sub.map { " " + $0 } ?? "")\(info?.quiet == true ? " quiet" : "")\(info?.plus == true ? " +" : "")]"))
         }
         out += "\n" + items.sorted { $0.0 < $1.0 }.map(\.1).joined(separator: "\n")
+        return out
+    }
+
+    /// The view's groups in order (§22): `id kind day [name | sub] quiet +`, then each row's title, for comparing
+    /// grouping across builds.
+    static func groups(_ w: WindowState, store: Store) -> String {
+        let p = store.projection
+        let a = WindowActions(store: store, window: w)
+        let L = TaskLayout.make(store: store, window: w)
+        var out = "groups \(a.routeName(w.route)) today=\(p.day.date.string) empty=\(L.empty.map { "\($0)" } ?? "-")"
+        for (i, g) in L.groups.enumerated() {
+            let info = L.labelInfo[g.listID]
+            out += "\n  \(g.listID) \(g.kind) \(g.day?.string ?? "-") [\(info?.name ?? "?") | \(info?.sub ?? "-")]"
+                + (info?.quiet == true ? " quiet" : "") + (info?.plus == true ? " +" : "")
+                + (info?.day.map { " day=" + $0.string } ?? "")
+            if i < L.labelOrder.count, L.labelOrder[i] != g.listID { out += " (labelOrder=\(L.labelOrder[i]))" }
+            for id in g.ids { out += "\n    " + (p.task(id)?.title ?? p.list(id).map { "[list] " + $0.name } ?? id) }
+        }
         return out
     }
 
