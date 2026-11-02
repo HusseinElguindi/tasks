@@ -32,16 +32,6 @@ struct ViewItems: Equatable {
     /// trashed task, so the last op is the one that set `deleted` (the prototype's `deletedAt`, dc:952).
     static func deletedAt(_ t: TaskItem) -> Int { Projection.deletedAt(t) }
 
-    /// The day a task reaches Today: the earlier of its dates (SPEC §4, either date brings it in).
-    static func upDay(when: CalendarDate?, deadline: CalendarDate?) -> CalendarDate? {
-        switch (when, deadline) {
-        case let (w?, d?): return min(w, d)
-        case let (w?, nil): return w
-        case let (nil, d?): return d
-        default: return nil
-        }
-    }
-
     @MainActor
     static func read(store: Store, window: WindowState) -> ViewItems? {
         let p = store.projection
@@ -81,7 +71,7 @@ struct ViewItems: Equatable {
             var items: [(id: EntityID, day: CalendarDate, rank: Int, order: String)] = []
             func consider(_ e: ViewDates.Entry) {
                 if upcoming {
-                    guard let day = upDay(when: e.when, deadline: e.deadline), day > today else { return }
+                    guard let day = ViewGroups.upDay(when: e.when, deadline: e.deadline), day > today else { return }
                     items.append((e.id, day, e.rank, e.order))
                 } else if e.when == nil && e.deadline == nil {
                     items.append((e.id, today, e.rank, e.order))
@@ -97,11 +87,9 @@ struct ViewItems: Equatable {
                 guard let t = p.task(id), !t.deleted, t.completedAt != nil, let rank = active.firstIndex(of: t.list) else { continue }
                 consider(.init(id: id, rank: rank, order: t.order, when: t.when, deadline: t.deadline))
             }
-            items.sort { a, b in
-                if a.day != b.day { return a.day < b.day }
-                if a.rank != b.rank { return a.rank < b.rank }
-                return orderPrecedes(a.order, a.id, b.order, b.id)
-            }
+            // By day, then by list in sidebar order, then by the key in the list (TasksCore's `ViewGroups`).
+            items.sort { ViewGroups.upcomingPrecedes(.init(id: $0.id, day: $0.day, rank: $0.rank, order: $0.order),
+                                                     .init(id: $1.id, day: $1.day, rank: $1.rank, order: $1.order)) }
             v.ids = items.map(\.id)
             v.days = items.map(\.day)
             v.ranks = items.map(\.rank)
@@ -180,20 +168,6 @@ final class ViewDates {
     }
 }
 
-/// Weekday and month names (the prototype's WDL and MOL).
-enum ViewNames {
-    static let weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-    static let months = ["January", "February", "March", "April", "May", "June", "July", "August", "September",
-                         "October", "November", "December"]
-
-    /// "December", or "January 2027" in another year.
-    static func month(year: Int, month: Int, today: CalendarDate) -> String {
-        months[month - 1] + (year != today.year ? " \(year)" : "")
-    }
-
-    static func weekday(_ d: CalendarDate) -> String { weekdays[d.weekday - 1] }
-}
-
 extension TaskLayout {
     /// Upcoming, Undated, Completed and Trash on Today's grid: a 32pt label slot, then 32pt rows (dc:2247–2316).
     static func buildView(store: Store, inputs: Inputs) -> TaskLayout {
@@ -246,11 +220,8 @@ extension TaskLayout {
                 let set = Set(dragged)
                 var items = ids.indices.map { (id: ids[$0], day: set.contains(ids[$0]) ? to : days[$0], rank: ranks[$0], order: v.orders[$0]) }
                 // Moved rows sort into their new day by list, then by their key in it: where the drop will put them.
-                items.sort { a, b in
-                    if a.day != b.day { return a.day < b.day }
-                    if a.rank != b.rank { return a.rank < b.rank }
-                    return orderPrecedes(a.order, a.id, b.order, b.id)
-                }
+                items.sort { ViewGroups.upcomingPrecedes(.init(id: $0.id, day: $0.day, rank: $0.rank, order: $0.order),
+                                                         .init(id: $1.id, day: $1.day, rank: $1.rank, order: $1.order)) }
                 ids = items.map(\.id); days = items.map(\.day); ranks = items.map(\.rank)
             }
             if let draft, let when = draft.when, when > today, let rank = active.firstIndex(of: draft.list) {
@@ -259,21 +230,17 @@ extension TaskLayout {
                 ids.insert(draft.id, at: at); days.insert(when, at: at); ranks.insert(rank, at: at)
                 L.draftID = draft.id
             }
-            let horizon = today.adding(days: 7)
+            // The groups are TasksCore's (`ViewGroups.upcoming`); a day's label has its + for that day.
             struct Bucket { var id: EntityID; var kind: GroupKind; var day: CalendarDate?; var info: LabelInfo; var ids: [EntityID] = [] }
             func bucket(_ day: CalendarDate) -> Bucket {
-                if day <= horizon {
-                    let n = today.days(until: day)
-                    let name = n == 1 ? "Tomorrow" : ViewNames.weekday(day)
-                    return Bucket(id: "d:" + day.string, kind: .day, day: day,
-                                  info: LabelInfo(name: name, sub: DateLabel.monthDay(day), plus: true, day: day))
+                let g = ViewGroups.upcoming(day, today: today)
+                return switch g.kind {
+                case .day: Bucket(id: g.id, kind: .day, day: g.day, info: LabelInfo(name: g.name, sub: g.sub, plus: true, day: g.day))
+                case .month: Bucket(id: g.id, kind: .month, day: nil, info: LabelInfo(name: g.name))
                 }
-                let name = (day.year == horizon.year && day.month == horizon.month ? "Later in " : "")
-                    + ViewNames.month(year: day.year, month: day.month, today: today)
-                return Bucket(id: "m:\(day.year)-\(day.month)", kind: .month, day: nil, info: LabelInfo(name: name))
             }
             // The next seven days always, then a month per month that has tasks.
-            var buckets: [Bucket] = (1...7).map { bucket(today.adding(days: $0)) }
+            var buckets: [Bucket] = ViewGroups.upcomingDays(today: today).map(bucket)
             var index: [EntityID: Int] = [:]
             for (i, b) in buckets.enumerated() { index[b.id] = i }
             for (i, id) in ids.enumerated() {
@@ -291,21 +258,17 @@ extension TaskLayout {
             }
 
         default:
-            // Completed and Trash: newest first, a group per day for the last week, then per month (dc:2297–2313).
+            // Completed and Trash: newest first, a group per day for the last week, then per month (dc:2297–2313); the
+            // groups are TasksCore's (`ViewGroups.past`), which puts a stamp ahead of today in today's group.
             var buckets: [(id: EntityID, kind: GroupKind, info: LabelInfo, ids: [EntityID])] = []
             var index: [EntityID: Int] = [:]
             for (i, id) in v.ids.enumerated() {
-                let day = v.days[i]
-                let n = day.days(until: today)
-                let b: (id: EntityID, kind: GroupKind, info: LabelInfo)
-                if n < 7 {
-                    let name = n == 0 ? "Today" : n == 1 ? "Yesterday" : ViewNames.weekday(day)
-                    b = ("d:" + day.string, .day, LabelInfo(name: name, sub: DateLabel.monthDay(day)))
-                } else {
-                    b = ("m:\(day.year)-\(day.month)", .month, LabelInfo(name: ViewNames.month(year: day.year, month: day.month, today: today)))
+                let g = ViewGroups.past(v.days[i], today: today)
+                if index[g.id] == nil {
+                    index[g.id] = buckets.count
+                    buckets.append((g.id, g.kind == .day ? .day : .month, LabelInfo(name: g.name, sub: g.sub), []))
                 }
-                if index[b.id] == nil { index[b.id] = buckets.count; buckets.append((b.id, b.kind, b.info, [])) }
-                buckets[index[b.id]!].ids.append(id)
+                buckets[index[g.id]!].ids.append(id)
             }
             if route == .trash {
                 // A deleted list is one row; expanded, its tasks follow it in the group, open then completed, and

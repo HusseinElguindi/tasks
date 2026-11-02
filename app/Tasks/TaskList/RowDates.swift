@@ -25,10 +25,19 @@ extension RowModel.Chip {
 }
 
 extension CheckLayer.Cue {
-    /// An open task's ring: its deadline past or today; planned for today when its When is today or earlier, except
-    /// in Today, where every task is. Done, trashed and new tasks have none.
+    /// An open task's ring, as TasksCore's `ViewGroups.RingCue` reads it: its deadline past or today; planned for today
+    /// when its When is today or earlier, except in Today, where every task is. Done, trashed and new tasks have none.
     init(when: CalendarDate?, deadline: CalendarDate?, today: CalendarDate, inToday: Bool) {
-        if let d = deadline, d <= today { self.deadline = d < today ? .late : .due }
-        planned = !inToday && when.map { $0 <= today } == true
+        self.init(ViewGroups.RingCue(when: when, deadline: deadline, today: today, inToday: inToday))
+    }
+
+    init(_ cue: ViewGroups.RingCue) {
+        self.init()
+        deadline = switch cue.deadline {
+        case .late: .late
+        case .due: .due
+        case nil: nil
+        }
+        planned = cue.planned
     }
 }

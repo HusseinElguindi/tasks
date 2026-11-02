@@ -88,7 +88,7 @@ extension WindowActions {
     func selectedDay() -> CalendarDate? {
         guard let id = targetIDs.first else { return nil }
         if let d = layout.groupDay(id) { return d }
-        guard let t = p.task(id), let d = ViewItems.upDay(when: t.when, deadline: t.deadline), d > today else { return nil }
+        guard let t = p.task(id), let d = ViewGroups.upDay(when: t.when, deadline: t.deadline), d > today else { return nil }
         return d
     }
 
@@ -112,7 +112,7 @@ extension WindowActions {
             switch window.route {
             case .today: return !((when.map { $0 <= today } ?? false) || (deadline.map { $0 <= today } ?? false))
             case .upcoming:
-                guard let d = ViewItems.upDay(when: when, deadline: deadline) else { return true }
+                guard let d = ViewGroups.upDay(when: when, deadline: deadline) else { return true }
                 return d <= today
             case .undated: return when != nil || deadline != nil
             default: return false
@@ -132,7 +132,7 @@ extension WindowActions {
         }
         var moves: [(EntityID, CalendarDate)] = []
         for id in targetIDs {
-            guard let t = p.task(id), let base = ViewItems.upDay(when: t.when, deadline: t.deadline) else { continue }
+            guard let t = p.task(id), let base = ViewGroups.upDay(when: t.when, deadline: t.deadline) else { continue }
             let nd = base.adding(days: delta)
             if nd < today || t.deadline.map({ nd > $0 }) == true { continue }
             moves.append((id, nd))

@@ -1802,7 +1802,7 @@ final class TaskListView: NSView {
         let a = actions
         let p = store.projection
         if d.mode == .days, let day = current.toDay, d.ids.contains(where: { id in
-            p.task(id).flatMap { ViewItems.upDay(when: $0.when, deadline: $0.deadline) } != day
+            p.task(id).flatMap { ViewGroups.upDay(when: $0.when, deadline: $0.deadline) } != day
         }), let L = currentLayout, let grabbed = d.ids.first, let y = L.y(grabbed) {
             let slot = windowRect(CGRect(x: TK.M.rowInset, y: y, width: 10, height: TK.M.row), from: doc)
             state.drag?.phase = .fly

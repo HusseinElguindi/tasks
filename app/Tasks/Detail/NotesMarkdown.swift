@@ -170,7 +170,8 @@ enum NotesStyle {
 final class NotesDocument {
     private(set) var doc = Markdown.Document()
     private(set) var units: [UInt16] = []
-    /// An ordered item's shown number: lists number themselves from their first item (dc:2293).
+    /// An ordered item's shown number: lists number themselves from their first item (dc:2293); TasksCore's
+    /// `Markdown.Document.shownNumbers`.
     private(set) var numbers: [Int: Int] = [:]
     /// The selection that shows marks; nil at rest or while the button is down (§4).
     var reveal: NSRange?
@@ -178,20 +179,7 @@ final class NotesDocument {
     func update(_ string: String) {
         units = Array(string.utf16)
         doc = units.withUnsafeBufferPointer { Markdown.parse($0) }
-        numbers = [:]
-        var run: [Int?] = []
-        for l in doc.lines {
-            guard l.isListItem else { run = []; continue }
-            if run.count > l.level + 1 { run.removeLast(run.count - l.level - 1) }
-            while run.count <= l.level { run.append(nil) }
-            if l.kind == .ordered {
-                let n = run[l.level] ?? l.number
-                numbers[l.index] = n
-                run[l.level] = n + 1
-            } else {
-                run[l.level] = nil
-            }
-        }
+        numbers = doc.shownNumbers
     }
 
     var lines: [Markdown.Line] { doc.lines }
