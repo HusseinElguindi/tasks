@@ -357,15 +357,17 @@ final class AppModel {
     /// A When or a deadline. A change that takes the task out of the view on screen (Today's rule, Upcoming's and
     /// Undated's) says where it went, with Undo: "Scheduled for Fri, Nov 6", "Due …", "Removed from Today" (the Mac's
     /// `setDate`, IX:701–704).
-    func setDate(_ id: EntityID, _ kind: DateKind, _ date: CalendarDate?) { setDate([id], kind, date) }
+    @discardableResult
+    func setDate(_ id: EntityID, _ kind: DateKind, _ date: CalendarDate?) -> Bool { setDate([id], kind, date) }
 
     /// The same for several tasks (the date sheet's selection): one step, the same names and notice for any count, and
-    /// the notice when any of them leaves the view (the Mac's `setDate` and `leavesView`).
-    func setDate(_ ids: [EntityID], _ kind: DateKind, _ date: CalendarDate?) {
+    /// the notice when any of them leaves the view (the Mac's `setDate` and `leavesView`). Returns whether it wrote.
+    @discardableResult
+    func setDate(_ ids: [EntityID], _ kind: DateKind, _ date: CalendarDate?) -> Bool {
         // A day chosen for a selection ends select mode, as every bar action does (§3).
         endSelecting()
         let tasks = ids.compactMap { task($0) }.filter { !$0.isHeading && !isTrashed($0) }
-        guard !tasks.isEmpty else { return }
+        guard !tasks.isEmpty else { return false }
         let ids = tasks.map(\.id)
         let name = kind == .when ? (date == nil ? "Remove When" : "Set When") : (date == nil ? "Remove Deadline" : "Set Deadline")
         let view = shown
@@ -381,10 +383,11 @@ final class AppModel {
                 }
             }
         }
-        guard done, leaves else { return }
+        guard done, leaves else { return done }
         let text = date.map { (kind == .when ? "Scheduled for " : "Due ") + DateLabel.long($0, today: today) }
             ?? "Removed from \(view.map(title) ?? "Today")"
         show(Notice(text: text, undo: undoStep))
+        return true
     }
 
     /// Whether a task with these dates is no longer in `view` (the Mac's `leavesView`): Today holds a When or a deadline

@@ -13,6 +13,9 @@ struct ListScreen: View {
     @State private var draftFrame: CGRect?
     /// Counts drops that wrote something, for the light haptic on drop.
     @State private var dropped = 0
+    /// A drop that wrote nothing (Upcoming: a month, past a deadline, its own day). List keeps the row where it was
+    /// dropped until the rows are drawn again; this draws them, and the row goes back to its place.
+    @State private var refused = 0
     /// Today's all-done sun turns in as it next appears: when Today opens already all done, or its last row settles
     /// while it's open (IX §13). Not when it scrolls back into view.
     @State private var sunRise = true
@@ -51,8 +54,10 @@ struct ListScreen: View {
                     .listRow()
                 if let runs = app.dragRuns(lines, source) {
                     // Drag to reorder (Reorder.swift: the iPhone's own drag, and its three accepted differences from
-                    // the Mac). Each run is its own ForEach, so a drop stays in its Today or Undated group.
-                    let airless = Set(runs.dropFirst().compactMap { $0.lines.first?.id })
+                    // the Mac). Each run is its own ForEach, so a drop stays in its Today or Undated group; Upcoming
+                    // is one run, across its days.
+                    let airless = DragRun.airless(runs)
+                    let _ = refused
                     ForEach(runs) { run in
                         ForEach(run.lines) { line in
                             listLine(line, airless: airless.contains(line.id), picks: picks)
@@ -61,7 +66,9 @@ struct ListScreen: View {
                                 .moveDisabled(selecting || (!line.canDrag && !line.takesDrops))
                         }
                         .onMove { from, to in
-                            if app.drop(from, to, in: run.lines, source: source) { dropped += 1 }
+                            if app.drop(from, to, in: run.lines, source: source) { dropped += 1 } else {
+                                animate(Motion.layout) { refused += 1 }
+                            }
                         }
                     }
                 } else {

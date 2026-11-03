@@ -1993,6 +1993,75 @@ final class FlowTests: XCTestCase {
         XCTAssertLessThan(y(school), y(completed), "above Completed")
     }
 
+    // MARK: Rescheduling by drag in Upcoming (IX §22)
+
+    /// Upcoming, with its first days on screen: Tomorrow (Renew the library books, Midterm review session, Watch the
+    /// recording, Get groceries), then the day after (Submit MSE 333 A2, Make the midterm formula sheet, Return the
+    /// boots), then Past midterms on the third day.
+    private func openUpcoming() {
+        app.launchArguments += ["-screen", "upcoming"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["Return the boots"].firstMatch.waitForExistence(timeout: 10))
+        sleep(1)
+    }
+
+    private func t(_ title: String) -> XCUIElement { app.staticTexts[title].firstMatch }
+
+    /// Dropped on another day, a task's When is that day: it takes its slot there by list order (PHYS 122 between
+    /// School and Errands, the recording before the formula sheet in PHYS 122's order), wherever it was dropped.
+    func testDragInUpcomingSetsTheDay() {
+        openUpcoming()
+        let recording = t("Watch the recording on standing waves")
+        XCTAssertLessThan(y(recording), y(t("Submit MSE 333 A2")), "on Tomorrow")
+        drag(recording, onto: t("Return the boots"))
+        XCTAssertLessThan(y(t("Submit MSE 333 A2")), y(recording), "on the day after, under School's")
+        XCTAssertLessThan(y(recording), y(t("Make the midterm formula sheet")), "before the formula sheet")
+        XCTAssertLessThan(y(t("Make the midterm formula sheet")), y(t("Return the boots")))
+        app.buttons["More"].tap()
+        XCTAssertTrue(app.buttons["Undo Set When"].waitForExistence(timeout: 3), "one step, the Mac's name")
+    }
+
+    /// The drop's step undoes: the task goes back to its day.
+    func testUndoAnUpcomingDrag() {
+        openUpcoming()
+        let recording = t("Watch the recording on standing waves")
+        drag(recording, onto: t("Return the boots"))
+        XCTAssertLessThan(y(t("Submit MSE 333 A2")), y(recording), "moved")
+        app.buttons["More"].tap()
+        app.buttons["Undo Set When"].firstMatch.tap()
+        sleep(2)
+        XCTAssertLessThan(y(recording), y(t("Submit MSE 333 A2")), "back on Tomorrow")
+        XCTAssertLessThan(y(t("Midterm review session")), y(recording), "at its old place")
+    }
+
+    /// Within its own day nothing is written: a day keeps list order, so the task goes back.
+    func testDragWithinAnUpcomingDayChangesNothing() {
+        openUpcoming()
+        let titles = ["Renew the library books", "Midterm review session", "Watch the recording on standing waves",
+                      "Get groceries for the week"]
+        let order = { titles.sorted { self.y(self.t($0)) < self.y(self.t($1)) } }
+        XCTAssertEqual(order(), titles)
+        drag(t("Get groceries for the week"), onto: t("Renew the library books"))
+        XCTAssertEqual(order(), titles, "as it was")
+        XCTAssertLessThan(y(t("Get groceries for the week")), y(t("Submit MSE 333 A2")), "still on Tomorrow")
+        app.buttons["More"].tap()
+        XCTAssertTrue(app.buttons["Select"].firstMatch.waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["Undo Set When"].exists, "nothing to undo")
+    }
+
+    /// A day after the task's deadline takes no drop: its When there wouldn't move it (it reaches Today on its
+    /// deadline). Return the boots is due the day after tomorrow.
+    func testUpcomingTakesNoDropPastTheDeadline() {
+        openUpcoming()
+        let boots = t("Return the boots")
+        drag(boots, onto: t("Past midterms 2024 and 2025, timed"))
+        XCTAssertLessThan(y(boots), y(t("Past midterms 2024 and 2025, timed")), "still on its day")
+        XCTAssertLessThan(y(t("Make the midterm formula sheet")), y(boots), "at its place")
+        app.buttons["More"].tap()
+        XCTAssertTrue(app.buttons["Select"].firstMatch.waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["Undo Set When"].exists, "nothing written")
+    }
+
     // MARK: Multi-select (batch 2 §3)
 
     private var selectTitle: XCUIElement { app.staticTexts["selectTitle"].firstMatch }
