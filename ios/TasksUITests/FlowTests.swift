@@ -19,6 +19,18 @@ final class FlowTests: XCTestCase {
         try? data.write(to: URL(fileURLWithPath: "\(dir)/\(name).png"))
     }
 
+    /// Steps taken while a row's long-press menu is up. On a row that can be dragged the app never reports its
+    /// animations finished while the menu is open, so XCTest waits out its 60 s timeout before and after each step
+    /// there. Inside `menuOpen` a step waits only for the app's event loop to go idle, not for its animations.
+    /// `idleAnimationWaitEnabled` is XCUIApplication's own switch for that (private); if an Xcode drops it, the
+    /// steps run as before, only slower.
+    func menuOpen(_ steps: () -> Void) {
+        let on = app.responds(to: NSSelectorFromString("setIdleAnimationWaitEnabled:"))
+        if on { app.setValue(false, forKey: "idleAnimationWaitEnabled") }
+        defer { if on { app.setValue(true, forKey: "idleAnimationWaitEnabled") } }
+        steps()
+    }
+
     func testAddTask() {
         app.launch()
         app.buttons["School, 11"].firstMatch.tap()
@@ -85,10 +97,12 @@ final class FlowTests: XCTestCase {
 
     func testDeleteListAndTrash() {
         app.launch()
-        app.buttons["Errands, 4"].firstMatch.press(forDuration: 1.0)
-        sleep(1)
-        shot("flow-list-menu")
-        app.buttons["Delete List"].firstMatch.tap()
+        menuOpen {
+            app.buttons["Errands, 4"].firstMatch.press(forDuration: 1.0)
+            sleep(1)
+            shot("flow-list-menu")
+            app.buttons["Delete List"].firstMatch.tap()
+        }
         sleep(1)
         shot("flow-list-deleted")
         app.buttons["Trash"].firstMatch.tap()
@@ -220,8 +234,10 @@ final class FlowTests: XCTestCase {
     func testSyncedListNameStandsAfterAnUntouchedRename() {
         app.launchArguments += ["-remoteList", "school-9", "-remoteName", "School (from the Mac)"]
         app.launch()
-        app.buttons["School, 11"].firstMatch.press(forDuration: 1.0)
-        app.buttons["Rename"].firstMatch.tap()
+        menuOpen {
+            app.buttons["School, 11"].firstMatch.press(forDuration: 1.0)
+            app.buttons["Rename"].firstMatch.tap()
+        }
         XCTAssertTrue(app.alerts["Rename List"].waitForExistence(timeout: 3), "the rename alert")
         remoteEdit()
         app.alerts["Rename List"].buttons["Rename"].tap()
@@ -579,14 +595,16 @@ final class FlowTests: XCTestCase {
         let row = app.staticTexts["Look into a standing desk"].firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 5), "the Inbox")
         remoteEdit()
-        row.press(forDuration: 1.2)
-        let move = app.buttons["Move to"].firstMatch
-        XCTAssertTrue(move.waitForExistence(timeout: 3), "the row's menu")
-        move.tap()
-        XCTAssertTrue(longNameItem.waitForExistence(timeout: 3), "the Move to item, cut with an ellipsis")
-        XCTAssertEqual(longNameItem.frame.height, app.buttons["PHYS 122"].firstMatch.frame.height, accuracy: 1,
-                       "one line, as the other lists' items")
-        shot("long-name-move-to")
+        menuOpen {
+            row.press(forDuration: 1.2)
+            let move = app.buttons["Move to"].firstMatch
+            XCTAssertTrue(move.waitForExistence(timeout: 3), "the row's menu")
+            move.tap()
+            XCTAssertTrue(longNameItem.waitForExistence(timeout: 3), "the Move to item, cut with an ellipsis")
+            XCTAssertEqual(longNameItem.frame.height, app.buttons["PHYS 122"].firstMatch.frame.height, accuracy: 1,
+                           "one line, as the other lists' items")
+            shot("long-name-move-to")
+        }
     }
 
     // MARK: Long names and titles fade out on rows, as on the Mac
