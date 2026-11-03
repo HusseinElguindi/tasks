@@ -242,7 +242,9 @@ final class FlowTests: XCTestCase {
         remoteEdit()
         app.alerts["Rename List"].buttons["Rename"].tap()
         sleep(1)
-        XCTAssertTrue(app.buttons["School (from the Mac), 11"].waitForExistence(timeout: 3), "the synced name stands")
+        // A list's row has no count (only Today's does), so its label is its name.
+        XCTAssertTrue(app.buttons["School (from the Mac)"].waitForExistence(timeout: 3), "the synced name stands")
+        XCTAssertFalse(app.buttons["School"].exists, "the old name isn't written back")
     }
 
     /// Leaving the app mid-edit writes only what was typed: an untouched title doesn't go back over one that synced in.
