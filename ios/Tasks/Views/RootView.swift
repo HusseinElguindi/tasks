@@ -133,6 +133,8 @@ struct HomeBar: View {
         }
         .frame(height: Metric.barHeight)
         .floatingGlass(Capsule())
+        // iPad's sidebar, while adding in the list beside it: a tap only ends adding (no new list, no Settings).
+        .endsAddingOnTap()
     }
 }
 
@@ -238,6 +240,8 @@ private struct DetailColumn: View {
                 NothingSelected()
             }
         }
+        // While adding in the list beside it, a tap on the task shown here only ends adding.
+        .endsAddingOnTap()
         .pane(focused: app.selectedTask != nil)
     }
 }

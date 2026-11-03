@@ -18,9 +18,11 @@ struct ListScreen: View {
         let lines = app.lines(source)
         List {
             header
+                .endsAddingOnTap()
                 .listRow()
             ForEach(lines) { line in
                 row(line)
+                    .endsAddingOnTap(!line.isDraft)
                     .listRow()
             }
             Color.clear.frame(height: app.isSplit ? 24 : Metric.bottomClearance)
@@ -28,8 +30,9 @@ struct ListScreen: View {
         }
         .listStyle(.plain)
         .coordinateSpace(.named(Self.space))
-        // While adding, a tap anywhere outside the new-task row ends it (as a press elsewhere does on the Mac); the tap
-        // still does what it does there (a row opens, a box checks). Not adding, the list's taps are left alone.
+        // While adding, a tap anywhere outside the new-task row ends it. On a row or the header the tap goes no further
+        // (`endsAddingOnTap`: the row doesn't open, its box doesn't check); this catches the rest, the list's empty
+        // space. Not adding, the list's taps are left alone.
         .simultaneousGesture(SpatialTapGesture(coordinateSpace: .named(Self.space)).onEnded { tap in
             if !(draftFrame?.contains(tap.location) ?? false) { app.endDraft() }
         }, including: adding ? .all : .subviews)

@@ -47,6 +47,33 @@ extension AppModel {
     }
 }
 
+// MARK: - Ending adding
+
+extension View {
+    /// While a new task is being added, a tap here only ends adding (the user, 2026-11-02): a typed title is written,
+    /// an empty row goes, and the tap goes no further, so the row or control under it doesn't act, as a tap that closes
+    /// an open task's sheet doesn't. On the Mac a press elsewhere also does what it presses (INTERACTIONS-v2 §6); this
+    /// is a deliberate difference. Only taps are caught: inside a list, a drag still scrolls (which ends adding too, by
+    /// putting the keyboard away). `applies` false leaves the view alone (the new-task row itself).
+    func endsAddingOnTap(_ applies: Bool = true) -> some View { modifier(EndsAddingOnTap(applies: applies)) }
+}
+
+private struct EndsAddingOnTap: ViewModifier {
+    let applies: Bool
+    @Environment(AppModel.self) private var app
+
+    func body(content: Content) -> some View {
+        content.overlay {
+            if applies, app.draft != nil {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture { app.endDraft() }
+                    .accessibilityHidden(true)
+            }
+        }
+    }
+}
+
 // MARK: - Checkbox
 
 struct CheckShape: Shape {

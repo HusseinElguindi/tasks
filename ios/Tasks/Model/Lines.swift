@@ -24,6 +24,10 @@ enum Line: @MainActor Identifiable {
         case .empty: "empty"
         }
     }
+
+    var isDraft: Bool {
+        if case .draft = self { true } else { false }
+    }
 }
 
 /// The lines of each view, composed from the projection's buckets and models and grouped by TasksCore's `ViewGroups`

@@ -129,6 +129,8 @@ struct SourceRow: View {
             }
         }
         .buttonStyle(RowStyle())
+        // iPad's sidebar, while adding in the list beside it: a tap only ends adding, and opens nothing.
+        .endsAddingOnTap()
         .accessibilityLabel(count.map { "\(app.title(source)), \($0)" } ?? app.title(source))
         .accessibilityAddTraits(current ? .isSelected : [])
     }

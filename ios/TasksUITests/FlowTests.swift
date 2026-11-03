@@ -281,7 +281,12 @@ final class FlowTests: XCTestCase {
 
     /// The + opens the new-task row, with the caret in it.
     private func add(_ why: String = "the + opens the new-task row", file: StaticString = #filePath, line: UInt = #line) {
-        app.buttons["New Task"].firstMatch.tap()
+        // The + rides the keyboard, so after adding ends it slides back down: tap its middle once it has stopped (XCUITest
+        // otherwise may pick a point near its frame's corner, outside the round button).
+        let plus = app.buttons["New Task"].firstMatch
+        XCTAssertTrue(plus.waitForExistence(timeout: 3), "\(why): the +", file: file, line: line)
+        _ = settledFrame(plus)
+        plus.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         XCTAssertTrue(draft.waitForExistence(timeout: 3), why, file: file, line: line)
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3), "\(why): keyboard up", file: file, line: line)
     }
@@ -316,8 +321,7 @@ final class FlowTests: XCTestCase {
         assertCount("School, 12")
     }
 
-    /// A tap outside the row (the list's header) drops an empty row and writes a titled one, as a press elsewhere does
-    /// on the Mac.
+    /// A tap outside the row (the list's header) drops an empty row and writes a titled one.
     func testAddTapOutside() {
         app.launch()
         app.buttons["School, 11"].firstMatch.tap()
@@ -333,6 +337,70 @@ final class FlowTests: XCTestCase {
         shot("flow-add-tap-outside")
         back()
         assertCount("School, 12")
+    }
+
+    /// Still on the list, as it is when not adding: no task's details, no other screen.
+    private func assertNothingOpened(_ why: String, file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertFalse(app.buttons["When"].waitForExistence(timeout: 1.5), "no task's details: \(why)", file: file, line: line)
+        XCTAssertTrue(app.buttons["List actions"].exists, "still on the list: \(why)", file: file, line: line)
+        XCTAssertTrue(app.descendants(matching: .any)["listHeader"].firstMatch.label.hasPrefix("School"),
+                      "still on School: \(why)", file: file, line: line)
+    }
+
+    /// While adding, a tap on another task only ends adding (the user, 2026-11-02): the task doesn't open and its box
+    /// doesn't check; a typed title is written, an empty row dropped. (On the Mac the press also does what it presses.)
+    func testAddTapOnARowOnlyEndsAdding() {
+        app.launch()
+        app.buttons["School, 11"].firstMatch.tap()
+        let row = app.staticTexts["Submit MSE 333 A2"].firstMatch
+        add()
+        row.tap()
+        assertNotAdding("tap on a task, empty")
+        assertNothingOpened("tap on a task, empty")
+        add("the + again")
+        app.typeText("Return the library books")
+        row.tap()
+        assertNotAdding("tap on a task, titled")
+        assertNothingOpened("tap on a task, titled")
+        XCTAssertTrue(app.staticTexts["Return the library books"].exists, "a titled row is written")
+        shot("flow-add-tap-row")
+        // Not adding, the same tap opens the task, as always.
+        row.tap()
+        XCTAssertTrue(app.buttons["When"].waitForExistence(timeout: 3), "the task opens when not adding")
+        app.buttons["Done"].firstMatch.tap()
+        sleep(1)
+        back()
+        assertCount("School, 12")
+    }
+
+    /// An element's frame once it has stopped moving (the new row slides the rows below it down).
+    private func settledFrame(_ e: XCUIElement) -> CGRect {
+        var last = e.frame
+        for _ in 0..<15 {
+            usleep(200_000)
+            let f = e.frame
+            if f == last { return f }
+            last = f
+        }
+        return last
+    }
+
+    /// While adding, a tap on another task's box only ends adding: nothing completes.
+    func testAddTapOnABoxOnlyEndsAdding() {
+        app.launch()
+        app.buttons["School, 11"].firstMatch.tap()
+        let title = app.staticTexts["Submit MSE 333 A2"].firstMatch
+        XCTAssertTrue(title.waitForExistence(timeout: 3))
+        add()
+        let y = settledFrame(title).midY
+        let box = app.buttons.matching(identifier: "Complete").allElementsBoundByIndex.first { abs($0.frame.midY - y) < 12 }
+        XCTAssertNotNil(box, "the task's box")
+        box?.tap()
+        XCTAssertFalse(app.buttons["Undo"].waitForExistence(timeout: 1.5), "nothing completed (no notice)")
+        assertNotAdding("tap on a box")
+        assertNothingOpened("tap on a box")
+        back()
+        assertCount("School, 11")   // still 11 open: nothing completed
     }
 
     /// Swiping the list down puts the keyboard away and ends adding.
@@ -398,7 +466,8 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Water the plants"].exists)
     }
 
-    /// iPad: another view or Settings from the sidebar ends adding, and the list shows normally when picked again.
+    /// iPad: while adding, a tap in the sidebar (a view, Settings) only ends adding and opens nothing (the user,
+    /// 2026-11-02); the next tap there goes where it goes, and the list shows normally.
     func testAddEndsFromSidebar() throws {
         guard UIDevice.current.userInterfaceIdiom == .pad else { throw XCTSkip("The sidebar is iPad's.") }
         // Landscape: the three panes side by side (in portrait the sidebar is an overlay that a tap outside closes).
@@ -406,21 +475,23 @@ final class FlowTests: XCTestCase {
         defer { XCUIDevice.shared.orientation = .portrait }
         app.launch()
         app.buttons["School, 11"].firstMatch.tap()
+        let today = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Today'")).firstMatch
         add()
-        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Today'")).firstMatch.tap()
-        assertNotAdding("in Today")
-        app.buttons["School, 11"].firstMatch.tap()
-        assertNotAdding("back to School")
-        add()
+        today.tap()
+        assertNotAdding("tap on Today, empty")
+        assertNothingOpened("tap on Today, empty")
+        add("the + again")
         app.typeText("Water the plants")
         app.buttons["Settings"].firstMatch.tap()
-        sleep(1)
-        app.buttons["Done"].firstMatch.tap()
-        sleep(1)
-        assertNotAdding("after Settings")
+        assertNotAdding("tap on Settings, titled")
+        XCTAssertFalse(app.buttons["Done"].waitForExistence(timeout: 1.5), "Settings didn't open")
+        assertNothingOpened("tap on Settings, titled")
         XCTAssertTrue(app.staticTexts["Water the plants"].exists, "a titled row is written")
         assertCount("School, 12")
         shot("flow-add-ipad-sidebar")
+        // Not adding, the sidebar goes where it goes.
+        today.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["listHeader"].firstMatch.label.hasPrefix("Today"), "Today opens")
     }
 
     /// The app going to the background ends adding: back in front, the list shows normally (a title was written).
