@@ -94,6 +94,7 @@ private struct TaskDetailContent: View {
                     Text(meta)
                         .font(Typo.meta)
                         .foregroundStyle(p.inkTertiary)
+                        .lineLimit(1)
                         .padding(.top, 18)
                 }
                 .padding(.horizontal, 20)
@@ -194,9 +195,11 @@ private struct TaskDetailContent: View {
             Image(systemName: "trash").foregroundStyle(p.inkSecondary)
             VStack(alignment: .leading, spacing: 2) {
                 Text(deletedWords).font(Typo.body).foregroundStyle(p.ink)
+                // The list's name is in the bar above and the List row below, each on one line; the banner doesn't
+                // repeat it, as the Mac's doesn't (§21), so a long name can't turn it into a paragraph.
                 Text(app.canRestore(t) ? "Read-only until you restore it."
-                     : t.deleted ? "\(l?.name ?? "Its list") is in Trash too. Restore the list, then this task."
-                     : "\(l?.name ?? "Its list") is in Trash. Restore the list to bring it back.")
+                     : t.deleted ? "Its list is in Trash too. Restore the list, then this task."
+                     : "Its list is in Trash. Restore the list to bring it back.")
                     .font(Typo.meta).foregroundStyle(p.inkSecondary)
             }
             Spacer(minLength: 8)
@@ -234,14 +237,16 @@ private struct TaskDetailContent: View {
             Menu {
                 ForEach(app.activeLists) { l in
                     Button { app.move(t.id, to: l.id) } label: {
-                        if l.id == t.list { Label(l.name, systemImage: "checkmark") } else { Text(l.name) }
+                        let name = MenuName.fit(l.name)
+                        if l.id == t.list { Label(name, systemImage: "checkmark") } else { Text(name) }
                     }
                 }
             } label: {
                 HStack(spacing: 8) {
                     if let l = app.list(t.list) {
                         ListTile(content: .mono(l.monogram), hue: p.tile(slot: l.colorSlot), scale: 0.85)
-                        Text(l.name).font(Typo.body).foregroundStyle(p.ink)
+                        // One line, cut with an ellipsis, as the Mac's List pop-up is (a long name used to wrap).
+                        Text(l.name).font(Typo.body).foregroundStyle(p.ink).lineLimit(1)
                     }
                     Image(systemName: "chevron.up.chevron.down").font(.system(size: 10, weight: .semibold)).foregroundStyle(p.inkTertiary)
                 }
@@ -250,6 +255,7 @@ private struct TaskDetailContent: View {
             }
             .padding(.leading, -8)
             .disabled(trashed)
+            .accessibilityIdentifier("detailList")
             Spacer()
         }
         .frame(minHeight: 44)

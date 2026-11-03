@@ -59,6 +59,26 @@ extension AppModel {
     }
 }
 
+// MARK: - Names in menus
+
+/// A name as a menu item shows it: one line, cut with an ellipsis, as the Mac's menus cut a list's name
+/// (app/Tasks/Window/Menus.swift `fit`, v2 feedback 16); iOS would wrap a long one to three lines. The Mac cuts at
+/// 280pt. A phone's menu is 250pt wide, and with the checkmark column the details' List picker holds 150pt but not
+/// 160pt of an item's text (measured on the simulator, 2026-11-02), so names are cut at 145pt in the menu's font
+/// (body, so it follows Dynamic Type).
+enum MenuName {
+    static func fit(_ s: String, width: CGFloat = 145, font: UIFont = .preferredFont(forTextStyle: .body)) -> String {
+        func w(_ t: String) -> CGFloat { (t as NSString).size(withAttributes: [.font: font]).width }
+        guard w(s) > width else { return s }
+        var lo = 0, hi = s.count
+        while lo < hi {
+            let mid = (lo + hi + 1) / 2
+            if w(String(s.prefix(mid)).trimmingCharacters(in: .whitespaces) + "…") <= width { lo = mid } else { hi = mid - 1 }
+        }
+        return String(s.prefix(lo)).trimmingCharacters(in: .whitespaces) + "…"
+    }
+}
+
 // MARK: - Ending adding
 
 extension View {

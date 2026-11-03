@@ -522,4 +522,70 @@ final class FlowTests: XCTestCase {
         sleep(1)
         shot("flow-scrolled")
     }
+
+    // MARK: A very long list name
+
+    /// A few long words and one that can't break.
+    static let longName = "Thermodynamics and statistical mechanics: problem sets, labs and Pneumonoultramicroscopicsilicovolcanoconiosis"
+
+    /// A menu item for the long name: cut to one line with an ellipsis.
+    private var longNameItem: XCUIElement {
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Thermo' AND label ENDSWITH '…'")).firstMatch
+    }
+
+    /// The element of `query` labelled `label` whose middle is level with `other`'s (a bar's, a row's).
+    private func level(_ query: XCUIElementQuery, _ label: String, with other: XCUIElement) -> XCUIElement? {
+        query.matching(NSPredicate(format: "label == %@", label)).allElementsBoundByIndex
+            .first { abs($0.frame.midY - other.frame.midY) < 12 }
+    }
+
+    /// A very long list name (the user, 2026-11-02) stays on one line in a task's details, as on the Mac, where pane
+    /// titles end in an ellipsis: the header and the List chip cut it, and the List picker's item is one line, cut too.
+    /// Nothing else moves when the list takes the name (another device renames it while the details are open).
+    func testLongListNameInDetails() {
+        app.launchArguments += ["-screen", "detail:s4", "-remoteList", "school-9", "-remoteName", Self.longName]
+        app.launch()
+        let chip = app.buttons["detailList"]
+        XCTAssertTrue(chip.waitForExistence(timeout: 5), "the details' List chip")
+        XCTAssertTrue(chip.label.contains("School"))
+        // The bar's last button: Done on the phone, × in iPad's details pane.
+        let bar = app.buttons["Hide Details"].exists ? app.buttons["Hide Details"] : app.buttons["Done"]
+        XCTAssertTrue(bar.exists, "the details' bar")
+        let chipBefore = chip.frame, whenBefore = app.buttons["When"].frame
+        remoteEdit()
+        XCTAssertTrue(chip.label.contains("Thermodynamics"), "the List chip, renamed")
+        sleep(1)
+        shot("long-name-details")
+        XCTAssertEqual(chip.frame.height, chipBefore.height, accuracy: 1, "the chip stays one line")
+        XCTAssertLessThanOrEqual(chip.frame.maxX, bar.frame.maxX, "the chip fits its row")
+        XCTAssertEqual(app.buttons["When"].frame.minY, whenBefore.minY, accuracy: 1, "the rows below don't move")
+        let header = level(app.staticTexts, Self.longName, with: bar)
+        XCTAssertNotNil(header, "the header's name")
+        if let header, let delete = level(app.buttons, "Delete", with: bar) {
+            XCTAssertLessThan(header.frame.height, 30, "the header's name is one line")
+            XCTAssertLessThanOrEqual(header.frame.maxX, delete.frame.minX, "and stops before the bar's buttons")
+        }
+        chip.tap()
+        XCTAssertTrue(longNameItem.waitForExistence(timeout: 3), "the List picker's item, cut with an ellipsis")
+        XCTAssertEqual(longNameItem.frame.height, app.buttons["PHYS 122"].firstMatch.frame.height, accuracy: 1,
+                       "one line, as the other lists' items")
+        shot("long-name-picker")
+    }
+
+    /// The same name in a row's Move to menu: one line, cut with an ellipsis, as the Mac's menus cut names.
+    func testLongListNameInMoveTo() {
+        app.launchArguments += ["-screen", "list:inbox", "-remoteList", "school-9", "-remoteName", Self.longName]
+        app.launch()
+        let row = app.staticTexts["Look into a standing desk"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5), "the Inbox")
+        remoteEdit()
+        row.press(forDuration: 1.2)
+        let move = app.buttons["Move to"].firstMatch
+        XCTAssertTrue(move.waitForExistence(timeout: 3), "the row's menu")
+        move.tap()
+        XCTAssertTrue(longNameItem.waitForExistence(timeout: 3), "the Move to item, cut with an ellipsis")
+        XCTAssertEqual(longNameItem.frame.height, app.buttons["PHYS 122"].firstMatch.frame.height, accuracy: 1,
+                       "one line, as the other lists' items")
+        shot("long-name-move-to")
+    }
 }

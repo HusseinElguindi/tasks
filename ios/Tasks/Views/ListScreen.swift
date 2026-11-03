@@ -203,7 +203,7 @@ struct TaskMenu: View {
             Button { app.dateTarget = DateTarget(taskID: task.id, kind: .deadline) } label: { Label("Deadline…", systemImage: "flag") }
             Menu {
                 ForEach(app.activeLists) { l in
-                    Button(l.name) { app.move(task.id, to: l.id) }.disabled(l.id == task.list)
+                    Button(MenuName.fit(l.name)) { app.move(task.id, to: l.id) }.disabled(l.id == task.list)
                 }
             } label: { Label("Move to", systemImage: "arrow.right.square") }
             Divider()
