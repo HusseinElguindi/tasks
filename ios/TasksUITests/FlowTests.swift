@@ -588,4 +588,157 @@ final class FlowTests: XCTestCase {
                        "one line, as the other lists' items")
         shot("long-name-move-to")
     }
+
+    // MARK: Long names and titles fade out on rows, as on the Mac
+
+    /// No apostrophe: XCTest splits launch arguments as a shell would, and one swallowed the arguments after it.
+    static let longTitle = "Email the TA about the midterm regrade for question 4(b) before the Thursday tutorial"
+
+    /// How strongly a text's end is drawn, against its strongest ink, on a screenshot of `element`: near 0 when the
+    /// text fades out there, near 1 when it ends in a letter or an ellipsis. Its end is its last column with any ink
+    /// (8% of the strongest, against the commonest colour, the background), and its last 3pt before that are read.
+    /// `from` and `upTo` (points) leave out what comes before the text (a row's tile) and after it (a row's count) at
+    /// the left and right.
+    private func endInk(_ element: XCUIElement, from: CGFloat = 0, upTo: CGFloat = 0) -> Double {
+        guard let cg = element.screenshot().image.cgImage else { XCTFail("no screenshot"); return -1 }
+        let w = cg.width, h = cg.height, scale = CGFloat(w) / element.frame.width
+        var px = [UInt8](repeating: 0, count: w * h * 4)
+        guard let ctx = CGContext(data: &px, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                                  space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return -1 }
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+        // The text's line: the middle 20pt (clear of a capsule's edges at the top and bottom).
+        let y0 = max(0, h / 2 - Int(10 * scale)), y1 = min(h, h / 2 + Int(10 * scale))
+        var tally: [Int: Int] = [:]
+        for y in y0..<y1 { for x in 0..<w { let i = (y * w + x) * 4
+            tally[Int(px[i] >> 3) << 10 | Int(px[i + 1] >> 3) << 5 | Int(px[i + 2] >> 3), default: 0] += 1 } }
+        let bg = tally.max { $0.value < $1.value }!.key
+        let b = [Double((bg >> 10) & 31) * 8 + 4, Double((bg >> 5) & 31) * 8 + 4, Double(bg & 31) * 8 + 4]
+        let ink: [Double] = (0..<w).map { x in
+            (y0..<y1).map { y -> Double in let i = (y * w + x) * 4
+                return (0..<3).map { abs(Double(px[i + $0]) - b[$0]) }.max()! / 255 }.max() ?? 0
+        }
+        var last = w - 1 - Int(upTo * scale)
+        let first = Int(from * scale)
+        guard last > first else { XCTFail("no text"); return -1 }
+        let peak = ink[first...last].max() ?? 0
+        guard peak > 0.2 else { XCTFail("no text drawn: \(peak)"); return -1 }
+        while last > first && ink[last] <= peak * 0.08 { last -= 1 }
+        return ink[max(first, last - Int(3 * scale))...last].max()! / peak
+    }
+
+    private func assertFades(_ e: XCUIElement, _ what: String, from: CGFloat = 0, upTo: CGFloat = 0,
+                             file: StaticString = #filePath, line: UInt = #line) {
+        let v = endInk(e, from: from, upTo: upTo)
+        print("end ink, \(what): \(v)")
+        XCTAssertLessThan(v, 0.4, "\(what) fades out at its end (\(v))", file: file, line: line)
+    }
+
+    private func assertDoesntFade(_ e: XCUIElement, _ what: String, from: CGFloat = 0, upTo: CGFloat = 0,
+                                  file: StaticString = #filePath, line: UInt = #line) {
+        let v = endInk(e, from: from, upTo: upTo)
+        print("end ink, \(what): \(v)")
+        XCTAssertGreaterThan(v, 0.6, "\(what) ends in its letters, with no fade (\(v))", file: file, line: line)
+    }
+
+    /// Cut off, a task's title and a list's name fade out at their ends instead of an ellipsis (the user, 2026-11-02;
+    /// INTERACTIONS-v2 §24, the Mac's rows), and a list's name after a long title keeps 94pt (the Mac's 72). Home's
+    /// rows, and iPad's sidebar, its current row too, fade a long name (§12). What fits shows no fade. Dark and Light.
+    func testLongNamesFade() {
+        let pad = UIDevice.current.userInterfaceIdiom == .pad
+        if pad { XCUIDevice.shared.orientation = .landscapeLeft }
+        defer { if pad { XCUIDevice.shared.orientation = .portrait } }
+        for look in ["dark", "light"] {
+            app = XCUIApplication()
+            app.launchArguments = ["-sampleData", "YES", "-appearance", look, "-style", "classic", "-screen", "upcoming",
+                                   "-remoteTask", "s4", "-remoteTitle", Self.longTitle,
+                                   "-remoteList", "school-9", "-remoteName", Self.longName]
+            app.launch()
+            let groceries = app.staticTexts["Get groceries for the week"].firstMatch
+            XCTAssertTrue(groceries.waitForExistence(timeout: 5), "Upcoming")
+            remoteEdit()
+            let title = app.staticTexts[Self.longTitle].firstMatch
+            XCTAssertTrue(title.waitForExistence(timeout: 3), "the long title, whole for VoiceOver")
+            sleep(1)
+            shot("fade-upcoming-\(look)")
+            assertFades(title, "\(look): a long title")
+            XCTAssertGreaterThanOrEqual(title.frame.width, 120, "\(look): the title keeps 120pt")
+            if let name = level(app.staticTexts, Self.longName, with: title) {
+                assertFades(name, "\(look): a long list name after a long title")
+                XCTAssertEqual(name.frame.width, 94, accuracy: 1, "\(look): the list name keeps 94pt")
+                XCTAssertLessThanOrEqual(title.frame.maxX + 8, name.frame.minX + 0.5, "\(look): 8 apart")
+            } else {
+                XCTFail("\(look): the long title's list name")
+            }
+            assertDoesntFade(groceries, "\(look): a title that fits")
+            if let errands = level(app.staticTexts, "Errands", with: groceries) {
+                assertDoesntFade(errands, "\(look): a list name that fits")
+            } else {
+                XCTFail("\(look): Errands, after its title")
+            }
+            // Home on the phone; iPad's sidebar is beside the list.
+            if !pad { back() }
+            let school = app.buttons["\(Self.longName), 11"].firstMatch
+            XCTAssertTrue(school.waitForExistence(timeout: 3), "\(look): the long name's row, whole for VoiceOver")
+            shot("fade-home-\(look)")
+            // The row's frame takes in the list's 10pt insets. Its name starts after the tile (10 + 10 + 26 + 12), and
+            // ends 39 short of the row's edge (49 of the frame's) before a two-digit count that starts about 41 short:
+            // read from 52 to 45 short of the frame's edge.
+            assertFades(school, "\(look): a long name on Home", from: 52, upTo: 45)
+            assertDoesntFade(app.buttons["PHYS 122, 10"].firstMatch, "\(look): a name that fits", from: 52, upTo: 45)
+            if pad {
+                school.tap()
+                sleep(1)
+                shot("fade-sidebar-current-\(look)")
+                assertFades(school, "\(look): the current row's long name, over its capsule", from: 52, upTo: 45)
+            }
+            app.terminate()
+        }
+    }
+
+    /// The sample's list names, as a row in a view that mixes lists shows them after the title.
+    private static let listNames = ["Inbox", "School", "PHYS 122", "Tasks app", "Home", "Errands"]
+
+    /// What each row's list name shows in Upcoming, at one text size: whole, cut and fading (then never under 42pt),
+    /// or gone (out of sight). The library books' row (Inbox, due tomorrow) gets a long title.
+    private func listNamesAfterTitles(_ size: String, file: StaticString = #filePath, line: UInt = #line)
+        -> (whole: [String], fading: [String], gone: [String]) {
+        app = XCUIApplication()
+        app.launchArguments = ["-sampleData", "YES", "-appearance", "dark", "-style", "classic", "-screen", "upcoming",
+                               "-remoteTask", "i3", "-remoteTitle", Self.longTitle,
+                               "-UIPreferredContentSizeCategoryName", size]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["Tomorrow"].firstMatch.waitForExistence(timeout: 10), "Upcoming", file: file, line: line)
+        remoteEdit()
+        sleep(1)
+        shot("list-names-\(size)")
+        var out: ([String], [String], [String]) = ([], [], [])
+        let names = app.staticTexts.matching(NSPredicate(format: "label IN %@", Self.listNames)).allElementsBoundByIndex
+        for n in names where n.frame.minY > 0 && n.frame.maxY < app.frame.maxY - 120 {
+            let w = n.frame.width, what = "\(size): \(n.label) at y \(Int(n.frame.minY)), \(w)pt"
+            print("list name, \(what), x \(Int(n.frame.minX))")
+            if n.frame.maxX <= 0 { out.2.append(n.label); continue }
+            if endInk(n) > 0.6 {
+                out.0.append(n.label)
+            } else {
+                out.1.append(n.label)
+                XCTAssertGreaterThanOrEqual(w, 41.5, "\(what): cut, it keeps 42pt", file: file, line: line)
+            }
+        }
+        app.terminate()
+        return out
+    }
+
+    /// A list's name after a task's title (the user, 2026-11-02; INTERACTIONS-v2 §24) shows whole, or cut to no less
+    /// than 42pt (the Mac's 32) and fading, or not at all: never a sliver or a lone "…". PHYS 122 after a title that's
+    /// cut shows whole. At the largest text size School, after "Submit MSE 333 A2" and its deadline, goes.
+    func testListNameAfterATitleIsWholeFadingOrGone() {
+        let normal = listNamesAfterTitles("UICTContentSizeCategoryL")
+        XCTAssertTrue(normal.whole.contains("PHYS 122"), "PHYS 122 after a cut title, whole")
+        XCTAssertTrue(normal.whole.contains("Inbox"), "Inbox after the long title, whole")
+        XCTAssertEqual(normal.gone, [], "at the default size every name shows")
+        let largest = listNamesAfterTitles("UICTContentSizeCategoryAccessibilityXXXL")
+        XCTAssertTrue(largest.gone.contains("School"), "at the largest size, School after Submit MSE 333 A2 goes")
+        XCTAssertFalse(largest.fading.isEmpty, "and other names are cut, fading")
+    }
 }

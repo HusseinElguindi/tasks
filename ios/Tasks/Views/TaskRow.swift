@@ -25,26 +25,25 @@ struct TaskRow: View {
                 .padding(.leading, Metric.rowPad - 11)   // the 44pt hit area centres the 22pt ring
                 .padding(.trailing, Metric.titleGap - 11)
 
-                TitleSlot {
-                    HStack(spacing: 8) {
-                        Text(task.title.isEmpty ? "New Task" : task.title)
-                            .font(Typo.row)
-                            .foregroundStyle(titleColor)
-                            .strikethrough(settled, color: p.inkQuiet)
-                            .lineLimit(1)
-                        if !settled { NotesHint(summary: task.notesSummary) }
+                TitleThenName(after: task.deadline != nil && !settled ? 8 : 0) {
+                    TitleSlot {
+                        HStack(spacing: 8) {
+                            // Cut off, its last 31pt fade out (§24); the notes hint after it stays whole.
+                            Text(title)
+                                .font(Typo.row)
+                                .foregroundStyle(titleColor)
+                                .strikethrough(settled, color: p.inkQuiet)
+                                .fadeTruncation(Metric.titleFade, text: title)
+                            if !settled { NotesHint(summary: task.notesSummary).fixedSize() }
+                        }
+                        if let w = task.when, showWhen { QuietWhen(date: w) }
                     }
-                    if let w = task.when, showWhen { QuietWhen(date: w) }
-                }
-                .layoutPriority(1)
-                Spacer(minLength: 8)
-                if let name = whereName {
-                    Text(name)
-                        .font(Typo.quiet)
-                        .foregroundStyle(p.inkTertiary)
-                        .lineLimit(1)
-                        .layoutPriority(-1)
-                        .padding(.trailing, task.deadline == nil ? 0 : 8)
+                    if let name = whereName {
+                        Text(name)
+                            .font(Typo.quiet)
+                            .foregroundStyle(p.inkTertiary)
+                            .fadeTruncation(Metric.titleFade, text: name)
+                    }
                 }
                 if let d = task.deadline, !settled { DeadlineChip(date: d, groupDay: groupDay) }
             }
@@ -56,6 +55,8 @@ struct TaskRow: View {
         .opacity(app.completing.contains(task.id) ? 0.75 : 1)
         .accessibilityElement(children: .contain)
     }
+
+    private var title: String { task.title.isEmpty ? "New Task" : task.title }
 
     private var titleColor: Color {
         if settled { return p.inkTertiary }
@@ -172,9 +173,11 @@ struct DeletedListRow: View {
                     .frame(width: 44)
                     .padding(.leading, Metric.rowPad - 11)
                     .padding(.trailing, Metric.titleGap - 11)
-                Text(list.name).font(Typo.rowMedium).foregroundStyle(p.inkSecondary).lineLimit(1)
+                // A title on the Mac (its TaskRowView): cut off, it fades out; the count after it stays whole.
+                Text(list.name).font(Typo.rowMedium).foregroundStyle(p.inkSecondary)
+                    .fadeTruncation(Metric.titleFade, text: list.name)
                 Text(count == 1 ? "1 task" : "\(count) tasks")
-                    .font(Typo.quiet).foregroundStyle(p.inkTertiary).padding(.leading, 8)
+                    .font(Typo.quiet).foregroundStyle(p.inkTertiary).fixedSize().padding(.leading, 8)
                 Spacer(minLength: 8)
                 Image(systemName: "chevron.right")
                     .font(.system(size: 13, weight: .semibold))
@@ -253,7 +256,7 @@ struct EmptyState: View {
 /// The title and the quiet When after it, as the Mac lays them out when narrow: the title keeps up to 120pt; the When
 /// drops before the title goes under that.
 struct TitleSlot: Layout {
-    var minTitle: CGFloat = 120
+    var minTitle: CGFloat = Metric.titleKeep
     var gap: CGFloat = 8
 
     private func plan(_ width: CGFloat, _ subviews: Subviews) -> (title: CGFloat, when: CGSize?) {
@@ -267,9 +270,10 @@ struct TitleSlot: Layout {
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let width = proposal.width ?? .infinity
         let p = plan(width, subviews)
-        let th = subviews[0].sizeThatFits(ProposedViewSize(width: p.title, height: nil)).height
-        let total = p.title + (p.when.map { $0.width + gap } ?? 0)
-        return CGSize(width: total, height: max(th, p.when?.height ?? 0))
+        // The title's own answer: its width, or more when it can't go that narrow (its notes hint stays whole).
+        let t = subviews[0].sizeThatFits(ProposedViewSize(width: p.title, height: nil))
+        let total = t.width + (p.when.map { $0.width + gap } ?? 0)
+        return CGSize(width: total, height: max(t.height, p.when?.height ?? 0))
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
@@ -284,5 +288,61 @@ struct TitleSlot: Layout {
             // Dropped: placed out of sight (a layout can't remove a child).
             subviews[1].place(at: CGPoint(x: bounds.minX - 10_000, y: bounds.midY), anchor: .leading, proposal: .zero)
         }
+    }
+}
+
+/// A row's title slot and, in the views that mix lists, the list's name at the row's end, shared out as the Mac shares
+/// a short row (INTERACTIONS-v2 §24 "A short row", the Mac's TaskRowView): the title keeps up to 120pt and its notes
+/// hint, the name up to 94pt (the Mac's 72); room beyond those goes to the title first, then to the name, which is cut
+/// and fades out like a title. A name that would show less than 42pt (the Mac's 32), or less than all of a shorter
+/// one, goes, and the title gets its room. The title's slot ends 8 short of what follows; the name sits at the end,
+/// `after` short of it (the gap before the deadline), only when it shows.
+struct TitleThenName: Layout {
+    var after: CGFloat = 0
+    var titleKeep: CGFloat = Metric.titleKeep
+    var nameKeep: CGFloat = Metric.listNameKeep
+    var nameMin: CGFloat = Metric.listNameMin
+    var gap: CGFloat = 8
+
+    private func plan(_ width: CGFloat, _ subviews: Subviews) -> (lead: CGFloat, name: CGFloat) {
+        let lead = subviews[0].sizeThatFits(.unspecified).width
+        let room = max(0, width - gap)
+        guard subviews.count > 1 else { return (min(lead, room), 0) }
+        let name = subviews[1].sizeThatFits(.unspecified).width
+        let avail = room - after
+        if lead + name <= avail { return (lead, name) }
+        // What the slot keeps: up to 120pt of the title, plus what it can't give up (the hint).
+        let hint = subviews[0].sizeThatFits(ProposedViewSize(width: 0, height: nil)).width
+        let leadKeep = min(lead, titleKeep + hint)
+        let cut = min(name, max(min(name, nameKeep), avail - lead), max(0, avail - leadKeep))
+        // Less than a few letters of the name reads as noise: then it goes (the Mac's `whereMin`).
+        if cut < min(name, nameMin) { return (min(lead, room), 0) }
+        return (min(lead, avail - cut), cut)
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let natural = subviews[0].sizeThatFits(.unspecified).width + gap
+            + (subviews.count > 1 ? subviews[1].sizeThatFits(.unspecified).width + after : 0)
+        let width = proposal.width.flatMap { $0.isFinite ? $0 : nil } ?? natural
+        let p = plan(width, subviews)
+        let h = subviews.indices.map { i in
+            subviews[i].sizeThatFits(ProposedViewSize(width: i == 0 ? p.lead : p.name, height: nil)).height
+        }.max() ?? 0
+        // It fills the row, as the Spacer between them did.
+        return CGSize(width: width, height: h)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let p = plan(bounds.width, subviews)
+        subviews[0].place(at: CGPoint(x: bounds.minX, y: bounds.midY), anchor: .leading,
+                          proposal: ProposedViewSize(width: p.lead, height: bounds.height))
+        guard subviews.count > 1 else { return }
+        guard p.name > 0 else {
+            // Gone: placed out of sight, as TitleSlot drops the When (a layout can't remove a child).
+            subviews[1].place(at: CGPoint(x: bounds.minX - 10_000, y: bounds.midY), anchor: .leading, proposal: .zero)
+            return
+        }
+        subviews[1].place(at: CGPoint(x: bounds.maxX - after, y: bounds.midY), anchor: .trailing,
+                          proposal: ProposedViewSize(width: p.name, height: bounds.height))
     }
 }

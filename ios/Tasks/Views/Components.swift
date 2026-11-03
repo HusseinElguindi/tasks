@@ -79,6 +79,81 @@ enum MenuName {
     }
 }
 
+// MARK: - Names and titles in rows
+
+extension View {
+    /// One line that, when it doesn't fit, is cut and fades out over its last `length` points instead of ending in an
+    /// ellipsis, as the Mac's rows and sidebar do (its `FadeMask`; INTERACTIONS-v2 §12 and §24). A text that fits shows
+    /// no fade. The fade is at the text's end: the right for a left-to-right text, the left for a right-to-left one, by
+    /// `text`'s first letter (without `text`, the layout's direction decides), and the start stays in view.
+    ///
+    /// The fade is a mask on the text alone, so the row's fill, a selection or Glass shows through it in either
+    /// appearance. VoiceOver reads the whole text; a cut one is one element the size of what shows, and only what shows
+    /// takes touches. Cheap in long lists: no GeometryReader and no state. `ViewThatFits` picks the text at its own width
+    /// or the cut one, and only a cut text has a mask. The fade is never more than half of what shows (the Mac's list
+    /// name, `min(24, width / 2)`), and it grows with Dynamic Type, as the text does.
+    func fadeTruncation(_ length: CGFloat, text: String? = nil) -> some View {
+        modifier(FadeTruncation(length: length, rightToLeft: text.flatMap(\.startsRightToLeft)))
+    }
+}
+
+private struct FadeTruncation: ViewModifier {
+    let rightToLeft: Bool?
+    @ScaledMetric private var length: CGFloat
+    @Environment(\.layoutDirection) private var layout
+
+    init(length: CGFloat, rightToLeft: Bool?) {
+        _length = ScaledMetric(wrappedValue: length, relativeTo: .body)
+        self.rightToLeft = rightToLeft
+    }
+
+    func body(content: Content) -> some View {
+        let line = content.lineLimit(1).fixedSize(horizontal: true, vertical: false)
+        // The side the text starts on stays in view; the other is cut and fades.
+        let startsRight = rightToLeft ?? (layout == .rightToLeft)
+        ViewThatFits(in: .horizontal) {
+            line
+            line
+                .frame(minWidth: 0, maxWidth: .infinity,
+                       alignment: startsRight == (layout == .rightToLeft) ? .leading : .trailing)
+                .contentShape(Rectangle())
+                .mask { FadeEdge(length: length, onLeft: startsRight) }
+                .accessibilityElement(children: .combine)
+        }
+    }
+}
+
+/// The mask: opaque, then clear over the last `length` points (at most half the width) at one side, laid out left to
+/// right whatever the layout's direction, since the side is the text's.
+private struct FadeEdge: View {
+    let length: CGFloat
+    let onLeft: Bool
+    var body: some View {
+        let ramp = LinearGradient(colors: [.black, .clear], startPoint: onLeft ? .trailing : .leading,
+                                  endPoint: onLeft ? .leading : .trailing)
+            .frame(maxWidth: length)
+        HStack(spacing: 0) {
+            if onLeft { ramp; Color.black } else { Color.black; ramp }
+        }
+        .environment(\.layoutDirection, .leftToRight)
+    }
+}
+
+extension String {
+    /// Whether the text reads right to left, from its first letter (nil when it has none): letters of the Hebrew,
+    /// Arabic, Syriac, Thaana, N'Ko and the other right-to-left blocks. Unicode's first strong character, near enough
+    /// for a name.
+    var startsRightToLeft: Bool? {
+        for u in unicodeScalars where u.properties.isAlphabetic {
+            switch u.value {
+            case 0x0590...0x08FF, 0xFB1D...0xFDFF, 0xFE70...0xFEFF, 0x10800...0x10FFF, 0x1E800...0x1EFFF: return true
+            default: return false
+            }
+        }
+        return nil
+    }
+}
+
 // MARK: - Ending adding
 
 extension View {
@@ -330,9 +405,13 @@ struct GroupLabel: View {
     var quiet = false
     @Environment(\.palette) private var p
     var body: some View {
+        // Cut off, the name and the day's date fade out at their ends, as a title does (the Mac's GroupLabelView).
         HStack(spacing: 6) {
             Text(title).font(Typo.label).foregroundStyle(quiet ? p.inkQuiet : p.inkTertiary)
-            if let sub { Text(sub).font(Typo.quiet).foregroundStyle(p.inkQuiet) }
+                .fadeTruncation(Metric.titleFade, text: title)
+            if let sub {
+                Text(sub).font(Typo.quiet).foregroundStyle(p.inkQuiet).fadeTruncation(Metric.titleFade, text: sub)
+            }
             Spacer(minLength: 0)
         }
         .lineLimit(1)

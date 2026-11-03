@@ -14,6 +14,21 @@ enum Metric {
     static let barHeight: CGFloat = 52
     /// Space under the last row so nothing hides behind the floating bar and the + button.
     static let bottomClearance: CGFloat = 104
+    /// A row's title keeps this much (all of a shorter one) before the When, or a list's name after it, gives way
+    /// (the Mac's 120, `TaskRowView.titleKeep`).
+    static let titleKeep: CGFloat = 120
+    /// A list's name after a task's title keeps this much before it's cut (the Mac's 72 × 1.3, `whereKeep`), and goes
+    /// rather than show less than this much (the Mac's 32 × 1.3, `whereMin`).
+    static let listNameKeep: CGFloat = 94
+    static let listNameMin: CGFloat = 42
+    /// How far a cut-off name or title fades out at its end, instead of an ellipsis (`fadeTruncation`), the Mac's × 1.3:
+    /// a row's title, a list's name on a row, a group label, a deleted list's name (the Mac's 24, `TK.M.titleFade`)…
+    static let titleFade: CGFloat = 31
+    /// …and a name on Home and in iPad's sidebar (the Mac's sidebar, 16, `SB.titleFade`), which ends 39 short of the
+    /// row's edge when there's a count (the Mac's 30, `titleFadeEnd`) and 13 short when not (10, `titleFadeEndBare`).
+    static let nameFade: CGFloat = 21
+    static let nameEnd: CGFloat = 39
+    static let nameEndBare: CGFloat = 13
 }
 
 /// Text styles whose default (Large) sizes are the design's: 28 / 20 / 17 / 15 / 13 / 12. They scale with Dynamic Type,

@@ -102,22 +102,28 @@ struct SourceRow: View {
     var body: some View {
         let current = sidebar && app.selection == source
         Button { app.open(source) } label: {
-            HStack(spacing: 12) {
+            let counted = (count ?? 0) > 0
+            HStack(spacing: 0) {
                 app.tile(for: source, palette: p)
+                    .padding(.trailing, 12)
+                // A long name fades out over its last 21pt instead of an ellipsis (§12, Rex), ending 39 short of the
+                // row's edge when there's a count (a wider count, 8 before it) and 13 short when not (§12).
                 Text(app.title(source))
                     .font(Typo.row)
                     .foregroundStyle(current || !sidebar ? p.ink : p.inkSecondary)
-                    .lineLimit(1)
-                Spacer(minLength: 8)
-                if let count, count > 0 {
+                    .fadeTruncation(Metric.nameFade, text: app.title(source))
+                Spacer(minLength: 0)
+                if let count, counted {
                     Text("\(count)")
                         .font(Typo.row)
                         .monospacedDigit()
                         .foregroundStyle(source == .today ? p.inkSecondary : p.inkTertiary)
+                        .padding(.leading, 8)
+                        .frame(minWidth: Metric.nameEnd - Metric.rowPad, alignment: .trailing)
                 }
             }
             .padding(.leading, Metric.rowPad)
-            .padding(.trailing, Metric.rowPad)
+            .padding(.trailing, counted ? Metric.rowPad : Metric.nameEndBare)
             .frame(minHeight: Metric.rowHeight)
             .background {
                 if current {
