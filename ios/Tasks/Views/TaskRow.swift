@@ -51,9 +51,10 @@ struct TaskRow: View {
             .padding(.leading, indent ? 30 : 0)
             .frame(minHeight: Metric.rowHeight)
         }
-        .buttonStyle(RowStyle(selected: selected))
+        .buttonStyle(RowStyle(selected: selected, fadesOut: !app.isSplit))
         .opacity(app.completing.contains(task.id) ? 0.75 : 1)
         .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     private var title: String { task.title.isEmpty ? "New Task" : task.title }

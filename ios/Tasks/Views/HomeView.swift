@@ -11,7 +11,7 @@ struct HomeView: View {
 
     var body: some View {
         List {
-            header.listRow()
+            header.pressesShowAtOnce().listRow()
             SourceRow(source: .today, count: app.todayCount(), sidebar: sidebar).listRow()
             SourceRow(source: .upcoming, sidebar: sidebar).listRow()
             SourceRow(source: .undated, sidebar: sidebar).listRow()

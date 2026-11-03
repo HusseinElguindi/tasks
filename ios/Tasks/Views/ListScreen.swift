@@ -21,6 +21,7 @@ struct ListScreen: View {
         List {
             header
                 .endsAddingOnTap()
+                .pressesShowAtOnce()
                 .listRow()
             if let runs = app.dragRuns(lines, source) {
                 // Drag to reorder (Reorder.swift: the iPhone's own drag, and its three accepted differences from the
@@ -141,7 +142,9 @@ struct ListScreen: View {
         case let .heading(h, count):
             HeadingRow(heading: h, count: count)
         case let .task(t, indent, groupDay):
-            TaskRow(task: t, source: source, indent: indent, groupDay: groupDay, selected: app.isSplit && app.selectedTask == t.id)
+            // On the phone the row whose details are open keeps the selected fill, then fades out as they close.
+            TaskRow(task: t, source: source, indent: indent, groupDay: groupDay,
+                    selected: app.isSplit ? app.selectedTask == t.id : app.detailTask == t.id)
                 .transition(.opacity)
                 .modifier(TaskSwipes(task: t, source: source))
                 .contextMenu { TaskMenu(task: t, source: source) }

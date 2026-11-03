@@ -354,10 +354,13 @@ struct DateChip: View {
 
 // MARK: - Row press
 
-/// A row's press: its own rounded fill, instant in, quick out. Selection uses the same shape.
+/// A row's press: its own rounded fill, instant in, quick out. Selection uses the same shape. With `fadesOut`, the
+/// selected fill fades out over 300 ms ease-out when it goes (the phone's row whose details just closed, as in Mail
+/// and Settings), so you can see which row you came from; it comes in at once.
 struct RowStyle: ButtonStyle {
     var selected = false
     var focused = true
+    var fadesOut = false
     @Environment(\.palette) private var p
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -365,8 +368,33 @@ struct RowStyle: ButtonStyle {
                 RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous)
                     .fill(configuration.isPressed ? p.press : selected ? (focused ? p.fillRowSelected : p.fillRowSelectedDim) : .clear)
                     .animation(configuration.isPressed ? nil : .easeOut(duration: 0.085), value: configuration.isPressed)
+                    .animation(fadesOut && !selected ? .easeOut(duration: 0.3) : nil, value: selected)
             }
             .contentShape(RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous))
+    }
+}
+
+extension View {
+    /// Shows a row's press the moment a finger lands, not after the list's usual pause, by turning off the
+    /// enclosing scroll view's `delaysContentTouches`. `canCancelContentTouches` stays on, so a drag that starts on a
+    /// row still scrolls (cancelling the press, and opening nothing) and swipe actions still swipe. Put it on a row
+    /// that's there when the list appears (its header); the setting is the list's.
+    func pressesShowAtOnce() -> some View { background(ImmediateTouches().allowsHitTesting(false).accessibilityHidden(true)) }
+}
+
+private struct ImmediateTouches: UIViewRepresentable {
+    func makeUIView(context: Context) -> Probe { Probe() }
+    func updateUIView(_ view: Probe, context: Context) {}
+
+    final class Probe: UIView {
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            var v = superview
+            while let s = v, !(s is UIScrollView) { v = s.superview }
+            guard let scroll = v as? UIScrollView else { return }
+            scroll.delaysContentTouches = false
+            scroll.canCancelContentTouches = true
+        }
     }
 }
 

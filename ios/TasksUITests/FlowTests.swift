@@ -818,4 +818,131 @@ final class FlowTests: XCTestCase {
         XCTAssertLessThan(y(phys), y(school), "PHYS 122 above School")
         XCTAssertGreaterThan(y(phys), y(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Inbox'")).firstMatch), "and under Inbox")
     }
+
+    // MARK: The tapped row (§5; Mail and Settings)
+
+    /// Screenshots taken on another thread while `gesture` runs (XCTest blocks for the length of a gesture), to see
+    /// what lasts only a moment: a quick tap's press, a fade.
+    private func filming(_ count: Int, _ gesture: () -> Void) -> [CGImage] {
+        final class Film: @unchecked Sendable {
+            let lock = NSLock()
+            var frames: [CGImage] = []
+            func add(_ f: CGImage) { lock.lock(); frames.append(f); lock.unlock() }
+        }
+        let film = Film()
+        let thread = Thread { for _ in 0..<count { if let cg = XCUIScreen.main.screenshot().image.cgImage { film.add(cg) } } }
+        thread.start()
+        usleep(150_000)
+        gesture()
+        while !thread.isFinished { usleep(20_000) }
+        return film.frames
+    }
+
+    /// The brightness (0–255) at a point, in the screen's points.
+    private func luma(_ cg: CGImage, _ p: CGPoint) -> Int {
+        let scale = CGFloat(cg.width) / app.frame.width
+        var px = [UInt8](repeating: 0, count: 4)
+        guard let ctx = CGContext(data: &px, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                                  space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return -1 }
+        ctx.draw(cg, in: CGRect(x: -Int(p.x * scale), y: -(cg.height - Int(p.y * scale) - 1), width: cg.width, height: cg.height))
+        return (Int(px[0]) + Int(px[1]) + Int(px[2])) / 3
+    }
+
+    /// How much brighter a row's fill is than the screen beside it (x 4, outside the row's 10pt inset), at `y`, in
+    /// the row's empty space at `x`: about 0 at rest, about 27 pressed or selected (Dark).
+    private func lift(_ cg: CGImage, x: CGFloat, y: CGFloat) -> Int { luma(cg, CGPoint(x: x, y: y)) - luma(cg, CGPoint(x: 4, y: y)) }
+
+    /// A quick tap shows the press the moment it lands (the list's touch delay is off): caught on Home, where a tap
+    /// doesn't select anything that could pass for it. With the delay, a 0.13 s tap never shows it.
+    func testAQuickTapShowsThePress() {
+        app.launch()
+        let row = app.buttons["Errands, 4"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        sleep(2)
+        let f = row.frame
+        var seen = false
+        for _ in 0..<3 where !seen {
+            let frames = filming(14) { row.press(forDuration: 0.13) }
+            let lifts = frames.map { lift($0, x: f.minX + f.width * 0.6, y: f.midY) }
+            print("press, lifts \(lifts)")
+            seen = lifts.contains { $0 > 12 }
+            back()
+            XCTAssertTrue(row.waitForExistence(timeout: 5))
+            sleep(1)
+        }
+        XCTAssertTrue(seen, "a 0.13 s tap shows the press fill")
+    }
+
+    /// A drag that starts on a row scrolls the list and opens nothing.
+    func testAScrollThatStartsOnARowOpensNothing() {
+        app.launchArguments += ["-screen", "today"]
+        app.launch()
+        let row = app.staticTexts["Return the ECE 358 lab kit"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        sleep(1)
+        let y0 = row.frame.midY
+        // A finger's drag, 250pt up from the row's middle. (`swipeUp()` on the row's text stays inside its 22pt frame:
+        // too short to scroll, it's a tap, with the touch delay or without.)
+        let c = row.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        c.press(forDuration: 0.02, thenDragTo: c.withOffset(CGVector(dx: 0, dy: -250)), withVelocity: .default, thenHoldForDuration: 0)
+        sleep(1)
+        XCTAssertLessThan(row.frame.midY, y0 - 40, "the list scrolled")
+        XCTAssertFalse(app.descendants(matching: .any)["detailList"].exists, "no details opened")
+    }
+
+    /// Swipe actions still swipe out, both ways, with the touch delay off.
+    func testSwipeActionsStillWork() {
+        app.launchArguments += ["-screen", "list:phys"]
+        app.launch()
+        let row = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        sleep(1)
+        let mid = row.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        mid.press(forDuration: 0.05, thenDragTo: mid.withOffset(CGVector(dx: -130, dy: 0)))
+        sleep(1)
+        XCTAssertTrue(app.buttons["Delete"].exists && app.buttons["When"].exists, "swiped left: Delete and When")
+        mid.withOffset(CGVector(dx: 60, dy: 0)).press(forDuration: 0.05, thenDragTo: mid.withOffset(CGVector(dx: 200, dy: 0)))
+        sleep(1)
+        let other = app.staticTexts["Book a make-up lab bench"].firstMatch
+        let start = other.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5))
+        start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 130, dy: 0)))
+        sleep(1)
+        let complete = app.buttons.matching(NSPredicate(format: "label == 'Complete'")).allElementsBoundByIndex
+        XCTAssertTrue(complete.contains { $0.frame.width > 50 && abs($0.frame.midY - other.frame.midY) < 20 },
+                      "swiped right: Complete")
+        XCTAssertTrue(other.exists && row.exists, "nothing went")
+    }
+
+    /// While its details are open the tapped row keeps the selected fill; when they close it fades out (300 ms
+    /// ease-out), so the fill is caught part-way, with the screen beside it already back to normal.
+    func testTheTappedRowStaysSelectedThenFades() {
+        app.launchArguments += ["-screen", "list:phys"]
+        app.launch()
+        let row = app.staticTexts["Buy safety glasses for the lab"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        sleep(1)
+        let x = app.frame.maxX - 40, y = row.frame.midY
+        let rest = XCUIScreen.main.screenshot().image.cgImage!
+        let edge = luma(rest, CGPoint(x: 4, y: y))
+        XCTAssertLessThan(abs(lift(rest, x: x, y: y)), 3, "no fill at rest")
+        let details = app.descendants(matching: .any)["detailList"]
+        var caught = false
+        for _ in 0..<3 where !caught {
+            row.tap()
+            XCTAssertTrue(details.waitForExistence(timeout: 5))
+            sleep(1)
+            let open = XCUIScreen.main.screenshot().image.cgImage!
+            XCTAssertGreaterThan(lift(open, x: x, y: y), 8, "selected while its details are open")
+            // Closed by a tap above the sheet.
+            let frames = filming(14) { app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12)).tap() }
+            XCTAssertFalse(details.exists, "the details closed")
+            let seen = frames.map { (edge: luma($0, CGPoint(x: 4, y: y)), lift: lift($0, x: x, y: y)) }
+            print("fade, \(seen)")
+            caught = seen.contains { abs($0.edge - edge) <= 2 && (4...22).contains($0.lift) }
+            sleep(1)
+            XCTAssertLessThan(abs(lift(XCUIScreen.main.screenshot().image.cgImage!, x: x, y: y)), 3, "gone once it's faded")
+        }
+        XCTAssertTrue(caught, "the fill fades out after the details close")
+    }
 }
