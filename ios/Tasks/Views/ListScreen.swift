@@ -8,7 +8,8 @@ struct ListScreen: View {
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     @State private var folded = false
-    /// The new-task row's frame in the list, so a tap outside it can end adding.
+    /// The frame of the row being typed into (a new task or heading, a heading's name or notes), so a tap outside it
+    /// can end adding.
     @State private var draftFrame: CGRect?
     /// Counts drops that wrote something, for the light haptic on drop.
     @State private var dropped = 0
@@ -18,31 +19,40 @@ struct ListScreen: View {
 
     var body: some View {
         let lines = app.lines(source)
-        List {
-            header
-                .endsAddingOnTap()
-                .pressesShowAtOnce()
-                .listRow()
-            if let runs = app.dragRuns(lines, source) {
-                // Drag to reorder (Reorder.swift: the iPhone's own drag, and its three accepted differences from the
-                // Mac). Each run is its own ForEach, so a drop stays in its Today or Undated group.
-                ForEach(runs) { run in
-                    ForEach(run.lines) { line in
-                        listLine(line)
-                            .contentShape(.dragPreview, RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous))
-                            .moveDisabled(!line.canDrag)
+        ScrollViewReader { proxy in
+            List {
+                header
+                    .endsAddingOnTap()
+                    .pressesShowAtOnce()
+                    .listRow()
+                if let runs = app.dragRuns(lines, source) {
+                    // Drag to reorder (Reorder.swift: the iPhone's own drag, and its three accepted differences from
+                    // the Mac). Each run is its own ForEach, so a drop stays in its Today or Undated group.
+                    ForEach(runs) { run in
+                        ForEach(run.lines) { line in
+                            listLine(line)
+                                .contentShape(.dragPreview, RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous))
+                                .moveDisabled(!line.canDrag)
+                        }
+                        .onMove { from, to in
+                            if app.drop(from, to, in: run.lines, source: source) { dropped += 1 }
+                        }
                     }
-                    .onMove { from, to in
-                        if app.drop(from, to, in: run.lines, source: source) { dropped += 1 }
-                    }
+                } else {
+                    ForEach(lines) { line in listLine(line) }
                 }
-            } else {
-                ForEach(lines) { line in listLine(line) }
+                Color.clear.frame(height: app.isSplit ? 24 : Metric.bottomClearance)
+                    .listRow()
             }
-            Color.clear.frame(height: app.isSplit ? 24 : Metric.bottomClearance)
-                .listRow()
+            .listStyle(.plain)
+            // A new heading's row (at the bottom, or above a task) and a new task's in a heading are scrolled into
+            // view as adding starts; a new task's own row is at the top, where + is pressed from. The next row after
+            // Return is under the last one, already in view.
+            .onChange(of: app.draft?.kind) { _, kind in
+                guard let kind, adding, kind != .task, app.draft?.editedHeading == nil else { return }
+                animate(Motion.layout) { proxy.scrollTo("draft") }
+            }
         }
-        .listStyle(.plain)
         .sensoryFeedback(.impact(weight: .light), trigger: dropped)
         .coordinateSpace(.named(Self.space))
         // While adding, a tap anywhere outside the new-task row ends it. On a row or the header the tap goes no further
@@ -73,8 +83,14 @@ struct ListScreen: View {
                 .opacity(folded ? 1 : 0)
                 .accessibilityHidden(!folded)
             }
-            if adding {
-                // While adding: Cancel drops the row with whatever was typed (the list's menu is back after).
+            if adding, case .notes? = app.draft?.kind {
+                // A heading's notes: Done ends them, as Esc does on the Mac.
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Done") { app.endDraft() }
+                }
+            } else if adding {
+                // While adding: Cancel drops the row with whatever was typed, and a heading's rename keeps its old
+                // name (the list's menu is back after).
                 ToolbarItem(placement: .primaryAction) {
                     Button("Cancel") { app.cancelDraft() }
                 }
@@ -131,8 +147,13 @@ struct ListScreen: View {
 
     private func listLine(_ line: Line) -> some View {
         row(line)
-            .endsAddingOnTap(!line.isDraft)
+            .endsAddingOnTap(!line.isDraft && !isEdited(line))
             .listRow()
+    }
+
+    /// A heading whose name or notes are being typed, in place.
+    private func isEdited(_ line: Line) -> Bool {
+        if case let .heading(h, _) = line { app.draft?.editedHeading == h.id } else { false }
     }
 
     @ViewBuilder private func row(_ line: Line) -> some View {
@@ -141,6 +162,10 @@ struct ListScreen: View {
             GroupLabel(title: title, sub: sub, quiet: quiet)
         case let .heading(h, count):
             HeadingRow(heading: h, count: count)
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: {
+                    if app.draft?.editedHeading == h.id { draftFrame = $0 }
+                }
+                .contextMenu { HeadingMenu(heading: h) }
         case let .task(t, indent, groupDay):
             // On the phone the row whose details are open keeps the selected fill, then fades out as they close.
             TaskRow(task: t, source: source, indent: indent, groupDay: groupDay,
@@ -212,6 +237,14 @@ struct TaskMenu: View {
     let source: Source
     @Environment(AppModel.self) private var app
     var body: some View {
+        if case let .list(id) = source {
+            // Above this task, which becomes the heading's first (§23). A done one isn't in the order: at the bottom,
+            // as on the Mac.
+            Button { app.newHeading(in: id, before: task.isDone ? nil : task.id) } label: {
+                Label("New Heading Above", systemImage: "text.line.first.and.arrowtriangle.forward")
+            }
+            Divider()
+        }
         if source == .trash {
             if app.canRestore(task) {
                 Button { app.restore(task.id) } label: { Label("Restore", systemImage: "arrow.uturn.backward") }
@@ -235,6 +268,32 @@ struct TaskMenu: View {
     }
 }
 
+/// A heading's long-press menu (§23): Rename, its notes, New Task in it, Collapse or Expand, Delete Heading. Dragging
+/// covers the Mac's Move Up and Move Down.
+struct HeadingMenu: View {
+    let heading: TaskModel
+    @Environment(AppModel.self) private var app
+    var body: some View {
+        let collapsed = app.collapsed.contains(heading.id)
+        Button { app.renameHeading(heading.id) } label: { Label("Rename", systemImage: "pencil") }
+        Button { app.editHeadingNotes(heading.id) } label: {
+            Label(heading.notes.isEmpty ? "Add Notes" : "Edit Notes", systemImage: "text.alignleft")
+        }
+        Button { app.newTask(inHeading: heading.id) } label: {
+            // One line, as Move to keeps a list's name (`MenuName`): the name is cut to what's left of the menu's 150pt
+            // (it holds "New Task in “Labs”" whole, and wraps a longer one; measured on the simulator, 2026-11-03).
+            Label("New Task in “\(MenuName.fit(heading.title, width: 150 - MenuName.width("New Task in “”")))”",
+                  systemImage: "plus")
+        }
+        Divider()
+        Button { app.toggleCollapse(heading.id) } label: {
+            Label(collapsed ? "Expand" : "Collapse", systemImage: collapsed ? "chevron.down" : "chevron.right")
+        }
+        Divider()
+        Button(role: .destructive) { app.deleteHeading(heading.id) } label: { Label("Delete Heading", systemImage: "trash") }
+    }
+}
+
 /// A list's menu in the bar: Rename, show or hide completed, Delete List (at once, with Undo).
 struct ListMenu: View {
     let listID: EntityID
@@ -244,6 +303,9 @@ struct ListMenu: View {
         Menu {
             Button { app.listEditor = .init(listID: listID, name: app.list(listID)?.name ?? "") } label: {
                 Label("Rename", systemImage: "pencil")
+            }
+            Button { app.newHeading(in: listID) } label: {
+                Label("New Heading", systemImage: "text.line.first.and.arrowtriangle.forward")
             }
             Button {
                 animate(Motion.layout) {

@@ -784,11 +784,11 @@ final class FlowTests: XCTestCase {
         let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
         XCTAssertTrue(redo.waitForExistence(timeout: 10))
         sleep(1)
-        let bench = app.staticTexts["Book a make-up lab bench"].firstMatch, exam = app.staticTexts["Exam prep"].firstMatch
+        let bench = app.staticTexts["Book a make-up lab bench"].firstMatch, exam = heading("Exam prep")
         drag(redo, onto: bench)
         XCTAssertGreaterThan(y(redo), y(bench), "under the row it was dropped on, in Labs")
         XCTAssertLessThan(y(redo), y(exam), "and still above Exam prep")
-        XCTAssertGreaterThan(y(redo), y(app.staticTexts["Labs"].firstMatch), "under Labs")
+        XCTAssertGreaterThan(y(redo), y(heading("Labs")), "under Labs")
     }
 
     /// A heading takes its section: dropped inside Lectures, Labs and its three tasks land before Lectures, the
@@ -796,7 +796,7 @@ final class FlowTests: XCTestCase {
     func testDragAHeadingMovesItsSection() {
         app.launchArguments += ["-screen", "list:phys"]
         app.launch()
-        let labs = app.staticTexts["Labs"].firstMatch, lectures = app.staticTexts["Lectures"].firstMatch
+        let labs = heading("Labs"), lectures = heading("Lectures")
         XCTAssertTrue(labs.waitForExistence(timeout: 10))
         sleep(1)
         drag(labs, onto: app.staticTexts["Read chapter 15 · oscillations"].firstMatch)
@@ -962,5 +962,183 @@ final class FlowTests: XCTestCase {
             XCTAssertLessThan(abs(lift(XCUIScreen.main.screenshot().image.cgImage!, x: x, y: y)), 3, "gone once it's faded")
         }
         XCTAssertTrue(caught, "the fill fades out after the details close")
+    }
+
+    // MARK: Headings (§23)
+
+    /// A heading's name: a button that renames it.
+    private func heading(_ name: String) -> XCUIElement {
+        app.buttons.matching(identifier: "heading").matching(NSPredicate(format: "label == %@", name)).firstMatch
+    }
+
+    private func headingCount() -> Int { app.buttons.matching(identifier: "heading").count }
+
+    private func openPhys() {
+        app.launchArguments += ["-screen", "list:phys"]
+        app.launch()
+        XCTAssertTrue(heading("Labs").waitForExistence(timeout: 10), "PHYS 122")
+        sleep(1)
+    }
+
+    /// New Heading in the list's menu: at the bottom, named in place. Return writes it; an empty one leaves nothing.
+    func testNewHeadingFromTheListMenu() {
+        openPhys()
+        let before = headingCount()
+        app.buttons["List actions"].tap()
+        app.buttons["New Heading"].tap()
+        XCTAssertTrue(draft.waitForExistence(timeout: 3), "the new heading's field")
+        app.typeText("\n")
+        sleep(1)
+        XCTAssertFalse(draft.exists, "an empty one ends")
+        XCTAssertEqual(headingCount(), before, "and leaves nothing")
+        app.buttons["List actions"].tap()
+        app.buttons["New Heading"].tap()
+        XCTAssertTrue(draft.waitForExistence(timeout: 3))
+        app.typeText("Problem sets\n")
+        sleep(1)
+        let new = heading("Problem sets")
+        XCTAssertTrue(new.waitForExistence(timeout: 3), "written")
+        XCTAssertEqual(headingCount(), before + 1)
+        XCTAssertGreaterThan(y(new), y(app.staticTexts["Ask about problem 7 at office hours"].firstMatch), "at the bottom")
+    }
+
+    /// New Heading Above in a task's menu: above it, and it becomes the section's first task. A tap elsewhere writes
+    /// it, and only ends adding (the row tapped doesn't open).
+    func testNewHeadingAboveATask() {
+        openPhys()
+        let bench = app.staticTexts["Book a make-up lab bench"].firstMatch
+        menuOpen {
+            bench.press(forDuration: 1.0)
+            app.buttons["New Heading Above"].tap()
+        }
+        XCTAssertTrue(draft.waitForExistence(timeout: 3))
+        app.typeText("Make-ups")
+        app.staticTexts["Read chapter 15 · oscillations"].firstMatch.tap()
+        sleep(1)
+        XCTAssertFalse(app.descendants(matching: .any)["detailList"].exists, "the tap only ended adding")
+        let new = heading("Make-ups")
+        XCTAssertTrue(new.waitForExistence(timeout: 3), "written by the tap")
+        XCTAssertGreaterThan(y(new), y(app.staticTexts["Lab 4 pre-lab · RC circuits"].firstMatch), "after the task above")
+        XCTAssertLessThan(y(new), y(bench), "above its task")
+    }
+
+    /// A tap on the name renames it in place; an empty name keeps the old one.
+    func testRenameAHeading() {
+        openPhys()
+        heading("Labs").tap()
+        let field = app.textFields["headingName"]
+        XCTAssertTrue(field.waitForExistence(timeout: 3), "renaming in place")
+        XCTAssertEqual(field.value as? String, "Labs")
+        app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 4) + "\n")
+        sleep(1)
+        XCTAssertTrue(heading("Labs").exists, "an empty name keeps the old one")
+        heading("Labs").tap()
+        XCTAssertTrue(field.waitForExistence(timeout: 3))
+        let long = "Labs and tutorials for the whole winter term"
+        app.typeText(String(long.dropFirst(4)) + "\n")
+        sleep(1)
+        XCTAssertTrue(heading(long).waitForExistence(timeout: 3), "renamed")
+        // Its menu's New Task item is one line, cut, as the Mac's menus cut a name.
+        menuOpen {
+            heading(long).press(forDuration: 1.0)
+            let item = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'New Task in “La'")).firstMatch
+            XCTAssertTrue(item.waitForExistence(timeout: 3))
+            XCTAssertTrue((item.label as String).hasSuffix("…”"), "cut: \(item.label)")
+            XCTAssertEqual(item.frame.height, app.buttons["Rename"].frame.height, accuracy: 1, "one line")
+        }
+    }
+
+    /// Add Notes opens the notes editor under the heading; Done writes them, and they show under it.
+    func testAHeadingsNotes() {
+        openPhys()
+        menuOpen {
+            heading("Labs").press(forDuration: 1.0)
+            app.buttons["Add Notes"].tap()
+        }
+        let editor = app.textViews["headingNotes"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 3), "the notes editor, under it")
+        app.typeText("Bring the goggles")
+        app.buttons["Done"].tap()
+        sleep(1)
+        let notes = app.staticTexts["Bring the goggles"].firstMatch
+        XCTAssertTrue(notes.waitForExistence(timeout: 3), "they show under it")
+        XCTAssertGreaterThan(y(notes), y(heading("Labs")))
+        XCTAssertLessThan(y(notes), y(app.staticTexts["Lab 3 report · pendulum"].firstMatch))
+        menuOpen {
+            heading("Labs").press(forDuration: 1.0)
+            XCTAssertTrue(app.buttons["Edit Notes"].waitForExistence(timeout: 3), "now Edit Notes")
+            app.buttons["Edit Notes"].tap()
+        }
+        XCTAssertTrue(editor.waitForExistence(timeout: 3))
+    }
+
+    /// The chevron folds the section into the heading, with its open tasks' count after the name, and back.
+    func testCollapseAndExpandAHeading() {
+        openPhys()
+        let lab3 = app.staticTexts["Lab 3 report · pendulum"].firstMatch
+        XCTAssertTrue(lab3.exists)
+        app.buttons["Collapse Labs"].tap()
+        sleep(1)
+        XCTAssertFalse(lab3.exists, "folded")
+        XCTAssertEqual(heading("Labs").value as? String, "Collapsed, 3 open")
+        XCTAssertTrue(app.staticTexts["Make the midterm formula sheet"].exists, "the next section stays")
+        app.buttons["Expand Labs"].tap()
+        sleep(1)
+        XCTAssertTrue(lab3.exists, "back")
+        XCTAssertEqual(heading("Labs").value as? String ?? "", "")
+    }
+
+    /// New Task in a collapsed heading expands it and adds at the end of its section.
+    func testNewTaskInACollapsedHeading() {
+        openPhys()
+        app.buttons["Collapse Labs"].tap()
+        sleep(1)
+        menuOpen {
+            heading("Labs").press(forDuration: 1.0)
+            app.buttons["New Task in “Labs”"].tap()
+        }
+        XCTAssertTrue(draft.waitForExistence(timeout: 3))
+        app.typeText("Return the multimeter\n")
+        sleep(1)
+        app.buttons["Cancel"].tap()
+        sleep(1)
+        let new = app.staticTexts["Return the multimeter"].firstMatch
+        XCTAssertTrue(new.waitForExistence(timeout: 3), "expanded, and written")
+        XCTAssertGreaterThan(y(new), y(app.staticTexts["Book a make-up lab bench"].firstMatch), "at the end of Labs")
+        XCTAssertLessThan(y(new), y(heading("Exam prep")))
+    }
+
+    /// A task dropped right under a collapsed heading joins the end of its section, stays folded, and the count goes
+    /// up (the Mac's rule).
+    func testDropUnderACollapsedHeading() {
+        openPhys()
+        app.buttons["Collapse Labs"].tap()
+        sleep(1)
+        let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
+        drag(redo, onto: heading("Labs"))
+        XCTAssertFalse(redo.exists, "folded into Labs")
+        XCTAssertEqual(heading("Labs").value as? String, "Collapsed, 4 open")
+        app.buttons["Expand Labs"].tap()
+        sleep(1)
+        XCTAssertGreaterThan(y(redo), y(app.staticTexts["Book a make-up lab bench"].firstMatch), "at the end of Labs")
+        XCTAssertLessThan(y(redo), y(heading("Exam prep")))
+    }
+
+    /// Delete Heading takes the heading only: its tasks stay, under the heading above. The notice's Undo brings it back.
+    func testDeleteAHeading() {
+        openPhys()
+        menuOpen {
+            heading("Labs").press(forDuration: 1.0)
+            app.buttons["Delete Heading"].tap()
+        }
+        XCTAssertTrue(app.staticTexts["Deleted heading “Labs”"].waitForExistence(timeout: 3), "the notice")
+        XCTAssertFalse(heading("Labs").exists)
+        let lab3 = app.staticTexts["Lab 3 report · pendulum"].firstMatch
+        XCTAssertTrue(lab3.exists, "its tasks stay")
+        XCTAssertGreaterThan(y(lab3), y(heading("Lectures")), "under the heading above")
+        app.buttons["Undo"].firstMatch.tap()
+        sleep(1)
+        XCTAssertTrue(heading("Labs").waitForExistence(timeout: 3), "back")
+        XCTAssertLessThan(y(heading("Labs")), y(lab3))
     }
 }

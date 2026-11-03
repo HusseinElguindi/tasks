@@ -47,13 +47,15 @@ extension Line {
 enum DropSlot {
     /// A task dropped at `target` among `others` (the run's lines without the dragged ones; nil for a line that's no
     /// task): right after the open row above it, else right before the open row below it, else the end of a view's
-    /// group (Today, Undated) or the top of a list.
-    static func task(target: Int, others: [EntityID?], open: Set<EntityID>, inView: Bool) -> Ordering.Anchor {
+    /// group (Today, Undated) or the top of a list. `foldedEnd` gives, for a collapsed heading, its section's last
+    /// open task that isn't moving (nil for any other row, or a section with none).
+    static func task(target: Int, others: [EntityID?], open: Set<EntityID>, inView: Bool,
+                     foldedEnd: (EntityID) -> EntityID? = { _ in nil }) -> Ordering.Anchor {
         let t = min(max(target, 0), others.count)
         let isOpen: (EntityID?) -> Bool = { $0.map(open.contains) ?? false }
         if let prev = others[..<t].last(where: isOpen) ?? nil {
-            // The Mac's collapsed-heading rule goes here (#3, headings): right under a collapsed heading, the end of
-            // its section, where it stays folded.
+            // Right under a collapsed heading: the end of its section, where it stays folded (§23).
+            if let last = foldedEnd(prev) { return .after(last) }
             return .after(prev)
         }
         if let next = others[t...].first(where: isOpen) ?? nil { return .before(next) }
@@ -111,7 +113,11 @@ extension AppModel {
             return store.moveSection(first, at: anchor, name: "Move Heading", undoManager: undo)
         }
         let inView = if case .list = source { false } else { true }
-        let anchor = DropSlot.task(target: target, others: others, open: Set(projection.openTasks(in: t.list).ids), inView: inView)
+        let open = Set(projection.openTasks(in: t.list).ids)
+        let anchor = DropSlot.task(target: target, others: others, open: open, inView: inView) { prev in
+            guard self.collapsed.contains(prev), self.isHeading(prev) else { return nil }
+            return self.projection.section(of: prev).dropFirst().last { open.contains($0) && !moving.contains($0) }
+        }
         return store.reorder(moving, in: t.list, at: anchor, name: "Move", undoManager: undo)
     }
 

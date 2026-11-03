@@ -98,7 +98,7 @@ struct FloatingControls: View {
             app.open(.list(id))
             app.startDraft(.list(id))
         } else if let s = source {
-            if app.draft?.source == s { app.submitDraft() } else { app.startDraft(s) }
+            if app.draft?.source == s, app.draft?.addsTask == true { app.submitDraft() } else { app.startDraft(s) }
         }
     }
 }
