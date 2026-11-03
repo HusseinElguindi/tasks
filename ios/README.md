@@ -107,3 +107,5 @@ With `-sampleData`, lists go by short names: `inbox` `school` `phys` `tasks` `ho
 - `TasksUITests/FlowTests.swift`: adds tasks, completes and undoes, swipes, edits a date, deletes a list, changes the appearance.
 - `Tools/MakeIcon.swift`: renders the app icon from the 04 · Log mark.
 - `Tools/shot.sh`, `Tools/screenshots.sh`: screenshots on a simulator from the launch arguments above.
+- `Tools/tailscale-bridge.py`: installs on the phone over Tailscale when it isn't on the Mac's network, by bridging
+  Xcode's wireless connection (setup and usage in its header).
