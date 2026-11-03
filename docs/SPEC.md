@@ -905,6 +905,11 @@ The theme comes from `PaneTheme.swift`. Screen design follows the design directi
 - **Leaving the app:** iOS may end an app in the background, so leaving the front writes what was typed: a task's title or notes mid-edit are written if they changed from where the edit began (the Mac's edit rule), and the edit carries on from that text; a new-task row ends (a typed title is written, an empty row goes); then the data is saved.
 - **Adding a task:** while a new task's row is open, a tap anywhere outside it only ends adding: the row tapped doesn't open and its box doesn't check, on iPhone and in iPad's sidebar and details. This differs from the Mac on purpose (the user, 2026-11-02), where a press elsewhere also does what it presses (`design/INTERACTIONS-v2.md` §6). A drag still scrolls.
 - **Completing a task** shows a notice with Undo, as deleting does. The Mac shows none, since ⌘Z undoes it there. The phone has no ⌘Z, so the notice is how a check is taken back (the user, 2026-11-03). Its timing and words are the Mac's notices': 5 s with Undo, titles cut at 28 characters.
+- **Typed dates:** The date sheet's field doesn't take the caret when the sheet opens, except with a hardware keyboard. ⌫ in the empty field doesn't clear the date.
+- **Select mode:** In select mode, long-pressing an unselected row adds it to the selection, and every bar action ends select mode.
+- **Undo and Redo:** The "…" menu's Undo and Redo items appear only when there's a step to undo or redo.
+- **Deleted lists:** A deleted list opens as its own pushed list screen, and restoring it there makes it live in place.
+- **Rescheduling in Upcoming:** A drop on another day sets When as the Mac's does, but the drag is the system's: the gap opens under the finger rather than where the task will land, and the day's label doesn't light up. On the drop the task slides to its place in the day.
 
 ## 9. Performance: view layer, indexes, budget
 
