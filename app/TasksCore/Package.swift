@@ -8,9 +8,14 @@ let package = Package(
         .library(name: "TasksCore", targets: ["TasksCore"]),
         // The agent CLI (docs/SDK-PLAN.md): another replica of the log, built on TasksCore.
         .executable(name: "tasks", targets: ["TasksCLI"]),
+        // The theme (tokens, Rex, the lit tile's finish), for the Mac and iOS apps. Values and CoreGraphics only;
+        // TasksCore and the CLI don't use it.
+        .library(name: "TasksTheme", targets: ["TasksTheme"]),
     ],
     targets: [
         .target(name: "TasksCore"),
+        .target(name: "TasksTheme"),
+        .testTarget(name: "TasksThemeTests", dependencies: ["TasksTheme"]),
         .executableTarget(name: "TasksCLI", dependencies: ["TasksCore"]),
         .testTarget(
             name: "TasksCoreTests",
