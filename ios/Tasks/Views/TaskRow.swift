@@ -8,6 +8,8 @@ struct TaskRow: View {
     let source: Source
     var indent = false
     var groupDay: CalendarDate? = nil
+    /// In a month group of Completed or Trash: the day, after the list's name.
+    var day: CalendarDate? = nil
     var selected = false
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
@@ -26,7 +28,7 @@ struct TaskRow: View {
                 .padding(.leading, Metric.rowPad - 11)   // the 44pt hit area centres the 22pt ring
                 .padding(.trailing, Metric.titleGap - 11)
 
-                TitleThenName(after: task.deadline != nil && !settled ? 8 : 0) {
+                TitleThenName(after: task.deadline != nil && showsDates ? 8 : 0) {
                     TitleSlot {
                         HStack(spacing: 8) {
                             // Cut off, its last 31pt fade out (§24); the notes hint after it stays whole.
@@ -39,7 +41,7 @@ struct TaskRow: View {
                                 .fadeTruncation(Metric.titleFade, text: title)
                             if !settled { NotesHint(summary: task.notesSummary).fixedSize() }
                         }
-                        if let w = task.when, showWhen { QuietWhen(date: w) }
+                        if let w = task.when, shows(when: w) { QuietWhen(date: w) }
                     }
                     if let name = whereName {
                         Text(name)
@@ -48,7 +50,7 @@ struct TaskRow: View {
                             .fadeTruncation(Metric.titleFade, text: name)
                     }
                 }
-                if let d = task.deadline, !settled { DeadlineChip(date: d, groupDay: groupDay) }
+                if let d = task.deadline, showsDates { DeadlineChip(date: d, groupDay: groupDay) }
             }
             .padding(.trailing, 12)
             .padding(.leading, indent ? 30 : 0)
@@ -67,20 +69,24 @@ struct TaskRow: View {
         return task.title.isEmpty ? p.inkTertiary : p.ink
     }
 
-    /// Today and Upcoming place the task by its date already.
-    private var showWhen: Bool {
-        if settled || trashed { return false }
-        switch source {
-        case .today, .upcoming: return false
-        default: return true
-        }
+    /// Done and trashed rows show no dates (§24, §22).
+    private var showsDates: Bool { !done && !trashed }
+
+    /// Only the date that places the row is hidden: in Today a When on or before today, in Upcoming its group's own
+    /// day (the Mac's `TaskListView.swift:345`).
+    private func shows(when w: CalendarDate) -> Bool {
+        showsDates && !(source == .today && w <= app.today) && w != groupDay
     }
 
-    /// Views that mix lists by day show where each task lives; Today and Undated group by list already.
+    /// Where each task lives, in views that mix lists: Upcoming, Completed and Trash, with the day in a month group
+    /// ("School · Oct 22"); Today's Completed group. Not under a deleted list's row (§28). The Mac's `whereText`.
     private var whereName: String? {
+        guard !indent else { return nil }
+        let name = app.listName(task.list)
         switch source {
-        case .upcoming, .completed, .trash: indent ? nil : app.list(task.list)?.name
-        default: nil
+        case .upcoming, .completed, .trash: return name + (day.map { " · " + DateLabel.monthDay($0) } ?? "")
+        case .today: return settled ? name : nil
+        default: return nil
         }
     }
 
@@ -259,6 +265,8 @@ struct CompletedToggleRow: View {
 struct DeletedListRow: View {
     let list: ListModel
     let open: Bool
+    /// In a month group: the day it was deleted, after its count ("2 tasks · Oct 22").
+    var day: CalendarDate? = nil
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     var body: some View {
@@ -271,7 +279,7 @@ struct DeletedListRow: View {
                 // A title on the Mac (its TaskRowView): cut off, it fades out; the count after it stays whole.
                 Text(list.name).font(Typo.rowMedium).foregroundStyle(p.inkSecondary)
                     .fadeTruncation(Metric.titleFade, text: list.name)
-                Text(app.deletedListCount(list.id))
+                Text(app.deletedListCount(list.id) + (day.map { " · " + DateLabel.monthDay($0) } ?? ""))
                     .font(Typo.quiet).foregroundStyle(p.inkTertiary).fixedSize().padding(.leading, 8)
                 Spacer(minLength: 8)
                 Image(systemName: "chevron.right")

@@ -52,6 +52,13 @@ struct ListScreen: View {
                 guard let kind, adding, kind != .task, app.draft?.editedHeading == nil else { return }
                 animate(Motion.layout) { proxy.scrollTo("draft") }
             }
+            // Show in <list>: the task is scrolled into view once the list is up.
+            .task(id: app.revealTask) {
+                guard let id = app.revealTask, source == .list(app.task(id)?.list ?? "") else { return }
+                try? await Task.sleep(for: .milliseconds(350))
+                animate(Motion.layout) { proxy.scrollTo("t:" + id, anchor: .center) }
+                app.revealTask = nil
+            }
         }
         .sensoryFeedback(.impact(weight: .light), trigger: dropped)
         .coordinateSpace(.named(Self.space))
@@ -130,12 +137,9 @@ struct ListScreen: View {
         .accessibilityIdentifier("listHeader")
     }
 
+    /// Today's date after its title. A list's title has no count (the user, 2026-10-31; IX:1564).
     private var subtitle: String? {
-        switch source {
-        case .today: DateLabel.long(app.today, today: app.today)
-        case let .list(id): app.openCount(id) > 0 ? "\(app.openCount(id))" : nil
-        default: nil
-        }
+        source == .today ? DateLabel.long(app.today, today: app.today) : nil
     }
 
     // MARK: Rows
@@ -161,17 +165,17 @@ struct ListScreen: View {
                     if app.draft?.editedHeading == h.id { draftFrame = $0 }
                 }
                 .contextMenu { HeadingMenu(heading: h) }
-        case let .task(t, indent, groupDay):
+        case let .task(t, indent, groupDay, day):
             // On the phone the row whose details are open keeps the selected fill, then fades out as they close.
-            TaskRow(task: t, source: source, indent: indent, groupDay: groupDay,
+            TaskRow(task: t, source: source, indent: indent, groupDay: groupDay, day: day,
                     selected: app.isSplit ? app.selectedTask == t.id : app.detailTask == t.id)
                 .transition(.opacity)
                 .modifier(TaskSwipes(task: t, source: source))
                 .contextMenu { TaskMenu(task: t, source: source) }
         case let .completedToggle(key, count, open):
             CompletedToggleRow(key: key, count: count, open: open)
-        case let .deletedList(l, _, open):
-            DeletedListRow(list: l, open: open)
+        case let .deletedList(l, _, open, day):
+            DeletedListRow(list: l, open: open, day: day)
                 .swipeActions(edge: .leading, allowsFullSwipe: true) {
                     Button { app.restoreList(l.id) } label: { Label("Restore", systemImage: "arrow.uturn.backward") }
                         .tint(p.accent)
@@ -237,6 +241,13 @@ struct TaskMenu: View {
             // as on the Mac.
             Button { app.newHeading(in: id, before: task.isDone ? nil : task.id) } label: {
                 Label("New Heading Above", systemImage: "text.line.first.and.arrowtriangle.forward")
+            }
+            Divider()
+        }
+        if let name = app.showInName(task, from: source) {
+            // From Today or a view: its list, with it shown (the Mac's Show in, Menus.swift:60).
+            Button { app.showInList(task.id) } label: {
+                Label(MenuName.fit(name, width: 150), systemImage: "arrow.right.circle")
             }
             Divider()
         }

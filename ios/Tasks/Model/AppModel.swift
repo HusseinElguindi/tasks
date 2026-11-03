@@ -105,8 +105,19 @@ final class AppModel {
     /// Checked a moment ago: still shown in place, as the Mac's pins (§8), until the rows settle together.
     var completing: Set<EntityID> = []
     @ObservationIgnored private var settleTask: Task<Void, Never>?
-    /// Open Completed disclosures: list ids, and `Self.todayDone` for Today's.
-    var showCompleted: Set<String> = []
+    /// Open Completed disclosures: list ids, and `Self.todayDone` for Today's, which is open by default. Saved per
+    /// device and never synced, under the Mac's keys (`WindowState.swift:134–147`); the sample store keeps them only
+    /// while it runs.
+    var showCompleted: Set<String> = [AppModel.todayDone] {
+        didSet {
+            guard !isSample, showCompleted != oldValue else { return }
+            let d = UserDefaults.standard
+            d.set(showCompleted.subtracting([Self.todayDone]).sorted(), forKey: Keys.completedOpen)
+            d.set(!showCompleted.contains(Self.todayDone), forKey: Keys.todayDoneCollapsed)
+        }
+    }
+    /// The task Show in <list> opened its list for: scrolled into view there (`ListScreen`).
+    var revealTask: EntityID?
     /// Deleted lists opened in Trash.
     var expandedTrash: Set<EntityID> = []
     /// Collapsed headings, by id (§23): saved per device, never synced, as the Mac's `WindowState.collapsed`. The
@@ -187,6 +198,8 @@ final class AppModel {
         static let style = "style"
         /// The Mac's key (`WindowState.collapsedKey`).
         static let collapsed = "collapsedHeadings"
+        static let completedOpen = "completedOpenLists"
+        static let todayDoneCollapsed = "todayCompletedCollapsed"
     }
 
     init(store: Store, isSample: Bool = false) {
@@ -198,6 +211,10 @@ final class AppModel {
         serverURL = d.string(forKey: SyncKeys.serverURL) ?? Self.defaultServer
         hasToken = Keychain.token() != nil
         collapsed = isSample ? [] : Set(d.stringArray(forKey: Keys.collapsed) ?? [])
+        if !isSample {
+            showCompleted = Set(d.stringArray(forKey: Keys.completedOpen) ?? [])
+                .union(d.bool(forKey: Keys.todayDoneCollapsed) ? [] : [Self.todayDone])
+        }
     }
 
     // MARK: Lookups
@@ -468,6 +485,25 @@ final class AppModel {
     }
 
     // MARK: Navigation
+
+    /// "Show in School", from Today or a view (not a list, not Trash), for a live task: the Mac's menu item.
+    func showInName(_ t: TaskModel, from source: Source) -> String? {
+        switch source {
+        case .list, .trash: return nil
+        default: return isTrashed(t) || t.isHeading ? nil : "Show in \(listName(t.list))"
+        }
+    }
+
+    /// Show in <list>: its list opens with the task shown, its Completed row or its heading opened if it's under one
+    /// (the Mac's `go(.list, select:)`). iPad selects it, as the Mac does.
+    func showInList(_ id: EntityID) {
+        guard let t = task(id), !isTrashed(t) else { return }
+        detailTask = nil
+        if t.isDone { showCompleted.insert(t.list) } else if let h = projection.heading(of: id) { expand(h) }
+        open(.list(t.list))
+        if isSplit { selectedTask = id }
+        revealTask = id
+    }
 
     func open(_ s: Source) {
         selection = s

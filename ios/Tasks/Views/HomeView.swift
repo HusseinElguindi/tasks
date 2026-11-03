@@ -17,7 +17,8 @@ struct HomeView: View {
             SourceRow(source: .undated, sidebar: sidebar).listRow()
             GroupLabel(title: "Lists").listRow()
             ForEach(app.activeLists) { l in
-                SourceRow(source: .list(l.id), count: app.openCount(l.id), sidebar: sidebar)
+                // No count: only Today has one (the user, 2026-10-31; IX:37–39).
+                SourceRow(source: .list(l.id), sidebar: sidebar)
                     .contextMenu {
                         Button { app.listEditor = .init(listID: l.id, name: l.name) } label: { Label("Rename", systemImage: "pencil") }
                         Divider()

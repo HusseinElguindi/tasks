@@ -159,8 +159,29 @@ private struct TaskDetailContent: View {
     private func topBar(trashed: Bool) -> some View {
         HStack(spacing: 8) {
             if let l = app.list(t.list) {
-                ListTile(content: .mono(l.monogram), hue: p.tile(slot: l.colorSlot), scale: 0.85)
-                Text(l.name).font(Typo.body).foregroundStyle(p.inkSecondary).lineLimit(1)
+                let name = HStack(spacing: 8) {
+                    ListTile(content: .mono(l.monogram), hue: p.tile(slot: l.colorSlot), scale: 0.85)
+                    Text(l.name).font(Typo.body).foregroundStyle(p.inkSecondary).lineLimit(1)
+                }
+                if let show = app.showInName(t, from: app.shown ?? .list(t.list)) {
+                    // Opened from Today or a view: its list's name is Show in <list> (the Mac's menu item, §9).
+                    Button {
+                        endTitle(); endNotes()
+                        app.showInList(t.id)
+                    } label: {
+                        HStack(spacing: 4) {
+                            name
+                            Image(systemName: "chevron.forward")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(p.inkTertiary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(show)
+                } else {
+                    name
+                }
             }
             Spacer()
             if trashed {
