@@ -29,6 +29,15 @@ struct ListScreen: View {
         let allDone = lines.contains { $0.isAllDone }
         ScrollViewReader { proxy in
             List {
+                if let l = app.deletedList(source) {
+                    // Above the large title, 10 in from the sides and 4 under the bar (§28's banner, the sheet's
+                    // metrics). It fades out as the list is restored, while the rows close up on `layout`.
+                    DeletedListBanner(list: l)
+                        .motionTransition(.opacity.animation(.easeOut(duration: 0.15)))
+                        .listRowInsets(EdgeInsets(top: 4, leading: 10, bottom: 0, trailing: 10))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                }
                 header
                     .endsAddingOnTap(!editingNotes)
                     .pressesShowAtOnce()
@@ -75,6 +84,10 @@ struct ListScreen: View {
                 animate(Motion.layout) { proxy.scrollTo("t:" + id, anchor: .center) }
                 app.revealTask = nil
             }
+        }
+        // Deleted on another device while open: it turns read-only in place, and a row being typed is dropped.
+        .onChange(of: app.deletedList(source) != nil) { _, deleted in
+            if deleted, adding { app.cancelDraft() }
         }
         .sensoryFeedback(.impact(weight: .light), trigger: dropped)
         // A soft echo of the last check, as the sun appears (1.5 s after it, when the rows settle).
@@ -129,6 +142,13 @@ struct ListScreen: View {
                 ToolbarItem(placement: .primaryAction) {
                     Button("Cancel") { app.cancelDraft() }
                 }
+            } else if let l = app.deletedList(source) {
+                // Where the Mac's header has its ↶; nothing in the "…" applies to a deleted list.
+                ToolbarItem(placement: .primaryAction) {
+                    Button { app.restoreList(l.id) } label: { Image(systemName: "arrow.uturn.backward") }
+                        .tint(p.ink)
+                        .accessibilityLabel("Restore List")
+                }
             } else if case let .list(id) = source {
                 ToolbarItem(placement: .primaryAction) { ListMenu(listID: id) }
             } else {
@@ -154,13 +174,15 @@ struct ListScreen: View {
                 }
                 if case let .list(id) = source, !editingNotes, let notes = app.list(id)?.notes, !notes.isEmpty {
                     // A list's notes are a step quieter (§23), in the same Markdown as a task's. A tap on them edits
-                    // them; a checklist box toggles in one op (IX:1540–1543).
-                    MarkdownText(text: notes, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5) { new, checking in
-                        app.setNotes(list: id, new, name: checking ? "Check Item" : "Uncheck Item")
-                    }
+                    // them; a checklist box toggles in one op (IX:1540–1543). A deleted list's only read.
+                    let live = app.deletedList(source) == nil
+                    MarkdownText(text: notes, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5,
+                                 onToggle: live ? { new, checking in
+                                     app.setNotes(list: id, new, name: checking ? "Check Item" : "Uncheck Item")
+                                 } : nil)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
-                    .onTapGesture { app.editListNotes(id) }
+                    .onTapGesture { if live { app.editListNotes(id) } }
                     .padding(.top, 2)
                 }
             }
@@ -181,8 +203,10 @@ struct ListScreen: View {
     }
 
     /// Today's date after its title. A list's title has no count (the user, 2026-10-31; IX:1564).
+    /// A deleted list's, "In Trash" (§28).
     private var subtitle: String? {
-        source == .today ? DateLabel.long(app.today, today: app.today) : nil
+        if app.deletedList(source) != nil { return "In Trash" }
+        return source == .today ? DateLabel.long(app.today, today: app.today) : nil
     }
 
     // MARK: Rows
@@ -232,11 +256,18 @@ struct ListScreen: View {
                 .motionTransition(.opacity)
         case let .task(t, indent, groupDay, day):
             // On the phone the row whose details are open keeps the selected fill, then fades out as they close.
-            TaskRow(task: t, source: source, indent: indent, groupDay: groupDay, day: day,
-                    selected: app.flashed.contains(t.id) || (app.isSplit ? app.selectedTask == t.id : app.detailTask == t.id))
+            let row = TaskRow(task: t, source: source, indent: indent, groupDay: groupDay, day: day,
+                              selected: app.flashed.contains(t.id) || (app.isSplit ? app.selectedTask == t.id : app.detailTask == t.id))
                 .motionTransition(.opacity)
-                .modifier(TaskSwipes(task: t, source: source))
-                .contextMenu { TaskMenu(task: t, source: source) }
+            if app.deletedList(source) != nil {
+                // A deleted list's rows are deaf, as on the Mac (§28, the user's A): a task comes out from Trash's
+                // row for its list, where a tap opens its details.
+                row.disabled(true)
+            } else {
+                row
+                    .modifier(TaskSwipes(task: t, source: source))
+                    .contextMenu { TaskMenu(task: t, source: source) }
+            }
         case let .completedToggle(key, count, open):
             CompletedToggleRow(key: key, count: count, open: open, top: 0)
         case let .deletedList(l, _, open, day):
@@ -246,6 +277,9 @@ struct ListScreen: View {
                         .tint(p.accent)
                 }
                 .contextMenu {
+                    // The Mac's Open · Show Details · ── · Restore List; on the phone they open the same thing.
+                    Button { app.openDeletedList(l.id) } label: { Label("Open", systemImage: "arrow.right.circle") }
+                    Divider()
                     Button { app.restoreList(l.id) } label: { Label("Restore List", systemImage: "arrow.uturn.backward") }
                 }
         case .draft:
@@ -339,9 +373,14 @@ struct TaskMenu: View {
             Divider()
         }
         if source == .trash {
+            // Put Back · Put Back in ▸; one whose list is in Trash has nowhere to go back to: Put Back in ▸ (the
+            // Mac's `Menus.trash`; a tap stands in for Show Details).
             if app.canPutBack(task) {
                 Button { app.putBack(task.id) } label: { Label("Put Back", systemImage: "arrow.uturn.backward") }
             }
+            Menu {
+                PutBackInItems(task: task)
+            } label: { Label("Put Back in", systemImage: "tray.and.arrow.up") }
         } else {
             Button { app.toggle(task.id) } label: {
                 Label(task.isDone ? "Mark as Not Completed" : "Complete", systemImage: task.isDone ? "circle" : "checkmark.circle")
@@ -361,6 +400,32 @@ struct TaskMenu: View {
     }
 }
 
+/// "Put back in" (§28; the Mac's `putBackInItems`): every live list and the task's own deleted list, in the sidebar's
+/// order, under the menu's "Put back in". Its own deleted list is disabled, "In Trash" its second line; its own live list
+/// is checked, and picking it is a plain Put Back. Names are cut as Move to cuts them.
+struct PutBackInItems: View {
+    let task: TaskModel
+    @Environment(AppModel.self) private var app
+    var body: some View {
+        Section("Put back in") {
+            ForEach(app.putBackTargets(task)) { target in
+                let name = MenuName.fit(app.listName(target.id))
+                Button { app.putBack(task.id, in: target.id) } label: {
+                    if target.inTrash {
+                        Text(name)
+                        Text("In Trash")
+                    } else if target.home {
+                        Label(name, systemImage: "checkmark")
+                    } else {
+                        Text(name)
+                    }
+                }
+                .disabled(target.inTrash)
+            }
+        }
+    }
+}
+
 /// A heading's long-press menu (§23): Rename, its notes, New Task in it, Collapse or Expand, Delete Heading. Dragging
 /// covers the Mac's Move Up and Move Down.
 struct HeadingMenu: View {
@@ -368,6 +433,18 @@ struct HeadingMenu: View {
     @Environment(AppModel.self) private var app
     var body: some View {
         let collapsed = app.collapsed.contains(heading.id)
+        let fold = Button { app.toggleCollapse(heading.id) } label: {
+            Label(collapsed ? "Expand" : "Collapse", systemImage: collapsed ? "chevron.down" : "chevron.right")
+        }
+        // In a deleted list it folds, and that's all (§28, the Mac's `readOnlyHeading`).
+        if app.isTrashed(heading) {
+            fold
+        } else {
+            menu(fold)
+        }
+    }
+
+    @ViewBuilder private func menu(_ fold: some View) -> some View {
         Button { app.renameHeading(heading.id) } label: { Label("Rename", systemImage: "pencil") }
         Button { app.editHeadingNotes(heading.id) } label: {
             Label(heading.notes.isEmpty ? "Add Notes" : "Edit Notes", systemImage: "text.alignleft")
@@ -379,9 +456,7 @@ struct HeadingMenu: View {
                   systemImage: "plus")
         }
         Divider()
-        Button { app.toggleCollapse(heading.id) } label: {
-            Label(collapsed ? "Expand" : "Collapse", systemImage: collapsed ? "chevron.down" : "chevron.right")
-        }
+        fold
         Divider()
         Button(role: .destructive) { app.deleteHeading(heading.id) } label: { Label("Delete Heading", systemImage: "trash") }
     }

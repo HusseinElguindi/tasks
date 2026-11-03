@@ -251,9 +251,11 @@ struct HeadingNotesRow: View {
                     .accessibilityIdentifier("headingNotes")
                     .onAppear { DispatchQueue.main.async { focus = .notes } }
             } else {
-                MarkdownText(text: heading.notes, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5) { new, checking in
-                    app.setNotes(heading.id, new, name: checking ? "Check Item" : "Uncheck Item")
-                }
+                // In a deleted list they only read (§28).
+                MarkdownText(text: heading.notes, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5,
+                             onToggle: app.isTrashed(heading) ? nil : { new, checking in
+                                 app.setNotes(heading.id, new, name: checking ? "Check Item" : "Uncheck Item")
+                             })
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture { app.editHeadingNotes(heading.id) }
@@ -306,7 +308,8 @@ struct CompletedToggleRow: View {
 }
 
 /// A deleted list in Trash: one row on the day it was deleted, its tile on the checkbox's column, "11 tasks", and a
-/// chevron that shows what it holds.
+/// chevron that shows what it holds. A tap opens the list, read-only; the chevron, its own 44×44 at the right, expands
+/// it in place (§28: the Mac's click shows the list, its chevron or Space expands it).
 struct DeletedListRow: View {
     let list: ListModel
     let open: Bool
@@ -315,7 +318,7 @@ struct DeletedListRow: View {
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     var body: some View {
-        Button { toggle() } label: {
+        Button { app.openDeletedList(list.id) } label: {
             HStack(spacing: 0) {
                 ListTile(content: .mono(list.monogram), hue: p.tile(slot: list.colorSlot))
                     .frame(width: 44)
@@ -327,23 +330,59 @@ struct DeletedListRow: View {
                 Text(app.deletedListCount(list.id) + (day.map { " · " + DateLabel.monthDay($0) } ?? ""))
                     .font(Typo.quiet).foregroundStyle(p.inkTertiary).fixedSize().padding(.leading, 8)
                 Spacer(minLength: 8)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(p.inkTertiary)
-                    .rotationEffect(.degrees(open ? 90 : 0))
-                    .frame(width: 30, height: 30)
+                Button { toggle() } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(p.inkTertiary)
+                        .rotationEffect(.degrees(open ? 90 : 0))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
-            .padding(.trailing, 8)
+            .padding(.trailing, 1)
             .frame(minHeight: Metric.rowHeight)
         }
         .buttonStyle(RowStyle())
+        // One element: a tap opens it, and the rotor has the rest (§28).
+        .accessibilityElement(children: .ignore)
+        .accessibilityAddTraits(.isButton)
         .accessibilityLabel("\(list.name), deleted list, \(app.deletedListCount(list.id))")
-        .accessibilityHint(open ? "Hides its tasks" : "Shows its tasks")
+        .accessibilityHint("Opens the list")
+        .accessibilityAction { app.openDeletedList(list.id) }
+        .accessibilityAction(named: "Open") { app.openDeletedList(list.id) }
+        .accessibilityAction(named: open ? "Collapse" : "Expand") { toggle() }
+        .accessibilityAction(named: "Restore List") { app.restoreList(list.id) }
     }
     private func toggle() {
         animate(Motion.layout) {
             if open { app.expandedTrash.remove(list.id) } else { app.expandedTrash.insert(list.id) }
         }
+    }
+}
+
+/// A deleted list's banner, above its large title (§28; the sheet's trash banner): when it was deleted, why it's
+/// read-only, and Restore. Two lines, as the Mac's is in a narrow pane.
+struct DeletedListBanner: View {
+    let list: ListModel
+    @Environment(AppModel.self) private var app
+    @Environment(\.palette) private var p
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "trash").foregroundStyle(p.inkSecondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Deleted " + (list.archivedAt.map { DateLabel.monthDay(app.localDay($0)) } ?? ""))
+                    .font(Typo.body).foregroundStyle(p.ink)
+                Text("Read-only until you restore it.").font(Typo.meta).foregroundStyle(p.inkSecondary)
+            }
+            Spacer(minLength: 8)
+            Button("Restore") { app.restoreList(list.id) }
+                .buttonStyle(CapsuleButtonStyle(kind: .tinted, height: 30))
+        }
+        .padding(12)
+        .background(p.fillControl, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("deletedListBanner")
     }
 }
 

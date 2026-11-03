@@ -119,7 +119,9 @@ extension AppModel {
             if open { out += done.compactMap(task).map { .task($0, indent: false) } }
         }
         if models.isEmpty && done.isEmpty && !(draftHere && draft?.editsListNotes != true) {
-            out.append(.empty(title: "No tasks", message: "Tap + to add one. Tasks you add here stay in this list.", symbol: "checklist"))
+            // A deleted list has no + to point to.
+            let message = list(id)?.isDeleted == true ? "" : "Tap + to add one. Tasks you add here stay in this list."
+            out.append(.empty(title: "No tasks", message: message, symbol: "checklist"))
         }
     }
 

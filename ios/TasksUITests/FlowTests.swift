@@ -1394,6 +1394,120 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(row.waitForNonExistence(timeout: 3), "out of Trash")
     }
 
+    // MARK: Trash: Put back in, and a deleted list opened (batch 2 §4)
+
+    /// A task deleted on its own from a live list: its menu has Put Back and Put Back in ▸, whose lists are the live
+    /// ones with its own checked. Put back in another goes to its bottom: "Put back “…” in Errands", with Undo.
+    func testPutBackInFromTheMenu() {
+        app.launchArguments += ["-screen", "trash", "-hold", "YES"]
+        app.launch()
+        let row = app.staticTexts["Buy a second lamp"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "Trash")
+        menuOpen {
+            row.press(forDuration: 1.2)
+            XCTAssertTrue(app.buttons["Put Back"].waitForExistence(timeout: 3), "Put Back")
+            let into = app.buttons["Put Back in"].firstMatch
+            XCTAssertTrue(into.exists, "Put Back in")
+            into.tap()
+            XCTAssertTrue(app.buttons["Errands"].waitForExistence(timeout: 3), "the live lists")
+            XCTAssertTrue(app.buttons["Home"].exists, "its own list")
+            XCTAssertFalse(app.buttons["Apartment move"].exists, "no other deleted list")
+            app.buttons["Errands"].tap()
+        }
+        XCTAssertTrue(notice("Put back “Buy a second lamp” in Errands").waitForExistence(timeout: 3), "the notice")
+        XCTAssertTrue(row.waitForNonExistence(timeout: 3), "out of Trash")
+        app.buttons["Undo"].firstMatch.tap()
+        XCTAssertTrue(row.waitForExistence(timeout: 3), "back in Trash")
+    }
+
+    /// A task whose list is in Trash has nowhere to go back to: Put Back in ▸ only, with its own list there but
+    /// disabled ("In Trash").
+    func testATaskWhoseListIsInTrashHasOnlyPutBackIn() {
+        app.launchArguments += ["-screen", "trash", "-expand", "move", "-hold", "YES"]
+        app.launch()
+        let row = app.staticTexts["Cancel the old internet plan"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "under its deleted list")
+        menuOpen {
+            row.press(forDuration: 1.2)
+            let into = app.buttons["Put Back in"].firstMatch
+            XCTAssertTrue(into.waitForExistence(timeout: 3), "Put Back in")
+            XCTAssertFalse(app.buttons["Put Back"].exists, "no Put Back")
+            into.tap()
+            XCTAssertTrue(app.buttons["School"].waitForExistence(timeout: 3), "the live lists")
+            let own = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Apartment move'")).firstMatch
+            XCTAssertTrue(own.exists, "its own list is there")
+            XCTAssertFalse(own.isEnabled, "and disabled")
+            app.buttons["School"].tap()
+        }
+        XCTAssertTrue(notice("Put back “Cancel the old internet plan” in School").waitForExistence(timeout: 3), "the notice")
+        XCTAssertTrue(row.waitForNonExistence(timeout: 3), "out of Trash")
+    }
+
+    /// The sheet of a task whose list is in Trash: "School  In Trash", and the banner's Put Back in (a menu) and Restore
+    /// List. Put back in, the sheet closes.
+    func testTheSheetPutsBackIn() {
+        app.launchArguments += ["-screen", "trash", "-expand", "move", "-hold", "YES"]
+        app.launch()
+        let row = app.staticTexts["Return the moving boxes"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "under its deleted list")
+        row.tap()
+        let words = app.staticTexts["Its list is in Trash. Put it in another list, or restore the list."]
+        XCTAssertTrue(words.waitForExistence(timeout: 3), "the banner")
+        XCTAssertTrue(app.staticTexts["In Trash"].exists, "the List row")
+        XCTAssertTrue(app.buttons["Restore List"].exists, "Restore List")
+        let into = app.buttons.matching(NSPredicate(format: "label == 'Put Back in'"))
+        XCTAssertEqual(into.count, 2, "the bar's ↶ and the banner's")
+        into.element(boundBy: 1).tap()
+        let home = app.buttons["Home"].firstMatch
+        XCTAssertTrue(home.waitForExistence(timeout: 3), "Put back in")
+        home.tap()
+        XCTAssertTrue(notice("Put back “Return the moving boxes” in Home").waitForExistence(timeout: 3), "the notice")
+        XCTAssertTrue(words.waitForNonExistence(timeout: 3), "the sheet closed")
+        XCTAssertTrue(row.waitForNonExistence(timeout: 3), "out of Trash")
+    }
+
+    /// A tap on a deleted list's row opens it, read-only: the banner, "In Trash", deaf rows, no + and no "…". Restore
+    /// makes it the live list in place, and back goes to Trash, where its row is gone.
+    func testADeletedListOpensAndRestoresInPlace() {
+        app.launchArguments += ["-screen", "trash", "-hold", "YES"]
+        app.launch()
+        let deleted = app.buttons["Apartment move, deleted list, 2 tasks"]
+        XCTAssertTrue(deleted.waitForExistence(timeout: 10), "Trash")
+        deleted.tap()
+        let banner = app.staticTexts["Read-only until you restore it."]
+        XCTAssertTrue(banner.waitForExistence(timeout: 3), "the banner")
+        XCTAssertTrue(app.staticTexts["listHeader"].label.contains("In Trash"), "In Trash after the title")
+        XCTAssertTrue(app.buttons["Restore List"].exists, "the bar's ↶")
+        XCTAssertFalse(app.buttons["List actions"].exists, "no …")
+        XCTAssertFalse(app.buttons["New Task"].exists, "no +")
+        let task = app.staticTexts["Cancel the old internet plan"].firstMatch
+        XCTAssertTrue(task.exists, "its tasks")
+        task.tap()
+        XCTAssertFalse(app.buttons["Done"].waitForExistence(timeout: 1.5), "a row takes no tap")
+        app.buttons["Restore"].tap()
+        XCTAssertTrue(notice("Restored Apartment move").waitForExistence(timeout: 3), "the notice")
+        XCTAssertTrue(banner.waitForNonExistence(timeout: 3), "the banner goes")
+        XCTAssertTrue(app.buttons["List actions"].waitForExistence(timeout: 3), "the … is back")
+        XCTAssertTrue(app.buttons["New Task"].exists, "the + is back")
+        XCTAssertFalse(app.staticTexts["listHeader"].label.contains("In Trash"), "In Trash goes")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.staticTexts["listHeader"].waitForExistence(timeout: 3))
+        XCTAssertEqual(app.staticTexts["listHeader"].label, "Trash", "back to Trash")
+        XCTAssertFalse(deleted.exists, "its row is gone")
+    }
+
+    /// The chevron at a deleted list's right expands it in place: its tasks show under it, and Trash stays.
+    func testTheChevronExpandsADeletedList() {
+        app.launchArguments += ["-screen", "trash"]
+        app.launch()
+        let deleted = app.buttons["Apartment move, deleted list, 2 tasks"]
+        XCTAssertTrue(deleted.waitForExistence(timeout: 10), "Trash")
+        XCTAssertFalse(app.staticTexts["Cancel the old internet plan"].exists, "closed")
+        deleted.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 0.5)).withOffset(CGVector(dx: -23, dy: 0)).tap()
+        XCTAssertTrue(app.staticTexts["Cancel the old internet plan"].waitForExistence(timeout: 3), "expanded")
+        XCTAssertEqual(app.staticTexts["listHeader"].label, "Trash", "still Trash")
+    }
+
     /// The checkbox names its task and reads the ring (the Mac's label): overdue, due today, planned for today.
     func testTheCheckboxNamesItsTask() {
         app.launchArguments += ["-screen", "list:school"]

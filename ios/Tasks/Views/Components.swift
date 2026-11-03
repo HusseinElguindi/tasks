@@ -532,17 +532,28 @@ struct CapsuleButtonStyle: ButtonStyle {
     enum Kind { case primary, tinted, neutral, destructive }
     var kind: Kind = .neutral
     var height: CGFloat = 32
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.modifier(CapsuleFace(kind: kind, height: height, pressed: configuration.isPressed))
+    }
+}
+
+/// A capsule button's look, for a menu's label as well (a menu's label takes no button style).
+struct CapsuleFace: ViewModifier {
+    let kind: CapsuleButtonStyle.Kind
+    let height: CGFloat
+    var pressed = false
     @Environment(\.palette) private var p
     @Environment(\.isEnabled) private var enabled
 
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
+    func body(content: Content) -> some View {
+        content
             .font(.system(size: 15, weight: .medium))
             .foregroundStyle(fg)
             .padding(.horizontal, 14)
             .frame(height: height)
             .background(bg, in: Capsule())
-            .overlay { if configuration.isPressed { Capsule().fill(Color.black.opacity(0.14)) } }
+            .overlay { if pressed { Capsule().fill(Color.black.opacity(0.14)) } }
             .opacity(enabled ? 1 : 0.45)
             .contentShape(Capsule())
     }
@@ -551,6 +562,12 @@ struct CapsuleButtonStyle: ButtonStyle {
     }
     private var fg: Color {
         switch kind { case .primary: p.onAccent; case .tinted: p.accentText; case .neutral: p.ink; case .destructive: p.danger }
+    }
+}
+
+extension View {
+    func capsuleFace(_ kind: CapsuleButtonStyle.Kind, height: CGFloat = 32) -> some View {
+        modifier(CapsuleFace(kind: kind, height: height))
     }
 }
 

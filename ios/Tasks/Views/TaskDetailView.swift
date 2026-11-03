@@ -208,6 +208,10 @@ private struct TaskDetailContent: View {
             if trashed {
                 if app.canPutBack(t) {
                     BarIcon(symbol: "arrow.uturn.backward", label: "Put Back") { app.putBack(t.id) }
+                } else {
+                    // Its list is in Trash: ↶ pops Put back in (IX §28).
+                    Menu { PutBackInItems(task: t) } label: { BarGlyph(symbol: "arrow.uturn.backward") }
+                        .accessibilityLabel("Put Back in")
                 }
             } else {
                 BarIcon(symbol: "trash", label: "Delete") {
@@ -229,27 +233,39 @@ private struct TaskDetailContent: View {
         .padding(.top, inline ? 0 : 6)
     }
 
-    /// Why it's read-only, and the way out: Put Back for a task deleted on its own, Restore List for one that went with
-    /// its list (§28). A task is put back, a list is restored (the Mac's `TrashVerb`).
+    /// Why it's read-only, and the way out: Put Back for a task deleted on its own; for one whose list is in Trash, Put
+    /// Back in (a menu) or Restore List, on a row under the words (§28). A task is put back, a list is restored (the
+    /// Mac's `TrashVerb`).
     private var trashBanner: some View {
         let l = app.list(t.list)
         let listGone = l?.isDeleted ?? true
-        return HStack(spacing: 10) {
+        return HStack(alignment: listGone ? .top : .center, spacing: 10) {
             Image(systemName: "trash").foregroundStyle(p.inkSecondary)
             VStack(alignment: .leading, spacing: 2) {
                 Text(deletedWords).font(Typo.body).foregroundStyle(p.ink)
                 // The list's name is in the bar above and the List row below, each on one line; the banner doesn't
                 // repeat it, as the Mac's doesn't (§21), so a long name can't turn it into a paragraph.
                 Text(app.canPutBack(t) ? "Read-only until you put it back."
-                     : t.deleted ? "Its list is in Trash too. Restore the list, then put this task back."
-                     : "Its list is in Trash. Restore the list to bring it back.")
+                     : "Its list is in Trash. Put it in another list, or restore the list.")
                     .font(Typo.meta).foregroundStyle(p.inkSecondary)
+                if listGone, let l {
+                    HStack(spacing: 8) {
+                        Menu { PutBackInItems(task: t) } label: {
+                            HStack(spacing: 5) {
+                                Text("Put Back in")
+                                Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
+                            }
+                            .capsuleFace(.tinted, height: 30)
+                        }
+                        .accessibilityLabel("Put Back in")
+                        Button("Restore List") { app.restoreList(l.id) }.buttonStyle(CapsuleButtonStyle(kind: .neutral, height: 30))
+                    }
+                    .padding(.top, 8)
+                }
             }
             Spacer(minLength: 8)
             if app.canPutBack(t) {
                 Button("Put Back") { app.putBack(t.id) }.buttonStyle(CapsuleButtonStyle(kind: .tinted, height: 30))
-            } else if listGone, let l {
-                Button("Restore List") { app.restoreList(l.id) }.buttonStyle(CapsuleButtonStyle(kind: .tinted, height: 30))
             }
         }
         .padding(12)
@@ -290,6 +306,8 @@ private struct TaskDetailContent: View {
                         ListTile(content: .mono(l.monogram), hue: p.tile(slot: l.colorSlot), scale: 0.85)
                         // One line, cut with an ellipsis, as the Mac's List pop-up is (a long name used to wrap).
                         Text(l.name).font(Typo.body).foregroundStyle(p.ink).lineLimit(1)
+                        // "School  In Trash" (IX §28).
+                        if l.isDeleted { Text("In Trash").font(Typo.body).foregroundStyle(p.inkTertiary).lineLimit(1).fixedSize() }
                     }
                     Image(systemName: "chevron.up.chevron.down").font(.system(size: 10, weight: .semibold)).foregroundStyle(p.inkTertiary)
                 }
@@ -376,18 +394,24 @@ struct BarIcon: View {
     let symbol: String
     let label: String
     let action: () -> Void
+    var body: some View {
+        Button(action: action) { BarGlyph(symbol: symbol) }
+            .buttonStyle(.plain)
+            .accessibilityLabel(label)
+    }
+}
+
+/// A bar icon's look, for a menu's label as well as `BarIcon`'s.
+struct BarGlyph: View {
+    let symbol: String
     @Environment(\.palette) private var p
     var body: some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(p.inkSecondary)
-                .frame(width: 34, height: 34)
-                .background(p.fillControl, in: Circle())
-                .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
+        Image(systemName: symbol)
+            .font(.system(size: 15, weight: .medium))
+            .foregroundStyle(p.inkSecondary)
+            .frame(width: 34, height: 34)
+            .background(p.fillControl, in: Circle())
+            .contentShape(Circle())
     }
 }
 

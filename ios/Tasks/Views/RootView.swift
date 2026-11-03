@@ -88,7 +88,7 @@ struct FloatingControls: View {
             }
             HStack(alignment: .center, spacing: 12) {
                 if home && showBar { HomeBar() } else { Spacer() }
-                if home || (source?.canAdd ?? false) {
+                if home || app.canAdd(source) {
                     AddButton { add() }
                         .motionTransition(.scale(scale: 0.6).combined(with: .opacity))
                 }
@@ -98,7 +98,7 @@ struct FloatingControls: View {
         .padding(.bottom, 6)
         // Reduce Motion: they change at once (IX:255).
         .motion(Motion.natural, value: home)
-        .motion(Motion.natural, value: source?.canAdd)
+        .motion(Motion.natural, value: app.canAdd(source))
     }
 
     private func add() {

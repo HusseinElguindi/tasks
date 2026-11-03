@@ -97,6 +97,8 @@ enum DropSlot {
 extension AppModel {
     /// The runs a drag stays within (`DragRun`), in the views where rows move: a list, Today and Undated.
     func dragRuns(_ lines: [Line], _ source: Source) -> [DragRun]? {
+        // A deleted list doesn't reorder (§28).
+        guard deletedList(source) == nil else { return nil }
         switch source {
         case .list, .today, .undated: break
         default: return nil

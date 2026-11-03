@@ -336,19 +336,6 @@ final class AppModel {
         show(Notice(text: "Deleted \(quote(title))", undo: undoStep))
     }
 
-    /// Put Back (§22): a task deleted on its own goes back to its list, at its old place. "Put back “Milk” in Inbox",
-    /// with Undo (the Mac's `putBack`: a task is put back, a list is restored, `TrashVerb`).
-    func putBack(_ id: EntityID) {
-        guard let t = task(id), canPutBack(t) else { return }
-        var done = false
-        animate(Motion.layout) { done = undoable("Put Back", ids: [id]) { store.putBack([id], name: "Put Back", undoManager: undo) } }
-        guard done else { return }
-        show(Notice(text: "Put back \(quote(t.title)) in \(listName(t.list))", undo: undoStep))
-    }
-
-    /// Whether Put Back can take the task out of Trash: deleted on its own, from a live list.
-    func canPutBack(_ t: TaskModel) -> Bool { t.deleted && !t.isHeading && projection.isActive(list: t.list) }
-
     /// A When or a deadline. A change that takes the task out of the view on screen (Today's rule, Upcoming's and
     /// Undated's) says where it went, with Undo: "Scheduled for Fri, Nov 6", "Due …", "Removed from Today" (the Mac's
     /// `setDate`, IX:701–704).
@@ -462,6 +449,8 @@ final class AppModel {
 
     /// Starts typing in `source`. Text being typed elsewhere ends first, as a tap elsewhere would end it.
     func startDraft(_ source: Source, _ kind: Draft.Kind = .task, text: String = "") {
+        // A deleted list reads but doesn't edit (§28).
+        guard deletedList(source) == nil else { return }
         if draft != nil { endDraft() }
         animate(Motion.layout) { draft = Draft(source: source, kind: kind, title: text) }
     }
