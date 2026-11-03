@@ -11,6 +11,7 @@ struct TaskRow: View {
     var selected = false
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var trashed: Bool { app.isTrashed(task) }
     private var done: Bool { task.isDone }
@@ -19,7 +20,7 @@ struct TaskRow: View {
     var body: some View {
         Button { open() } label: {
             HStack(spacing: 0) {
-                Checkbox(checked: done, cue: app.cue(task, in: source), readOnly: trashed) {
+                Checkbox(checked: done, title: title, cue: app.cue(task, in: source), readOnly: trashed) {
                     app.toggle(task.id)
                 }
                 .padding(.leading, Metric.rowPad - 11)   // the 44pt hit area centres the 22pt ring
@@ -32,7 +33,9 @@ struct TaskRow: View {
                             Text(title)
                                 .font(Typo.row)
                                 .foregroundStyle(titleColor)
-                                .strikethrough(settled, color: p.inkQuiet)
+                                // Struck at once, as on the Mac; the row moves when the checks settle (§8).
+                                .strikethrough(done, color: p.inkQuiet)
+                                .animation(reduceMotion ? nil : .easeOut(duration: done ? 0.7 : 0.2), value: done)
                                 .fadeTruncation(Metric.titleFade, text: title)
                             if !settled { NotesHint(summary: task.notesSummary).fixedSize() }
                         }
@@ -52,7 +55,6 @@ struct TaskRow: View {
             .frame(minHeight: Metric.rowHeight)
         }
         .buttonStyle(RowStyle(selected: selected, fadesOut: !app.isSplit))
-        .opacity(app.completing.contains(task.id) ? 0.75 : 1)
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
@@ -60,7 +62,7 @@ struct TaskRow: View {
     private var title: String { task.title.isEmpty ? "New Task" : task.title }
 
     private var titleColor: Color {
-        if settled { return p.inkTertiary }
+        if done { return p.inkTertiary }
         if trashed { return p.inkSecondary }
         return task.title.isEmpty ? p.inkTertiary : p.ink
     }

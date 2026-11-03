@@ -60,7 +60,8 @@ private struct TaskDetailContent: View {
                 VStack(alignment: .leading, spacing: 0) {
                     if trashed { trashBanner }
                     HStack(alignment: .top, spacing: 0) {
-                        Checkbox(checked: t.isDone, cue: app.cue(t, in: .list(t.list)), readOnly: trashed, size: 24) {
+                        Checkbox(checked: t.isDone, title: t.title.isEmpty ? "New Task" : t.title, cue: app.cue(t, in: .list(t.list)),
+                                 readOnly: trashed, size: 24) {
                             app.toggle(t.id)
                         }
                         .padding(.leading, -10)

@@ -51,10 +51,10 @@ final class FlowTests: XCTestCase {
         app.launch()
         app.buttons["Today, 13"].firstMatch.tap()
         sleep(1)
-        app.buttons.matching(identifier: "Complete").element(boundBy: 0).tap()
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Complete: '")).element(boundBy: 0).tap()
         usleep(400_000)
         shot("flow-complete-checked")
-        sleep(2)
+        usleep(1_500_000)   // the rows settle 1.5 s after the check; the notice lasts 5 s
         shot("flow-complete-moved")
         app.buttons["Undo"].firstMatch.tap()
         sleep(1)
@@ -409,7 +409,7 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(title.waitForExistence(timeout: 3))
         add()
         let y = settledFrame(title).midY
-        let box = app.buttons.matching(identifier: "Complete").allElementsBoundByIndex.first { abs($0.frame.midY - y) < 12 }
+        let box = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Complete: '")).allElementsBoundByIndex.first { abs($0.frame.midY - y) < 12 }
         XCTAssertNotNil(box, "the task's box")
         box?.tap()
         XCTAssertFalse(app.buttons["Undo"].waitForExistence(timeout: 1.5), "nothing completed (no notice)")
@@ -1204,5 +1204,37 @@ final class FlowTests: XCTestCase {
         button.tap()
         XCTAssertTrue(app.staticTexts["Put back “Buy a second lamp” in Home"].waitForExistence(timeout: 3), "the notice")
         XCTAssertTrue(row.waitForNonExistence(timeout: 3), "out of Trash")
+    }
+
+    /// The checkbox names its task and reads the ring (the Mac's label): overdue, due today, planned for today.
+    func testTheCheckboxNamesItsTask() {
+        app.launchArguments += ["-screen", "list:school"]
+        app.launch()
+        XCTAssertTrue(app.buttons["Complete: ECE 358 lab report, overdue"].waitForExistence(timeout: 10), "overdue")
+        XCTAssertTrue(app.buttons["Complete: Return the ECE 358 lab kit, due today"].exists, "due today")
+        XCTAssertTrue(app.buttons["Complete: Pay the MSE 333 field trip fee, due today, planned for today"].exists,
+                      "due and planned")
+        XCTAssertTrue(app.buttons["Complete: Print ECE 358 formula sheet"].exists, "no cue")
+    }
+
+    /// Checked rows stay in place, struck at once, until 1.5 s pass with no further check: a second check restarts the
+    /// wait, so both move together (IX:665–669).
+    func testChecksSettleTogether() {
+        app.launchArguments += ["-screen", "list:school"]
+        app.launch()
+        let a = app.buttons["Complete: Print ECE 358 formula sheet"]
+        let b = app.buttons["Complete: Ask about co-op interview slots"]
+        XCTAssertTrue(a.waitForExistence(timeout: 10), "School")
+        a.tap()
+        let tA = Date()
+        b.tap()
+        // Past the old 1.1 s, and within 1.5 s of the second check: the first is still in place.
+        let wait = 1.25 - Date().timeIntervalSince(tA)
+        if wait > 0 { usleep(UInt32(wait * 1_000_000)) }
+        XCTAssertTrue(app.buttons["Mark not done: Print ECE 358 formula sheet"].exists,
+                      "the first check waits for the second (\(Date().timeIntervalSince(tA)) s)")
+        XCTAssertTrue(app.buttons["Mark not done: Ask about co-op interview slots"].exists)
+        XCTAssertTrue(app.buttons["Mark not done: Print ECE 358 formula sheet"].waitForNonExistence(timeout: 4), "settled")
+        XCTAssertFalse(app.buttons["Mark not done: Ask about co-op interview slots"].exists, "together")
     }
 }

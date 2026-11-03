@@ -102,8 +102,9 @@ final class AppModel {
     @ObservationIgnored let undo = UndoManager()
 
     // Transient UI state
-    /// Checked a moment ago: still shown in place, as the Mac's pins (§8).
+    /// Checked a moment ago: still shown in place, as the Mac's pins (§8), until the rows settle together.
     var completing: Set<EntityID> = []
+    @ObservationIgnored private var settleTask: Task<Void, Never>?
     /// Open Completed disclosures: list ids, and `Self.todayDone` for Today's.
     var showCompleted: Set<String> = []
     /// Deleted lists opened in Trash.
@@ -251,19 +252,28 @@ final class AppModel {
         if t.isDone {
             completing.remove(id)
             animate(Motion.layout) { _ = store.toggleComplete([id], undoManager: undo) }
+            restartSettle()
             return
         }
         guard store.toggleComplete([id], undoManager: undo) else { return }
         completing.insert(id)
+        restartSettle()
         show(Notice(text: "Completed \(quote(t.title))") { [weak self] in
             guard let self else { return }
             self.completing.remove(id)
             animate(Motion.layout) { self.undo.undo() }
         })
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(1.1))
-            guard completing.contains(id), !holdTransient else { return }
-            animate(Motion.layout) { _ = completing.remove(id) }
+    }
+
+    /// Checked rows stay in place until 1.5 s pass with no further check; each check restarts the wait, so a run of
+    /// checks moves together (IX:665–669; the Mac's `TK.Timer.settle`).
+    private func restartSettle() {
+        settleTask?.cancel()
+        guard !completing.isEmpty else { return }
+        settleTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(1.5))
+            guard let self, !Task.isCancelled, !self.holdTransient else { return }
+            animate(Motion.layout) { self.completing.removeAll() }
         }
     }
 
@@ -469,6 +479,8 @@ final class AppModel {
 
     func show(_ n: Notice) {
         animate(Motion.natural) { notice = n }
+        // Said as it appears, as the Mac's status messages are (IX:1139).
+        AccessibilityNotification.Announcement(n.text).post()
         let id = n.id
         Task { @MainActor in
             try? await Task.sleep(for: n.undo == nil ? Notice.infoLife : Notice.life)

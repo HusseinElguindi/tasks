@@ -17,6 +17,9 @@ struct RootView: View {
             app.show(Notice(text: n, undo: nil))
             app.store.notice = nil
         }
+        .onChange(of: app.syncStoppedWords) { old, new in
+            if old == nil, let new { AccessibilityNotification.Announcement(new).post() }
+        }
     }
 }
 
@@ -28,6 +31,7 @@ struct PhoneRoot: View {
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     @Environment(\.interfaceStyle) private var style
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var keyboardUp = false
 
     var body: some View {
@@ -42,7 +46,7 @@ struct PhoneRoot: View {
                 .ignoresSafeArea(.keyboard)
                 .opacity(keyboardUp ? 0 : 1)
                 .allowsHitTesting(!keyboardUp)
-                .animation(.easeOut(duration: 0.15), value: keyboardUp)
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: keyboardUp)
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in keyboardUp = true }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in keyboardUp = false }
@@ -70,6 +74,7 @@ struct FloatingControls: View {
     var showBar = true
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -87,8 +92,9 @@ struct FloatingControls: View {
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 6)
-        .animation(Motion.natural, value: home)
-        .animation(Motion.natural, value: source?.canAdd)
+        // Reduce Motion: they change at once (IX:255).
+        .animation(reduceMotion ? nil : Motion.natural, value: home)
+        .animation(reduceMotion ? nil : Motion.natural, value: source?.canAdd)
     }
 
     private func add() {
