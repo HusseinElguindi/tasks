@@ -4,12 +4,18 @@ import SwiftUI
 struct RootView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.horizontalSizeClass) private var size
+    /// The scene's undo manager: the window's one stack (Undo.swift).
+    @Environment(\.undoManager) private var undoManager
 
     var body: some View {
         Group {
             if size == .regular { SplitRoot() } else { PhoneRoot() }
         }
-        .onAppear { app.isSplit = size == .regular }
+        .onAppear {
+            app.adopt(undoManager)
+            app.isSplit = size == .regular
+        }
+        .onChange(of: undoManager.map(ObjectIdentifier.init)) { app.adopt(undoManager) }
         .onChange(of: size) { _, s in app.isSplit = s == .regular }
         // TasksCore's own notices ("A change couldn't be saved."), as the app's.
         .onChange(of: app.store.notice) { _, n in

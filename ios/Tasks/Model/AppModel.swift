@@ -113,8 +113,18 @@ struct Draft: Equatable {
 final class AppModel {
     let store: Store
     var projection: Projection { store.projection }
-    /// The notice's Undo: every change made here registers on it (the Store's actions take it).
-    @ObservationIgnored let undo = UndoManager()
+    /// The window's undo stack: the scene's own manager once `RootView` hands it over (`adopt`, Undo.swift). Every
+    /// change made here registers on it, named, through `undoable`.
+    @ObservationIgnored var undo = UndoManager()
+    @ObservationIgnored var undoObservers: [NSObjectProtocol] = []
+    /// The step Undo and Redo would take ("Delete Task"), or nil when there's none: the "…" menu's items.
+    var undoName: String?
+    var redoName: String?
+    /// The rows an undo or redo touched: they show the selected fill for 0.6 s, then fade (Undo.swift).
+    var flashed: Set<EntityID> = []
+    @ObservationIgnored var flashToken: UUID?
+    /// The first of them, scrolled into view on its screen.
+    var undoReveal: UndoReveal?
 
     // Transient UI state
     /// Checked a moment ago: still shown in place, as the Mac's pins (§8), until the rows settle together.
@@ -283,18 +293,14 @@ final class AppModel {
         guard let t = task(id), !isTrashed(t) else { return }
         if t.isDone {
             completing.remove(id)
-            animate(Motion.layout) { _ = store.toggleComplete([id], undoManager: undo) }
+            animate(Motion.layout) { _ = undoable("Mark as Not Done", ids: [id]) { store.toggleComplete([id], name: "Mark as Not Done", undoManager: undo) } }
             restartSettle()
             return
         }
-        guard store.toggleComplete([id], undoManager: undo) else { return }
+        guard undoable("Complete", ids: [id], { store.toggleComplete([id], name: "Complete", undoManager: undo) }) else { return }
         completing.insert(id)
         restartSettle()
-        show(Notice(text: "Completed \(quote(t.title))") { [weak self] in
-            guard let self else { return }
-            self.completing.remove(id)
-            animate(Motion.layout) { self.undo.undo() }
-        })
+        show(Notice(text: "Completed \(quote(t.title))", undo: undoStep))
     }
 
     /// Checked rows stay in place until 1.5 s pass with no further check; each check restarts the wait, so a run of
@@ -315,11 +321,9 @@ final class AppModel {
         if selectedTask == id { selectedTask = nil }
         if detailTask == id { detailTask = nil }
         var done = false
-        animate(Motion.layout) { done = store.delete([id], undoManager: undo) }
+        animate(Motion.layout) { done = undoable("Delete Task", ids: [id]) { store.delete([id], name: "Delete Task", undoManager: undo) } }
         guard done else { return }
-        show(Notice(text: "Deleted \(quote(title))") { [weak self] in
-            animate(Motion.layout) { self?.undo.undo() }
-        })
+        show(Notice(text: "Deleted \(quote(title))", undo: undoStep))
     }
 
     /// Put Back (§22): a task deleted on its own goes back to its list, at its old place. "Put back “Milk” in Inbox",
@@ -327,11 +331,9 @@ final class AppModel {
     func putBack(_ id: EntityID) {
         guard let t = task(id), canPutBack(t) else { return }
         var done = false
-        animate(Motion.layout) { done = store.putBack([id], name: "Put Back", undoManager: undo) }
+        animate(Motion.layout) { done = undoable("Put Back", ids: [id]) { store.putBack([id], name: "Put Back", undoManager: undo) } }
         guard done else { return }
-        show(Notice(text: "Put back \(quote(t.title)) in \(listName(t.list))") { [weak self] in
-            animate(Motion.layout) { self?.undo.undo() }
-        })
+        show(Notice(text: "Put back \(quote(t.title)) in \(listName(t.list))", undo: undoStep))
     }
 
     /// Whether Put Back can take the task out of Trash: deleted on its own, from a live list.
@@ -347,17 +349,17 @@ final class AppModel {
         let leaves = leaves(view, when: kind == .when ? date : t.when, deadline: kind == .deadline ? date : t.deadline)
         var done = false
         animate(Motion.layout) {
-            switch kind {
-            case .when: done = store.setWhen([id], date, name: name, undoManager: undo)
-            case .deadline: done = store.setDeadline([id], date, name: name, undoManager: undo)
+            done = undoable(name, ids: [id]) {
+                switch kind {
+                case .when: store.setWhen([id], date, name: name, undoManager: undo)
+                case .deadline: store.setDeadline([id], date, name: name, undoManager: undo)
+                }
             }
         }
         guard done, leaves else { return }
         let text = date.map { (kind == .when ? "Scheduled for " : "Due ") + DateLabel.long($0, today: today) }
             ?? "Removed from \(view.map(title) ?? "Today")"
-        show(Notice(text: text) { [weak self] in
-            animate(Motion.layout) { self?.undo.undo() }
-        })
+        show(Notice(text: text, undo: undoStep))
     }
 
     /// Whether a task with these dates is no longer in `view` (the Mac's `leavesView`): Today holds a When or a deadline
@@ -376,16 +378,22 @@ final class AppModel {
     func move(_ id: EntityID, to listID: EntityID) {
         guard let t = task(id), t.list != listID, !t.isHeading, !isTrashed(t) else { return }
         var done = false
-        animate(Motion.layout) { done = store.move([id], to: listID, name: "Move", undoManager: undo) }
+        animate(Motion.layout) { done = undoable("Move Task", ids: [id]) { store.move([id], to: listID, name: "Move Task", undoManager: undo) } }
         guard done, case .list? = shown else { return }
-        show(Notice(text: "Moved to \(listName(listID))") { [weak self] in
-            animate(Motion.layout) { self?.undo.undo() }
-        })
+        show(Notice(text: "Moved to \(listName(listID))", undo: undoStep))
     }
 
-    func setTitle(_ id: EntityID, _ title: String, name: String? = nil) { store.setTitle(id, title, name: name, undoManager: undo) }
-    func setNotes(_ id: EntityID, _ notes: String, name: String? = nil) { store.setNotes(id, notes, name: name, undoManager: undo) }
-    func setNotes(list id: EntityID, _ notes: String, name: String) { store.setNotes(list: id, notes, name: name, undoManager: undo) }
+    func setTitle(_ id: EntityID, _ title: String, name: String? = nil) {
+        let name = name ?? "Edit Title"
+        undoable(name, ids: [id]) { store.setTitle(id, title, name: name, undoManager: undo) }
+    }
+    func setNotes(_ id: EntityID, _ notes: String, name: String? = nil) {
+        let name = name ?? "Edit Notes"
+        undoable(name, ids: [id]) { store.setNotes(id, notes, name: name, undoManager: undo) }
+    }
+    func setNotes(list id: EntityID, _ notes: String, name: String) {
+        undoable(name) { store.setNotes(list: id, notes, name: name, undoManager: undo) }
+    }
 
     // MARK: Lists
 
@@ -395,15 +403,13 @@ final class AppModel {
         let next = activeLists.first { $0.id != id }
         var done = false
         animate(Motion.layout) {
-            done = store.deleteList(id, undoManager: undo)
+            done = undoable("Delete List") { store.deleteList(id, name: "Delete List", undoManager: undo) }
             guard done else { return }
             if selection == .list(id) { selection = next.map { .list($0.id) } ?? .today }
             path.removeAll { $0 == .list(id) }
         }
         guard done else { return }
-        show(Notice(text: "Deleted \(name)") { [weak self] in
-            animate(Motion.layout) { self?.undo.undo() }
-        })
+        show(Notice(text: "Deleted \(name)", undo: undoStep))
     }
 
     func restoreList(_ id: EntityID) {
@@ -411,13 +417,11 @@ final class AppModel {
         let name = listName(id)
         var done = false
         animate(Motion.layout) {
-            done = store.restoreList(id, undoManager: undo)
+            done = undoable("Restore List") { store.restoreList(id, name: "Restore List", undoManager: undo) }
             if done { expandedTrash.remove(id) }
         }
         guard done else { return }
-        show(Notice(text: "Restored \(name)") { [weak self] in
-            animate(Motion.layout) { self?.undo.undo() }
-        })
+        show(Notice(text: "Restored \(name)", undo: undoStep))
     }
 
     func saveList(_ editor: ListEditor) {
@@ -427,12 +431,12 @@ final class AppModel {
             // Only a name the user changed: an untouched Rename never writes the old name over one that synced in.
             let original = editor.original.trimmingCharacters(in: .whitespaces)
             if EditSession.write(name, original: original, current: list(id)?.name) != nil {
-                store.rename(list: id, to: name, undoManager: undo)
+                undoable("Rename List") { store.rename(list: id, to: name, undoManager: undo) }
             }
             return
         }
         var id: EntityID?
-        animate(Motion.layout) { id = store.createList(name: name, undoManager: undo) }
+        animate(Motion.layout) { undoable("New List") { id = store.createList(name: name, undoManager: undo); return true } }
         if let id { open(.list(id)) }
     }
 
@@ -498,7 +502,11 @@ final class AppModel {
         case .heading, .rename, .notes:
             return writeHeading(Draft(source: d.source, kind: d.kind, title: title, token: d.token))
         }
-        store.createTask(title: title, in: listID, at: anchor, when: when, undoManager: undo)
+        var made: EntityID?
+        undoable("New Task", ids: []) {
+            made = store.createTask(title: title, in: listID, at: anchor, when: when, undoManager: undo)
+            return made != nil
+        }
         return true
     }
 
@@ -542,10 +550,11 @@ final class AppModel {
         }
     }
 
+    /// The notice's Undo: the stack's undo, which confirms with its own notice ("Undo Complete").
     func undoNotice() {
         guard let n = notice else { return }
-        n.undo?()
         animate(Motion.natural) { notice = nil }
+        n.undo?()
     }
 
     /// “Buy milk”, cut at 28 characters; an empty title is “Untitled” (the Mac's `quote`).

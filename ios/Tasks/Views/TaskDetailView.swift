@@ -19,6 +19,17 @@ struct TaskDetailView: View {
             }
         }
         .background(inline ? Color.clear : p.base)
+        // The sheet covers the root's notice: it has its own at its foot, 16 in from its sides and 12 above the bottom
+        // safe area, so checking the box or undoing here confirms where it's seen (batch 2 §1).
+        .overlay(alignment: .bottom) {
+            if !inline, let n = app.notice {
+                NoticeView(notice: n)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 12)
+                    .motionTransition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
         .sheet(item: inline ? .constant(nil) : $app.dateTarget) { target in
             DatePickerSheet(target: target).themed(app).datePickerPresentation()
         }

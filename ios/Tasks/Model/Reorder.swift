@@ -110,7 +110,7 @@ extension AppModel {
         let target = DropSlot.slot(from, to)
         if t.isHeading {
             let anchor = DropSlot.section(target: target, others: others) { self.task($0)?.isHeading == true }
-            return store.moveSection(first, at: anchor, name: "Move Heading", undoManager: undo)
+            return undoable("Move Heading", ids: [first]) { store.moveSection(first, at: anchor, name: "Move Heading", undoManager: undo) }
         }
         let inView = if case .list = source { false } else { true }
         let open = Set(projection.openTasks(in: t.list).ids)
@@ -118,7 +118,7 @@ extension AppModel {
             guard self.collapsed.contains(prev), self.isHeading(prev) else { return nil }
             return self.projection.section(of: prev).dropFirst().last { open.contains($0) && !moving.contains($0) }
         }
-        return store.reorder(moving, in: t.list, at: anchor, name: "Move", undoManager: undo)
+        return undoable("Move", ids: moving) { store.reorder(moving, in: t.list, at: anchor, name: "Move", undoManager: undo) }
     }
 
     /// A list dropped on Home (and iPad's sidebar). Today and the views aren't in the run, so they don't move.
@@ -128,6 +128,6 @@ extension AppModel {
         let moving = from.map { ids[$0] }
         let others = ids.indices.filter { !from.contains($0) }.map { ids[$0] }
         let anchor = DropSlot.list(target: DropSlot.slot(from, to), others: others)
-        return store.reorderLists(moving, at: anchor, name: "Move List", undoManager: undo)
+        return undoable("Move List") { store.reorderLists(moving, at: anchor, name: "Move List", undoManager: undo) }
     }
 }

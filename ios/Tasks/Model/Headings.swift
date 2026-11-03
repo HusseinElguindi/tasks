@@ -45,14 +45,14 @@ extension AppModel {
         case let .heading(before):
             guard case let .list(list) = d.source, !d.title.isEmpty else { return false }
             let at: Ordering.Anchor = before.map { .before($0) } ?? .bottom
-            _ = store.createHeading(title: d.title, in: list, at: at, undoManager: undo)
+            undoable("New Heading") { store.createHeading(title: d.title, in: list, at: at, undoManager: undo) != nil }
         case let .rename(h, original):
             if !d.title.isEmpty, let name = EditSession.write(d.title, original: original, current: task(h)?.title) {
-                store.setTitle(h, name, name: "Rename Heading", undoManager: undo)
+                undoable("Rename Heading", ids: [h]) { store.setTitle(h, name, name: "Rename Heading", undoManager: undo) }
             }
         case let .notes(h, original):
             if let notes = EditSession.write(d.title, original: original, current: task(h)?.notes) {
-                store.setNotes(h, notes, name: "Edit Notes", undoManager: undo)
+                undoable("Edit Notes", ids: [h]) { store.setNotes(h, notes, name: "Edit Notes", undoManager: undo) }
             }
         case .task, .taskIn, .listNotes: break
         }
@@ -119,10 +119,8 @@ extension AppModel {
         guard let h = task(id), h.isHeading else { return }
         if draft?.editedHeading == id { cancelDraft() }
         var done = false
-        animate(Motion.layout) { done = store.delete([id], name: "Delete Heading", undoManager: undo) }
+        animate(Motion.layout) { done = undoable("Delete Heading", ids: [id]) { store.delete([id], name: "Delete Heading", undoManager: undo) } }
         guard done else { return }
-        show(Notice(text: "Deleted heading \(quote(h.title))") { [weak self] in
-            animate(Motion.layout) { self?.undo.undo() }
-        })
+        show(Notice(text: "Deleted heading \(quote(h.title))", undo: undoStep))
     }
 }

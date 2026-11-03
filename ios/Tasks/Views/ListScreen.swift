@@ -60,6 +60,13 @@ struct ListScreen: View {
                 guard let kind, adding, kind != .task, app.draft?.editedHeading == nil, !editingNotes else { return }
                 animate(Motion.layout) { proxy.scrollTo("draft") }
             }
+            // An undo or a redo: the first row it touched, scrolled into view (the least that shows it).
+            .task(id: app.undoReveal) {
+                guard let r = app.undoReveal, app.shown == source else { return }
+                try? await Task.sleep(for: .milliseconds(50))
+                animate(Motion.layout) { proxy.scrollTo("t:" + r.id) }
+                app.undoReveal = nil
+            }
             // Show in <list>: the task is scrolled into view once the list is up.
             .task(id: app.revealTask) {
                 guard let id = app.revealTask, source == .list(app.task(id)?.list ?? "") else { return }
@@ -123,6 +130,8 @@ struct ListScreen: View {
                 }
             } else if case let .list(id) = source {
                 ToolbarItem(placement: .primaryAction) { ListMenu(listID: id) }
+            } else {
+                ToolbarItem(placement: .primaryAction) { ViewMenu() }
             }
         }
     }
@@ -212,7 +221,7 @@ struct ListScreen: View {
         case let .task(t, indent, groupDay, day):
             // On the phone the row whose details are open keeps the selected fill, then fades out as they close.
             TaskRow(task: t, source: source, indent: indent, groupDay: groupDay, day: day,
-                    selected: app.isSplit ? app.selectedTask == t.id : app.detailTask == t.id)
+                    selected: app.flashed.contains(t.id) || (app.isSplit ? app.selectedTask == t.id : app.detailTask == t.id))
                 .motionTransition(.opacity)
                 .modifier(TaskSwipes(task: t, source: source))
                 .contextMenu { TaskMenu(task: t, source: source) }
@@ -372,6 +381,7 @@ struct ListMenu: View {
     @Environment(\.palette) private var p
     var body: some View {
         Menu {
+            UndoItems()
             Button { app.listEditor = .init(listID: listID, name: app.list(listID)?.name ?? "") } label: {
                 Label("Rename", systemImage: "pencil")
             }

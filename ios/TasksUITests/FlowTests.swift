@@ -1571,4 +1571,129 @@ final class FlowTests: XCTestCase {
         XCTAssertLessThanOrEqual(sun.frame.maxY, completed.frame.minY, "the sun comes first, the Completed group after it")
         XCTAssertFalse(app.staticTexts["Nothing for today"].exists)
     }
+
+    // MARK: Undo and redo (batch 2, item 1; IX §9)
+
+    private func notice(_ text: String) -> XCUIElement {
+        app.staticTexts.matching(NSPredicate(format: "label == %@", text)).firstMatch
+    }
+
+    /// The list's "…" has Undo <step> while there's a step and Redo <step> after an undo; each confirms with a notice,
+    /// and the row comes back or goes.
+    func testUndoAndRedoFromTheMenu() {
+        // Notices stay (-hold): XCTest's queries can take longer than an undo's 1.8 s notice.
+        app.launchArguments += ["-screen", "list:phys", "-hold", "YES"]
+        app.launch()
+        let row = app.staticTexts["Buy safety glasses for the lab"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        sleep(1)
+        let more = app.buttons["List actions"]
+        more.tap()
+        XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Undo'")).firstMatch.exists, "no step, no Undo")
+        app.buttons["Show Completed"].firstMatch.tap()   // the menu closes; this isn't a change to undo
+        sleep(1)
+        menuOpen {
+            row.press(forDuration: 1.2)
+            app.buttons["Delete"].firstMatch.tap()
+        }
+        sleep(1)
+        XCTAssertFalse(row.exists, "deleted")
+        more.tap()
+        app.buttons["Undo Delete Task"].firstMatch.tap()
+        XCTAssertTrue(row.waitForExistence(timeout: 3), "undone: the row is back")
+        XCTAssertTrue(notice("Undo Delete Task").waitForExistence(timeout: 2), "the notice says what was undone")
+        more.tap()
+        app.buttons["Redo Delete Task"].firstMatch.tap()
+        sleep(1)
+        XCTAssertFalse(row.exists, "redone: the row goes again")
+        XCTAssertTrue(notice("Redo Delete Task").waitForExistence(timeout: 2))
+    }
+
+    /// Undo from another screen goes back to the one the change was made on, at once, and shows the row.
+    func testUndoGoesBackToWhereTheChangeWasMade() {
+        // Notices stay (-hold): XCTest's queries can take longer than an undo's 1.8 s notice.
+        app.launchArguments += ["-screen", "list:phys", "-hold", "YES"]
+        app.launch()
+        let box = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Complete: Buy safety glasses'")).firstMatch
+        XCTAssertTrue(box.waitForExistence(timeout: 10))
+        sleep(1)
+        box.tap()
+        sleep(2)
+        back()
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Today'")).firstMatch.tap()
+        sleep(1)
+        app.buttons["More"].tap()
+        app.buttons["Undo Complete"].firstMatch.tap()
+        XCTAssertTrue(notice("Undo Complete").waitForExistence(timeout: 2), "the notice says what was undone")
+        let header = app.descendants(matching: .any)["listHeader"].firstMatch
+        XCTAssertTrue(header.label.hasPrefix("PHYS 122"), "back in PHYS 122: \(header.label)")
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Complete: Buy safety glasses'")).firstMatch.exists,
+                      "the task is open again, in view")
+    }
+
+    /// The notice's Undo is the stack's: it confirms the same way.
+    func testTheNoticesUndoConfirms() {
+        app.launchArguments += ["-screen", "list:phys"]
+        app.launch()
+        let box = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Complete: Buy safety glasses'")).firstMatch
+        XCTAssertTrue(box.waitForExistence(timeout: 10))
+        sleep(1)
+        box.tap()
+        app.buttons["Undo"].firstMatch.tap()
+        XCTAssertTrue(notice("Undo Complete").waitForExistence(timeout: 2))
+        XCTAssertTrue(box.exists, "open again")
+    }
+
+    /// ⌘Z and ⇧⌘Z on a hardware keyboard, with nothing being typed.
+    func testCommandZUndoesAndRedoes() {
+        app.launchArguments += ["-screen", "list:phys"]
+        app.launch()
+        let row = app.staticTexts["Buy safety glasses for the lab"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        sleep(1)
+        menuOpen {
+            row.press(forDuration: 1.2)
+            app.buttons["Delete"].firstMatch.tap()
+        }
+        sleep(1)
+        XCTAssertFalse(row.exists)
+        app.typeKey("z", modifierFlags: .command)
+        XCTAssertTrue(row.waitForExistence(timeout: 3), "⌘Z undoes")
+        app.typeKey("z", modifierFlags: [.command, .shift])
+        sleep(1)
+        XCTAssertFalse(row.exists, "⇧⌘Z redoes")
+    }
+
+    /// Typing in a field and leaving it doesn't take the store's steps off the stack.
+    func testTypingLeavesTheStepsBelow() {
+        app.launchArguments += ["-screen", "list:phys"]
+        app.launch()
+        let box = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Complete: Buy safety glasses'")).firstMatch
+        XCTAssertTrue(box.waitForExistence(timeout: 10))
+        sleep(1)
+        box.tap()
+        sleep(2)
+        add()
+        app.typeText("Something")
+        app.buttons["Cancel"].firstMatch.tap()
+        sleep(1)
+        app.buttons["List actions"].tap()
+        XCTAssertTrue(app.buttons["Undo Complete"].firstMatch.exists, "the completion is still the step to undo")
+    }
+
+    /// In a task's sheet, checking its box confirms in the sheet, where it's seen.
+    func testTheSheetShowsItsNotice() {
+        app.launchArguments += ["-screen", "list:phys"]
+        app.launch()
+        let row = app.staticTexts["Buy safety glasses for the lab"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        sleep(1)
+        row.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["detailList"].waitForExistence(timeout: 5))
+        sleep(1)
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Complete: Buy safety glasses'")).allElementsBoundByIndex
+            .first { $0.isHittable }?.tap()
+        let undo = app.buttons.matching(NSPredicate(format: "label == 'Undo'")).allElementsBoundByIndex
+        XCTAssertTrue(undo.contains { $0.isHittable }, "the notice's Undo shows over the sheet")
+    }
 }
