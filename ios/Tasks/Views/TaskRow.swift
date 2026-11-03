@@ -14,51 +14,76 @@ struct TaskRow: View {
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Counts the checks made here, each of which flashes the row once.
+    @State private var flashes = 0
 
     private var trashed: Bool { app.isTrashed(task) }
     private var done: Bool { task.isDone }
     private var settled: Bool { done && !app.completing.contains(task.id) }
+    /// Checked here a moment ago (the box, a swipe, the menu): it sparks, and the row and its title flash warm.
+    private var sparks: Bool { done && app.completing.contains(task.id) }
 
     var body: some View {
         Button { open() } label: {
-            HStack(spacing: 0) {
-                Checkbox(checked: done, title: title, cue: app.cue(task, in: source), readOnly: trashed) {
-                    app.toggle(task.id)
+            // The flash (COLOR.md §4, the Mac's `sparkFlashT`): 700 ms ease-out, only for a check made here; none under
+            // Reduce Motion, where the title takes ink-tertiary at once.
+            KeyframeAnimator(initialValue: 0.0, trigger: flashes) { heat in
+                label(heat: heat)
+            } keyframes: { _ in
+                KeyframeTrack {
+                    MoveKeyframe(1.0)
+                    LinearKeyframe(0, duration: 0.7, timingCurve: .easeOut)
                 }
-                .padding(.leading, Metric.rowPad - 11)   // the 44pt hit area centres the 22pt ring
-                .padding(.trailing, Metric.titleGap - 11)
-
-                TitleThenName(after: task.deadline != nil && showsDates ? 8 : 0) {
-                    TitleSlot {
-                        HStack(spacing: 8) {
-                            // Cut off, its last 31pt fade out (§24); the notes hint after it stays whole.
-                            Text(title)
-                                .font(Typo.row)
-                                .foregroundStyle(titleColor)
-                                // Struck at once, as on the Mac; the row moves when the checks settle (§8).
-                                .strikethrough(done, color: p.inkQuiet)
-                                .animation(reduceMotion ? nil : .easeOut(duration: done ? 0.7 : 0.2), value: done)
-                                .fadeTruncation(Metric.titleFade, text: title)
-                            if !settled { NotesHint(summary: task.notesSummary).fixedSize() }
-                        }
-                        if let w = task.when, shows(when: w) { QuietWhen(date: w) }
-                    }
-                    if let name = whereName {
-                        Text(name)
-                            .font(Typo.quiet)
-                            .foregroundStyle(p.inkTertiary)
-                            .fadeTruncation(Metric.titleFade, text: name)
-                    }
-                }
-                if let d = task.deadline, showsDates { DeadlineChip(date: d, groupDay: groupDay) }
             }
-            .padding(.trailing, 12)
-            .padding(.leading, indent ? 30 : 0)
-            .frame(minHeight: Metric.rowHeight)
         }
+        .onChange(of: done) { _, now in if now, sparks, !reduceMotion { flashes += 1 } }
         .buttonStyle(RowStyle(selected: selected, fadesOut: !app.isSplit))
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    private func label(heat: Double) -> some View {
+        HStack(spacing: 0) {
+            Checkbox(checked: done, title: title, cue: app.cue(task, in: source), readOnly: trashed, sparks: sparks) {
+                app.toggle(task.id)
+            }
+            .padding(.leading, Metric.rowPad - 11)   // the 44pt hit area centres the 22pt ring
+            .padding(.trailing, Metric.titleGap - 11)
+
+            TitleThenName(after: task.deadline != nil && showsDates ? 8 : 0) {
+                TitleSlot {
+                    HStack(spacing: 8) {
+                        // Cut off, its last 31pt fade out (§24); the notes hint after it stays whole.
+                        Text(title)
+                            .font(Typo.row)
+                            // Checked here, it goes from the spark to ink-tertiary (700 ms ease-out); unchecked,
+                            // back in 200 ms. Struck at once, as on the Mac; the row moves when the checks settle (§8).
+                            .foregroundStyle(heat > 0 ? p.spark.mix(with: titleColor, by: 1 - heat) : titleColor)
+                            .strikethrough(done, color: p.inkQuiet)
+                            .motion(done ? nil : .easeOut(duration: 0.2), value: done)
+                            .fadeTruncation(Metric.titleFade, text: title)
+                        if !settled { NotesHint(summary: task.notesSummary).fixedSize() }
+                    }
+                    if let w = task.when, shows(when: w) { QuietWhen(date: w) }
+                }
+                if let name = whereName {
+                    Text(name)
+                        .font(Typo.quiet)
+                        .foregroundStyle(p.inkTertiary)
+                        .fadeTruncation(Metric.titleFade, text: name)
+                }
+            }
+            if let d = task.deadline, showsDates { DeadlineChip(date: d, groupDay: groupDay) }
+        }
+        .padding(.trailing, 12)
+        .padding(.leading, indent ? 30 : 0)
+        .frame(minHeight: Metric.rowHeight)
+        .background {
+            // The row's warm flash as it's checked: its rounded fill, the spark at 14% settling to clear.
+            if heat > 0 {
+                RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous).fill(p.spark.opacity(0.14 * heat))
+            }
+        }
     }
 
     private var title: String { task.title.isEmpty ? "New Task" : task.title }
@@ -123,7 +148,6 @@ struct HeadingRow: View {
     let count: Int
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var focus: DetailField?
 
     private var collapsed: Bool { app.collapsed.contains(heading.id) }
@@ -193,7 +217,7 @@ struct HeadingRow: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(p.inkTertiary)
                 .rotationEffect(.degrees(collapsed ? 0 : 90))
-                .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: collapsed)
+                .motion(.easeOut(duration: 0.2), value: collapsed)
                 .frame(width: 44, height: 38)
                 .contentShape(Rectangle())
         }

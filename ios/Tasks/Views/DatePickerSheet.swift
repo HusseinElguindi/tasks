@@ -8,6 +8,7 @@ struct DatePickerSheet: View {
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var topWeek: Int?
     @State private var picked: CalendarDate?
 
@@ -58,8 +59,8 @@ struct DatePickerSheet: View {
                 Text(DateLabel.monthTitle(year: headerMonth.year, month: headerMonth.month))
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(p.ink)
-                    .contentTransition(.numericText())
-                    .animation(.easeOut(duration: 0.15), value: headerMonth.month)
+                    .contentTransition(reduceMotion ? .identity : .numericText())
+                    .motion(.easeOut(duration: 0.15), value: headerMonth.month)
                 Spacer()
                 if let top = topWeek, abs(top + 1 - todayWeek) > 2 {
                     Button { scroll(to: todayWeek) } label: {
@@ -74,7 +75,7 @@ struct DatePickerSheet: View {
                         .background(p.accentTint, in: Capsule())
                     }
                     .buttonStyle(.plain)
-                    .transition(.opacity)
+                    .motionTransition(.opacity)
                 }
             }
             .frame(height: 28)
@@ -109,7 +110,7 @@ struct DatePickerSheet: View {
             Spacer(minLength: 0)
         }
         .background(p.popover)
-        .animation(.easeOut(duration: 0.15), value: topWeek.map { abs($0 + 1 - todayWeek) > 2 })
+        .motion(.easeOut(duration: 0.15), value: topWeek.map { abs($0 + 1 - todayWeek) > 2 })
         .onAppear {
             let anchor = current.map(weekIndex) ?? todayWeek
             topWeek = max(0, anchor - 1)
@@ -213,7 +214,8 @@ struct DatePickerSheet: View {
     // MARK: Behaviour
 
     private func scroll(to week: Int) {
-        withAnimation(Motion.natural) { topWeek = max(0, week - 1) }
+        // Under Reduce Motion the calendar jumps.
+        animate(Motion.natural) { topWeek = max(0, week - 1) }
     }
 
     private func choose(_ d: CalendarDate?) {

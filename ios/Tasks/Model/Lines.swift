@@ -15,6 +15,8 @@ enum Line: @MainActor Identifiable {
     case deletedList(ListModel, count: Int, open: Bool, day: CalendarDate? = nil)
     case draft
     case empty(title: String, message: String, symbol: String)
+    /// Today all done (IX §13): the sun and "All done for today", above the Completed group.
+    case allDone
 
     var id: String {
         switch self {
@@ -26,11 +28,16 @@ enum Line: @MainActor Identifiable {
         case let .deletedList(l, _, _, _): "dl:" + l.id
         case .draft: "draft"
         case .empty: "empty"
+        case .allDone: "allDone"
         }
     }
 
     var isDraft: Bool {
         if case .draft = self { true } else { false }
+    }
+
+    var isAllDone: Bool {
+        if case .allDone = self { true } else { false }
     }
 }
 
@@ -112,16 +119,16 @@ extension AppModel {
             out += ids.compactMap(task).map { .task($0, indent: false) }
         }
         let done = projection.todayDone.ids.filter { !completing.contains($0) }
+        let open = !any && !draftHere
+        // All done: the sun comes first, under the large title, and the Completed group after it (IX §13).
+        if open, !done.isEmpty { out.append(.allDone) }
         if !done.isEmpty {
-            let open = showCompleted.contains(Self.todayDone)
-            out.append(.completedToggle(key: Self.todayDone, count: done.count, open: open))
-            if open { out += done.compactMap(task).map { .task($0, indent: false) } }
+            let shown = showCompleted.contains(Self.todayDone)
+            out.append(.completedToggle(key: Self.todayDone, count: done.count, open: shown))
+            if shown { out += done.compactMap(task).map { .task($0, indent: false) } }
         }
-        guard !any, !draftHere else { return }
-        if done.isEmpty {
+        if open, done.isEmpty {
             out.append(.empty(title: "Nothing for today", message: "Tasks you plan for today, or that are due, show up here.", symbol: "sun.max"))
-        } else {
-            out.append(.empty(title: "All done for today", message: "", symbol: "sun.max.fill"))
         }
     }
 

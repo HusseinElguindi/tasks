@@ -1502,4 +1502,73 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(header.label.hasPrefix("Inbox"), "the Inbox opens: \(header.label)")
         XCTAssertFalse(app.buttons["When"].exists, "the details closed")
     }
+
+    // MARK: Moments (batch 2, item 5; COLOR.md §4)
+
+    /// How colourful a point is (0–255: the largest channel less the smallest). The dark ground and the inks are grey,
+    /// about 0; the spark is the warm accent.
+    private func chroma(_ cg: CGImage, _ p: CGPoint) -> Int {
+        let scale = CGFloat(cg.width) / app.frame.width
+        var px = [UInt8](repeating: 0, count: 4)
+        guard let ctx = CGContext(data: &px, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                                  space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return -1 }
+        ctx.draw(cg, in: CGRect(x: -Int(p.x * scale), y: -(cg.height - Int(p.y * scale) - 1), width: cg.width, height: cg.height))
+        let c = px.prefix(3).map(Int.init)
+        return c.max()! - c.min()!
+    }
+
+    /// A box checked here sparks: a ray below the box (19pt under its centre, in the row's empty space) and the row's
+    /// warm flash at its far end show in the spark's colour, then go.
+    func testCheckingHereSparks() {
+        app.launchArguments += ["-screen", "list:phys"]
+        app.launch()
+        let box = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Complete: Buy safety glasses'")).firstMatch
+        XCTAssertTrue(box.waitForExistence(timeout: 10))
+        sleep(1)
+        let c = CGPoint(x: box.frame.midX, y: box.frame.midY)
+        let ray = CGPoint(x: c.x, y: c.y + 19), end = CGPoint(x: app.frame.maxX - 40, y: c.y)
+        let rest = XCUIScreen.main.screenshot().image.cgImage!
+        XCTAssertLessThan(chroma(rest, ray), 12, "no colour under the box at rest")
+        XCTAssertLessThan(chroma(rest, end), 12, "no colour at the row's end at rest")
+        let frames = filming(14) { box.tap() }
+        let seen = frames.map { (ray: chroma($0, ray), end: chroma($0, end)) }
+        print("spark, \(seen)")
+        // The ray is a 3pt line over the row's flash: it's caught well above the flash beside it.
+        XCTAssertTrue(seen.contains { $0.ray > $0.end + 10 }, "a ray of the spark shows under the box")
+        XCTAssertTrue(seen.contains { $0.end > 6 }, "the row flashes warm")
+        sleep(1)
+        let after = XCUIScreen.main.screenshot().image.cgImage!
+        XCTAssertLessThan(chroma(after, ray), 12, "the spark is gone")
+        XCTAssertLessThan(chroma(after, end), 12, "the flash is gone")
+    }
+
+    /// Today all done: once the last check settles, the sun and "All done for today" come first, under the title, and
+    /// the Completed group after them.
+    func testTodayAllDoneShowsTheSunFirst() {
+        app.launchArguments += ["-screen", "today"]
+        app.launch()
+        let open = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Complete: '"))
+        XCTAssertTrue(open.firstMatch.waitForExistence(timeout: 10))
+        sleep(1)
+        let list = app.collectionViews.firstMatch
+        for _ in 0..<60 {
+            guard open.count > 0 else { break }
+            if let b = open.allElementsBoundByIndex.first(where: { $0.isHittable && $0.frame.minY > 120 && $0.frame.maxY < app.frame.maxY - 110 }) {
+                b.tap()
+            } else {
+                list.swipeUp()
+            }
+        }
+        XCTAssertEqual(open.count, 0, "every Today task checked")
+        let sun = app.staticTexts["All done for today"].firstMatch
+        XCTAssertTrue(sun.waitForExistence(timeout: 5), "the all-done block, once the rows settle")
+        list.swipeDown()
+        list.swipeDown()
+        sleep(1)
+        let completed = app.buttons.matching(NSPredicate(format: "label == 'Hide completed tasks' OR label BEGINSWITH 'Show '")).firstMatch
+        XCTAssertTrue(completed.exists, "the Completed group")
+        XCTAssertLessThanOrEqual(sun.frame.maxY, completed.frame.minY, "the sun comes first, the Completed group after it")
+        XCTAssertFalse(app.staticTexts["Nothing for today"].exists)
+    }
 }

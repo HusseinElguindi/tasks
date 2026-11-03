@@ -61,7 +61,7 @@ private struct TaskDetailContent: View {
                     if trashed { trashBanner }
                     HStack(alignment: .top, spacing: 0) {
                         Checkbox(checked: t.isDone, title: t.title.isEmpty ? "New Task" : t.title, cue: app.cue(t, in: .list(t.list)),
-                                 readOnly: trashed, size: 24) {
+                                 readOnly: trashed, size: 24, sparks: t.isDone && app.completing.contains(t.id)) {
                             app.toggle(t.id)
                         }
                         .padding(.leading, -10)

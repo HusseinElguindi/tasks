@@ -47,7 +47,7 @@ struct HomeView: View {
         .onScrollGeometryChange(for: Bool.self) { g in
             g.contentOffset.y + g.contentInsets.top > 40
         } action: { _, now in
-            withAnimation(.easeOut(duration: 0.15)) { folded = now }
+            animate(.easeOut(duration: 0.15)) { folded = now }
         }
         .navigationTitle("Tasks")
         .navigationBarTitleDisplayMode(.inline)

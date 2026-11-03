@@ -50,15 +50,45 @@ enum Typo {
     static let mono = Font.system(.footnote, design: .monospaced).weight(.bold)
 }
 
-/// Pane's three curves. Reduce Motion turns them all off.
+/// Pane's three curves, and the moments' (COLOR.md §4). Reduce Motion turns them all off.
 enum Motion {
     static var natural: Animation { .smooth(duration: 0.3) }
     static var layout: Animation { .smooth(duration: 0.25) }
     static var snappy: Animation { .snappy(duration: 0.2) }
+    /// The spark's ring and rays and the all-done sun's turn: `cubic-bezier(0.2, 0.8, 0.2, 1)` (the Mac's `TK.CA.flight`).
+    static let flight = UnitCurve.bezier(startControlPoint: UnitPoint(x: 0.2, y: 0.8), endControlPoint: UnitPoint(x: 0.2, y: 1))
 }
+
+// Reduce Motion (IX §3): every duration is 0, and the state still changes, in one frame. Every animation in ios/ goes
+// through one of these: `animate` for a change, `motion(_:value:)` for a view's `.animation`, `motionTransition` for an
+// insert or removal; a keyframe animation reads `accessibilityReduceMotion` and runs flat. The system's own (sheets,
+// push and pop, menus, swipe actions, the keyboard) follow the setting themselves.
 
 @MainActor
 func animate(_ animation: Animation = Motion.natural, _ body: () -> Void) {
     if UIAccessibility.isReduceMotionEnabled { body(); return }
     withAnimation(animation, body)
+}
+
+extension View {
+    /// `.animation(_:value:)`, off under Reduce Motion (it follows the setting live).
+    func motion<V: Equatable>(_ animation: Animation?, value: V) -> some View {
+        modifier(MotionGate(animation: animation, value: value))
+    }
+
+    /// `.transition(_:)`, the identity under Reduce Motion.
+    func motionTransition(_ t: AnyTransition) -> some View { modifier(TransitionGate(transition: t)) }
+}
+
+private struct MotionGate<V: Equatable>: ViewModifier {
+    let animation: Animation?
+    let value: V
+    @Environment(\.accessibilityReduceMotion) private var reduce
+    func body(content: Content) -> some View { content.animation(reduce ? nil : animation, value: value) }
+}
+
+private struct TransitionGate: ViewModifier {
+    let transition: AnyTransition
+    @Environment(\.accessibilityReduceMotion) private var reduce
+    func body(content: Content) -> some View { content.transition(reduce ? .identity : transition) }
 }

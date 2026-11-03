@@ -31,7 +31,6 @@ struct PhoneRoot: View {
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     @Environment(\.interfaceStyle) private var style
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var keyboardUp = false
 
     var body: some View {
@@ -46,7 +45,7 @@ struct PhoneRoot: View {
                 .ignoresSafeArea(.keyboard)
                 .opacity(keyboardUp ? 0 : 1)
                 .allowsHitTesting(!keyboardUp)
-                .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: keyboardUp)
+                .motion(.easeOut(duration: 0.15), value: keyboardUp)
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in keyboardUp = true }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in keyboardUp = false }
@@ -74,27 +73,26 @@ struct FloatingControls: View {
     var showBar = true
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let n = app.notice {
                 NoticeView(notice: n)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .motionTransition(.move(edge: .bottom).combined(with: .opacity))
             }
             HStack(alignment: .center, spacing: 12) {
                 if home && showBar { HomeBar() } else { Spacer() }
                 if home || (source?.canAdd ?? false) {
                     AddButton { add() }
-                        .transition(.scale(scale: 0.6).combined(with: .opacity))
+                        .motionTransition(.scale(scale: 0.6).combined(with: .opacity))
                 }
             }
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 6)
         // Reduce Motion: they change at once (IX:255).
-        .animation(reduceMotion ? nil : Motion.natural, value: home)
-        .animation(reduceMotion ? nil : Motion.natural, value: source?.canAdd)
+        .motion(Motion.natural, value: home)
+        .motion(Motion.natural, value: source?.canAdd)
     }
 
     private func add() {
@@ -268,7 +266,7 @@ private struct PaneModifier: ViewModifier {
             .overlay(shape.strokeBorder(focused ? p.linePane : p.linePaneDim, lineWidth: 1))
             .padding(8)
             .background(AppBackground())
-            .animation(.easeOut(duration: 0.06), value: focused)
+            .motion(.easeOut(duration: 0.06), value: focused)
     }
 }
 

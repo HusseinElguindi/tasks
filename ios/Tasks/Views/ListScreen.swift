@@ -13,6 +13,11 @@ struct ListScreen: View {
     @State private var draftFrame: CGRect?
     /// Counts drops that wrote something, for the light haptic on drop.
     @State private var dropped = 0
+    /// Today's all-done sun turns in as it next appears: when Today opens already all done, or its last row settles
+    /// while it's open (IX §13). Not when it scrolls back into view.
+    @State private var sunRise = true
+    /// Counts the times Today became all done while open, for the light haptic as the sun appears.
+    @State private var sunHaptic = 0
 
     private static let space = "rows"
     private var adding: Bool { app.draft?.source == source }
@@ -21,6 +26,7 @@ struct ListScreen: View {
 
     var body: some View {
         let lines = app.lines(source)
+        let allDone = lines.contains { $0.isAllDone }
         ScrollViewReader { proxy in
             List {
                 header
@@ -63,6 +69,13 @@ struct ListScreen: View {
             }
         }
         .sensoryFeedback(.impact(weight: .light), trigger: dropped)
+        // A soft echo of the last check, as the sun appears (1.5 s after it, when the rows settle).
+        .sensoryFeedback(.impact(weight: .light), trigger: sunHaptic)
+        .onChange(of: allDone) { _, now in
+            guard now else { return }
+            sunRise = true
+            sunHaptic += 1
+        }
         .coordinateSpace(.named(Self.space))
         // While adding, a tap anywhere outside the new-task row ends it. On a row or the header the tap goes no further
         // (`endsAddingOnTap`: the row doesn't open, its box doesn't check); this catches the rest, the list's empty
@@ -75,11 +88,16 @@ struct ListScreen: View {
         .refreshable { await app.syncNow() }
         .scrollContentBackground(.hidden)
         .environment(\.defaultMinListRowHeight, 0)
-        .background { if !app.isSplit { AppBackground() } }
+        .background {
+            ZStack {
+                if !app.isSplit { AppBackground() }
+                if source == .today { Sunrise(shown: allDone) }
+            }
+        }
         .onScrollGeometryChange(for: Bool.self) { g in
             g.contentOffset.y + g.contentInsets.top > 40
         } action: { _, now in
-            withAnimation(.easeOut(duration: 0.15)) { folded = now }
+            animate(.easeOut(duration: 0.15)) { folded = now }
         }
         .navigationTitle(app.title(source))
         .navigationBarTitleDisplayMode(.inline)
@@ -186,7 +204,7 @@ struct ListScreen: View {
                 .contextMenu { HeadingMenu(heading: h) }
         case let .headingNotes(h):
             HeadingNotesRow(heading: h)
-                .transition(.opacity)
+                .motionTransition(.opacity)
                 .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: {
                     if case .notes(h.id, _)? = app.draft?.kind { draftFrame = $0 }
                 }
@@ -195,7 +213,7 @@ struct ListScreen: View {
             // On the phone the row whose details are open keeps the selected fill, then fades out as they close.
             TaskRow(task: t, source: source, indent: indent, groupDay: groupDay, day: day,
                     selected: app.isSplit ? app.selectedTask == t.id : app.detailTask == t.id)
-                .transition(.opacity)
+                .motionTransition(.opacity)
                 .modifier(TaskSwipes(task: t, source: source))
                 .contextMenu { TaskMenu(task: t, source: source) }
         case let .completedToggle(key, count, open):
@@ -217,6 +235,8 @@ struct ListScreen: View {
             }
         case let .empty(title, message, symbol):
             EmptyState(title: title, message: message, symbol: symbol)
+        case .allDone:
+            AllDoneSun(rise: $sunRise)
         }
     }
 }
