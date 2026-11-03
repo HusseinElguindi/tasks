@@ -114,10 +114,10 @@ struct NotesHint: View {
     }
 }
 
-/// A heading (§23): its name, 15 semibold ink at the checkbox's edge, on a hairline; its notes under it, a step
-/// quieter; the chevron at the right, always shown (there's no hover). Collapsed, its open tasks' count follows the
-/// name. A tap on the name renames it in place (the phone has no heading details to select it for), a tap on its notes
-/// edits them, and the chevron takes its own tap: it never renames.
+/// A heading (§23): its name, 15 semibold ink at the checkbox's edge, on a hairline; the chevron at the right, always
+/// shown (there's no hover). Collapsed, its open tasks' count follows the name. A tap on the name does nothing (the
+/// phone has no heading details to select it for): Rename is in its long-press menu. The chevron takes its own tap.
+/// Its notes are the next line (`HeadingNotesRow`).
 struct HeadingRow: View {
     let heading: TaskModel
     let count: Int
@@ -130,50 +130,42 @@ struct HeadingRow: View {
     private var renaming: Bool {
         if case let .rename(h, _)? = app.draft?.kind { h == heading.id } else { false }
     }
-    private var editingNotes: Bool {
-        if case let .notes(h, _)? = app.draft?.kind { h == heading.id } else { false }
-    }
-    /// Its name is one line (pasted line breaks become spaces); its notes keep theirs.
+    /// Its name is one line: pasted line breaks become spaces.
     private var text: Binding<String> {
         Binding(get: { app.draft?.title ?? "" }, set: { new in
-            let text = editingNotes ? new : TitleText.oneLine(new)
+            let text = TitleText.oneLine(new)
             app.draft?.title = text
         })
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 0) {
-                if renaming { nameField } else { name }
-                chevron
-            }
-            .hairline(renaming ? .clear : p.lineSeparator, leading: Metric.rowPad, trailing: Metric.rowPad)
-            if !collapsed { notes }
+        HStack(spacing: 0) {
+            if renaming { nameField } else { name }
+            chevron
         }
+        .hairline(renaming ? .clear : p.lineSeparator, leading: Metric.rowPad, trailing: Metric.rowPad)
         .padding(.top, 11)
         .padding(.bottom, 4)
         .onChange(of: focus) { old, new in
             // The caret left the field (a tap elsewhere, the keyboard put away): it's written, once.
-            if old != nil, new == nil, renaming || editingNotes { app.endDraft() }
+            if old != nil, new == nil, renaming { app.endDraft() }
         }
     }
 
     private var name: some View {
-        Button { app.renameHeading(heading.id) } label: {
-            HStack(spacing: 8) {
-                Text(heading.title).font(Typo.heading).foregroundStyle(p.ink).lineLimit(1)
-                if collapsed {
-                    Text("\(count)").font(Typo.chip).monospacedDigit().foregroundStyle(p.inkTertiary)
-                }
-                Spacer(minLength: 0)
+        HStack(spacing: 8) {
+            Text(heading.title).font(Typo.heading).foregroundStyle(p.ink).lineLimit(1)
+            if collapsed {
+                Text("\(count)").font(Typo.chip).monospacedDigit().foregroundStyle(p.inkTertiary)
             }
-            .padding(.leading, Metric.rowPad)
-            .padding(.vertical, 9)
+            Spacer(minLength: 0)
         }
-        .buttonStyle(RowStyle())
+        .padding(.leading, Metric.rowPad)
+        .padding(.vertical, 9)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(heading.title)
         .accessibilityValue(collapsed ? "Collapsed, \(count) open" : "")
-        .accessibilityHint("Renames it")
         .accessibilityAddTraits(.isHeader)
         .accessibilityIdentifier("heading")
     }
@@ -194,7 +186,7 @@ struct HeadingRow: View {
             .onAppear { DispatchQueue.main.async { focus = .title } }
     }
 
-    /// Down when open, right when collapsed, turning in 200 ms ease-out. Above the row's press: it never renames.
+    /// Down when open, right when collapsed, turning in 200 ms ease-out.
     private var chevron: some View {
         Button { app.toggleCollapse(heading.id) } label: {
             Image(systemName: "chevron.right")
@@ -209,26 +201,43 @@ struct HeadingRow: View {
         .accessibilityLabel(collapsed ? "Expand \(heading.title)" : "Collapse \(heading.title)")
         .accessibilityIdentifier("chevron")
     }
+}
 
-    /// Its notes, at its name's edge: rendered at rest (a box toggles in one op), the notes editor while editing.
-    @ViewBuilder private var notes: some View {
-        if editingNotes {
-            NotesEditor(text: text, focus: $focus, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5, minHeight: 60) { _, _ in }
-                .accessibilityIdentifier("headingNotes")
-                .padding(.horizontal, Metric.rowPad)
-                .padding(.top, 3)
-                .padding(.bottom, 8)
-                .onAppear { DispatchQueue.main.async { focus = .notes } }
-        } else if !heading.notes.isEmpty {
-            MarkdownText(text: heading.notes, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5) { new, checking in
-                app.setNotes(heading.id, new, name: checking ? "Check Item" : "Uncheck Item")
+/// A heading's notes, the line under it, at its name's edge and a step quieter: rendered at rest (a box toggles in one
+/// op, a tap elsewhere edits them), the notes editor while editing. Their own line, so collapsing folds them into the
+/// heading with its tasks, and the rows below close up on the same curve (§23).
+struct HeadingNotesRow: View {
+    let heading: TaskModel
+    @Environment(AppModel.self) private var app
+    @Environment(\.palette) private var p
+    @FocusState private var focus: DetailField?
+
+    private var editing: Bool {
+        if case let .notes(h, _)? = app.draft?.kind { h == heading.id } else { false }
+    }
+    private var text: Binding<String> { Binding(get: { app.draft?.title ?? "" }, set: { app.draft?.title = $0 }) }
+
+    var body: some View {
+        Group {
+            if editing {
+                NotesEditor(text: text, focus: $focus, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5, minHeight: 60) { _, _ in }
+                    .accessibilityIdentifier("headingNotes")
+                    .onAppear { DispatchQueue.main.async { focus = .notes } }
+            } else {
+                MarkdownText(text: heading.notes, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5) { new, checking in
+                    app.setNotes(heading.id, new, name: checking ? "Check Item" : "Uncheck Item")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .onTapGesture { app.editHeadingNotes(heading.id) }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-            .onTapGesture { app.editHeadingNotes(heading.id) }
-            .padding(.horizontal, Metric.rowPad)
-            .padding(.top, 3)
-            .padding(.bottom, 8)
+        }
+        .padding(.horizontal, Metric.rowPad)
+        .padding(.top, 3)
+        .padding(.bottom, 8)
+        .onChange(of: focus) { old, new in
+            // The caret left the notes (a tap elsewhere, the keyboard put away): they're written, once.
+            if old != nil, new == nil, editing { app.endDraft() }
         }
     }
 }

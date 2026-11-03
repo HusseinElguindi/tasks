@@ -167,7 +167,11 @@ struct ListScreen: View {
 
     /// A heading whose name or notes are being typed, in place.
     private func isEdited(_ line: Line) -> Bool {
-        if case let .heading(h, _) = line { app.draft?.editedHeading == h.id } else { false }
+        switch line {
+        case let .heading(h, _): if case .rename(h.id, _)? = app.draft?.kind { true } else { false }
+        case let .headingNotes(h): if case .notes(h.id, _)? = app.draft?.kind { true } else { false }
+        default: false
+        }
     }
 
     @ViewBuilder private func row(_ line: Line) -> some View {
@@ -177,7 +181,14 @@ struct ListScreen: View {
         case let .heading(h, count):
             HeadingRow(heading: h, count: count)
                 .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: {
-                    if app.draft?.editedHeading == h.id { draftFrame = $0 }
+                    if case .rename(h.id, _)? = app.draft?.kind { draftFrame = $0 }
+                }
+                .contextMenu { HeadingMenu(heading: h) }
+        case let .headingNotes(h):
+            HeadingNotesRow(heading: h)
+                .transition(.opacity)
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: {
+                    if case .notes(h.id, _)? = app.draft?.kind { draftFrame = $0 }
                 }
                 .contextMenu { HeadingMenu(heading: h) }
         case let .task(t, indent, groupDay, day):

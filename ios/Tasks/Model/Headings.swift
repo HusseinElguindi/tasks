@@ -17,7 +17,7 @@ extension AppModel {
         startDraft(.list(list), .heading(before: before))
     }
 
-    /// A tap on its name, or Rename in its menu: always in place.
+    /// Rename in its menu (a tap on its name does nothing): always in place.
     func renameHeading(_ id: EntityID) {
         guard let h = task(id), h.isHeading, !isTrashed(h) else { return }
         startDraft(.list(h.list), .rename(heading: id, original: h.title), text: h.title)
@@ -90,7 +90,8 @@ extension AppModel {
     // MARK: Collapsing (local to this device, never synced)
 
     /// The chevron, or Collapse or Expand in its menu. Collapsing folds its notes and tasks up into its row as they
-    /// fade (150 ms); expanding plays it backwards (220 ms ease-in). Reduce Motion turns both off (`animate`).
+    /// fade (150 ms); expanding plays it backwards (220 ms ease-in). The notes are a line of their own, so they and the
+    /// tasks and the rows below all move on this one curve. Reduce Motion turns both off (`animate`).
     func toggleCollapse(_ id: EntityID) {
         guard isHeading(id) else { return }
         let collapse = !collapsed.contains(id)

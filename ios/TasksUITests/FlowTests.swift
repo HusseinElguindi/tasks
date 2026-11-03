@@ -973,10 +973,10 @@ final class FlowTests: XCTestCase {
 
     /// A heading's name: a button that renames it.
     private func heading(_ name: String) -> XCUIElement {
-        app.buttons.matching(identifier: "heading").matching(NSPredicate(format: "label == %@", name)).firstMatch
+        app.descendants(matching: .any).matching(identifier: "heading").matching(NSPredicate(format: "label == %@", name)).firstMatch
     }
 
-    private func headingCount() -> Int { app.buttons.matching(identifier: "heading").count }
+    private func headingCount() -> Int { app.descendants(matching: .any).matching(identifier: "heading").count }
 
     private func openPhys() {
         app.launchArguments += ["-screen", "list:phys"]
@@ -1030,14 +1030,23 @@ final class FlowTests: XCTestCase {
     /// A tap on the name renames it in place; an empty name keeps the old one.
     func testRenameAHeading() {
         openPhys()
-        heading("Labs").tap()
         let field = app.textFields["headingName"]
+        // A tap on its name does nothing: Rename is in its menu only.
+        heading("Labs").tap()
+        XCTAssertFalse(field.waitForExistence(timeout: 1.5), "a tap doesn't rename")
+        func rename() {
+            menuOpen {
+                heading("Labs").press(forDuration: 1.0)
+                app.buttons["Rename"].tap()
+            }
+        }
+        rename()
         XCTAssertTrue(field.waitForExistence(timeout: 3), "renaming in place")
         XCTAssertEqual(field.value as? String, "Labs")
         app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 4) + "\n")
         sleep(1)
         XCTAssertTrue(heading("Labs").exists, "an empty name keeps the old one")
-        heading("Labs").tap()
+        rename()
         XCTAssertTrue(field.waitForExistence(timeout: 3))
         let long = "Labs and tutorials for the whole winter term"
         app.typeText(String(long.dropFirst(4)) + "\n")
@@ -1182,6 +1191,71 @@ final class FlowTests: XCTestCase {
         app.typeText("abcdefghijkl")
         XCTAssertTrue(app.staticTexts["Notes hold up to 20,000 characters"].waitForExistence(timeout: 3), "the notice")
         XCTAssertTrue(footer("· 20,000 / 20,000").waitForExistence(timeout: 3), "cut at 20,000")
+    }
+
+    /// A heading with notes folds as one without does (§23): its notes fold up into it with its tasks, and the next
+    /// heading closes up on the same curve: filmed, it only ever moves up as it folds and down as it unfolds, and never
+    /// past where it ends.
+    func testFoldingAHeadingWithNotesDoesntJump() {
+        openPhys()
+        menuOpen {
+            heading("Labs").press(forDuration: 1.0)
+            app.buttons["Add Notes"].tap()
+        }
+        XCTAssertTrue(app.textViews["headingNotes"].waitForExistence(timeout: 3))
+        app.typeText("Goggles\nLab coat\nThe manual")
+        app.buttons["Done"].tap()
+        sleep(2)
+        let notes = app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Goggles'")).firstMatch
+        XCTAssertTrue(notes.exists, "the notes, under the heading")
+        let labs = heading("Labs").frame, exam = heading("Exam prep").frame, notesAt = notes.frame.minY - labs.minY
+        XCTAssertLessThan(labs.maxY, y(notes))
+        // The rules (a heading's hairline: the same shade straight across) from Labs' down, in points: the gap from
+        // Labs' to the last, Exam prep's. (The list may also scroll back to its top as it gets shorter, moving both.)
+        let width = app.frame.width, height = app.frame.height
+        func gap(_ cg: CGImage) -> CGFloat? {
+            let w = cg.width, h = cg.height, scale = CGFloat(w) / width
+            var px = [UInt8](repeating: 0, count: w * h * 4)
+            guard let ctx = CGContext(data: &px, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                                      space: CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+            ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+            func luma(_ x: Int, _ row: Int) -> Int { let i = (row * w + x) * 4; return (Int(px[i]) + Int(px[i + 1]) + Int(px[i + 2])) / 3 }
+            let xs = [0.2, 0.35, 0.5, 0.65].map { Int(width * $0 * scale) }
+            var rules: [Int] = []
+            for row in Int(labs.minY * scale)..<Int((height - 120) * scale) {
+                let l = xs.map { luma($0, row) }, bg = luma(Int(4 * scale), row)
+                if l.allSatisfy({ abs($0 - bg) >= 6 }), l.max()! - l.min()! <= 3, rules.last.map({ row - $0 > 3 }) ?? true {
+                    rules.append(row)
+                }
+            }
+            guard rules.count >= 2 else { return nil }
+            return CGFloat(rules.last! - rules.first!) / scale
+        }
+        func track(_ label: String, folding: Bool) {
+            let before = gap(XCUIScreen.main.screenshot().image.cgImage!)
+            let frames = filming(10) { app.buttons[label].tap() }
+            sleep(1)
+            let after = gap(XCUIScreen.main.screenshot().image.cgImage!)
+            let gaps = frames.map(gap)
+            print("fold \(label):", before ?? -1, gaps.map { $0 ?? -1 }, after ?? -1)
+            guard let before, let after else { return XCTFail("\(label): Labs' and Exam prep's rules") }
+            XCTAssertEqual(folding ? before > after + 100 : before + 100 < after, true, "\(label): Exam prep moves")
+            var last = before
+            for g in gaps {
+                guard let g else { XCTFail("\(label): a frame without both rules: \(gaps)"); continue }
+                XCTAssertTrue(folding ? g <= last + 1 : g >= last - 1, "\(label): one way only: \(gaps)")
+                XCTAssertTrue(folding ? g >= after - 1 : g <= after + 1, "\(label): never past the end: \(gaps)")
+                last = g
+            }
+        }
+        track("Collapse Labs", folding: true)
+        XCTAssertFalse(notes.exists, "the notes fold away")
+        track("Expand Labs", folding: false)
+        XCTAssertTrue(notes.waitForExistence(timeout: 3), "and back")
+        XCTAssertEqual(heading("Exam prep").frame.minY - heading("Labs").frame.minY, exam.minY - labs.minY, accuracy: 1,
+                       "where it was, under Labs")
+        XCTAssertEqual(notes.frame.minY - heading("Labs").frame.minY, notesAt, accuracy: 1, "the notes back under it")
     }
 
     /// The chevron folds the section into the heading, with its open tasks' count after the name, and back.

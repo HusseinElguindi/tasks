@@ -6,6 +6,8 @@ import TasksCore
 enum Line: @MainActor Identifiable {
     case group(key: String, title: String, sub: String?, quiet: Bool)
     case heading(TaskModel, openCount: Int)
+    /// A heading's notes, under it: their own row, so they fold into it with its tasks, on the same curve (§23).
+    case headingNotes(TaskModel)
     /// `groupDay`: in Upcoming, the day of the group it's in (its rows don't repeat that date). `day`: in a month group
     /// of Completed or Trash, the day it was done or deleted, after its list's name ("School · Oct 22").
     case task(TaskModel, indent: Bool, groupDay: CalendarDate? = nil, day: CalendarDate? = nil)
@@ -18,6 +20,7 @@ enum Line: @MainActor Identifiable {
         switch self {
         case let .group(key, _, _, _): "g:" + key
         case let .heading(h, _): "h:" + h.id
+        case let .headingNotes(h): "hn:" + h.id
         case let .task(t, _, _, _): "t:" + t.id
         case let .completedToggle(key, _, _): "c:" + key
         case let .deletedList(l, _, _, _): "dl:" + l.id
@@ -69,6 +72,11 @@ extension AppModel {
                 // A heading's count: the open tasks under it, down to the next heading.
                 let section = models[(i + 1)...].prefix { !$0.isHeading }
                 out.append(.heading(m, openCount: section.filter { !$0.isDone }.count))
+                // Its notes, or the notes editor while they're typed.
+                let typed = draft?.editedHeading == m.id && draft?.editsNotes == true
+                if !collapsed.contains(m.id), !m.notes.isEmpty || typed {
+                    out.append(.headingNotes(m))
+                }
                 continue
             }
             if kind == .heading(before: m.id) { out.append(.draft) }
