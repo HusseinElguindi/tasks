@@ -17,7 +17,7 @@ extension AppModel {
         startDraft(.list(list), .heading(before: before))
     }
 
-    /// A tap on its name, or Rename in its menu: always in place.
+    /// Rename in its menu (a tap on its name does nothing): always in place.
     func renameHeading(_ id: EntityID) {
         guard let h = task(id), h.isHeading, !isTrashed(h) else { return }
         startDraft(.list(h.list), .rename(heading: id, original: h.title), text: h.title)
@@ -54,7 +54,7 @@ extension AppModel {
             if let notes = EditSession.write(d.title, original: original, current: task(h)?.notes) {
                 store.setNotes(h, notes, name: "Edit Notes", undoManager: undo)
             }
-        case .task, .taskIn: break
+        case .task, .taskIn, .listNotes: break
         }
         return false
     }
@@ -70,10 +70,28 @@ extension AppModel {
         return j > i + 1 ? .after(items[j - 1]) : .after(heading)
     }
 
+    // MARK: A list's notes
+
+    /// Add Notes or Edit Notes in the list's menu, or a tap on them: the notes editor under its large title
+    /// (IX:1540–1543, the Mac's NotesView.swift:674).
+    func editListNotes(_ id: EntityID) {
+        guard projection.isActive(list: id), let l = list(id) else { return }
+        startDraft(.list(id), .listNotes(original: l.notes), text: l.notes)
+    }
+
+    /// The list's notes end: one `list.update`, only if the user changed them, "Edit List Notes". Always false.
+    func writeListNotes(_ d: Draft) -> Bool {
+        guard case let .listNotes(original) = d.kind, case let .list(id) = d.source,
+              let notes = EditSession.write(d.title, original: original, current: list(id)?.notes) else { return false }
+        setNotes(list: id, notes, name: "Edit List Notes")
+        return false
+    }
+
     // MARK: Collapsing (local to this device, never synced)
 
     /// The chevron, or Collapse or Expand in its menu. Collapsing folds its notes and tasks up into its row as they
-    /// fade (150 ms); expanding plays it backwards (220 ms ease-in). Reduce Motion turns both off (`animate`).
+    /// fade (150 ms); expanding plays it backwards (220 ms ease-in). The notes are a line of their own, so they and the
+    /// tasks and the rows below all move on this one curve. Reduce Motion turns both off (`animate`).
     func toggleCollapse(_ id: EntityID) {
         guard isHeading(id) else { return }
         let collapse = !collapsed.contains(id)
@@ -103,7 +121,7 @@ extension AppModel {
         var done = false
         animate(Motion.layout) { done = store.delete([id], name: "Delete Heading", undoManager: undo) }
         guard done else { return }
-        show(Notice(text: "Deleted heading “\(short(h.title))”") { [weak self] in
+        show(Notice(text: "Deleted heading \(quote(h.title))") { [weak self] in
             animate(Motion.layout) { self?.undo.undo() }
         })
     }

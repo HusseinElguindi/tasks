@@ -6,10 +6,13 @@ import TasksCore
 enum Line: @MainActor Identifiable {
     case group(key: String, title: String, sub: String?, quiet: Bool)
     case heading(TaskModel, openCount: Int)
-    /// `groupDay`: in Upcoming, the day of the group it's in (its rows don't repeat that date).
-    case task(TaskModel, indent: Bool, groupDay: CalendarDate? = nil)
+    /// A heading's notes, under it: their own row, so they fold into it with its tasks, on the same curve (§23).
+    case headingNotes(TaskModel)
+    /// `groupDay`: in Upcoming, the day of the group it's in (its rows don't repeat that date). `day`: in a month group
+    /// of Completed or Trash, the day it was done or deleted, after its list's name ("School · Oct 22").
+    case task(TaskModel, indent: Bool, groupDay: CalendarDate? = nil, day: CalendarDate? = nil)
     case completedToggle(key: String, count: Int, open: Bool)
-    case deletedList(ListModel, count: Int, open: Bool)
+    case deletedList(ListModel, count: Int, open: Bool, day: CalendarDate? = nil)
     case draft
     case empty(title: String, message: String, symbol: String)
 
@@ -17,9 +20,10 @@ enum Line: @MainActor Identifiable {
         switch self {
         case let .group(key, _, _, _): "g:" + key
         case let .heading(h, _): "h:" + h.id
-        case let .task(t, _, _): "t:" + t.id
+        case let .headingNotes(h): "hn:" + h.id
+        case let .task(t, _, _, _): "t:" + t.id
         case let .completedToggle(key, _, _): "c:" + key
-        case let .deletedList(l, _, _): "dl:" + l.id
+        case let .deletedList(l, _, _, _): "dl:" + l.id
         case .draft: "draft"
         case .empty: "empty"
         }
@@ -68,6 +72,11 @@ extension AppModel {
                 // A heading's count: the open tasks under it, down to the next heading.
                 let section = models[(i + 1)...].prefix { !$0.isHeading }
                 out.append(.heading(m, openCount: section.filter { !$0.isDone }.count))
+                // Its notes, or the notes editor while they're typed.
+                let typed = draft?.editedHeading == m.id && draft?.editsNotes == true
+                if !collapsed.contains(m.id), !m.notes.isEmpty || typed {
+                    out.append(.headingNotes(m))
+                }
                 continue
             }
             if kind == .heading(before: m.id) { out.append(.draft) }
@@ -82,7 +91,7 @@ extension AppModel {
             out.append(.completedToggle(key: id, count: done.count, open: open))
             if open { out += done.compactMap(task).map { .task($0, indent: false) } }
         }
-        if models.isEmpty && done.isEmpty && !draftHere {
+        if models.isEmpty && done.isEmpty && !(draftHere && draft?.editsListNotes != true) {
             out.append(.empty(title: "No tasks", message: "Tap + to add one. Tasks you add here stay in this list.", symbol: "checklist"))
         }
     }
@@ -182,7 +191,7 @@ extension AppModel {
         for item in items {
             let g = ViewGroups.past(localDay(item.at), today: today)
             if seen.insert(g.id).inserted { out.append(.group(key: g.id, title: g.name, sub: g.sub, quiet: false)) }
-            out.append(.task(item.task, indent: false))
+            out.append(.task(item.task, indent: false, day: g.kind == .month ? localDay(item.at) : nil))
         }
         if items.isEmpty {
             out.append(.empty(title: "Nothing completed yet", message: "Tasks you check off show up here, newest first.", symbol: "checkmark.circle"))
@@ -192,30 +201,36 @@ extension AppModel {
     /// Deleted lists and the tasks deleted on their own, newest first (`Projection.trash`), by the local day they were
     /// deleted.
     private func trashLines(into out: inout [Line]) {
+        // No bucket holds deleted tasks, so Trash depends on every list's open and completed tasks, as the Mac's scan
+        // does (`ViewLayout.swift`: it runs again when one of them changes): a put back, or a delete synced in, redraws it.
+        for l in projection.allListIDs {
+            _ = projection.openTasks(in: l).ids
+            _ = projection.completedTasks(in: l).ids
+        }
         let entries = projection.trash()
         var seen: Set<String> = []
         for e in entries {
             let g = ViewGroups.past(localDay(e.deletedAt), today: today)
             if seen.insert(g.id).inserted { out.append(.group(key: g.id, title: g.name, sub: g.sub, quiet: false)) }
-            out += trashEntry(e)
+            out += trashEntry(e, day: g.kind == .month ? localDay(e.deletedAt) : nil)
         }
         if entries.isEmpty {
-            out.append(.empty(title: "Trash is empty", message: "Deleted tasks wait here until you put them back.", symbol: "trash"))
+            out.append(.empty(title: "Trash is empty", message: "Deleted tasks and lists wait here until you put them back.", symbol: "trash"))
         }
     }
 
     /// A deleted list is one row, and opened, the tasks it took with it follow; a task deleted on its own is one row.
-    private func trashEntry(_ e: Projection.TrashEntry) -> [Line] {
+    private func trashEntry(_ e: Projection.TrashEntry, day: CalendarDate?) -> [Line] {
         switch e.item {
         case let .list(id):
             guard let l = list(id) else { return [] }
             let held = projection.tasksInDeletedList(id)
             let open = expandedTrash.contains(id)
-            var out: [Line] = [.deletedList(l, count: held.count, open: open)]
+            var out: [Line] = [.deletedList(l, count: held.count, open: open, day: day)]
             if open { out += held.compactMap(task).map { .task($0, indent: true) } }
             return out
         case let .task(id):
-            return task(id).map { [.task($0, indent: false)] } ?? []
+            return task(id).map { [.task($0, indent: false, day: day)] } ?? []
         }
     }
 

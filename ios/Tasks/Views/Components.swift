@@ -205,12 +205,15 @@ struct CheckShape: Shape {
 /// accent and draws the mark.
 struct Checkbox: View {
     let checked: Bool
+    /// Its task's title, for VoiceOver: "Complete: ECE 358 lab report, overdue" (the Mac's checkbox label).
+    var title: String? = nil
     var cue = ViewGroups.RingCue()
     var readOnly = false
     var placeholder = false
     var size: CGFloat = Metric.check
     var action: () -> Void = {}
     @Environment(\.palette) private var p
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Button(action: action) {
@@ -230,8 +233,9 @@ struct Checkbox: View {
             .keyframeAnimator(initialValue: 1.0, trigger: checked) { v, s in
                 v.scaleEffect(s)
             } keyframes: { _ in
+                // Checked or unchecked, it pops from 0.8 (§8); with Reduce Motion it just fills.
                 KeyframeTrack {
-                    CubicKeyframe(checked ? 0.8 : 1.0, duration: 0.06)
+                    CubicKeyframe(reduceMotion ? 1.0 : 0.8, duration: 0.06)
                     SpringKeyframe(1.0, duration: 0.3, spring: .snappy)
                 }
             }
@@ -240,10 +244,20 @@ struct Checkbox: View {
         }
         .buttonStyle(CheckPressStyle())
         .disabled(readOnly || placeholder)
-        .animation(.easeOut(duration: 0.16), value: checked)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: checked)
         .sensoryFeedback(trigger: checked) { _, new in new ? .success : .selection }
-        .accessibilityLabel(checked ? "Completed" : "Complete")
+        .accessibilityLabel(label)
         .accessibilityAddTraits(checked ? .isSelected : [])
+    }
+
+    /// "Complete: Buy milk, overdue, planned for today"; "Mark not done: Buy milk" (the Mac's `TaskRowView`, with its
+    /// `CheckLayer.Cue.words`).
+    private var label: String {
+        guard let title else { return checked ? "Completed" : "Complete" }
+        if checked { return "Mark not done: " + title }
+        let words = (cue.deadline == .late ? ", overdue" : cue.deadline == .due ? ", due today" : "")
+            + (cue.planned ? ", planned for today" : "")
+        return "Complete: " + title + words
     }
 
     private var ringColor: Color {

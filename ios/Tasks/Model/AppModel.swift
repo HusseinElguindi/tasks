@@ -42,15 +42,19 @@ struct DateTarget: Identifiable, Equatable {
     var id: String { taskID + kind.rawValue }
 }
 
-/// "Completed “Email TA…”" with Undo.
+/// "Completed “Email TA…”" with Undo, for 5 s; one without Undo ("Create a list first") is information, for 1.8 s
+/// (the Mac's `TK.Timer.notice`, `noticeInfo`).
 struct Notice: Identifiable {
     let id = UUID()
     let text: String
     let undo: (() -> Void)?
+
+    static let life: Duration = .seconds(5)
+    static let infoLife: Duration = .milliseconds(1800)
 }
 
-/// The text being typed in a list, in place: a new task or heading, or a heading's name or notes (§23). Each ends the
-/// same way (Return, a tap elsewhere, leaving, the app going to the background) and writes once, at the end.
+/// The text being typed in a list, in place: a new task or heading, a heading's name or notes (§23), or the list's own
+/// notes. Each ends the same way (Return, a tap elsewhere, leaving, the app going to the background) and writes once, at the end.
 struct Draft: Equatable {
     enum Kind: Equatable {
         /// A new task: at the top of its list, or in a view.
@@ -63,6 +67,8 @@ struct Draft: Equatable {
         case rename(heading: EntityID, original: String)
         /// A heading's notes, under it.
         case notes(heading: EntityID, original: String)
+        /// The list's notes, under its large title (IX:1540–1543).
+        case listNotes(original: String)
     }
     var source: Source
     var kind: Kind = .task
@@ -74,6 +80,19 @@ struct Draft: Equatable {
     var addsTask: Bool {
         switch kind {
         case .task, .taskIn: true
+        default: false
+        }
+    }
+
+    /// The list's notes are being typed, under its title.
+    var editsListNotes: Bool {
+        if case .listNotes = kind { true } else { false }
+    }
+
+    /// Notes are being typed (a heading's or the list's): Done ends them, and the text keeps its line breaks.
+    var editsNotes: Bool {
+        switch kind {
+        case .notes, .listNotes: true
         default: false
         }
     }
@@ -98,10 +117,22 @@ final class AppModel {
     @ObservationIgnored let undo = UndoManager()
 
     // Transient UI state
-    /// Checked a moment ago: still shown in place, as the Mac's pins (§8).
+    /// Checked a moment ago: still shown in place, as the Mac's pins (§8), until the rows settle together.
     var completing: Set<EntityID> = []
-    /// Open Completed disclosures: list ids, and `Self.todayDone` for Today's.
-    var showCompleted: Set<String> = []
+    @ObservationIgnored private var settleTask: Task<Void, Never>?
+    /// Open Completed disclosures: list ids, and `Self.todayDone` for Today's, which is open by default. Saved per
+    /// device and never synced, under the Mac's keys (`WindowState.swift:134–147`); the sample store keeps them only
+    /// while it runs.
+    var showCompleted: Set<String> = [AppModel.todayDone] {
+        didSet {
+            guard !isSample, showCompleted != oldValue else { return }
+            let d = UserDefaults.standard
+            d.set(showCompleted.subtracting([Self.todayDone]).sorted(), forKey: Keys.completedOpen)
+            d.set(!showCompleted.contains(Self.todayDone), forKey: Keys.todayDoneCollapsed)
+        }
+    }
+    /// The task Show in <list> opened its list for: scrolled into view there (`ListScreen`).
+    var revealTask: EntityID?
     /// Deleted lists opened in Trash.
     var expandedTrash: Set<EntityID> = []
     /// Collapsed headings, by id (§23): saved per device, never synced, as the Mac's `WindowState.collapsed`. The
@@ -182,6 +213,8 @@ final class AppModel {
         static let style = "style"
         /// The Mac's key (`WindowState.collapsedKey`).
         static let collapsed = "collapsedHeadings"
+        static let completedOpen = "completedOpenLists"
+        static let todayDoneCollapsed = "todayCompletedCollapsed"
     }
 
     init(store: Store, isSample: Bool = false) {
@@ -193,9 +226,16 @@ final class AppModel {
         serverURL = d.string(forKey: SyncKeys.serverURL) ?? Self.defaultServer
         hasToken = Keychain.token() != nil
         collapsed = isSample ? [] : Set(d.stringArray(forKey: Keys.collapsed) ?? [])
+        if !isSample {
+            showCompleted = Set(d.stringArray(forKey: Keys.completedOpen) ?? [])
+                .union(d.bool(forKey: Keys.todayDoneCollapsed) ? [] : [Self.todayDone])
+        }
     }
 
     // MARK: Lookups
+
+    /// The list or view on screen: the phone's top of the stack, or iPad's sidebar selection.
+    var shown: Source? { isSplit ? selection : path.last }
 
     var today: CalendarDate { projection.day.date }
     func task(_ id: EntityID) -> TaskModel? { projection.taskModel(id) }
@@ -208,6 +248,15 @@ final class AppModel {
 
     func todayCount() -> Int { projection.activeLists.ids.reduce(0) { $0 + projection.todayTasks(in: $1).count } }
     func openCount(_ listID: EntityID) -> Int { projection.openTaskCount(in: listID) }
+
+    /// A deleted list's row in Trash: "11 tasks", "1 task"; with none open "4 completed"; an empty list "Empty" (§28,
+    /// the Mac's `deletedListCount`).
+    func deletedListCount(_ id: EntityID) -> String {
+        let open = projection.openTaskCount(in: id)
+        if open > 0 { return open == 1 ? "1 task" : "\(open) tasks" }
+        let done = projection.completedTasks(in: id).count
+        return done > 0 ? "\(done) completed" : "Empty"
+    }
 
     func title(_ s: Source) -> String {
         switch s {
@@ -235,19 +284,28 @@ final class AppModel {
         if t.isDone {
             completing.remove(id)
             animate(Motion.layout) { _ = store.toggleComplete([id], undoManager: undo) }
+            restartSettle()
             return
         }
         guard store.toggleComplete([id], undoManager: undo) else { return }
         completing.insert(id)
-        show(Notice(text: "Completed “\(short(t.title))”") { [weak self] in
+        restartSettle()
+        show(Notice(text: "Completed \(quote(t.title))") { [weak self] in
             guard let self else { return }
             self.completing.remove(id)
             animate(Motion.layout) { self.undo.undo() }
         })
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(1.1))
-            guard completing.contains(id), !holdTransient else { return }
-            animate(Motion.layout) { _ = completing.remove(id) }
+    }
+
+    /// Checked rows stay in place until 1.5 s pass with no further check; each check restarts the wait, so a run of
+    /// checks moves together (IX:665–669; the Mac's `TK.Timer.settle`).
+    private func restartSettle() {
+        settleTask?.cancel()
+        guard !completing.isEmpty else { return }
+        settleTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(1.5))
+            guard let self, !Task.isCancelled, !self.holdTransient else { return }
+            animate(Motion.layout) { self.completing.removeAll() }
         }
     }
 
@@ -259,47 +317,81 @@ final class AppModel {
         var done = false
         animate(Motion.layout) { done = store.delete([id], undoManager: undo) }
         guard done else { return }
-        show(Notice(text: "Deleted “\(short(title))”") { [weak self] in
+        show(Notice(text: "Deleted \(quote(title))") { [weak self] in
             animate(Motion.layout) { self?.undo.undo() }
         })
     }
 
-    /// Put Back (§22): a task deleted on its own goes back to its list, at its old place.
-    func restore(_ id: EntityID) {
-        guard let t = task(id) else { return }
-        let title = t.title
+    /// Put Back (§22): a task deleted on its own goes back to its list, at its old place. "Put back “Milk” in Inbox",
+    /// with Undo (the Mac's `putBack`: a task is put back, a list is restored, `TrashVerb`).
+    func putBack(_ id: EntityID) {
+        guard let t = task(id), canPutBack(t) else { return }
         var done = false
-        animate(Motion.layout) { done = store.putBack([id], undoManager: undo) }
+        animate(Motion.layout) { done = store.putBack([id], name: "Put Back", undoManager: undo) }
         guard done else { return }
-        show(Notice(text: "Restored “\(short(title))”") { [weak self] in
+        show(Notice(text: "Put back \(quote(t.title)) in \(listName(t.list))") { [weak self] in
             animate(Motion.layout) { self?.undo.undo() }
         })
     }
 
     /// Whether Put Back can take the task out of Trash: deleted on its own, from a live list.
-    func canRestore(_ t: TaskModel) -> Bool { t.deleted && !t.isHeading && projection.isActive(list: t.list) }
+    func canPutBack(_ t: TaskModel) -> Bool { t.deleted && !t.isHeading && projection.isActive(list: t.list) }
 
+    /// A When or a deadline. A change that takes the task out of the view on screen (Today's rule, Upcoming's and
+    /// Undated's) says where it went, with Undo: "Scheduled for Fri, Nov 6", "Due …", "Removed from Today" (the Mac's
+    /// `setDate`, IX:701–704).
     func setDate(_ id: EntityID, _ kind: DateKind, _ date: CalendarDate?) {
+        guard let t = task(id), !t.isHeading, !isTrashed(t) else { return }
+        let name = kind == .when ? (date == nil ? "Remove When" : "Set When") : (date == nil ? "Remove Deadline" : "Set Deadline")
+        let view = shown
+        let leaves = leaves(view, when: kind == .when ? date : t.when, deadline: kind == .deadline ? date : t.deadline)
+        var done = false
         animate(Motion.layout) {
             switch kind {
-            case .when: _ = store.setWhen([id], date, undoManager: undo)
-            case .deadline: _ = store.setDeadline([id], date, undoManager: undo)
+            case .when: done = store.setWhen([id], date, name: name, undoManager: undo)
+            case .deadline: done = store.setDeadline([id], date, name: name, undoManager: undo)
             }
+        }
+        guard done, leaves else { return }
+        let text = date.map { (kind == .when ? "Scheduled for " : "Due ") + DateLabel.long($0, today: today) }
+            ?? "Removed from \(view.map(title) ?? "Today")"
+        show(Notice(text: text) { [weak self] in
+            animate(Motion.layout) { self?.undo.undo() }
+        })
+    }
+
+    /// Whether a task with these dates is no longer in `view` (the Mac's `leavesView`): Today holds a When or a deadline
+    /// on or before today; Upcoming, a day after today; Undated, no dates. A list keeps it whatever its dates.
+    func leaves(_ view: Source?, when: CalendarDate?, deadline: CalendarDate?) -> Bool {
+        switch view {
+        case .today: !((when.map { $0 <= today } ?? false) || (deadline.map { $0 <= today } ?? false))
+        case .upcoming: ViewGroups.upDay(when: when, deadline: deadline).map { $0 <= today } ?? true
+        case .undated: when != nil || deadline != nil
+        default: false
         }
     }
 
+    /// Move to: out of the list on screen, "Moved to School", with Undo. In a view the task stays, and nothing is
+    /// said (the Mac's `move`).
     func move(_ id: EntityID, to listID: EntityID) {
-        animate(Motion.layout) { _ = store.move([id], to: listID, undoManager: undo) }
+        guard let t = task(id), t.list != listID, !t.isHeading, !isTrashed(t) else { return }
+        var done = false
+        animate(Motion.layout) { done = store.move([id], to: listID, name: "Move", undoManager: undo) }
+        guard done, case .list? = shown else { return }
+        show(Notice(text: "Moved to \(listName(listID))") { [weak self] in
+            animate(Motion.layout) { self?.undo.undo() }
+        })
     }
 
     func setTitle(_ id: EntityID, _ title: String, name: String? = nil) { store.setTitle(id, title, name: name, undoManager: undo) }
     func setNotes(_ id: EntityID, _ notes: String, name: String? = nil) { store.setNotes(id, notes, name: name, undoManager: undo) }
+    func setNotes(list id: EntityID, _ notes: String, name: String) { store.setNotes(list: id, notes, name: name, undoManager: undo) }
 
     // MARK: Lists
 
     func deleteList(_ id: EntityID) {
-        guard let l = list(id) else { return }
-        let name = l.name
+        guard list(id) != nil else { return }
+        let name = listName(id)
         let next = activeLists.first { $0.id != id }
         var done = false
         animate(Motion.layout) {
@@ -315,8 +407,8 @@ final class AppModel {
     }
 
     func restoreList(_ id: EntityID) {
-        guard let l = list(id) else { return }
-        let name = l.name
+        guard list(id) != nil else { return }
+        let name = listName(id)
         var done = false
         animate(Motion.layout) {
             done = store.restoreList(id, undoManager: undo)
@@ -385,6 +477,7 @@ final class AppModel {
     /// if the user changed them (`writeHeading`).
     private func write(_ d: Draft) -> Bool {
         if case .notes = d.kind { return writeHeading(d) }
+        if case .listNotes = d.kind { return writeListNotes(d) }
         let title = d.title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { return false }
         var listID: EntityID?
@@ -401,6 +494,7 @@ final class AppModel {
         case let .taskIn(h):
             guard let listID else { return false }
             anchor = sectionEnd(h, in: listID)
+        case .listNotes: return false
         case .heading, .rename, .notes:
             return writeHeading(Draft(source: d.source, kind: d.kind, title: title, token: d.token))
         }
@@ -409,6 +503,25 @@ final class AppModel {
     }
 
     // MARK: Navigation
+
+    /// "Show in School", from Today or a view (not a list, not Trash), for a live task: the Mac's menu item.
+    func showInName(_ t: TaskModel, from source: Source) -> String? {
+        switch source {
+        case .list, .trash: return nil
+        default: return isTrashed(t) || t.isHeading ? nil : "Show in \(listName(t.list))"
+        }
+    }
+
+    /// Show in <list>: its list opens with the task shown, its Completed row or its heading opened if it's under one
+    /// (the Mac's `go(.list, select:)`). iPad selects it, as the Mac does.
+    func showInList(_ id: EntityID) {
+        guard let t = task(id), !isTrashed(t) else { return }
+        detailTask = nil
+        if t.isDone { showCompleted.insert(t.list) } else if let h = projection.heading(of: id) { expand(h) }
+        open(.list(t.list))
+        if isSplit { selectedTask = id }
+        revealTask = id
+    }
 
     func open(_ s: Source) {
         selection = s
@@ -420,9 +533,11 @@ final class AppModel {
 
     func show(_ n: Notice) {
         animate(Motion.natural) { notice = n }
+        // Said as it appears, as the Mac's status messages are (IX:1139).
+        AccessibilityNotification.Announcement(n.text).post()
         let id = n.id
         Task { @MainActor in
-            try? await Task.sleep(for: .seconds(4))
+            try? await Task.sleep(for: n.undo == nil ? Notice.infoLife : Notice.life)
             if notice?.id == id && !holdTransient { animate(Motion.natural) { notice = nil } }
         }
     }
@@ -433,5 +548,16 @@ final class AppModel {
         animate(Motion.natural) { notice = nil }
     }
 
-    func short(_ s: String) -> String { s.count > 26 ? String(s.prefix(24)) + "…" : s }
+    /// “Buy milk”, cut at 28 characters; an empty title is “Untitled” (the Mac's `quote`).
+    func quote(_ title: String) -> String {
+        let t = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let s = t.isEmpty ? "Untitled" : t
+        return "“" + (s.count > 28 ? String(s.prefix(27)) + "…" : s) + "”"
+    }
+
+    /// A list's name in a notice; an empty one is "Untitled" (the Mac's `listName`).
+    func listName(_ id: EntityID) -> String {
+        let n = list(id)?.name ?? ""
+        return n.isEmpty ? "Untitled" : n
+    }
 }

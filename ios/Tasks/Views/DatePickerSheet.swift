@@ -21,8 +21,15 @@ struct DatePickerSheet: View {
     private var current: CalendarDate? { picked ?? (target.kind == .when ? task?.when : task?.deadline) }
     private var other: CalendarDate? { target.kind == .when ? task?.deadline : task?.when }
 
-    /// The grid's first Sunday (Sunday first, as the header reads), `weeksBack` weeks before this one.
-    private var firstWeekStart: CalendarDate { today.adding(days: -(today.weekday - 1) - 7 * Self.weeksBack) }
+    /// The locale's first weekday (1 = Sunday, as `CalendarDate.weekday` counts), as the Mac's calendar starts its weeks
+    /// (DatePopover.swift:327).
+    private let first = Calendar.current.firstWeekday
+    private static let letters = ["S", "M", "T", "W", "T", "F", "S"]  // Sunday first, like `CalendarDate.weekday`
+
+    /// The first day of the grid's first week, `weeksBack` weeks before this one.
+    private var firstWeekStart: CalendarDate {
+        today.adding(days: -((today.weekday - first + 7) % 7) - 7 * Self.weeksBack)
+    }
     private func weekStart(_ i: Int) -> CalendarDate { firstWeekStart.adding(days: 7 * i) }
     private func weekIndex(_ d: CalendarDate) -> Int { firstWeekStart.days(until: d) / 7 }
     private var todayWeek: Int { weekIndex(today) }
@@ -75,8 +82,8 @@ struct DatePickerSheet: View {
             .padding(.top, 14)
 
             HStack(spacing: 0) {
-                ForEach(Array(["S", "M", "T", "W", "T", "F", "S"].enumerated()), id: \.offset) { _, d in
-                    Text(d).font(.system(size: 11, weight: .semibold)).foregroundStyle(p.inkTertiary).frame(maxWidth: .infinity)
+                ForEach(0..<7, id: \.self) { i in
+                    Text(Self.letters[(first - 1 + i) % 7]).font(.system(size: 11, weight: .semibold)).foregroundStyle(p.inkTertiary).frame(maxWidth: .infinity)
                 }
             }
             .padding(.horizontal, 14)

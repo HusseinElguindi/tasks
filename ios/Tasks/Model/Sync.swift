@@ -131,6 +131,16 @@ extension AppModel {
         }
     }
 
+    /// What VoiceOver says as sync stops or the server refuses the token, once on the way in (the Mac's
+    /// `SyncIndicator.announce`, §26); nil in every other state.
+    var syncStoppedWords: String? {
+        switch store.syncState {
+        case .failed(let m): m.isEmpty ? "Sync stopped" : "Sync stopped. " + m
+        case .checkToken: "Sync stopped. The server didn’t accept the token"
+        default: nil
+        }
+    }
+
     /// Settings' status line (the Mac's Settings ▸ Sync ▸ Status).
     var syncStatus: String {
         if let r = store.recovery { return "Restoring sync · \(r.confirmed.formatted()) of \(r.total.formatted())" }

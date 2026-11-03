@@ -60,7 +60,8 @@ private struct TaskDetailContent: View {
                 VStack(alignment: .leading, spacing: 0) {
                     if trashed { trashBanner }
                     HStack(alignment: .top, spacing: 0) {
-                        Checkbox(checked: t.isDone, cue: app.cue(t, in: .list(t.list)), readOnly: trashed, size: 24) {
+                        Checkbox(checked: t.isDone, title: t.title.isEmpty ? "New Task" : t.title, cue: app.cue(t, in: .list(t.list)),
+                                 readOnly: trashed, size: 24) {
                             app.toggle(t.id)
                         }
                         .padding(.leading, -10)
@@ -73,6 +74,16 @@ private struct TaskDetailContent: View {
                             .submitLabel(.done)
                             .disabled(trashed)
                             .onSubmit { focus = nil }
+                            // One line (IX:599): a typed Return ends the edit, pasted line breaks become spaces.
+                            .onChange(of: title) { old, new in
+                                guard focus == .title, new.contains(where: \.isNewline) else { return }
+                                if let typed = TitleText.typedReturn(old: old, new: new) {
+                                    title = typed
+                                    focus = nil
+                                } else {
+                                    title = TitleText.oneLine(new)
+                                }
+                            }
                     }
                     .padding(.top, 6)
 
@@ -158,13 +169,34 @@ private struct TaskDetailContent: View {
     private func topBar(trashed: Bool) -> some View {
         HStack(spacing: 8) {
             if let l = app.list(t.list) {
-                ListTile(content: .mono(l.monogram), hue: p.tile(slot: l.colorSlot), scale: 0.85)
-                Text(l.name).font(Typo.body).foregroundStyle(p.inkSecondary).lineLimit(1)
+                let name = HStack(spacing: 8) {
+                    ListTile(content: .mono(l.monogram), hue: p.tile(slot: l.colorSlot), scale: 0.85)
+                    Text(l.name).font(Typo.body).foregroundStyle(p.inkSecondary).lineLimit(1)
+                }
+                if let show = app.showInName(t, from: app.shown ?? .list(t.list)) {
+                    // Opened from Today or a view: its list's name is Show in <list> (the Mac's menu item, §9).
+                    Button {
+                        endTitle(); endNotes()
+                        app.showInList(t.id)
+                    } label: {
+                        HStack(spacing: 4) {
+                            name
+                            Image(systemName: "chevron.forward")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(p.inkTertiary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(show)
+                } else {
+                    name
+                }
             }
             Spacer()
             if trashed {
-                if app.canRestore(t) {
-                    BarIcon(symbol: "arrow.uturn.backward", label: "Restore") { app.restore(t.id) }
+                if app.canPutBack(t) {
+                    BarIcon(symbol: "arrow.uturn.backward", label: "Put Back") { app.putBack(t.id) }
                 }
             } else {
                 BarIcon(symbol: "trash", label: "Delete") {
@@ -186,8 +218,8 @@ private struct TaskDetailContent: View {
         .padding(.top, inline ? 0 : 6)
     }
 
-    /// Why it's read-only, and the way out: Restore for a task deleted on its own, Restore List for one that went with
-    /// its list (§28).
+    /// Why it's read-only, and the way out: Put Back for a task deleted on its own, Restore List for one that went with
+    /// its list (§28). A task is put back, a list is restored (the Mac's `TrashVerb`).
     private var trashBanner: some View {
         let l = app.list(t.list)
         let listGone = l?.isDeleted ?? true
@@ -197,14 +229,14 @@ private struct TaskDetailContent: View {
                 Text(deletedWords).font(Typo.body).foregroundStyle(p.ink)
                 // The list's name is in the bar above and the List row below, each on one line; the banner doesn't
                 // repeat it, as the Mac's doesn't (§21), so a long name can't turn it into a paragraph.
-                Text(app.canRestore(t) ? "Read-only until you restore it."
-                     : t.deleted ? "Its list is in Trash too. Restore the list, then this task."
+                Text(app.canPutBack(t) ? "Read-only until you put it back."
+                     : t.deleted ? "Its list is in Trash too. Restore the list, then put this task back."
                      : "Its list is in Trash. Restore the list to bring it back.")
                     .font(Typo.meta).foregroundStyle(p.inkSecondary)
             }
             Spacer(minLength: 8)
-            if app.canRestore(t) {
-                Button("Restore") { app.restore(t.id) }.buttonStyle(CapsuleButtonStyle(kind: .tinted, height: 30))
+            if app.canPutBack(t) {
+                Button("Put Back") { app.putBack(t.id) }.buttonStyle(CapsuleButtonStyle(kind: .tinted, height: 30))
             } else if listGone, let l {
                 Button("Restore List") { app.restoreList(l.id) }.buttonStyle(CapsuleButtonStyle(kind: .tinted, height: 30))
             }
@@ -320,7 +352,7 @@ private struct TaskDetailContent: View {
         } else if let done = t.completedAt {
             s += " · Completed " + day(done)
         }
-        return s
+        return s + NotesLimit.counter(notes)
     }
 
     private func day(_ ms: Int) -> String { DateLabel.monthDay(app.localDay(ms)) }
@@ -373,6 +405,7 @@ struct NotesEditor: View {
     var minHeight: CGFloat = 180
     /// A checklist box clicked at rest: the new text, and whether it checked the box.
     var onToggle: (String, Bool) -> Void
+    @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
 
     private var editing: Bool { focus.wrappedValue == .notes }
@@ -391,6 +424,12 @@ struct NotesEditor: View {
                 .padding(.top, -8)
                 .opacity(editing ? 1 : 0)
                 .disabled(readOnly)
+                // Past 20,000 characters the text is cut there, with the Mac's notice (NotesView.swift:703).
+                .onChange(of: text) { _, new in
+                    guard new.utf16.count > NotesLimit.max else { return }
+                    text = NotesLimit.prefix(new)
+                    app.show(Notice(text: NotesLimit.notice, undo: nil))
+                }
             if !editing {
                 Group {
                     if text.isEmpty {

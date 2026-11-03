@@ -33,7 +33,7 @@ final class FlowTests: XCTestCase {
 
     func testAddTask() {
         app.launch()
-        app.buttons["School, 11"].firstMatch.tap()
+        app.buttons["School"].firstMatch.tap()
         sleep(1)
         app.buttons["New Task"].firstMatch.tap()
         sleep(1)
@@ -51,10 +51,10 @@ final class FlowTests: XCTestCase {
         app.launch()
         app.buttons["Today, 13"].firstMatch.tap()
         sleep(1)
-        app.buttons.matching(identifier: "Complete").element(boundBy: 0).tap()
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Complete: '")).element(boundBy: 0).tap()
         usleep(400_000)
         shot("flow-complete-checked")
-        sleep(2)
+        usleep(1_500_000)   // the rows settle 1.5 s after the check; the notice lasts 5 s
         shot("flow-complete-moved")
         app.buttons["Undo"].firstMatch.tap()
         sleep(1)
@@ -63,7 +63,7 @@ final class FlowTests: XCTestCase {
 
     func testSwipe() {
         app.launch()
-        app.buttons["PHYS 122, 10"].firstMatch.tap()
+        app.buttons["PHYS 122"].firstMatch.tap()
         sleep(1)
         let row = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
         row.swipeLeft()
@@ -79,7 +79,7 @@ final class FlowTests: XCTestCase {
 
     func testDetailAndWhen() {
         app.launch()
-        app.buttons["School, 11"].firstMatch.tap()
+        app.buttons["School"].firstMatch.tap()
         sleep(1)
         app.staticTexts["Submit MSE 333 A2"].firstMatch.tap()
         sleep(1)
@@ -98,7 +98,7 @@ final class FlowTests: XCTestCase {
     func testDeleteListAndTrash() {
         app.launch()
         menuOpen {
-            app.buttons["Errands, 4"].firstMatch.press(forDuration: 1.0)
+            app.buttons["Errands"].firstMatch.press(forDuration: 1.0)
             sleep(1)
             shot("flow-list-menu")
             app.buttons["Delete List"].firstMatch.tap()
@@ -132,7 +132,7 @@ final class FlowTests: XCTestCase {
     /// The title is edited in the details and written when they close (one change, as on the Mac): the row has it.
     func testEditTitle() {
         app.launch()
-        app.buttons["School, 11"].firstMatch.tap()
+        app.buttons["School"].firstMatch.tap()
         sleep(1)
         app.staticTexts["Submit MSE 333 A2"].firstMatch.tap()
         sleep(1)
@@ -181,7 +181,7 @@ final class FlowTests: XCTestCase {
     /// nothing, so the rename stands (before, the old title went back over it).
     func testSyncedTitleStandsAfterAnUntouchedEdit() {
         launch(remote: "s4", title: "Submit MSE 333 A2 (from the Mac)")
-        app.buttons["School, 11"].firstMatch.tap()
+        app.buttons["School"].firstMatch.tap()
         sleep(1)
         app.staticTexts["Submit MSE 333 A2"].firstMatch.tap()
         sleep(1)
@@ -196,7 +196,7 @@ final class FlowTests: XCTestCase {
     /// Typed text is written, and wins over a rename that synced in meanwhile (the log's last writer wins).
     func testTypedTitleWinsOverASyncedOne() {
         launch(remote: "s4", title: "Submit MSE 333 A2 (from the Mac)")
-        app.buttons["School, 11"].firstMatch.tap()
+        app.buttons["School"].firstMatch.tap()
         sleep(1)
         app.staticTexts["Submit MSE 333 A2"].firstMatch.tap()
         sleep(1)
@@ -212,7 +212,7 @@ final class FlowTests: XCTestCase {
     /// The caret sits in the notes, untouched, while another device changes them: closing the details writes nothing.
     func testSyncedNotesStandAfterAnUntouchedEdit() {
         launch(remote: "s2", notes: "Synced from the Mac.")
-        app.buttons["School, 11"].firstMatch.tap()
+        app.buttons["School"].firstMatch.tap()
         sleep(1)
         app.staticTexts["Email TA about midterm regrade"].firstMatch.tap()
         sleep(1)
@@ -235,20 +235,22 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-remoteList", "school-9", "-remoteName", "School (from the Mac)"]
         app.launch()
         menuOpen {
-            app.buttons["School, 11"].firstMatch.press(forDuration: 1.0)
+            app.buttons["School"].firstMatch.press(forDuration: 1.0)
             app.buttons["Rename"].firstMatch.tap()
         }
         XCTAssertTrue(app.alerts["Rename List"].waitForExistence(timeout: 3), "the rename alert")
         remoteEdit()
         app.alerts["Rename List"].buttons["Rename"].tap()
         sleep(1)
-        XCTAssertTrue(app.buttons["School (from the Mac), 11"].waitForExistence(timeout: 3), "the synced name stands")
+        // A list's row has no count (only Today's does), so its label is its name.
+        XCTAssertTrue(app.buttons["School (from the Mac)"].waitForExistence(timeout: 3), "the synced name stands")
+        XCTAssertFalse(app.buttons["School"].exists, "the old name isn't written back")
     }
 
     /// Leaving the app mid-edit writes only what was typed: an untouched title doesn't go back over one that synced in.
     func testSyncedTitleStandsAfterTheBackground() {
         launch(remote: "s4", title: "Submit MSE 333 A2 (from the Mac)")
-        app.buttons["School, 11"].firstMatch.tap()
+        app.buttons["School"].firstMatch.tap()
         sleep(1)
         app.staticTexts["Submit MSE 333 A2"].firstMatch.tap()
         sleep(1)
@@ -318,15 +320,22 @@ final class FlowTests: XCTestCase {
         sleep(1)
     }
 
-    /// The home row's count: no task was written.
-    private func assertCount(_ label: String, file: StaticString = #filePath, line: UInt = #line) {
-        XCTAssertTrue(app.buttons[label].firstMatch.waitForExistence(timeout: 3), "home shows \(label)", file: file, line: line)
+    /// A list's open tasks (School's by default), counted by their boxes on its screen, from Home and back: whether a
+    /// task was written.
+    /// (Home shows no counts but Today's: the user, 2026-10-31.)
+    private func assertOpen(_ n: Int, in list: String = "School", file: StaticString = #filePath, line: UInt = #line) {
+        app.buttons[list].firstMatch.tap()
+        let boxes = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Complete: '"))
+        XCTAssertTrue(boxes.firstMatch.waitForExistence(timeout: 3), list, file: file, line: line)
+        sleep(1)
+        XCTAssertEqual(boxes.count, n, "\(list)'s open tasks", file: file, line: line)
+        back()
     }
 
     /// Return on a title writes it and opens the next row; Return on an empty row ends adding, writing nothing.
     func testAddReturn() {
         app.launch()
-        app.buttons["School, 11"].firstMatch.tap()
+        app.buttons["School"].firstMatch.tap()
         add()
         app.typeText("Book a study room for Thursday\n")
         XCTAssertTrue(app.staticTexts["Book a study room for Thursday"].waitForExistence(timeout: 3))
@@ -334,13 +343,13 @@ final class FlowTests: XCTestCase {
         app.typeText("\n")
         assertNotAdding("Return on an empty row")
         back()
-        assertCount("School, 12")
+        assertOpen(12)
     }
 
     /// A tap outside the row (the list's header) drops an empty row and writes a titled one.
     func testAddTapOutside() {
         app.launch()
-        app.buttons["School, 11"].firstMatch.tap()
+        app.buttons["School"].firstMatch.tap()
         add()
         let header = app.descendants(matching: .any)["listHeader"].firstMatch
         header.tap()
@@ -352,7 +361,7 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Return the library books"].exists, "a titled row is written")
         shot("flow-add-tap-outside")
         back()
-        assertCount("School, 12")
+        assertOpen(12)
     }
 
     /// Still on the list, as it is when not adding: no task's details, no other screen.
@@ -367,7 +376,7 @@ final class FlowTests: XCTestCase {
     /// doesn't check; a typed title is written, an empty row dropped. (On the Mac the press also does what it presses.)
     func testAddTapOnARowOnlyEndsAdding() {
         app.launch()
-        app.buttons["School, 11"].firstMatch.tap()
+        app.buttons["School"].firstMatch.tap()
         let row = app.staticTexts["Submit MSE 333 A2"].firstMatch
         add()
         row.tap()
@@ -386,7 +395,7 @@ final class FlowTests: XCTestCase {
         app.buttons["Done"].firstMatch.tap()
         sleep(1)
         back()
-        assertCount("School, 12")
+        assertOpen(12)
     }
 
     /// An element's frame once it has stopped moving (the new row slides the rows below it down).
@@ -404,37 +413,37 @@ final class FlowTests: XCTestCase {
     /// While adding, a tap on another task's box only ends adding: nothing completes.
     func testAddTapOnABoxOnlyEndsAdding() {
         app.launch()
-        app.buttons["School, 11"].firstMatch.tap()
+        app.buttons["School"].firstMatch.tap()
         let title = app.staticTexts["Submit MSE 333 A2"].firstMatch
         XCTAssertTrue(title.waitForExistence(timeout: 3))
         add()
         let y = settledFrame(title).midY
-        let box = app.buttons.matching(identifier: "Complete").allElementsBoundByIndex.first { abs($0.frame.midY - y) < 12 }
+        let box = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Complete: '")).allElementsBoundByIndex.first { abs($0.frame.midY - y) < 12 }
         XCTAssertNotNil(box, "the task's box")
         box?.tap()
         XCTAssertFalse(app.buttons["Undo"].waitForExistence(timeout: 1.5), "nothing completed (no notice)")
         assertNotAdding("tap on a box")
         assertNothingOpened("tap on a box")
         back()
-        assertCount("School, 11")   // still 11 open: nothing completed
+        assertOpen(11)   // still 11 open: nothing completed
     }
 
     /// Swiping the list down puts the keyboard away and ends adding.
     func testAddSwipeDown() {
         app.launch()
-        app.buttons["School, 11"].firstMatch.tap()
+        app.buttons["School"].firstMatch.tap()
         add()
         let start = app.descendants(matching: .any)["listHeader"].firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
         start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: 220)), withVelocity: .fast, thenHoldForDuration: 0)
         assertNotAdding("swipe down")
         back()
-        assertCount("School, 11")
+        assertOpen(11)
     }
 
     /// Cancel, in the bar while adding, drops the row with whatever was typed.
     func testAddCancel() {
         app.launch()
-        app.buttons["School, 11"].firstMatch.tap()
+        app.buttons["School"].firstMatch.tap()
         add()
         app.typeText("Not this one")
         shot("flow-add-cancel")
@@ -443,7 +452,7 @@ final class FlowTests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Not this one"].exists, "nothing written")
         XCTAssertTrue(app.buttons["List actions"].exists, "the list's menu is back")
         back()
-        assertCount("School, 11")
+        assertOpen(11)
     }
 
     /// Leaving the list ends adding: back home, another view, Settings, and back shows the list as it was. A titled row
@@ -452,15 +461,14 @@ final class FlowTests: XCTestCase {
         app.launch()
         // From home: the + adds in the default list (the Inbox).
         let inbox = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Inbox'")).firstMatch
-        let before = inbox.label
         add("the + from home")
         back()
-        XCTAssertEqual(inbox.label, before, "nothing written")
+        assertOpen(5, in: "Inbox")   // nothing written
         inbox.tap()
         assertNotAdding("back to the Inbox")
         // Into a list, out to Today and Settings, and back.
         back()
-        app.buttons["School, 11"].firstMatch.tap()
+        app.buttons["School"].firstMatch.tap()
         add()
         back()
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Today'")).firstMatch.tap()
@@ -470,14 +478,14 @@ final class FlowTests: XCTestCase {
         sleep(1)
         app.buttons["Done"].firstMatch.tap()
         sleep(1)
-        app.buttons["School, 11"].firstMatch.tap()
+        app.buttons["School"].firstMatch.tap()
         assertNotAdding("back to School")
         // Typed, then left: written, and the list shows normally.
         add()
         app.typeText("Water the plants")
         back()
-        assertCount("School, 12")
-        app.buttons["School, 12"].firstMatch.tap()
+        assertOpen(12)
+        app.buttons["School"].firstMatch.tap()
         assertNotAdding("back to School after writing")
         XCTAssertTrue(app.staticTexts["Water the plants"].exists)
     }
@@ -490,7 +498,7 @@ final class FlowTests: XCTestCase {
         XCUIDevice.shared.orientation = .landscapeLeft
         defer { XCUIDevice.shared.orientation = .portrait }
         app.launch()
-        app.buttons["School, 11"].firstMatch.tap()
+        app.buttons["School"].firstMatch.tap()
         let today = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Today'")).firstMatch
         add()
         today.tap()
@@ -503,7 +511,6 @@ final class FlowTests: XCTestCase {
         XCTAssertFalse(app.buttons["Done"].waitForExistence(timeout: 1.5), "Settings didn't open")
         assertNothingOpened("tap on Settings, titled")
         XCTAssertTrue(app.staticTexts["Water the plants"].exists, "a titled row is written")
-        assertCount("School, 12")
         shot("flow-add-ipad-sidebar")
         // Not adding, the sidebar goes where it goes.
         today.tap()
@@ -513,7 +520,7 @@ final class FlowTests: XCTestCase {
     /// The app going to the background ends adding: back in front, the list shows normally (a title was written).
     func testAddEndsInBackground() {
         app.launch()
-        app.buttons["School, 11"].firstMatch.tap()
+        app.buttons["School"].firstMatch.tap()
         add()
         XCUIDevice.shared.press(.home)
         sleep(1)
@@ -527,12 +534,12 @@ final class FlowTests: XCTestCase {
         assertNotAdding("background, titled")
         XCTAssertTrue(app.staticTexts["Print the lab report"].exists, "a titled row is written")
         back()
-        assertCount("School, 12")
+        assertOpen(12)
     }
 
     func testScrollFold() {
         app.launch()
-        app.buttons["PHYS 122, 10"].firstMatch.tap()
+        app.buttons["PHYS 122"].firstMatch.tap()
         sleep(1)
         app.swipeUp()
         sleep(1)
@@ -700,19 +707,19 @@ final class FlowTests: XCTestCase {
             }
             // Home on the phone; iPad's sidebar is beside the list.
             if !pad { back() }
-            let school = app.buttons["\(Self.longName), 11"].firstMatch
+            let school = app.buttons[Self.longName].firstMatch
             XCTAssertTrue(school.waitForExistence(timeout: 3), "\(look): the long name's row, whole for VoiceOver")
             shot("fade-home-\(look)")
-            // The row's frame takes in the list's 10pt insets. Its name starts after the tile (10 + 10 + 26 + 12), and
-            // ends 39 short of the row's edge (49 of the frame's) before a two-digit count that starts about 41 short:
-            // read from 52 to 45 short of the frame's edge.
-            assertFades(school, "\(look): a long name on Home", from: 52, upTo: 45)
-            assertDoesntFade(app.buttons["PHYS 122, 10"].firstMatch, "\(look): a name that fits", from: 52, upTo: 45)
+            // The row's frame takes in the list's 10pt insets. Its name starts after the tile (10 + 10 + 26 + 12), and,
+            // with no count after it (the user, 2026-10-31), ends 13 short of the row's edge: read from 52 to 10 short
+            // of the frame's edge.
+            assertFades(school, "\(look): a long name on Home", from: 52, upTo: 10)
+            assertDoesntFade(app.buttons["PHYS 122"].firstMatch, "\(look): a name that fits", from: 52, upTo: 10)
             if pad {
                 school.tap()
                 sleep(1)
                 shot("fade-sidebar-current-\(look)")
-                assertFades(school, "\(look): the current row's long name, over its capsule", from: 52, upTo: 45)
+                assertFades(school, "\(look): the current row's long name, over its capsule", from: 52, upTo: 10)
             }
             app.terminate()
         }
@@ -829,7 +836,7 @@ final class FlowTests: XCTestCase {
     /// Lists reorder on Home; Today and the views stay put.
     func testDragAListOnHome() {
         app.launch()
-        let phys = app.buttons["PHYS 122, 10"].firstMatch, school = app.buttons["School, 11"].firstMatch
+        let phys = app.buttons["PHYS 122"].firstMatch, school = app.buttons["School"].firstMatch
         XCTAssertTrue(phys.waitForExistence(timeout: 10))
         sleep(1)
         drag(phys, onto: school)
@@ -875,7 +882,7 @@ final class FlowTests: XCTestCase {
     /// doesn't select anything that could pass for it. With the delay, a 0.13 s tap never shows it.
     func testAQuickTapShowsThePress() {
         app.launch()
-        let row = app.buttons["Errands, 4"].firstMatch
+        let row = app.buttons["Errands"].firstMatch
         XCTAssertTrue(row.waitForExistence(timeout: 10))
         sleep(2)
         let f = row.frame
@@ -968,10 +975,10 @@ final class FlowTests: XCTestCase {
 
     /// A heading's name: a button that renames it.
     private func heading(_ name: String) -> XCUIElement {
-        app.buttons.matching(identifier: "heading").matching(NSPredicate(format: "label == %@", name)).firstMatch
+        app.descendants(matching: .any).matching(identifier: "heading").matching(NSPredicate(format: "label == %@", name)).firstMatch
     }
 
-    private func headingCount() -> Int { app.buttons.matching(identifier: "heading").count }
+    private func headingCount() -> Int { app.descendants(matching: .any).matching(identifier: "heading").count }
 
     private func openPhys() {
         app.launchArguments += ["-screen", "list:phys"]
@@ -1025,14 +1032,23 @@ final class FlowTests: XCTestCase {
     /// A tap on the name renames it in place; an empty name keeps the old one.
     func testRenameAHeading() {
         openPhys()
-        heading("Labs").tap()
         let field = app.textFields["headingName"]
+        // A tap on its name does nothing: Rename is in its menu only.
+        heading("Labs").tap()
+        XCTAssertFalse(field.waitForExistence(timeout: 1.5), "a tap doesn't rename")
+        func rename() {
+            menuOpen {
+                heading("Labs").press(forDuration: 1.0)
+                app.buttons["Rename"].tap()
+            }
+        }
+        rename()
         XCTAssertTrue(field.waitForExistence(timeout: 3), "renaming in place")
         XCTAssertEqual(field.value as? String, "Labs")
         app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 4) + "\n")
         sleep(1)
         XCTAssertTrue(heading("Labs").exists, "an empty name keeps the old one")
-        heading("Labs").tap()
+        rename()
         XCTAssertTrue(field.waitForExistence(timeout: 3))
         let long = "Labs and tutorials for the whole winter term"
         app.typeText(String(long.dropFirst(4)) + "\n")
@@ -1070,6 +1086,178 @@ final class FlowTests: XCTestCase {
             app.buttons["Edit Notes"].tap()
         }
         XCTAssertTrue(editor.waitForExistence(timeout: 3))
+    }
+
+    // MARK: Parity batch 1, commit 4 (the Mac's rules: IOS-MAC-PARITY.md)
+
+    /// A list's notes (IX:1540–1543): Add Notes in its menu opens the notes editor under the title; Done writes them;
+    /// then it's Edit Notes, and a tap on them edits them too.
+    func testAListsNotes() {
+        app.launchArguments += ["-screen", "list:home"]
+        app.launch()
+        XCTAssertTrue(app.buttons["List actions"].waitForExistence(timeout: 10), "Home")
+        app.buttons["List actions"].tap()
+        app.buttons["Add Notes"].tap()
+        let editor = app.textViews["listNotes"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 3), "the notes editor, under the title")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3), "with the caret")
+        app.typeText("Measure the hallway")
+        app.buttons["Done"].tap()
+        sleep(1)
+        XCTAssertFalse(editor.exists, "Done ends them")
+        // The header reads as one element: its title, then its notes.
+        let header = app.descendants(matching: .any)["listHeader"].firstMatch
+        XCTAssertEqual(header.label, "Home, Measure the hallway", "they show under the title")
+        app.buttons["List actions"].tap()
+        XCTAssertTrue(app.buttons["Edit Notes"].waitForExistence(timeout: 3), "now Edit Notes")
+        app.buttons["Edit Notes"].tap()
+        XCTAssertTrue(editor.waitForExistence(timeout: 3))
+        XCTAssertEqual(editor.value as? String, "Measure the hallway")
+        app.buttons["Done"].tap()
+        sleep(1)
+        // A tap on them (the header's last line) edits them.
+        header.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.85)).tap()
+        XCTAssertTrue(editor.waitForExistence(timeout: 3), "a tap on them edits them")
+        app.typeText(" first")
+        app.buttons["Done"].tap()
+        sleep(1)
+        XCTAssertEqual(header.label, "Home, Measure the hallway first", "written")
+    }
+
+    /// The calendar's weeks start on the locale's first weekday (the Mac's DatePopover.swift:327): Monday in the UK,
+    /// Sunday in the US.
+    func testTheCalendarStartsOnTheLocalesFirstDay() {
+        for (locale, monday) in [("en_GB", true), ("en_US", false)] {
+            app.launchArguments = ["-sampleData", "YES", "-appearance", "dark", "-style", "classic", "-AppleLocale", locale]
+            app.launch()
+            app.buttons["School"].firstMatch.tap()
+            sleep(1)
+            app.staticTexts["Submit MSE 333 A2"].firstMatch.tap()
+            sleep(1)
+            app.buttons["When"].firstMatch.tap()
+            let m = app.staticTexts["M"].firstMatch
+            XCTAssertTrue(m.waitForExistence(timeout: 3), "\(locale): the weekday letters")
+            let s = app.staticTexts.matching(identifier: "S").allElementsBoundByIndex.filter { abs($0.frame.midY - m.frame.midY) < 2 }
+            XCTAssertEqual(s.count, 2, "\(locale): two S's in the row")
+            XCTAssertEqual(s.allSatisfy { $0.frame.minX > m.frame.minX }, monday, "\(locale): Monday first is \(monday)")
+            app.terminate()
+        }
+    }
+
+    /// A title is one line (IX:599): Return ends the edit, and a pasted line break becomes a space.
+    func testATitleIsOneLine() {
+        app.launch()
+        app.buttons["School"].firstMatch.tap()
+        sleep(1)
+        app.staticTexts["Submit MSE 333 A2"].firstMatch.tap()
+        sleep(1)
+        editTitle("Submit MSE 333 A2")
+        app.typeText(" v2\n")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3), "Return ends the edit")
+        let field = titleField("Submit MSE 333 A2 v2")
+        XCTAssertTrue(field.waitForExistence(timeout: 3), "written, without a line break")
+        UIPasteboard.general.string = "Line one\nLine two"
+        editTitle("Submit MSE 333 A2 v2")
+        field.tap()
+        let paste = app.menuItems["Paste"].exists ? app.menuItems["Paste"] : app.buttons["Paste"]
+        XCTAssertTrue(paste.waitForExistence(timeout: 3), "the edit menu's Paste")
+        paste.tap()
+        sleep(1)
+        // (iOS's smart paste adds the space before it.)
+        XCTAssertTrue(titleField("Submit MSE 333 A2 v2 Line one Line two").waitForExistence(timeout: 3),
+                      "the pasted line break is a space")
+        app.buttons["Done"].firstMatch.tap()
+        sleep(1)
+        XCTAssertTrue(app.staticTexts["Submit MSE 333 A2 v2 Line one Line two"].waitForExistence(timeout: 3))
+    }
+
+    private func titleField(_ text: String) -> XCUIElement {
+        let view = app.textViews.matching(NSPredicate(format: "value == %@", text)).firstMatch
+        return view.exists ? view : app.textFields.matching(NSPredicate(format: "value == %@", text)).firstMatch
+    }
+
+    /// Notes hold 20,000 characters (the Mac's NotesView.swift:703): from 18,000 the footer counts them, and typing past
+    /// 20,000 stops there with a notice.
+    func testNotesStopAt20000() {
+        let words = String(repeating: "word ", count: 3_998)   // 19,990 characters
+        launch(remote: "s8", notes: words)
+        app.buttons["School"].firstMatch.tap()
+        sleep(1)
+        remoteEdit()
+        app.staticTexts["Print ECE 358 formula sheet"].firstMatch.tap()
+        sleep(1)
+        func footer(_ s: String) -> XCUIElement { app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", s)).firstMatch }
+        XCTAssertTrue(footer("· 19,990 / 20,000").waitForExistence(timeout: 5), "the counter from 18,000")
+        app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'word word'")).firstMatch.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3), "the notes have the caret")
+        app.typeText("abcdefghijkl")
+        XCTAssertTrue(app.staticTexts["Notes hold up to 20,000 characters"].waitForExistence(timeout: 3), "the notice")
+        XCTAssertTrue(footer("· 20,000 / 20,000").waitForExistence(timeout: 3), "cut at 20,000")
+    }
+
+    /// A heading with notes folds as one without does (§23): its notes fold up into it with its tasks, and the next
+    /// heading closes up on the same curve: filmed, it only ever moves up as it folds and down as it unfolds, and never
+    /// past where it ends.
+    func testFoldingAHeadingWithNotesDoesntJump() {
+        openPhys()
+        menuOpen {
+            heading("Labs").press(forDuration: 1.0)
+            app.buttons["Add Notes"].tap()
+        }
+        XCTAssertTrue(app.textViews["headingNotes"].waitForExistence(timeout: 3))
+        app.typeText("Goggles\nLab coat\nThe manual")
+        app.buttons["Done"].tap()
+        sleep(2)
+        let notes = app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Goggles'")).firstMatch
+        XCTAssertTrue(notes.exists, "the notes, under the heading")
+        let labs = heading("Labs").frame, exam = heading("Exam prep").frame, notesAt = notes.frame.minY - labs.minY
+        XCTAssertLessThan(labs.maxY, y(notes))
+        // The rules (a heading's hairline: the same shade straight across) from Labs' down, in points: the gap from
+        // Labs' to the last, Exam prep's. (The list may also scroll back to its top as it gets shorter, moving both.)
+        let width = app.frame.width, height = app.frame.height
+        func gap(_ cg: CGImage) -> CGFloat? {
+            let w = cg.width, h = cg.height, scale = CGFloat(w) / width
+            var px = [UInt8](repeating: 0, count: w * h * 4)
+            guard let ctx = CGContext(data: &px, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                                      space: CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+            ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+            func luma(_ x: Int, _ row: Int) -> Int { let i = (row * w + x) * 4; return (Int(px[i]) + Int(px[i + 1]) + Int(px[i + 2])) / 3 }
+            let xs = [0.2, 0.35, 0.5, 0.65].map { Int(width * $0 * scale) }
+            var rules: [Int] = []
+            for row in Int(labs.minY * scale)..<Int((height - 120) * scale) {
+                let l = xs.map { luma($0, row) }, bg = luma(Int(4 * scale), row)
+                if l.allSatisfy({ abs($0 - bg) >= 6 }), l.max()! - l.min()! <= 3, rules.last.map({ row - $0 > 3 }) ?? true {
+                    rules.append(row)
+                }
+            }
+            guard rules.count >= 2 else { return nil }
+            return CGFloat(rules.last! - rules.first!) / scale
+        }
+        func track(_ label: String, folding: Bool) {
+            let before = gap(XCUIScreen.main.screenshot().image.cgImage!)
+            let frames = filming(10) { app.buttons[label].tap() }
+            sleep(1)
+            let after = gap(XCUIScreen.main.screenshot().image.cgImage!)
+            let gaps = frames.map(gap)
+            print("fold \(label):", before ?? -1, gaps.map { $0 ?? -1 }, after ?? -1)
+            guard let before, let after else { return XCTFail("\(label): Labs' and Exam prep's rules") }
+            XCTAssertEqual(folding ? before > after + 100 : before + 100 < after, true, "\(label): Exam prep moves")
+            var last = before
+            for g in gaps {
+                guard let g else { XCTFail("\(label): a frame without both rules: \(gaps)"); continue }
+                XCTAssertTrue(folding ? g <= last + 1 : g >= last - 1, "\(label): one way only: \(gaps)")
+                XCTAssertTrue(folding ? g >= after - 1 : g <= after + 1, "\(label): never past the end: \(gaps)")
+                last = g
+            }
+        }
+        track("Collapse Labs", folding: true)
+        XCTAssertFalse(notes.exists, "the notes fold away")
+        track("Expand Labs", folding: false)
+        XCTAssertTrue(notes.waitForExistence(timeout: 3), "and back")
+        XCTAssertEqual(heading("Exam prep").frame.minY - heading("Labs").frame.minY, exam.minY - labs.minY, accuracy: 1,
+                       "where it was, under Labs")
+        XCTAssertEqual(notes.frame.minY - heading("Labs").frame.minY, notesAt, accuracy: 1, "the notes back under it")
     }
 
     /// The chevron folds the section into the heading, with its open tasks' count after the name, and back.
@@ -1140,5 +1328,178 @@ final class FlowTests: XCTestCase {
         sleep(1)
         XCTAssertTrue(heading("Labs").waitForExistence(timeout: 3), "back")
         XCTAssertLessThan(y(heading("Labs")), y(lab3))
+    }
+
+    // MARK: Parity batch 1: the Mac's rules (docs/IOS-MAC-PARITY.md)
+
+    private func notice(beginningWith text: String) -> XCUIElement {
+        app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", text)).firstMatch
+    }
+
+    /// Move to, out of the list on screen: "Moved to Errands", with Undo (the Mac's `move`).
+    func testMoveOutOfAListSaysWhere() {
+        app.launchArguments += ["-screen", "list:inbox"]
+        app.launch()
+        let row = app.staticTexts["Back up the laptop"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "the Inbox")
+        menuOpen {
+            row.press(forDuration: 1.2)
+            app.buttons["Move to"].firstMatch.tap()
+            app.buttons["Errands"].firstMatch.tap()
+        }
+        XCTAssertTrue(app.staticTexts["Moved to Errands"].waitForExistence(timeout: 3), "the notice")
+        XCTAssertTrue(row.waitForNonExistence(timeout: 3), "gone from the Inbox")
+        app.buttons["Undo"].firstMatch.tap()
+        XCTAssertTrue(row.waitForExistence(timeout: 3), "back")
+    }
+
+    /// A date that takes a task out of Today says where it went, with Undo; one that keeps it there says nothing.
+    func testADateThatLeavesTodaySaysWhere() {
+        app.launchArguments += ["-screen", "today"]
+        app.launch()
+        let row = app.staticTexts["Reply to the landlord about the lease"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "Today")
+        menuOpen {
+            row.press(forDuration: 1.2)
+            app.buttons["Today"].firstMatch.tap()
+        }
+        sleep(1)
+        XCTAssertFalse(app.buttons["Undo"].exists, "still in Today: no notice")
+        menuOpen {
+            row.press(forDuration: 1.2)
+            app.buttons["Tomorrow"].firstMatch.tap()
+        }
+        XCTAssertTrue(notice(beginningWith: "Scheduled for ").waitForExistence(timeout: 3), "the notice")
+        XCTAssertTrue(row.waitForNonExistence(timeout: 3), "gone from Today")
+        app.buttons["Undo"].firstMatch.tap()
+        XCTAssertTrue(row.waitForExistence(timeout: 3), "back")
+    }
+
+    /// A task in Trash is put back, a list is restored (the Mac's `TrashVerb`): "Put back “…” in Home". Trash's
+    /// header and a deleted list's count are the Mac's. (One deleted
+    /// days ago: the sample's deletions today are stamped 11:00, so before then a put back would be older and lose.)
+    func testPutBackSaysWhere() {
+        app.launchArguments += ["-screen", "trash"]
+        app.launch()
+        let row = app.staticTexts["Buy a second lamp"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "Trash")
+        // The Mac's §28: no line under the title; a deleted list counts its open tasks.
+        XCTAssertEqual(app.staticTexts["listHeader"].label, "Trash")
+        XCTAssertTrue(app.buttons["Winter 2026, deleted list, 1 task"].exists, "a deleted list's open tasks")
+        row.swipeRight()
+        let button = app.buttons["Put Back"].firstMatch
+        XCTAssertTrue(button.waitForExistence(timeout: 3), "the swipe says Put Back")
+        button.tap()
+        XCTAssertTrue(app.staticTexts["Put back “Buy a second lamp” in Home"].waitForExistence(timeout: 3), "the notice")
+        XCTAssertTrue(row.waitForNonExistence(timeout: 3), "out of Trash")
+    }
+
+    /// The checkbox names its task and reads the ring (the Mac's label): overdue, due today, planned for today.
+    func testTheCheckboxNamesItsTask() {
+        app.launchArguments += ["-screen", "list:school"]
+        app.launch()
+        XCTAssertTrue(app.buttons["Complete: ECE 358 lab report, overdue"].waitForExistence(timeout: 10), "overdue")
+        XCTAssertTrue(app.buttons["Complete: Return the ECE 358 lab kit, due today"].exists, "due today")
+        XCTAssertTrue(app.buttons["Complete: Pay the MSE 333 field trip fee, due today, planned for today"].exists,
+                      "due and planned")
+        XCTAssertTrue(app.buttons["Complete: Print ECE 358 formula sheet"].exists, "no cue")
+    }
+
+    /// Checked rows stay in place, struck at once, until 1.5 s pass with no further check: a second check restarts the
+    /// wait, so both move together (IX:665–669).
+    func testChecksSettleTogether() {
+        app.launchArguments += ["-screen", "list:school"]
+        app.launch()
+        let a = app.buttons["Complete: Print ECE 358 formula sheet"]
+        let b = app.buttons["Complete: Ask about co-op interview slots"]
+        XCTAssertTrue(a.waitForExistence(timeout: 10), "School")
+        a.tap()
+        let tA = Date()
+        b.tap()
+        // Past the old 1.1 s, and within 1.5 s of the second check: the first is still in place.
+        let wait = 1.25 - Date().timeIntervalSince(tA)
+        if wait > 0 { usleep(UInt32(wait * 1_000_000)) }
+        XCTAssertTrue(app.buttons["Mark not done: Print ECE 358 formula sheet"].exists,
+                      "the first check waits for the second (\(Date().timeIntervalSince(tA)) s)")
+        XCTAssertTrue(app.buttons["Mark not done: Ask about co-op interview slots"].exists)
+        XCTAssertTrue(app.buttons["Mark not done: Print ECE 358 formula sheet"].waitForNonExistence(timeout: 4), "settled")
+        XCTAssertFalse(app.buttons["Mark not done: Ask about co-op interview slots"].exists, "together")
+    }
+
+    private func whenLabels() -> XCUIElementQuery {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'When '"))
+    }
+
+    /// Only the date that places a row is hidden (the Mac's rule): in Today a When on or before today. A task that's
+    /// in Today by its deadline shows a later When.
+    func testAWhenShowsUnlessItPlacesTheRow() {
+        app.launchArguments += ["-screen", "today"]
+        app.launch()
+        let row = app.staticTexts["Return the ECE 358 lab kit"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "Today")
+        XCTAssertEqual(whenLabels().count, 0, "Today's Whens place their rows")
+        menuOpen {
+            row.press(forDuration: 1.2)
+            app.buttons["Tomorrow"].firstMatch.tap()
+        }
+        sleep(1)
+        XCTAssertTrue(row.exists, "still in Today: due today")
+        XCTAssertFalse(app.buttons["Undo"].exists, "so no notice")
+        XCTAssertEqual(whenLabels().count, 1, "its When, tomorrow, shows")
+    }
+
+    /// Today's Completed group is open by default, and its rows show their list's name. (A task is checked here: the
+    /// sample's completion today is stamped 15:00, so before then the group is empty.)
+    func testTodaysCompletedIsOpenWithListNames() {
+        app.launchArguments += ["-screen", "today"]
+        app.launch()
+        let box = app.buttons["Complete: Reply to the landlord about the lease"]
+        XCTAssertTrue(box.waitForExistence(timeout: 10), "Today")
+        box.tap()
+        sleep(3)
+        app.swipeUp()
+        app.swipeUp()
+        let done = app.staticTexts["Reply to the landlord about the lease"].firstMatch
+        XCTAssertTrue(done.waitForExistence(timeout: 3), "in the Completed group, open by default")
+        XCTAssertTrue(app.buttons["Hide completed tasks"].exists, "open")
+        XCTAssertNotNil(level(app.staticTexts, "Inbox", with: done), "its list's name")
+    }
+
+    /// In a month group of Completed and Trash a row shows the day after its list ("School · Oct 22").
+    func testMonthGroupsShowTheDay() {
+        app.launchArguments += ["-screen", "completed"]
+        app.launch()
+        let done = app.staticTexts["Register for winter courses"].firstMatch
+        XCTAssertTrue(done.waitForExistence(timeout: 10), "Completed")
+        let name = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'School · '")).allElementsBoundByIndex
+            .first { abs($0.frame.midY - done.frame.midY) < 12 }
+        XCTAssertNotNil(name, "School and the day it was done")
+        XCTAssertNotNil(level(app.staticTexts, "School", with: app.staticTexts["Meet the ECE 358 lab group"].firstMatch),
+                        "in a day group, the list alone: the group has the day")
+    }
+
+    /// Show in <list>, from Today's menu and from the details' header: the list opens with the task.
+    func testShowInList() {
+        app.launchArguments += ["-screen", "today"]
+        app.launch()
+        let lab = app.staticTexts["Lab 3 report · pendulum"].firstMatch
+        XCTAssertTrue(lab.waitForExistence(timeout: 10), "Today")
+        menuOpen {
+            lab.press(forDuration: 1.2)
+            app.buttons["Show in PHYS 122"].firstMatch.tap()
+        }
+        sleep(1)
+        let header = app.descendants(matching: .any)["listHeader"].firstMatch
+        XCTAssertTrue(header.label.hasPrefix("PHYS 122, Waves"), "PHYS 122 opens, with no count by its title: \(header.label)")
+        XCTAssertTrue(lab.waitForExistence(timeout: 3) && lab.isHittable, "with the task shown")
+        back()
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Today'")).firstMatch.tap()
+        app.staticTexts["Reply to the landlord about the lease"].firstMatch.tap()
+        let show = app.buttons["Show in Inbox"]
+        XCTAssertTrue(show.waitForExistence(timeout: 3), "the details' header")
+        show.tap()
+        sleep(1)
+        XCTAssertTrue(header.label.hasPrefix("Inbox"), "the Inbox opens: \(header.label)")
+        XCTAssertFalse(app.buttons["When"].exists, "the details closed")
     }
 }

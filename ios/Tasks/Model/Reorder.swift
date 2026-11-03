@@ -25,7 +25,7 @@ extension Line {
     /// The task or heading on this line, for a drop.
     var entityID: EntityID? {
         switch self {
-        case let .task(t, _, _): t.id
+        case let .task(t, _, _, _): t.id
         case let .heading(h, _): h.id
         default: nil
         }
@@ -34,7 +34,7 @@ extension Line {
     /// An open task, or a heading. Done tasks, labels and the rest don't lift.
     var canDrag: Bool {
         switch self {
-        case let .task(t, _, _): !t.isDone
+        case let .task(t, _, _, _): !t.isDone
         case .heading: true
         default: false
         }
