@@ -1,6 +1,6 @@
 # iOS parity batch 2: five designs for touch
 
-Status: **proposed, 2026-11-03**, for the user to pick from. Brief: `docs/TASK-design-ios-batch2.md`. Each design is the
+Status: **approved, 2026-11-03.** The user took every recommendation: Undo and Redo in the "…" menu (A), a deleted list's rows inert as on the Mac (A), and `fill-row-selected` kept in light. The mock-up is approved too. Brief: `docs/TASK-design-ios-batch2.md`. Each design is the
 Mac's rule adapted for touch. Where touch forces a change, the reason is given with it. Sources:
 `design/INTERACTIONS-v2.md` (cited as IX §n), `design/COLOR.md` §4, `docs/IOS-MAC-PARITY.md` (gaps 2, 4, 6, 7 and 10),
 the Mac code in `app/Tasks/` and the iOS code in `ios/Tasks/`.
