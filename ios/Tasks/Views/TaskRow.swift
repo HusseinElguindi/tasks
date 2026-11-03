@@ -133,7 +133,13 @@ struct HeadingRow: View {
     private var editingNotes: Bool {
         if case let .notes(h, _)? = app.draft?.kind { h == heading.id } else { false }
     }
-    private var text: Binding<String> { Binding(get: { app.draft?.title ?? "" }, set: { app.draft?.title = $0 }) }
+    /// Its name is one line (pasted line breaks become spaces); its notes keep theirs.
+    private var text: Binding<String> {
+        Binding(get: { app.draft?.title ?? "" }, set: { new in
+            let text = editingNotes ? new : TitleText.oneLine(new)
+            app.draft?.title = text
+        })
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -313,7 +319,8 @@ struct DraftRow: View {
     private var heading: Bool {
         if case .heading? = app.draft?.kind { true } else { false }
     }
-    private var text: Binding<String> { Binding(get: { app.draft?.title ?? "" }, set: { app.draft?.title = $0 }) }
+    /// A title is one line: pasted line breaks become spaces.
+    private var text: Binding<String> { Binding(get: { app.draft?.title ?? "" }, set: { app.draft?.title = TitleText.oneLine($0) }) }
 
     var body: some View {
         Group {

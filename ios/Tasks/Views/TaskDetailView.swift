@@ -74,6 +74,16 @@ private struct TaskDetailContent: View {
                             .submitLabel(.done)
                             .disabled(trashed)
                             .onSubmit { focus = nil }
+                            // One line (IX:599): a typed Return ends the edit, pasted line breaks become spaces.
+                            .onChange(of: title) { old, new in
+                                guard focus == .title, new.contains(where: \.isNewline) else { return }
+                                if let typed = TitleText.typedReturn(old: old, new: new) {
+                                    title = typed
+                                    focus = nil
+                                } else {
+                                    title = TitleText.oneLine(new)
+                                }
+                            }
                     }
                     .padding(.top, 6)
 
@@ -342,7 +352,7 @@ private struct TaskDetailContent: View {
         } else if let done = t.completedAt {
             s += " · Completed " + day(done)
         }
-        return s
+        return s + NotesLimit.counter(notes)
     }
 
     private func day(_ ms: Int) -> String { DateLabel.monthDay(app.localDay(ms)) }
@@ -395,6 +405,7 @@ struct NotesEditor: View {
     var minHeight: CGFloat = 180
     /// A checklist box clicked at rest: the new text, and whether it checked the box.
     var onToggle: (String, Bool) -> Void
+    @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
 
     private var editing: Bool { focus.wrappedValue == .notes }
@@ -413,6 +424,12 @@ struct NotesEditor: View {
                 .padding(.top, -8)
                 .opacity(editing ? 1 : 0)
                 .disabled(readOnly)
+                // Past 20,000 characters the text is cut there, with the Mac's notice (NotesView.swift:703).
+                .onChange(of: text) { _, new in
+                    guard new.utf16.count > NotesLimit.max else { return }
+                    text = NotesLimit.prefix(new)
+                    app.show(Notice(text: NotesLimit.notice, undo: nil))
+                }
             if !editing {
                 Group {
                     if text.isEmpty {

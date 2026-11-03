@@ -83,7 +83,7 @@ extension AppModel {
             out.append(.completedToggle(key: id, count: done.count, open: open))
             if open { out += done.compactMap(task).map { .task($0, indent: false) } }
         }
-        if models.isEmpty && done.isEmpty && !draftHere {
+        if models.isEmpty && done.isEmpty && !(draftHere && draft?.editsListNotes != true) {
             out.append(.empty(title: "No tasks", message: "Tap + to add one. Tasks you add here stay in this list.", symbol: "checklist"))
         }
     }

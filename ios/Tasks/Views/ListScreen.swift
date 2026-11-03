@@ -16,13 +16,15 @@ struct ListScreen: View {
 
     private static let space = "rows"
     private var adding: Bool { app.draft?.source == source }
+    /// The list's notes are being typed, under its title.
+    private var editingNotes: Bool { adding && app.draft?.editsListNotes == true }
 
     var body: some View {
         let lines = app.lines(source)
         ScrollViewReader { proxy in
             List {
                 header
-                    .endsAddingOnTap()
+                    .endsAddingOnTap(!editingNotes)
                     .pressesShowAtOnce()
                     .listRow()
                 if let runs = app.dragRuns(lines, source) {
@@ -49,7 +51,7 @@ struct ListScreen: View {
             // view as adding starts; a new task's own row is at the top, where + is pressed from. The next row after
             // Return is under the last one, already in view.
             .onChange(of: app.draft?.kind) { _, kind in
-                guard let kind, adding, kind != .task, app.draft?.editedHeading == nil else { return }
+                guard let kind, adding, kind != .task, app.draft?.editedHeading == nil, !editingNotes else { return }
                 animate(Motion.layout) { proxy.scrollTo("draft") }
             }
             // Show in <list>: the task is scrolled into view once the list is up.
@@ -90,8 +92,8 @@ struct ListScreen: View {
                 .opacity(folded ? 1 : 0)
                 .accessibilityHidden(!folded)
             }
-            if adding, case .notes? = app.draft?.kind {
-                // A heading's notes: Done ends them, as Esc does on the Mac.
+            if adding, app.draft?.editsNotes == true {
+                // A heading's or the list's notes: Done ends them, as Esc does on the Mac.
                 ToolbarItem(placement: .primaryAction) {
                     Button("Done") { app.endDraft() }
                 }
@@ -111,20 +113,36 @@ struct ListScreen: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 11) {
-                app.tile(for: source, palette: p, scale: 1.2)
-                Text(app.title(source))
-                    .font(Typo.largeTitle)
-                    .foregroundStyle(p.ink)
-                    .lineLimit(1)
-                if let sub = subtitle {
-                    Text(sub).font(Typo.body).foregroundStyle(p.inkTertiary).lineLimit(1).padding(.top, 4)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 11) {
+                    app.tile(for: source, palette: p, scale: 1.2)
+                    Text(app.title(source))
+                        .font(Typo.largeTitle)
+                        .foregroundStyle(p.ink)
+                        .lineLimit(1)
+                    if let sub = subtitle {
+                        Text(sub).font(Typo.body).foregroundStyle(p.inkTertiary).lineLimit(1).padding(.top, 4)
+                    }
+                }
+                if case let .list(id) = source, !editingNotes, let notes = app.list(id)?.notes, !notes.isEmpty {
+                    // A list's notes are a step quieter (§23), in the same Markdown as a task's. A tap on them edits
+                    // them; a checklist box toggles in one op (IX:1540–1543).
+                    MarkdownText(text: notes, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5) { new, checking in
+                        app.setNotes(list: id, new, name: checking ? "Check Item" : "Uncheck Item")
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture { app.editListNotes(id) }
+                    .padding(.top, 2)
                 }
             }
-            if case let .list(id) = source, let notes = app.list(id)?.notes, !notes.isEmpty {
-                // A list's notes are a step quieter (§23), in the same Markdown as a task's.
-                MarkdownText(text: notes, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("listHeader")
+            if editingNotes {
+                ListNotesEditor()
                     .padding(.top, 2)
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: { draftFrame = $0 }
             }
         }
         .padding(.leading, Metric.rowPad)
@@ -132,9 +150,6 @@ struct ListScreen: View {
         .padding(.top, app.isSplit ? 14 : 4)
         .padding(.bottom, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isHeader)
-        .accessibilityIdentifier("listHeader")
     }
 
     /// Today's date after its title. A list's title has no count (the user, 2026-10-31; IX:1564).
@@ -192,6 +207,24 @@ struct ListScreen: View {
         case let .empty(title, message, symbol):
             EmptyState(title: title, message: message, symbol: symbol)
         }
+    }
+}
+
+/// A list's notes being typed, under its title: the notes editor, written once as it ends ("Edit List Notes").
+private struct ListNotesEditor: View {
+    @Environment(AppModel.self) private var app
+    @Environment(\.palette) private var p
+    @FocusState private var focus: DetailField?
+    private var text: Binding<String> { Binding(get: { app.draft?.title ?? "" }, set: { app.draft?.title = $0 }) }
+
+    var body: some View {
+        NotesEditor(text: text, focus: $focus, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5, minHeight: 60) { _, _ in }
+            .accessibilityIdentifier("listNotes")
+            .onAppear { DispatchQueue.main.async { focus = .notes } }
+            // The caret left the notes (a tap elsewhere, the keyboard put away): they're written, once.
+            .onChange(of: focus) { old, new in
+                if old != nil, new == nil, app.draft?.editsListNotes == true { app.endDraft() }
+            }
     }
 }
 
@@ -300,7 +333,8 @@ struct HeadingMenu: View {
     }
 }
 
-/// A list's menu in the bar: Rename, show or hide completed, Delete List (at once, with Undo).
+/// A list's menu in the bar: Rename, Add Notes or Edit Notes, New Heading, show or hide completed, Delete List (at
+/// once, with Undo).
 struct ListMenu: View {
     let listID: EntityID
     @Environment(AppModel.self) private var app
@@ -309,6 +343,9 @@ struct ListMenu: View {
         Menu {
             Button { app.listEditor = .init(listID: listID, name: app.list(listID)?.name ?? "") } label: {
                 Label("Rename", systemImage: "pencil")
+            }
+            Button { app.editListNotes(listID) } label: {
+                Label(app.list(listID)?.notes.isEmpty ?? true ? "Add Notes" : "Edit Notes", systemImage: "text.alignleft")
             }
             Button { app.newHeading(in: listID) } label: {
                 Label("New Heading", systemImage: "text.line.first.and.arrowtriangle.forward")

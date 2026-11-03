@@ -54,7 +54,7 @@ extension AppModel {
             if let notes = EditSession.write(d.title, original: original, current: task(h)?.notes) {
                 store.setNotes(h, notes, name: "Edit Notes", undoManager: undo)
             }
-        case .task, .taskIn: break
+        case .task, .taskIn, .listNotes: break
         }
         return false
     }
@@ -68,6 +68,23 @@ extension AppModel {
         while j < items.count, !isHeading(items[j]) { j += 1 }
         guard j < items.count else { return .bottom }
         return j > i + 1 ? .after(items[j - 1]) : .after(heading)
+    }
+
+    // MARK: A list's notes
+
+    /// Add Notes or Edit Notes in the list's menu, or a tap on them: the notes editor under its large title
+    /// (IX:1540–1543, the Mac's NotesView.swift:674).
+    func editListNotes(_ id: EntityID) {
+        guard projection.isActive(list: id), let l = list(id) else { return }
+        startDraft(.list(id), .listNotes(original: l.notes), text: l.notes)
+    }
+
+    /// The list's notes end: one `list.update`, only if the user changed them, "Edit List Notes". Always false.
+    func writeListNotes(_ d: Draft) -> Bool {
+        guard case let .listNotes(original) = d.kind, case let .list(id) = d.source,
+              let notes = EditSession.write(d.title, original: original, current: list(id)?.notes) else { return false }
+        setNotes(list: id, notes, name: "Edit List Notes")
+        return false
     }
 
     // MARK: Collapsing (local to this device, never synced)

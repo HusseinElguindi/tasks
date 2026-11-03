@@ -53,8 +53,8 @@ struct Notice: Identifiable {
     static let infoLife: Duration = .milliseconds(1800)
 }
 
-/// The text being typed in a list, in place: a new task or heading, or a heading's name or notes (§23). Each ends the
-/// same way (Return, a tap elsewhere, leaving, the app going to the background) and writes once, at the end.
+/// The text being typed in a list, in place: a new task or heading, a heading's name or notes (§23), or the list's own
+/// notes. Each ends the same way (Return, a tap elsewhere, leaving, the app going to the background) and writes once, at the end.
 struct Draft: Equatable {
     enum Kind: Equatable {
         /// A new task: at the top of its list, or in a view.
@@ -67,6 +67,8 @@ struct Draft: Equatable {
         case rename(heading: EntityID, original: String)
         /// A heading's notes, under it.
         case notes(heading: EntityID, original: String)
+        /// The list's notes, under its large title (IX:1540–1543).
+        case listNotes(original: String)
     }
     var source: Source
     var kind: Kind = .task
@@ -78,6 +80,19 @@ struct Draft: Equatable {
     var addsTask: Bool {
         switch kind {
         case .task, .taskIn: true
+        default: false
+        }
+    }
+
+    /// The list's notes are being typed, under its title.
+    var editsListNotes: Bool {
+        if case .listNotes = kind { true } else { false }
+    }
+
+    /// Notes are being typed (a heading's or the list's): Done ends them, and the text keeps its line breaks.
+    var editsNotes: Bool {
+        switch kind {
+        case .notes, .listNotes: true
         default: false
         }
     }
@@ -370,6 +385,7 @@ final class AppModel {
 
     func setTitle(_ id: EntityID, _ title: String, name: String? = nil) { store.setTitle(id, title, name: name, undoManager: undo) }
     func setNotes(_ id: EntityID, _ notes: String, name: String? = nil) { store.setNotes(id, notes, name: name, undoManager: undo) }
+    func setNotes(list id: EntityID, _ notes: String, name: String) { store.setNotes(list: id, notes, name: name, undoManager: undo) }
 
     // MARK: Lists
 
@@ -461,6 +477,7 @@ final class AppModel {
     /// if the user changed them (`writeHeading`).
     private func write(_ d: Draft) -> Bool {
         if case .notes = d.kind { return writeHeading(d) }
+        if case .listNotes = d.kind { return writeListNotes(d) }
         let title = d.title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { return false }
         var listID: EntityID?
@@ -477,6 +494,7 @@ final class AppModel {
         case let .taskIn(h):
             guard let listID else { return false }
             anchor = sectionEnd(h, in: listID)
+        case .listNotes: return false
         case .heading, .rename, .notes:
             return writeHeading(Draft(source: d.source, kind: d.kind, title: title, token: d.token))
         }
