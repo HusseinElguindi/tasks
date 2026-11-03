@@ -103,7 +103,7 @@ extension AppModel {
         var done = false
         animate(Motion.layout) { done = store.delete([id], name: "Delete Heading", undoManager: undo) }
         guard done else { return }
-        show(Notice(text: "Deleted heading “\(short(h.title))”") { [weak self] in
+        show(Notice(text: "Deleted heading \(quote(h.title))") { [weak self] in
             animate(Motion.layout) { self?.undo.undo() }
         })
     }

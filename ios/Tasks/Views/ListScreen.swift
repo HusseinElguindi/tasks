@@ -119,11 +119,6 @@ struct ListScreen: View {
                 MarkdownText(text: notes, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5)
                     .padding(.top, 2)
             }
-            if source == .trash {
-                Text("Deleted tasks and lists stay here, read-only, until you restore them.")
-                    .font(Typo.notes).lineSpacing(5).foregroundStyle(p.inkSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
         }
         .padding(.leading, Metric.rowPad)
         .padding(.trailing, 8)
@@ -175,8 +170,8 @@ struct ListScreen: View {
                 .contextMenu { TaskMenu(task: t, source: source) }
         case let .completedToggle(key, count, open):
             CompletedToggleRow(key: key, count: count, open: open)
-        case let .deletedList(l, count, open):
-            DeletedListRow(list: l, count: count, open: open)
+        case let .deletedList(l, _, open):
+            DeletedListRow(list: l, open: open)
                 .swipeActions(edge: .leading, allowsFullSwipe: true) {
                     Button { app.restoreList(l.id) } label: { Label("Restore", systemImage: "arrow.uturn.backward") }
                         .tint(p.accent)
@@ -206,8 +201,8 @@ private struct TaskSwipes: ViewModifier {
     func body(content: Content) -> some View {
         if source == .trash {
             content.swipeActions(edge: .leading, allowsFullSwipe: true) {
-                if app.canRestore(task) {
-                    Button { app.restore(task.id) } label: { Label("Restore", systemImage: "arrow.uturn.backward") }
+                if app.canPutBack(task) {
+                    Button { app.putBack(task.id) } label: { Label("Put Back", systemImage: "arrow.uturn.backward") }
                         .tint(p.accent)
                 }
             }
@@ -246,8 +241,8 @@ struct TaskMenu: View {
             Divider()
         }
         if source == .trash {
-            if app.canRestore(task) {
-                Button { app.restore(task.id) } label: { Label("Restore", systemImage: "arrow.uturn.backward") }
+            if app.canPutBack(task) {
+                Button { app.putBack(task.id) } label: { Label("Put Back", systemImage: "arrow.uturn.backward") }
             }
         } else {
             Button { app.toggle(task.id) } label: {

@@ -1141,4 +1141,68 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(heading("Labs").waitForExistence(timeout: 3), "back")
         XCTAssertLessThan(y(heading("Labs")), y(lab3))
     }
+
+    // MARK: Parity batch 1: the Mac's rules (docs/IOS-MAC-PARITY.md)
+
+    private func notice(beginningWith text: String) -> XCUIElement {
+        app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", text)).firstMatch
+    }
+
+    /// Move to, out of the list on screen: "Moved to Errands", with Undo (the Mac's `move`).
+    func testMoveOutOfAListSaysWhere() {
+        app.launchArguments += ["-screen", "list:inbox"]
+        app.launch()
+        let row = app.staticTexts["Back up the laptop"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "the Inbox")
+        menuOpen {
+            row.press(forDuration: 1.2)
+            app.buttons["Move to"].firstMatch.tap()
+            app.buttons["Errands"].firstMatch.tap()
+        }
+        XCTAssertTrue(app.staticTexts["Moved to Errands"].waitForExistence(timeout: 3), "the notice")
+        XCTAssertTrue(row.waitForNonExistence(timeout: 3), "gone from the Inbox")
+        app.buttons["Undo"].firstMatch.tap()
+        XCTAssertTrue(row.waitForExistence(timeout: 3), "back")
+    }
+
+    /// A date that takes a task out of Today says where it went, with Undo; one that keeps it there says nothing.
+    func testADateThatLeavesTodaySaysWhere() {
+        app.launchArguments += ["-screen", "today"]
+        app.launch()
+        let row = app.staticTexts["Reply to the landlord about the lease"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "Today")
+        menuOpen {
+            row.press(forDuration: 1.2)
+            app.buttons["Today"].firstMatch.tap()
+        }
+        sleep(1)
+        XCTAssertFalse(app.buttons["Undo"].exists, "still in Today: no notice")
+        menuOpen {
+            row.press(forDuration: 1.2)
+            app.buttons["Tomorrow"].firstMatch.tap()
+        }
+        XCTAssertTrue(notice(beginningWith: "Scheduled for ").waitForExistence(timeout: 3), "the notice")
+        XCTAssertTrue(row.waitForNonExistence(timeout: 3), "gone from Today")
+        app.buttons["Undo"].firstMatch.tap()
+        XCTAssertTrue(row.waitForExistence(timeout: 3), "back")
+    }
+
+    /// A task in Trash is put back, a list is restored (the Mac's `TrashVerb`): "Put back “…” in Home". Trash's
+    /// header and a deleted list's count are the Mac's. (One deleted
+    /// days ago: the sample's deletions today are stamped 11:00, so before then a put back would be older and lose.)
+    func testPutBackSaysWhere() {
+        app.launchArguments += ["-screen", "trash"]
+        app.launch()
+        let row = app.staticTexts["Buy a second lamp"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "Trash")
+        // The Mac's §28: no line under the title; a deleted list counts its open tasks.
+        XCTAssertEqual(app.staticTexts["listHeader"].label, "Trash")
+        XCTAssertTrue(app.buttons["Winter 2026, deleted list, 1 task"].exists, "a deleted list's open tasks")
+        row.swipeRight()
+        let button = app.buttons["Put Back"].firstMatch
+        XCTAssertTrue(button.waitForExistence(timeout: 3), "the swipe says Put Back")
+        button.tap()
+        XCTAssertTrue(app.staticTexts["Put back “Buy a second lamp” in Home"].waitForExistence(timeout: 3), "the notice")
+        XCTAssertTrue(row.waitForNonExistence(timeout: 3), "out of Trash")
+    }
 }

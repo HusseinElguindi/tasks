@@ -163,8 +163,8 @@ private struct TaskDetailContent: View {
             }
             Spacer()
             if trashed {
-                if app.canRestore(t) {
-                    BarIcon(symbol: "arrow.uturn.backward", label: "Restore") { app.restore(t.id) }
+                if app.canPutBack(t) {
+                    BarIcon(symbol: "arrow.uturn.backward", label: "Put Back") { app.putBack(t.id) }
                 }
             } else {
                 BarIcon(symbol: "trash", label: "Delete") {
@@ -186,8 +186,8 @@ private struct TaskDetailContent: View {
         .padding(.top, inline ? 0 : 6)
     }
 
-    /// Why it's read-only, and the way out: Restore for a task deleted on its own, Restore List for one that went with
-    /// its list (§28).
+    /// Why it's read-only, and the way out: Put Back for a task deleted on its own, Restore List for one that went with
+    /// its list (§28). A task is put back, a list is restored (the Mac's `TrashVerb`).
     private var trashBanner: some View {
         let l = app.list(t.list)
         let listGone = l?.isDeleted ?? true
@@ -197,14 +197,14 @@ private struct TaskDetailContent: View {
                 Text(deletedWords).font(Typo.body).foregroundStyle(p.ink)
                 // The list's name is in the bar above and the List row below, each on one line; the banner doesn't
                 // repeat it, as the Mac's doesn't (§21), so a long name can't turn it into a paragraph.
-                Text(app.canRestore(t) ? "Read-only until you restore it."
-                     : t.deleted ? "Its list is in Trash too. Restore the list, then this task."
+                Text(app.canPutBack(t) ? "Read-only until you put it back."
+                     : t.deleted ? "Its list is in Trash too. Restore the list, then put this task back."
                      : "Its list is in Trash. Restore the list to bring it back.")
                     .font(Typo.meta).foregroundStyle(p.inkSecondary)
             }
             Spacer(minLength: 8)
-            if app.canRestore(t) {
-                Button("Restore") { app.restore(t.id) }.buttonStyle(CapsuleButtonStyle(kind: .tinted, height: 30))
+            if app.canPutBack(t) {
+                Button("Put Back") { app.putBack(t.id) }.buttonStyle(CapsuleButtonStyle(kind: .tinted, height: 30))
             } else if listGone, let l {
                 Button("Restore List") { app.restoreList(l.id) }.buttonStyle(CapsuleButtonStyle(kind: .tinted, height: 30))
             }

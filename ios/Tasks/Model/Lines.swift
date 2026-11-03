@@ -192,6 +192,12 @@ extension AppModel {
     /// Deleted lists and the tasks deleted on their own, newest first (`Projection.trash`), by the local day they were
     /// deleted.
     private func trashLines(into out: inout [Line]) {
+        // No bucket holds deleted tasks, so Trash depends on every list's open and completed tasks, as the Mac's scan
+        // does (`ViewLayout.swift`: it runs again when one of them changes): a put back, or a delete synced in, redraws it.
+        for l in projection.allListIDs {
+            _ = projection.openTasks(in: l).ids
+            _ = projection.completedTasks(in: l).ids
+        }
         let entries = projection.trash()
         var seen: Set<String> = []
         for e in entries {
@@ -200,7 +206,7 @@ extension AppModel {
             out += trashEntry(e)
         }
         if entries.isEmpty {
-            out.append(.empty(title: "Trash is empty", message: "Deleted tasks wait here until you put them back.", symbol: "trash"))
+            out.append(.empty(title: "Trash is empty", message: "Deleted tasks and lists wait here until you put them back.", symbol: "trash"))
         }
     }
 

@@ -92,9 +92,13 @@ struct FloatingControls: View {
     }
 
     private func add() {
+        // No live list to put it in: say so, as the Mac does.
+        guard let id = app.store.defaultListID else {
+            app.show(Notice(text: "Create a list first", undo: nil))
+            return
+        }
         if home || source == nil {
             // From home, a new task in the default list (the first in the sidebar, as on the Mac).
-            guard let id = app.store.defaultListID else { return }
             app.open(.list(id))
             app.startDraft(.list(id))
         } else if let s = source {

@@ -256,7 +256,6 @@ struct CompletedToggleRow: View {
 /// chevron that shows what it holds.
 struct DeletedListRow: View {
     let list: ListModel
-    let count: Int
     let open: Bool
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
@@ -270,7 +269,7 @@ struct DeletedListRow: View {
                 // A title on the Mac (its TaskRowView): cut off, it fades out; the count after it stays whole.
                 Text(list.name).font(Typo.rowMedium).foregroundStyle(p.inkSecondary)
                     .fadeTruncation(Metric.titleFade, text: list.name)
-                Text(count == 1 ? "1 task" : "\(count) tasks")
+                Text(app.deletedListCount(list.id))
                     .font(Typo.quiet).foregroundStyle(p.inkTertiary).fixedSize().padding(.leading, 8)
                 Spacer(minLength: 8)
                 Image(systemName: "chevron.right")
@@ -283,7 +282,7 @@ struct DeletedListRow: View {
             .frame(minHeight: Metric.rowHeight)
         }
         .buttonStyle(RowStyle())
-        .accessibilityLabel("\(list.name), deleted list, \(count) tasks")
+        .accessibilityLabel("\(list.name), deleted list, \(app.deletedListCount(list.id))")
         .accessibilityHint(open ? "Hides its tasks" : "Shows its tasks")
     }
     private func toggle() {
