@@ -212,3 +212,17 @@ Each is small unless noted.
     counter from 18,000 (`app/Tasks/Detail/NotesView.swift:703`, `app/Tasks/Detail/DetailPane.swift:434`).
 15. **The + does nothing silently with no live lists** (`ios/Tasks/Views/RootView.swift:97`). The Mac says "Create a list first"
     (`app/Tasks/Window/WindowActions.swift:341`).
+
+---
+
+## 4. To improve later (noted by the user)
+
+- **Dragging a heading can hover between tasks** (the user, 2026-11-03, on the phone at e13bc81). The built-in drag
+  opens a gap inside a section, but a drop there is refused and the heading flies back. Nothing wrong is ever saved,
+  and a valid drop moves the whole section. Better: only open gaps where a heading can land (before another heading,
+  or at the end), as on the Mac (§23). The same goes for (c) below. This likely needs drag option B, our own gap
+  (Ex-Mac, 2026-11-03).
+- **Accepted with drag option A** (2026-11-03):
+  - (a) the lifted row has the system's platter and shadow, not `fill-lift` and `shadow-lift`;
+  - (b) a heading lifts alone, without its section folded in or the count badge;
+  - (c) in Today and Undated, a row can hover over another list's group, and the drop is refused.
