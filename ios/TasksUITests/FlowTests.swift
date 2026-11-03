@@ -745,4 +745,77 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(largest.gone.contains("School"), "at the largest size, School after Submit MSE 333 A2 goes")
         XCTAssertFalse(largest.fading.isEmpty, "and other names are cut, fading")
     }
+
+    // MARK: Drag to reorder (§14, §23)
+
+    /// Long-press, then drag `from` onto the middle of `onto`, as a finger does. The move starts at 0.5 s: by 0.8 s
+    /// the row's menu is fully open, and XCTest's drag then stays inside the menu.
+    private func drag(_ from: XCUIElement, onto: XCUIElement) {
+        from.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.5, thenDragTo: onto.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)),
+                   withVelocity: .default, thenHoldForDuration: 1)
+        sleep(2)
+    }
+
+    private func y(_ e: XCUIElement) -> CGFloat { e.frame.midY }
+
+    /// A task dragged over a heading joins that section, right where it's dropped: one op, list and order.
+    func testDragATaskIntoAnotherSection() {
+        app.launchArguments += ["-screen", "list:phys"]
+        app.launch()
+        let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
+        XCTAssertTrue(redo.waitForExistence(timeout: 10))
+        sleep(1)
+        let bench = app.staticTexts["Book a make-up lab bench"].firstMatch, exam = app.staticTexts["Exam prep"].firstMatch
+        drag(redo, onto: bench)
+        XCTAssertGreaterThan(y(redo), y(bench), "under the row it was dropped on, in Labs")
+        XCTAssertLessThan(y(redo), y(exam), "and still above Exam prep")
+        XCTAssertGreaterThan(y(redo), y(app.staticTexts["Labs"].firstMatch), "under Labs")
+    }
+
+    /// A heading takes its section: dropped inside Lectures, Labs and its three tasks land before Lectures, the
+    /// nearest place a section can go.
+    func testDragAHeadingMovesItsSection() {
+        app.launchArguments += ["-screen", "list:phys"]
+        app.launch()
+        let labs = app.staticTexts["Labs"].firstMatch, lectures = app.staticTexts["Lectures"].firstMatch
+        XCTAssertTrue(labs.waitForExistence(timeout: 10))
+        sleep(1)
+        drag(labs, onto: app.staticTexts["Read chapter 15 · oscillations"].firstMatch)
+        XCTAssertLessThan(y(labs), y(lectures), "Labs before Lectures")
+        for title in ["Lab 3 report · pendulum", "Lab 4 pre-lab · RC circuits", "Book a make-up lab bench"] {
+            let t = app.staticTexts[title].firstMatch
+            XCTAssertTrue(y(labs) < y(t) && y(t) < y(lectures), "\(title) came along, between Labs and Lectures")
+        }
+        XCTAssertLessThan(y(app.staticTexts["Buy safety glasses for the lab"].firstMatch), y(labs),
+                          "never above the task with no heading")
+    }
+
+    /// In Today a task moves within its list's group; dropped in another group, nothing changes.
+    func testDragInTodayStaysInItsGroup() {
+        app.launchArguments += ["-screen", "today"]
+        app.launch()
+        let reply = app.staticTexts["Reply to the landlord about the lease"].firstMatch
+        let dentist = app.staticTexts["Call the dentist about a cleaning"].firstMatch
+        XCTAssertTrue(reply.waitForExistence(timeout: 10))
+        sleep(1)
+        let before = y(reply)
+        drag(reply, onto: app.staticTexts["Email TA about midterm regrade"].firstMatch)
+        XCTAssertEqual(y(reply), before, accuracy: 1, "dropped in School's group: refused, back where it was")
+        XCTAssertLessThan(y(reply), y(dentist))
+        drag(reply, onto: dentist)
+        XCTAssertGreaterThan(y(reply), y(dentist), "within Inbox's group: under the dentist")
+        XCTAssertLessThan(y(reply), y(app.staticTexts["School"].firstMatch), "still in Inbox's group")
+    }
+
+    /// Lists reorder on Home; Today and the views stay put.
+    func testDragAListOnHome() {
+        app.launch()
+        let phys = app.buttons["PHYS 122, 10"].firstMatch, school = app.buttons["School, 11"].firstMatch
+        XCTAssertTrue(phys.waitForExistence(timeout: 10))
+        sleep(1)
+        drag(phys, onto: school)
+        XCTAssertLessThan(y(phys), y(school), "PHYS 122 above School")
+        XCTAssertGreaterThan(y(phys), y(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Inbox'")).firstMatch), "and under Inbox")
+    }
 }

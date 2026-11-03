@@ -6,6 +6,8 @@ struct HomeView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     @State private var folded = false
+    /// Counts drops that wrote something, for the light haptic on drop.
+    @State private var dropped = 0
 
     var body: some View {
         List {
@@ -21,8 +23,12 @@ struct HomeView: View {
                         Divider()
                         Button(role: .destructive) { app.deleteList(l.id) } label: { Label("Delete List", systemImage: "trash") }
                     }
+                    .contentShape(.dragPreview, RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous))
                     .listRow()
             }
+            // Drag to reorder the lists (§14; Reorder.swift has the iPhone's drag and its differences from the Mac).
+            // Today and the views aren't in this ForEach, so they don't move.
+            .onMove { from, to in if app.dropList(from, to) { dropped += 1 } }
             Color.clear.frame(height: 14).listRow()
             SourceRow(source: .completed, sidebar: sidebar).listRow()
             SourceRow(source: .trash, sidebar: sidebar).listRow()
@@ -30,6 +36,7 @@ struct HomeView: View {
             Color.clear.frame(height: sidebar ? 60 : Metric.bottomClearance).listRow()
         }
         .listStyle(.plain)
+        .sensoryFeedback(.impact(weight: .light), trigger: dropped)
         .refreshable { await app.syncNow() }
         .scrollContentBackground(.hidden)
         .environment(\.defaultMinListRowHeight, 0)
