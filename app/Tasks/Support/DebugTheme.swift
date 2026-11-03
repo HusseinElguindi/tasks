@@ -1,5 +1,6 @@
 #if DEBUG
 import Foundation
+import TasksTheme
 
 /// Debug aid: `-debugThemeCheck /path.txt` writes, per appearance, how far each token Rex pins lies from what its rule
 /// (THEMES.md §2.4) gives from Rex's base, ink and accent alone, in levels of 255. THEMES.md expects 1–4; dark's

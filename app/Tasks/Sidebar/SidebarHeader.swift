@@ -1,5 +1,6 @@
 import AppKit
 import QuartzCore
+import TasksTheme
 
 // The sidebar's brand header (v2 feedback 12): the bare 04 · Log mark and "Tasks", above Today. The logo canvas's
 // "Sidebar header" board (design/logo/Sheet.dc.html, around line 168).

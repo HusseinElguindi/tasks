@@ -1,6 +1,7 @@
 import AppKit
 import QuartzCore
 import SwiftUI
+import TasksTheme
 
 // Drawing primitives for the AppKit lists (task rows, the sidebar, the drag copy), matching the prototype's CSS.
 // Every view here is flipped (y down, like the prototype), and every layer's geometry is in points.

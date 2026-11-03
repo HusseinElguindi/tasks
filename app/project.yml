@@ -20,6 +20,8 @@ targets:
         type: syncedFolder
     dependencies:
       - package: TasksCore
+      - package: TasksCore
+        product: TasksTheme
     info:
       path: Info.plist
       properties:
@@ -65,8 +67,9 @@ targets:
         # design/logo/final; regenerate with design/logo/final/export.sh, which copies it here.
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         COMBINE_HIDPI_IMAGES: YES
-  # The theme's tests (design/THEMES.md, COLOR.md) and the edit-session rule's (docs/MAC-EDIT-DURABILITY.md):
-  # logic tests on those files alone, with no app host, so running them never launches the app or touches its data.
+  # The Mac's side of the theme's tests (design/THEMES.md, COLOR.md; the theme's own are TasksThemeTests in
+  # TasksCore) and the edit-session rule's (docs/MAC-EDIT-DURABILITY.md): logic tests on those files alone, with no
+  # app host, so running them never launches the app or touches its data.
   TasksTests:
     type: bundle.unit-test
     platform: macOS
@@ -74,8 +77,10 @@ targets:
       - path: TasksTests
       - path: Tasks/Theme/Theme.swift
       - path: Tasks/Theme/TK.swift
-      - path: Tasks/Theme/TileArt.swift
       - path: Tasks/Window/EditSession.swift
+    dependencies:
+      - package: TasksCore
+        product: TasksTheme
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.elguindi.TasksTests
@@ -96,6 +101,7 @@ schemes:
       config: Debug
       targets:
         - package: TasksCore/TasksCoreTests
+        - package: TasksCore/TasksThemeTests
         - TasksTests
     archive:
       config: Release
