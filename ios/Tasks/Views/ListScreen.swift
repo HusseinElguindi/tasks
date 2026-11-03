@@ -10,6 +10,8 @@ struct ListScreen: View {
     @State private var folded = false
     /// The new-task row's frame in the list, so a tap outside it can end adding.
     @State private var draftFrame: CGRect?
+    /// Counts drops that wrote something, for the light haptic on drop.
+    @State private var dropped = 0
 
     private static let space = "rows"
     private var adding: Bool { app.draft?.source == source }
@@ -19,16 +21,29 @@ struct ListScreen: View {
         List {
             header
                 .endsAddingOnTap()
+                .pressesShowAtOnce()
                 .listRow()
-            ForEach(lines) { line in
-                row(line)
-                    .endsAddingOnTap(!line.isDraft)
-                    .listRow()
+            if let runs = app.dragRuns(lines, source) {
+                // Drag to reorder (Reorder.swift: the iPhone's own drag, and its three accepted differences from the
+                // Mac). Each run is its own ForEach, so a drop stays in its Today or Undated group.
+                ForEach(runs) { run in
+                    ForEach(run.lines) { line in
+                        listLine(line)
+                            .contentShape(.dragPreview, RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous))
+                            .moveDisabled(!line.canDrag)
+                    }
+                    .onMove { from, to in
+                        if app.drop(from, to, in: run.lines, source: source) { dropped += 1 }
+                    }
+                }
+            } else {
+                ForEach(lines) { line in listLine(line) }
             }
             Color.clear.frame(height: app.isSplit ? 24 : Metric.bottomClearance)
                 .listRow()
         }
         .listStyle(.plain)
+        .sensoryFeedback(.impact(weight: .light), trigger: dropped)
         .coordinateSpace(.named(Self.space))
         // While adding, a tap anywhere outside the new-task row ends it. On a row or the header the tap goes no further
         // (`endsAddingOnTap`: the row doesn't open, its box doesn't check); this catches the rest, the list's empty
@@ -114,6 +129,12 @@ struct ListScreen: View {
 
     // MARK: Rows
 
+    private func listLine(_ line: Line) -> some View {
+        row(line)
+            .endsAddingOnTap(!line.isDraft)
+            .listRow()
+    }
+
     @ViewBuilder private func row(_ line: Line) -> some View {
         switch line {
         case let .group(_, title, sub, quiet):
@@ -121,7 +142,9 @@ struct ListScreen: View {
         case let .heading(h, count):
             HeadingRow(heading: h, count: count)
         case let .task(t, indent, groupDay):
-            TaskRow(task: t, source: source, indent: indent, groupDay: groupDay, selected: app.isSplit && app.selectedTask == t.id)
+            // On the phone the row whose details are open keeps the selected fill, then fades out as they close.
+            TaskRow(task: t, source: source, indent: indent, groupDay: groupDay,
+                    selected: app.isSplit ? app.selectedTask == t.id : app.detailTask == t.id)
                 .transition(.opacity)
                 .modifier(TaskSwipes(task: t, source: source))
                 .contextMenu { TaskMenu(task: t, source: source) }
