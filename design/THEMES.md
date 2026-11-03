@@ -2,7 +2,8 @@
 
 **Status: tabled: tokens adopted in the app; picker, files and samples deferred** (`docs/TASK-design-themes.md`,
 v2 feedback 17). The app draws from one palette with the §1 tokens, filled from one theme, Rex, by the §2.4 rules
-with Rex's measured values pinned (`app/Tasks/Theme/Theme.swift`, `TK.swift`), as §6 steps 1–6 describe; nothing
+with Rex's measured values pinned (`app/TasksCore/Sources/TasksTheme/Theme.swift`, shared by the Mac and iOS; the
+Mac's palette is `app/Tasks/Theme/TK.swift`), as §6 steps 1–6 describe; nothing
 looks different. Not built: the contrast check (§2.5), `contrast: "high"`, the theme file (§3), the picker (§4) and
 the sample themes (§5). Where the app differs from §1: it adds `card` (Settings' grouped sections, Pane's card: dark
 base → ink 1.5%, light = base) and has no `fill-thumb` (nothing draws one); Rex pins dark `hover`, `press`,
@@ -409,14 +410,17 @@ Contrast uses `contrast: "high"`. The names are plain words for the moods, not b
 
 ### 6.1 Changing the accent
 
-The accent is one value, `accent:` in `TK.Theme.rex` (`app/Tasks/Theme/Theme.swift`). Change that hex and
-everything that shows the accent follows, in both appearances: light's accent (derived, `Theme.accent(dark:)`),
-`accent-text` (raised if it falls under 4.5:1), `accent-tint`, `on-accent` (white while white holds 3:1 on it),
-`focus`, `text-selection`, `spark`, `mark-head`, Today's tile, and so the checked box, the highlighted day and menu
-item, links and rings. No other app code has an accent hex. To give one appearance its own accent instead, set that
-`Side`'s `accent`. `plan` (the When ring) is pinned, so it stays blue unless its pin goes. Then run the theme's tests
-(`xcodebuild test -scheme Tasks`, `TasksTests/ThemeTests.swift`): they check the values, that every derived token
-follows a new accent and nothing else moves, and the floors.
+The accent is one value, `accent:` in `Theme.rex` (`app/TasksCore/Sources/TasksTheme/Theme.swift`; the Mac calls it
+`TK.Theme.rex`). Change that hex and everything that shows the accent follows, in both appearances: light's accent
+(derived, `Theme.accent(dark:)`), `accent-text` (raised if it falls under 4.5:1), `accent-tint`, `on-accent` (white
+while white holds 3:1 on it), `focus`, `text-selection`, `spark`, `mark-head`, Today's tile, and so the checked box, the
+highlighted day and menu item, links and rings. No other app code has an accent hex. To give one appearance its own
+accent instead, set that `Side`'s `accent`. `plan` (the When ring) is pinned, so it stays blue unless its pin goes. Then
+run the theme's tests (`xcodebuild test -scheme Tasks` in `app/`: `TasksThemeTests` and the Mac's
+`TasksTests/ThemeTests.swift`): they check the values, that every derived token follows a new accent and nothing else
+moves, and the floors. The Mac's `ThemeGoldenTests` holds every token, palette colour and tile pixel to
+`ThemeGolden.json`, so it fails on any change of colour, as it should: re-record it with
+`TEST_RUNNER_THEME_GOLDEN_RECORD=1`, then commit the new JSON with the change.
 
 ### 6.2 The plan
 

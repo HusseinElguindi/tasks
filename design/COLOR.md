@@ -223,11 +223,12 @@ THEMES is tabled, but each direction is a few tokens a theme could set. Its rule
 
 ## 8. As built (2026-11-01)
 
-- **A:** the accent is `accent:` in `TK.Theme.rex` (`app/Tasks/Theme/Theme.swift`), one value; light's accent, every
-  accent token and Today's tile derive from it (§6, THEMES §6.1). `accent-text`'s 4.5:1 floor is checked as the theme
-  is derived. `TasksTests/ThemeTests.swift` checks the values, that changing the accent changes every derived token
-  and nothing else, the floors for random accents, and that no other app file has an accent hex. The When ring reads
-  `plan`.
+- **A:** the accent is `accent:` in `Theme.rex` (`app/TasksCore/Sources/TasksTheme/Theme.swift`, the theme the Mac and
+  iOS share; the Mac calls it `TK.Theme.rex`), one value; light's accent, every accent token and Today's tile derive
+  from it (§6, THEMES §6.1). `accent-text`'s 4.5:1 floor is checked as the theme is derived. `TasksThemeTests` checks
+  the values, that changing the accent changes every derived token and nothing else, and the floors for random
+  accents; the Mac's `TasksTests/ThemeTests.swift` checks that its palette follows and that no other app file has an
+  accent hex. The When ring reads `plan`.
 - **B:** `TileArt` draws the finish from any hue into a cached image per hue, size and scale; the sidebar, the band and
   the large title (views as tiles too), the detail pane's List, the menus, a dragged list and the mark's head (round, no
   specular) all show it. Letters and glyphs are white; an archived list's tile is at 55%. The grey tile's `tile-fill`

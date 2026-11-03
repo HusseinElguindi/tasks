@@ -898,10 +898,12 @@ The theme comes from `PaneTheme.swift`. Screen design follows the design directi
 
 `ios/`, one SwiftUI app for iPhone and iPad (**iOS 26+**, Swift 6), on the same `TasksCore` as the Mac: the files above, the reducer, the projection, Today, ordering, dates, Markdown and sync are the Mac's own code, so the two can't disagree. The app adds only its screens and their state. Where a rule the screens need lived in the Mac app (the views' grouping, `ViewGroups`; list numbering in notes), it moved into `TasksCore` for both.
 
-- **Screens:** a stack on iPhone (home, a list, details in a sheet), the Mac's three panes on iPad. The Mac's one theme, its colours copied until the theme code is shared.
+- **Screens:** a stack on iPhone (home, a list, details in a sheet), the Mac's three panes on iPad. The Mac's one theme, shared with it: `TasksTheme` in `app/TasksCore` holds the tokens, Rex and the lit tiles' finish, and each app only turns them into its own colours.
 - **Data:** the same files in the app's Application Support: `Tasks`, or `Tasks Dev` for Debug builds.
 - **Sync:** the same token, pasted once into Settings and kept in the Keychain; the Mac's triggers (launch, coming to the front, every 30 s while in front, pull to refresh), and nothing in the background. Debug builds talk only to a local server.
 - **Notes** show rendered at rest and as plain text while editing (the Mac edits them live, `design/MARKDOWN.md`).
+- **Leaving the app:** iOS may end an app in the background, so leaving the front writes what was typed: a task's title or notes mid-edit are written if they changed from where the edit began (the Mac's edit rule), and the edit carries on from that text; a new-task row ends (a typed title is written, an empty row goes); then the data is saved.
+- **Adding a task:** while a new task's row is open, a tap anywhere outside it only ends adding: the row tapped doesn't open and its box doesn't check, on iPhone and in iPad's sidebar and details. This differs from the Mac on purpose (the user, 2026-11-02), where a press elsewhere also does what it presses (`design/INTERACTIONS-v2.md` §6). A drag still scrolls.
 
 ## 9. Performance: view layer, indexes, budget
 
