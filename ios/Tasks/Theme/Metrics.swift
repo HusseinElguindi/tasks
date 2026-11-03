@@ -15,8 +15,8 @@ enum Metric {
     /// Space under the last row so nothing hides behind the floating bar and the + button.
     static let bottomClearance: CGFloat = 104
     /// A row's title keeps this much (all of a shorter one) before the When, or a list's name after it, gives way
-    /// (the Mac's 120, `TaskRowView.titleKeep`).
-    static let titleKeep: CGFloat = 120
+    /// (the Mac's 120 × 1.3, `TaskRowView.titleKeep`).
+    static let titleKeep: CGFloat = 156
     /// A list's name after a task's title keeps this much before it's cut (the Mac's 72 × 1.3, `whereKeep`), and goes
     /// rather than show less than this much (the Mac's 32 × 1.3, `whereMin`).
     static let listNameKeep: CGFloat = 94

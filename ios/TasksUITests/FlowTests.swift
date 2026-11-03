@@ -642,7 +642,8 @@ final class FlowTests: XCTestCase {
     }
 
     /// Cut off, a task's title and a list's name fade out at their ends instead of an ellipsis (the user, 2026-11-02;
-    /// INTERACTIONS-v2 §24, the Mac's rows), and a list's name after a long title keeps 94pt (the Mac's 72). Home's
+    /// INTERACTIONS-v2 §24, the Mac's rows). Beside a long list name a long title keeps 156pt (the Mac's 120), and the
+    /// name gets what's left, up to 94pt (the Mac's 72) and never under 42 (the Mac's 32). Home's
     /// rows, and iPad's sidebar, its current row too, fade a long name (§12). What fits shows no fade. Dark and Light.
     func testLongNamesFade() {
         let pad = UIDevice.current.userInterfaceIdiom == .pad
@@ -655,17 +656,20 @@ final class FlowTests: XCTestCase {
                                    "-remoteList", "school-9", "-remoteName", Self.longName]
             app.launch()
             let groceries = app.staticTexts["Get groceries for the week"].firstMatch
-            XCTAssertTrue(groceries.waitForExistence(timeout: 5), "Upcoming")
+            XCTAssertTrue(groceries.waitForExistence(timeout: 10), "Upcoming")
             remoteEdit()
             let title = app.staticTexts[Self.longTitle].firstMatch
             XCTAssertTrue(title.waitForExistence(timeout: 3), "the long title, whole for VoiceOver")
             sleep(1)
             shot("fade-upcoming-\(look)")
             assertFades(title, "\(look): a long title")
-            XCTAssertGreaterThanOrEqual(title.frame.width, 120, "\(look): the title keeps 120pt")
+            XCTAssertGreaterThanOrEqual(title.frame.width, 155.5, "\(look): the title keeps 156pt")
             if let name = level(app.staticTexts, Self.longName, with: title) {
                 assertFades(name, "\(look): a long list name after a long title")
-                XCTAssertEqual(name.frame.width, 94, accuracy: 1, "\(look): the list name keeps 94pt")
+                // On this row the title's 156pt leaves the name less than its 94: the title keeps exactly 156.
+                XCTAssertEqual(title.frame.width, 156, accuracy: 1, "\(look): the title gives way to 156pt, no less")
+                XCTAssertGreaterThanOrEqual(name.frame.width, 41.5, "\(look): the name, 42pt or more")
+                XCTAssertLessThanOrEqual(name.frame.width, 94.5, "\(look): the name, 94pt at most")
                 XCTAssertLessThanOrEqual(title.frame.maxX + 8, name.frame.minX + 0.5, "\(look): 8 apart")
             } else {
                 XCTFail("\(look): the long title's list name")

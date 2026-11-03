@@ -253,7 +253,7 @@ struct EmptyState: View {
     }
 }
 
-/// The title and the quiet When after it, as the Mac lays them out when narrow: the title keeps up to 120pt; the When
+/// The title and the quiet When after it, as the Mac lays them out when narrow: the title keeps up to 156pt; the When
 /// drops before the title goes under that.
 struct TitleSlot: Layout {
     var minTitle: CGFloat = Metric.titleKeep
@@ -292,7 +292,7 @@ struct TitleSlot: Layout {
 }
 
 /// A row's title slot and, in the views that mix lists, the list's name at the row's end, shared out as the Mac shares
-/// a short row (INTERACTIONS-v2 §24 "A short row", the Mac's TaskRowView): the title keeps up to 120pt and its notes
+/// a short row (INTERACTIONS-v2 §24 "A short row", the Mac's TaskRowView): the title keeps up to 156pt and its notes
 /// hint, the name up to 94pt (the Mac's 72); room beyond those goes to the title first, then to the name, which is cut
 /// and fades out like a title. A name that would show less than 42pt (the Mac's 32), or less than all of a shorter
 /// one, goes, and the title gets its room. The title's slot ends 8 short of what follows; the name sits at the end,
@@ -311,7 +311,7 @@ struct TitleThenName: Layout {
         let name = subviews[1].sizeThatFits(.unspecified).width
         let avail = room - after
         if lead + name <= avail { return (lead, name) }
-        // What the slot keeps: up to 120pt of the title, plus what it can't give up (the hint).
+        // What the slot keeps: up to 156pt of the title, plus what it can't give up (the hint).
         let hint = subviews[0].sizeThatFits(ProposedViewSize(width: 0, height: nil)).width
         let leadKeep = min(lead, titleKeep + hint)
         let cut = min(name, max(min(name, nameKeep), avail - lead), max(0, avail - leadKeep))
