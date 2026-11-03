@@ -15,22 +15,29 @@ struct HomeView: View {
             SourceRow(source: .today, count: app.todayCount(), sidebar: sidebar).listRow()
             SourceRow(source: .upcoming, sidebar: sidebar).listRow()
             SourceRow(source: .undated, sidebar: sidebar).listRow()
-            GroupLabel(title: "Lists").listRow()
-            ForEach(app.activeLists) { l in
-                // No count: only Today has one (the user, 2026-10-31; IX:37–39).
-                SourceRow(source: .list(l.id), sidebar: sidebar)
-                    .contextMenu {
-                        Button { app.listEditor = .init(listID: l.id, name: l.name) } label: { Label("Rename", systemImage: "pencil") }
-                        Divider()
-                        Button(role: .destructive) { app.deleteList(l.id) } label: { Label("Delete List", systemImage: "trash") }
-                    }
-                    .contentShape(.dragPreview, RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous))
-                    .listRow()
+            GroupLabel(title: "Lists", bottom: 0).listRow()
+            // The air under "Lists" and the space under the last list are rows of the lists' own, so a drop there is
+            // the top or the end (Reorder.swift, "Edges"); nothing in them takes a touch, so they never lift.
+            let items = HomeItem.items(app.activeLists)
+            ForEach(items) { item in
+                switch item {
+                case .top: Color.clear.frame(height: 6).accessibilityHidden(true).listRow()
+                case .end: Color.clear.frame(height: 14).accessibilityHidden(true).listRow()
+                case let .list(l):
+                    // No count: only Today has one (the user, 2026-10-31; IX:37–39).
+                    SourceRow(source: .list(l.id), sidebar: sidebar)
+                        .contextMenu {
+                            Button { app.listEditor = .init(listID: l.id, name: l.name) } label: { Label("Rename", systemImage: "pencil") }
+                            Divider()
+                            Button(role: .destructive) { app.deleteList(l.id) } label: { Label("Delete List", systemImage: "trash") }
+                        }
+                        .contentShape(.dragPreview, RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous))
+                        .listRow()
+                }
             }
             // Drag to reorder the lists (§14; Reorder.swift has the iPhone's drag and its differences from the Mac).
             // Today and the views aren't in this ForEach, so they don't move.
-            .onMove { from, to in if app.dropList(from, to) { dropped += 1 } }
-            Color.clear.frame(height: 14).listRow()
+            .onMove { from, to in if app.dropList(from, to, in: items.map(\.listID)) { dropped += 1 } }
             SourceRow(source: .completed, sidebar: sidebar).listRow()
             SourceRow(source: .trash, sidebar: sidebar).listRow()
             if let s = app.syncSummary { SyncLine(text: s).listRow() }

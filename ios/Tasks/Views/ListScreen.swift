@@ -36,11 +36,12 @@ struct ListScreen: View {
                 if let runs = app.dragRuns(lines, source) {
                     // Drag to reorder (Reorder.swift: the iPhone's own drag, and its three accepted differences from
                     // the Mac). Each run is its own ForEach, so a drop stays in its Today or Undated group.
+                    let airless = Set(runs.dropFirst().compactMap { $0.lines.first?.id })
                     ForEach(runs) { run in
                         ForEach(run.lines) { line in
-                            listLine(line)
+                            listLine(line, airless: airless.contains(line.id))
                                 .contentShape(.dragPreview, RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous))
-                                .moveDisabled(!line.canDrag)
+                                .moveDisabled(!line.canDrag && !line.takesDrops)
                         }
                         .onMove { from, to in
                             if app.drop(from, to, in: run.lines, source: source) { dropped += 1 }
@@ -186,8 +187,8 @@ struct ListScreen: View {
 
     // MARK: Rows
 
-    private func listLine(_ line: Line) -> some View {
-        row(line)
+    private func listLine(_ line: Line, airless: Bool = false) -> some View {
+        row(line, airless: airless)
             .endsAddingOnTap(!line.isDraft && !isEdited(line))
             .listRow()
     }
@@ -195,29 +196,40 @@ struct ListScreen: View {
     /// A heading whose name or notes are being typed, in place.
     private func isEdited(_ line: Line) -> Bool {
         switch line {
-        case let .heading(h, _): if case .rename(h.id, _)? = app.draft?.kind { true } else { false }
+        case let .heading(h, _, notes):
+            if case .rename(h.id, _)? = app.draft?.kind { true } else if notes, case .notes(h.id, _)? = app.draft?.kind { true } else { false }
         case let .headingNotes(h): if case .notes(h.id, _)? = app.draft?.kind { true } else { false }
         default: false
         }
     }
 
-    @ViewBuilder private func row(_ line: Line) -> some View {
+    /// A heading's notes: in its row, or their own row around a fold, drawn the same way so the switch doesn't show.
+    private func headingNotes(_ h: TaskModel) -> some View {
+        HeadingNotesRow(heading: h)
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: {
+                if case .notes(h.id, _)? = app.draft?.kind { draftFrame = $0 }
+            }
+            .contextMenu { HeadingMenu(heading: h) }
+    }
+
+    @ViewBuilder private func row(_ line: Line, airless: Bool = false) -> some View {
         switch line {
         case let .group(_, title, sub, quiet):
-            GroupLabel(title: title, sub: sub, quiet: quiet)
-        case let .heading(h, count):
-            HeadingRow(heading: h, count: count)
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: {
-                    if case .rename(h.id, _)? = app.draft?.kind { draftFrame = $0 }
-                }
-                .contextMenu { HeadingMenu(heading: h) }
+            GroupLabel(title: title, sub: sub, quiet: quiet, top: airless ? 0 : GroupLabel.air)
+                .allowsHitTesting(false)
+        case let .heading(h, count, notes):
+            // Its notes in its row: they lift with it, and no drag opens a gap between them.
+            VStack(spacing: 0) {
+                HeadingRow(heading: h, count: count, top: 0)
+                    .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: {
+                        if case .rename(h.id, _)? = app.draft?.kind { draftFrame = $0 }
+                    }
+                    .contextMenu { HeadingMenu(heading: h) }
+                if notes { headingNotes(h) }
+            }
         case let .headingNotes(h):
-            HeadingNotesRow(heading: h)
+            headingNotes(h)
                 .motionTransition(.opacity)
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: {
-                    if case .notes(h.id, _)? = app.draft?.kind { draftFrame = $0 }
-                }
-                .contextMenu { HeadingMenu(heading: h) }
         case let .task(t, indent, groupDay, day):
             // On the phone the row whose details are open keeps the selected fill, then fades out as they close.
             TaskRow(task: t, source: source, indent: indent, groupDay: groupDay, day: day,
@@ -226,7 +238,7 @@ struct ListScreen: View {
                 .modifier(TaskSwipes(task: t, source: source))
                 .contextMenu { TaskMenu(task: t, source: source) }
         case let .completedToggle(key, count, open):
-            CompletedToggleRow(key: key, count: count, open: open)
+            CompletedToggleRow(key: key, count: count, open: open, top: 0)
         case let .deletedList(l, _, open, day):
             DeletedListRow(list: l, open: open, day: day)
                 .swipeActions(edge: .leading, allowsFullSwipe: true) {
@@ -246,6 +258,8 @@ struct ListScreen: View {
             EmptyState(title: title, message: message, symbol: symbol)
         case .allDone:
             AllDoneSun(rise: $sunRise)
+        case let .edge(_, height):
+            Color.clear.frame(height: height).accessibilityHidden(true)
         }
     }
 }

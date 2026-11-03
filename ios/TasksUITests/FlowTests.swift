@@ -1723,6 +1723,9 @@ final class FlowTests: XCTestCase {
         dateField.tap()
         sleep(1)
         let keyboard = app.keyboards.firstMatch
+        // Recorded for the suite's report: these run only with the on-screen keyboard.
+        XCTContext.runActivity(named: "DATEKEYBOARD on-screen keyboard: \(keyboard.exists ? "shown, checks ran" : "not shown, checks skipped")") { _ in }
+        print("DATEKEYBOARD on-screen keyboard \(keyboard.exists ? "shown" : "not shown")")
         if keyboard.exists {
             XCTAssertLessThan(dateField.frame.minY, y0 - 60, "the sheet went large")
             XCTAssertLessThanOrEqual(dateFooter.frame.maxY, keyboard.frame.minY + 1, "the footer is above the keyboard")
@@ -1787,5 +1790,92 @@ final class FlowTests: XCTestCase {
         let when = app.buttons["When"].firstMatch
         XCTAssertTrue(when.waitForExistence(timeout: 5))
         XCTAssertEqual(when.value as? String, before.components(separatedBy: " · ")[0], "nothing set")
+    }
+
+    // MARK: Drop edges (Reorder.swift, "Edges")
+
+    /// Long-press `from`, then drag it to the screen's `y`, at its own x.
+    private func dragTo(_ from: XCUIElement, y: CGFloat) {
+        let start = from.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let to = app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: from.frame.midX, dy: y))
+        start.press(forDuration: 0.5, thenDragTo: to, withVelocity: .default, thenHoldForDuration: 1)
+        sleep(2)
+    }
+
+    /// The list cell that holds `e`.
+    private func cell(_ e: XCUIElement) -> CGRect {
+        app.cells.allElementsBoundByIndex.first { $0.frame.contains(CGPoint(x: e.frame.midX, y: e.frame.midY)) }?.frame ?? e.frame
+    }
+
+    /// A heading's notes are in its row, so a drag can't open a gap between them: a task dropped on them lands at the
+    /// top of its section, under the notes.
+    func testADropOnAHeadingsNotesIsTheTopOfItsSection() {
+        openPhys()
+        menuOpen {
+            heading("Labs").press(forDuration: 1.0)
+            app.buttons["Add Notes"].tap()
+        }
+        XCTAssertTrue(app.textViews["headingNotes"].waitForExistence(timeout: 3))
+        app.typeText("Goggles\nLab coat")
+        app.buttons["Done"].tap()
+        sleep(2)
+        let notes = app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Goggles'")).firstMatch
+        XCTAssertTrue(notes.exists)
+        XCTAssertEqual(cell(notes), cell(heading("Labs")), "the notes are in the heading's row")
+        let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
+        dragTo(redo, y: notes.frame.midY)
+        let lab3 = app.staticTexts["Lab 3 report · pendulum"].firstMatch
+        XCTAssertGreaterThan(y(redo), y(notes), "under the notes")
+        XCTAssertLessThan(y(redo), y(lab3), "the top of Labs")
+        XCTAssertEqual(cell(notes), cell(heading("Labs")), "still in the heading's row")
+    }
+
+    /// A heading with no tasks takes a drop over its row or the air above the next heading: the top of its section.
+    func testADropIntoAnEmptyHeading() {
+        openPhys()
+        menuOpen {
+            app.staticTexts["Make the midterm formula sheet"].firstMatch.press(forDuration: 1.0)
+            app.buttons["New Heading Above"].tap()
+        }
+        sleep(1)
+        app.typeText("Reading\n")
+        sleep(2)
+        let exam = heading("Exam prep"), reading = heading("Reading")
+        XCTAssertTrue(reading.exists, "Exam prep is empty, between Labs and Reading")
+        let bench = app.staticTexts["Book a make-up lab bench"].firstMatch
+        // The air above Reading: it belongs to Exam prep's section.
+        dragTo(bench, y: cell(reading).minY - 5)
+        XCTAssertTrue(y(exam) < y(bench) && y(bench) < y(reading), "in Exam prep")
+        let lab4 = app.staticTexts["Lab 4 pre-lab · RC circuits"].firstMatch
+        dragTo(lab4, y: cell(exam).midY - 10)
+        XCTAssertTrue(y(exam) < y(lab4) && y(lab4) < y(reading), "over the heading: in Exam prep too")
+    }
+
+    /// The air above Today's next group is the end of this one (it used to refuse the drop).
+    func testADropAtTheEndOfATodayGroup() {
+        app.launchArguments += ["-screen", "today"]
+        app.launch()
+        let reply = app.staticTexts["Reply to the landlord about the lease"].firstMatch
+        XCTAssertTrue(reply.waitForExistence(timeout: 10))
+        sleep(1)
+        let dentist = app.staticTexts["Call the dentist about a cleaning"].firstMatch
+        let school = app.staticTexts["School"].firstMatch
+        dragTo(reply, y: cell(dentist).maxY + 12)
+        XCTAssertGreaterThan(y(reply), y(dentist), "the end of Inbox")
+        XCTAssertLessThan(y(reply), y(school), "still in Inbox's group")
+    }
+
+    /// The space under the last list on Home is the end of the lists.
+    func testADropAtTheEndOfHomesLists() {
+        app.launch()
+        let school = app.buttons["School"].firstMatch
+        XCTAssertTrue(school.waitForExistence(timeout: 10))
+        sleep(1)
+        let completed = app.buttons["Completed"].firstMatch
+        dragTo(school, y: cell(completed).minY - 6)
+        for name in ["PHYS 122", "Tasks app", "Home", "Errands", "Apartment move"] where app.buttons[name].firstMatch.exists {
+            XCTAssertGreaterThan(y(school), y(app.buttons[name].firstMatch), "School is under \(name)")
+        }
+        XCTAssertLessThan(y(school), y(completed), "above Completed")
     }
 }

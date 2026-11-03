@@ -146,6 +146,9 @@ struct NotesHint: View {
 struct HeadingRow: View {
     let heading: TaskModel
     let count: Int
+    /// The air above its hairline: in a list it's an edge row of its own (`Line.edge`), so the row starts at the rule.
+    var top: CGFloat = HeadingRow.air
+    static let air: CGFloat = 11
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     @FocusState private var focus: DetailField?
@@ -168,7 +171,7 @@ struct HeadingRow: View {
             chevron
         }
         .hairline(renaming ? .clear : p.lineSeparator, leading: Metric.rowPad, trailing: Metric.rowPad)
-        .padding(.top, 11)
+        .padding(.top, top)
         .padding(.bottom, 4)
         .onChange(of: focus) { old, new in
             // The caret left the field (a tap elsewhere, the keyboard put away): it's written, once.
@@ -272,6 +275,9 @@ struct CompletedToggleRow: View {
     let key: String
     let count: Int
     let open: Bool
+    /// The air above it: in a list or Today it's an edge row of its own (`Line.edge`).
+    var top: CGFloat = CompletedToggleRow.air
+    static let air: CGFloat = 8
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     var body: some View {
@@ -294,7 +300,7 @@ struct CompletedToggleRow: View {
             .frame(minHeight: Metric.rowHeight)
         }
         .buttonStyle(RowStyle())
-        .padding(.top, 8)
+        .padding(.top, top)
         .accessibilityLabel(open ? "Hide completed tasks" : "Show \(count) completed tasks")
     }
 }

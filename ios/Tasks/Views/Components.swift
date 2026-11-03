@@ -560,6 +560,10 @@ struct GroupLabel: View {
     let title: String
     var sub: String? = nil
     var quiet = false
+    /// The air above it: none when an edge row (`Line.edge`) holds it.
+    var top: CGFloat = GroupLabel.air
+    var bottom: CGFloat = 6
+    static let air: CGFloat = 18
     @Environment(\.palette) private var p
     var body: some View {
         // Cut off, the name and the day's date fade out at their ends, as a title does (the Mac's GroupLabelView).
@@ -573,8 +577,8 @@ struct GroupLabel: View {
         }
         .lineLimit(1)
         .padding(.leading, Metric.rowPad + 2)
-        .padding(.top, 18)
-        .padding(.bottom, 6)
+        .padding(.top, top)
+        .padding(.bottom, bottom)
         .accessibilityAddTraits(.isHeader)
     }
 }

@@ -90,11 +90,31 @@ extension AppModel {
     // MARK: Collapsing (local to this device, never synced)
 
     /// The chevron, or Collapse or Expand in its menu. Collapsing folds its notes and tasks up into its row as they
-    /// fade (150 ms); expanding plays it backwards (220 ms ease-in). The notes are a line of their own, so they and the
-    /// tasks and the rows below all move on this one curve. Reduce Motion turns both off (`animate`).
+    /// fade (150 ms); expanding plays it backwards (220 ms ease-in). Around the fold the notes are a line of their own
+    /// (`splitNotes`), so they and the tasks and the rows below all move on this one curve; the rest of the time they're
+    /// in the heading's row, so a drag can't come between them. Reduce Motion turns both off (`animate`).
     func toggleCollapse(_ id: EntityID) {
-        guard isHeading(id) else { return }
+        guard let h = task(id), h.isHeading else { return }
         let collapse = !collapsed.contains(id)
+        let hasNotes = !h.notes.isEmpty || draft?.editedHeading == id
+        guard hasNotes, !splitNotes.contains(id) else { return fold(id, collapse) }
+        // The notes become their own row at once, where they are (nothing moves), then the fold runs.
+        var t = Transaction()
+        t.disablesAnimations = true
+        withTransaction(t) { splitNotes.insert(id) }
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.fold(id, collapse)
+            // Once it's open again, the notes go back into the heading's row, where they are.
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(for: .milliseconds(collapse ? 200 : 300))
+                guard let self else { return }
+                withTransaction(t) { _ = self.splitNotes.remove(id) }
+            }
+        }
+    }
+
+    private func fold(_ id: EntityID, _ collapse: Bool) {
         if collapse {
             // Typing in the section that folds away ends first; an iPad's selected task that folds away leaves the
             // selection, as on the Mac.

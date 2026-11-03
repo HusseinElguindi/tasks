@@ -13,6 +13,19 @@ import TasksCore
 //   group is its own ForEach): the copy flies back and nothing is written.
 //
 // The writes are only the core's `reorder`, `moveSection` and `reorderLists`; the code here only picks the anchor.
+//
+// Edges. List refuses a drop while the finger is over a row that can't move (`moveDisabled`): a Today or Undated
+// group's label, the Completed row, and before this a heading's notes row. So the slot next to one was cut to the
+// half of the task row on the other side (24pt of a 48pt row's slot), or less: the end of a Today group, just above
+// the next label, and an empty heading's section were hard to hit. The fixes, with the resting layout unchanged:
+// - The air above a label, a heading and the Completed row is an edge row of its own (`Line.edge`), the last row of
+//   the run or section above, so a drop over it is that one's end (`DropSlot` passes over it). Home's lists get one
+//   above and one below them (`HomeItem`).
+// - Edge rows and labels stay movable, so they take drops, but nothing in them takes a touch, so they never lift.
+// - A heading's notes are in its row (`Line.heading(notes:)`), so no gap opens between them; they're a row of their own
+//   only for the moment of a fold (`AppModel.splitNotes`), so the fold stays smooth.
+// Crossing a Today or Undated group is still refused, as before. Upcoming's drag across days (later) should give its
+// day labels the same edges.
 
 /// A run of lines that a drag stays within: a whole list, or one Today or Undated group (the last one with Today's
 /// Completed under it). Each is its own ForEach, so a drop never lands in another.
@@ -26,7 +39,7 @@ extension Line {
     var entityID: EntityID? {
         switch self {
         case let .task(t, _, _, _): t.id
-        case let .heading(h, _): h.id
+        case let .heading(h, _, _): h.id
         default: nil
         }
     }
@@ -90,6 +103,10 @@ extension AppModel {
         }
         var runs: [DragRun] = []
         for line in lines {
+            // A label's air goes to the run above, as its last row: a drop there is that group's end, not a crossing.
+            if case .group = line, !runs.isEmpty {
+                runs[runs.count - 1].lines.append(.edge(key: line.id, height: GroupLabel.air))
+            }
             // A new run at each Today or Undated group's label. A list is one run: a drop under Completed lands
             // after its last open task (the done ones aren't open, so `DropSlot.task` passes over them).
             let starts = if case .group = line { true } else { false }
@@ -121,13 +138,35 @@ extension AppModel {
         return undoable("Move", ids: moving) { store.reorder(moving, in: t.list, at: anchor, name: "Move", undoManager: undo) }
     }
 
-    /// A list dropped on Home (and iPad's sidebar). Today and the views aren't in the run, so they don't move.
+    /// A list dropped on Home (and iPad's sidebar). Today and the views aren't in the run, so they don't move. `ids`:
+    /// the run's rows, nil for its edges.
     @discardableResult
-    func dropList(_ from: IndexSet, _ to: Int) -> Bool {
-        let ids = activeLists.map(\.id)
-        let moving = from.map { ids[$0] }
-        let others = ids.indices.filter { !from.contains($0) }.map { ids[$0] }
-        let anchor = DropSlot.list(target: DropSlot.slot(from, to), others: others)
+    func dropList(_ from: IndexSet, _ to: Int, in ids: [EntityID?]) -> Bool {
+        let moving = from.compactMap { ids[$0] }
+        guard !moving.isEmpty else { return false }
+        let rest = ids.indices.filter { !from.contains($0) }.map { ids[$0] }
+        // The slot among the other rows, as a slot among the other lists.
+        let slot = min(max(DropSlot.slot(from, to), 0), rest.count)
+        let others = rest.compactMap { $0 }
+        let anchor = DropSlot.list(target: rest[..<slot].compactMap { $0 }.count, others: others)
         return undoable("Move List") { store.reorderLists(moving, at: anchor, name: "Move List", undoManager: undo) }
     }
+}
+
+/// Home's lists run: an edge above them, the lists, an edge below (`HomeView`).
+@MainActor
+enum HomeItem: @MainActor Identifiable {
+    case top, list(ListModel), end
+
+    static func items(_ lists: [ListModel]) -> [HomeItem] { [.top] + lists.map { .list($0) } + [.end] }
+
+    var id: String {
+        switch self {
+        case .top: "e:top"
+        case .end: "e:end"
+        case let .list(l): l.id
+        }
+    }
+
+    var listID: EntityID? { if case let .list(l) = self { l.id } else { nil } }
 }
