@@ -1,6 +1,6 @@
 # The iOS app. The Xcode project is generated from this file: `xcodegen generate` (XcodeGen 2.46). The generated
 # Tasks.xcodeproj is not checked in. It shares app/TasksCore with the Mac app: the data, Today, dates, ordering,
-# Markdown and sync are the Mac's own code.
+# Markdown and sync are the Mac's own code, and so is the theme (TasksTheme: the tokens, Rex and the lit tiles).
 name: Tasks
 options:
   bundleIdPrefix: com.elguindi
@@ -27,6 +27,8 @@ targets:
       - path: Tasks
     dependencies:
       - package: TasksCore
+      - package: TasksCore
+        product: TasksTheme
     configFiles:
       Debug: Signing.xcconfig
       Release: Signing.xcconfig
@@ -71,10 +73,10 @@ schemes:
     test:
       targets:
         - TasksUITests
-  # TasksCore's own tests, run on iOS. Through this project rather than the package's scheme, which also builds the
-  # Mac-only CLI (and would write .swiftpm/ into app/TasksCore). A scheme of their own because their copied Resources
-  # folder fails ad hoc signing on the simulator, so they run with CODE_SIGNING_ALLOWED=NO (README.md), while the app
-  # and its UI tests keep normal signing.
+  # TasksCore's own tests and the theme's (TasksThemeTests), run on iOS. Through this project rather than the
+  # package's scheme, which also builds the Mac-only CLI (and would write .swiftpm/ into app/TasksCore). A scheme of
+  # their own because their copied Resources folder fails ad hoc signing on the simulator, so they run with
+  # CODE_SIGNING_ALLOWED=NO (README.md), while the app and its UI tests keep normal signing.
   TasksCoreTests:
     build:
       targets:
@@ -82,3 +84,4 @@ schemes:
     test:
       targets:
         - package: TasksCore/TasksCoreTests
+        - package: TasksCore/TasksThemeTests

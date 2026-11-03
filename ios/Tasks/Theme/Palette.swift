@@ -1,7 +1,8 @@
-// The colours the app draws: the Mac's one theme, Rex with the Ember accent (Theme.swift, copied from the Mac), for one
+// The colours the app draws: the Mac's one theme, Rex with the Ember accent (TasksTheme, shared with the Mac), for one
 // appearance. The tokens have the Mac's `TK.Palette` names (app/Tasks/Theme/TK.swift), as SwiftUI colours.
 
 import SwiftUI
+import TasksTheme
 
 enum Appearance: String, CaseIterable, Identifiable, Sendable {
     case system, light, dark
@@ -34,24 +35,27 @@ struct Palette: Sendable {
     let spark: Color
     let danger, dangerTint, attention, attentionTint: Color
     // Tiles, drag and the brand mark
-    /// The lit tile's halo, just outside its edge (COLOR.md §2).
-    let tileHalo: Color
+    /// The lit tile's halo, just outside its edge (COLOR.md §2). A value, as the tiles' hues are: TileArt draws them.
+    let tileHalo: RGBA
     let liftChip: Color
     let markHead, markBar, markRings, markTrail: Color
     // Shadows
     let shadowPopoverRing, shadowPopover, shadowLiftRing, shadowLift: Color
     /// B's solid tile hues, the same in both appearances: the seven slots, then Today's (the accent).
-    private let tiles: [Color]
+    private let tiles: [RGBA]
     /// The seven list slots' colours (Rex's ANSI colours, then ink).
     private let lists: [Color]
+    /// Every token's value, by `Token.rawValue`: for what's drawn from values rather than colours (TileArt).
+    private let values: [RGBA]
 
     /// The Mac's slots, in its hand-out order. A list's slot comes from its id (`ListModel.colorSlot`).
     enum ListSlot: Int, CaseIterable, Sendable { case blue, magenta, green, cyan, yellow, red, ink }
 
-    init(theme: TK.Theme, dark: Bool) {
+    init(theme: Theme, dark: Bool) {
         let v = theme.tokens(dark: dark)
-        func c(_ t: TK.Token) -> Color { v[t.rawValue].color }
+        func c(_ t: Token) -> Color { v[t.rawValue].color }
         isDark = dark
+        values = v
         ground = c(.ground); base = c(.base); dim = c(.dim); popover = c(.popover); lift = c(.lift); card = c(.card)
         ink = c(.ink); inkSecondary = c(.inkSecondary); inkTertiary = c(.inkTertiary); inkQuiet = c(.inkQuiet)
         linePane = c(.linePane); linePaneDim = c(.linePaneDim); lineSeparator = c(.lineSeparator); lineField = c(.lineField)
@@ -62,11 +66,11 @@ struct Palette: Sendable {
         accent = c(.accent); accentText = c(.accentText); accentTint = c(.accentTint); onAccent = c(.onAccent)
         focus = c(.focus); textSelection = c(.textSelection); plan = c(.plan); spark = c(.spark)
         danger = c(.danger); dangerTint = c(.dangerTint); attention = c(.attention); attentionTint = c(.attentionTint)
-        tileHalo = c(.tileHalo); liftChip = c(.liftChip)
+        tileHalo = v[Token.tileHalo.rawValue]; liftChip = c(.liftChip)
         markHead = c(.markHead); markBar = c(.markBar); markRings = c(.markRings); markTrail = c(.markTrail)
         shadowPopoverRing = c(.shadowPopoverRing); shadowPopover = c(.shadowPopover)
         shadowLiftRing = c(.shadowLiftRing); shadowLift = c(.shadowLift)
-        tiles = [c(.tileBlue), c(.tileMagenta), c(.tileGreen), c(.tileCyan), c(.tileYellow), c(.tileRed), c(.tileInk), c(.tileToday)]
+        tiles = [Token.tileBlue, .tileMagenta, .tileGreen, .tileCyan, .tileYellow, .tileRed, .tileInk, .tileToday].map { v[$0.rawValue] }
         lists = [c(.listBlue), c(.listMagenta), c(.listGreen), c(.listCyan), c(.listYellow), c(.listRed), c(.listInk)]
     }
 
@@ -77,10 +81,12 @@ struct Palette: Sendable {
     func list(_ slot: ListSlot) -> Color { lists[slot.rawValue] }
     func listColor(slot: Int) -> Color { lists[((slot % 7) + 7) % 7] }
     /// A list's solid tile (B): its slot's hue.
-    func tile(slot: Int) -> Color { tiles[((slot % 7) + 7) % 7] }
-    func tile(_ slot: ListSlot) -> Color { tiles[slot.rawValue] }
+    func tile(slot: Int) -> RGBA { tiles[((slot % 7) + 7) % 7] }
+    func tile(_ slot: ListSlot) -> RGBA { tiles[slot.rawValue] }
     /// Today's tile: the theme's accent, in both appearances.
-    var tileToday: Color { tiles[7] }
+    var tileToday: RGBA { tiles[7] }
+    /// A token's value.
+    func value(_ t: Token) -> RGBA { values[t.rawValue] }
 }
 
 // MARK: - Environment

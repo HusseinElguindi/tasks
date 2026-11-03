@@ -1,18 +1,23 @@
 import SwiftUI
 import TasksCore
+import TasksTheme
 
 // MARK: - List tile
 
-/// The Mac's tile colours (B, COLOR.md §2): the hue of the list's slot, or of a view, with its monogram or glyph in
-/// white. Flat: the Mac's lit finish (TileArt) comes with the shared theme code, not copied.
+/// The Mac's tile (B, COLOR.md §2): the hue of the list's slot, or of a view, lit with the Mac's finish (TileArt, from
+/// TasksTheme), with its monogram or glyph in white. The Mac's regular tile (20×16, radius 4) × 1.3: 26×21 in a row,
+/// and at the other scales the nearest whole points (21×17 in the bar, 22×18 in a task's details, 31×25 under a large
+/// title), the radius a fifth of the width, so the finish's one-device-pixel hairlines land on pixels.
 struct ListTile: View {
     enum Content { case mono(String), symbol(String) }
     let content: Content
-    let hue: Color
+    let hue: RGBA
     var scale: CGFloat = 1
+    @Environment(\.palette) private var p
+    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
-        let w = Metric.tileW * scale, h = Metric.tileH * scale
+        let w = (Metric.tileW * scale).rounded(), h = (Metric.tileH * scale).rounded()
         ZStack {
             switch content {
             case let .mono(m):
@@ -25,7 +30,14 @@ struct ListTile: View {
         }
         .foregroundStyle(.white)
         .frame(width: w, height: h)
-        .background(hue, in: RoundedRectangle(cornerRadius: 5 * scale, style: .continuous))
+        .background {
+            // The finish's image is `outset` larger all round, centred: its halo reaches past the frame (the Mac's
+            // TileView).
+            if let art = TileArt.image(hue: hue, halo: p.tileHalo, size: CGSize(width: w, height: h), radius: w / 5,
+                                       scale: displayScale) {
+                Image(decorative: art, scale: displayScale)
+            }
+        }
         .accessibilityHidden(true)
     }
 }
@@ -314,11 +326,12 @@ struct GroupLabel: View {
 // MARK: - The 04 · Log mark
 
 /// The app's mark, from the sidebar header's SVG (viewBox 150 150 724 724): an accent head with the check cut out,
-/// two rings and their trails, and the ink bar.
+/// two rings and their trails, and the ink bar. The head is lit as the Mac's is (BrandMark): the tile's finish, round,
+/// with no specular strip.
 struct LogoMark: View {
     var size: CGFloat = 28
-    var head: Color? = nil
     @Environment(\.palette) private var p
+    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
         Canvas { ctx, sz in
@@ -337,7 +350,13 @@ struct LogoMark: View {
             ctx.fill(circle(322, 732, 56), with: .color(p.markRings))
             ctx.fill(Path(roundedRect: r(462, 296, 340, 80), cornerRadius: 40 * s), with: .color(p.markBar))
             ctx.drawLayer { l in
-                l.fill(circle(322, 336, 100), with: .color(head ?? p.markHead))
+                // The head's art reaches `outset` past the circle for its halo; the check is cut out of it.
+                let head = r(322 - 100, 336 - 100, 200, 200)
+                if let art = TileArt.image(hue: p.value(.markHead), halo: p.tileHalo, size: head.size,
+                                           radius: head.width / 2, scale: displayScale, specular: false) {
+                    let o = TileArt.outset
+                    l.draw(Image(decorative: art, scale: displayScale), in: head.insetBy(dx: -o, dy: -o))
+                }
                 l.blendMode = .destinationOut
                 var ck = Path()
                 ck.move(to: CGPoint(x: (276.5 - 150) * s, y: (339.5 - 150) * s))

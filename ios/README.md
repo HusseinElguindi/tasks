@@ -60,8 +60,8 @@ Tests:
 # runner only TEST_RUNNER_-prefixed variables, minus the prefix.
 TEST_RUNNER_SHOTS=$PWD/Screenshots/flow xcodebuild test -project Tasks.xcodeproj -scheme Tasks -destination 'id=<sim>' \
   -derivedDataPath build -only-testing:TasksUITests
-# TasksCore's own tests, on iOS. CODE_SIGNING_ALLOWED=NO because the test bundle's copied Resources folder fails
-# ad hoc signing on the simulator; that's why they have a scheme of their own.
+# TasksCore's own tests and the theme's (TasksThemeTests), on iOS. CODE_SIGNING_ALLOWED=NO because the test bundle's
+# copied Resources folder fails ad hoc signing on the simulator; that's why they have a scheme of their own.
 xcodebuild test -project Tasks.xcodeproj -scheme TasksCoreTests -destination 'id=<sim>' -derivedDataPath build \
   CODE_SIGNING_ALLOWED=NO
 ```
@@ -91,10 +91,10 @@ With `-sampleData`, lists go by short names: `inbox` `school` `phys` `tasks` `ho
 
 ## Layout
 
-- `Tasks/Theme/Theme.swift`: the Mac's one theme, Rex with the Ember accent, copied from `app/Tasks/Theme/Theme.swift`
-  until the theme code is shared; keep it identical. `Tasks/Theme/Palette.swift`: its tokens for one appearance, by the
-  Mac's names, as SwiftUI colours. Tiles are flat in the Mac's tile colours; the Mac's lit finish comes with the
-  shared code.
+- The theme is the Mac's, from the TasksTheme package (`app/TasksCore/Sources/TasksTheme`): Rex with the Ember accent,
+  its tokens, and the lit tiles' finish (`TileArt`). `Tasks/Theme/Theme.swift` turns its values into SwiftUI colours;
+  `Tasks/Theme/Palette.swift` holds its tokens for one appearance, by the Mac's names. A list tile and the logo mark's
+  head are drawn by `TileArt`, as on the Mac (`ListTile` and `LogoMark` in `Tasks/Views/Components.swift`).
 - `Tasks/Theme/Metrics.swift`: the phone's row grid (48pt rows, 22pt rings), type and motion.
 - `Tasks/Model/AppModel.swift`: the UI state next to TasksCore's `Store` (navigation, sheets, open disclosures, the
   notice and its Undo, the draft, the appearance, rows checked a moment ago) and the actions, each a Store action.
