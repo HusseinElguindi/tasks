@@ -366,6 +366,11 @@ struct NotesEditor: View {
     @Binding var text: String
     var readOnly = false
     var focus: FocusState<DetailField?>.Binding
+    /// A task's, in the details; a heading's are a step quieter and shorter (§23).
+    var font: Font = Typo.detailNotes
+    var ink: Color? = nil
+    var lineSpacing: CGFloat = 6
+    var minHeight: CGFloat = 180
     /// A checklist box clicked at rest: the new text, and whether it checked the box.
     var onToggle: (String, Bool) -> Void
     @Environment(\.palette) private var p
@@ -375,13 +380,13 @@ struct NotesEditor: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             TextEditor(text: $text)
-                .font(Typo.detailNotes)
-                .lineSpacing(6)
-                .foregroundStyle(p.ink)
+                .font(font)
+                .lineSpacing(lineSpacing)
+                .foregroundStyle(ink ?? p.ink)
                 .scrollContentBackground(.hidden)
                 .scrollDisabled(true)
                 .focused(focus, equals: .notes)
-                .frame(minHeight: 180, alignment: .topLeading)
+                .frame(minHeight: minHeight, alignment: .topLeading)
                 .padding(.horizontal, -5)
                 .padding(.top, -8)
                 .opacity(editing ? 1 : 0)
@@ -389,12 +394,12 @@ struct NotesEditor: View {
             if !editing {
                 Group {
                     if text.isEmpty {
-                        Text("Notes").font(Typo.detailNotes).foregroundStyle(p.inkTertiary)
+                        Text("Notes").font(font).foregroundStyle(p.inkTertiary)
                     } else {
-                        MarkdownText(text: text, onToggle: readOnly ? nil : onToggle)
+                        MarkdownText(text: text, font: font, ink: ink, lineSpacing: lineSpacing, onToggle: readOnly ? nil : onToggle)
                     }
                 }
-                .frame(maxWidth: .infinity, minHeight: 180, alignment: .topLeading)
+                .frame(maxWidth: .infinity, minHeight: minHeight, alignment: .topLeading)
                 .contentShape(Rectangle())
                 .onTapGesture { if !readOnly { focus.wrappedValue = .notes } }
             }

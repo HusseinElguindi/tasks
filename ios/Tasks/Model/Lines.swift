@@ -36,7 +36,8 @@ extension AppModel {
     func lines(_ source: Source) -> [Line] {
         var out: [Line] = []
         let draftHere = draft?.source == source
-        if draftHere { out.append(.draft) }
+        // A new task's row is at the top; a list places its other drafts itself (`listLines`).
+        if draftHere, draft?.kind == .task { out.append(.draft) }
         switch source {
         case let .list(id): listLines(id, into: &out, draftHere: draftHere)
         case .today: todayLines(into: &out, draftHere: draftHere)
@@ -51,14 +52,30 @@ extension AppModel {
     // MARK: A list
 
     private func listLines(_ id: EntityID, into out: inout [Line], draftHere: Bool) {
-        // Its open tasks and headings in its order, with the ones checked a moment ago still in place.
+        // Its open tasks and headings in its order, with the ones checked a moment ago still in place. A collapsed
+        // heading's tasks are folded into it (§23). A new heading's row goes above its task or at the bottom; a new
+        // task's row in a heading, at the end of its section.
         let models = withCompleting(projection.openTasks(in: id).ids) { $0.list == id }.compactMap(task)
-        for (i, m) in models.enumerated() {
-            guard m.isHeading else { out.append(.task(m, indent: false)); continue }
-            // A heading's count: the open tasks under it, down to the next heading.
-            let section = models[(i + 1)...].prefix { !$0.isHeading }
-            out.append(.heading(m, openCount: section.filter { !$0.isDone }.count))
+        let kind = draftHere ? draft?.kind : nil
+        var heading: EntityID?
+        func endSection() {
+            if let h = heading, kind == .taskIn(heading: h) { out.append(.draft) }
         }
+        for (i, m) in models.enumerated() {
+            if m.isHeading {
+                endSection()
+                heading = m.id
+                // A heading's count: the open tasks under it, down to the next heading.
+                let section = models[(i + 1)...].prefix { !$0.isHeading }
+                out.append(.heading(m, openCount: section.filter { !$0.isDone }.count))
+                continue
+            }
+            if kind == .heading(before: m.id) { out.append(.draft) }
+            if let h = heading, collapsed.contains(h) { continue }
+            out.append(.task(m, indent: false))
+        }
+        endSection()
+        if kind == .heading(before: nil) { out.append(.draft) }
         let done = projection.completedTasks(in: id).ids.filter { !completing.contains($0) }
         if !done.isEmpty {
             let open = showCompleted.contains(id)

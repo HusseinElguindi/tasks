@@ -106,23 +106,116 @@ struct NotesHint: View {
     }
 }
 
-/// The heading row: 15 semibold ink at the checkbox's edge with a hairline under it.
+/// A heading (§23): its name, 15 semibold ink at the checkbox's edge, on a hairline; its notes under it, a step
+/// quieter; the chevron at the right, always shown (there's no hover). Collapsed, its open tasks' count follows the
+/// name. A tap on the name renames it in place (the phone has no heading details to select it for), a tap on its notes
+/// edits them, and the chevron takes its own tap: it never renames.
 struct HeadingRow: View {
     let heading: TaskModel
     let count: Int
+    @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @FocusState private var focus: DetailField?
+
+    private var collapsed: Bool { app.collapsed.contains(heading.id) }
+    private var renaming: Bool {
+        if case let .rename(h, _)? = app.draft?.kind { h == heading.id } else { false }
+    }
+    private var editingNotes: Bool {
+        if case let .notes(h, _)? = app.draft?.kind { h == heading.id } else { false }
+    }
+    private var text: Binding<String> { Binding(get: { app.draft?.title ?? "" }, set: { app.draft?.title = $0 }) }
+
     var body: some View {
-        HStack(spacing: 8) {
-            Text(heading.title).font(Typo.heading).foregroundStyle(p.ink).lineLimit(1)
-            Spacer(minLength: 0)
-            if count > 0 { Text("\(count)").font(Typo.chip).monospacedDigit().foregroundStyle(p.inkTertiary) }
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 0) {
+                if renaming { nameField } else { name }
+                chevron
+            }
+            .hairline(renaming ? .clear : p.lineSeparator, leading: Metric.rowPad, trailing: Metric.rowPad)
+            if !collapsed { notes }
         }
-        .padding(.horizontal, Metric.rowPad)
-        .padding(.top, 20)
-        .padding(.bottom, 9)
-        .hairline(p.lineSeparator, leading: Metric.rowPad, trailing: Metric.rowPad)
+        .padding(.top, 11)
         .padding(.bottom, 4)
+        .onChange(of: focus) { old, new in
+            // The caret left the field (a tap elsewhere, the keyboard put away): it's written, once.
+            if old != nil, new == nil, renaming || editingNotes { app.endDraft() }
+        }
+    }
+
+    private var name: some View {
+        Button { app.renameHeading(heading.id) } label: {
+            HStack(spacing: 8) {
+                Text(heading.title).font(Typo.heading).foregroundStyle(p.ink).lineLimit(1)
+                if collapsed {
+                    Text("\(count)").font(Typo.chip).monospacedDigit().foregroundStyle(p.inkTertiary)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.leading, Metric.rowPad)
+            .padding(.vertical, 9)
+        }
+        .buttonStyle(RowStyle())
+        .accessibilityLabel(heading.title)
+        .accessibilityValue(collapsed ? "Collapsed, \(count) open" : "")
+        .accessibilityHint("Renames it")
         .accessibilityAddTraits(.isHeader)
+        .accessibilityIdentifier("heading")
+    }
+
+    /// Renaming: the field in place, in the heading's font, with the new-task row's look.
+    private var nameField: some View {
+        TextField("New Heading", text: text, prompt: Text("New Heading").foregroundStyle(p.inkTertiary))
+            .font(Typo.heading)
+            .foregroundStyle(p.ink)
+            .focused($focus, equals: .title)
+            .submitLabel(.done)
+            .onSubmit { app.submitDraft() }
+            .accessibilityIdentifier("headingName")
+            .padding(.leading, Metric.rowPad)
+            .padding(.vertical, 9)
+            .background(p.base, in: RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous).strokeBorder(p.accent, lineWidth: 1.5))
+            .onAppear { DispatchQueue.main.async { focus = .title } }
+    }
+
+    /// Down when open, right when collapsed, turning in 200 ms ease-out. Above the row's press: it never renames.
+    private var chevron: some View {
+        Button { app.toggleCollapse(heading.id) } label: {
+            Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(p.inkTertiary)
+                .rotationEffect(.degrees(collapsed ? 0 : 90))
+                .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: collapsed)
+                .frame(width: 44, height: 38)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(collapsed ? "Expand \(heading.title)" : "Collapse \(heading.title)")
+        .accessibilityIdentifier("chevron")
+    }
+
+    /// Its notes, at its name's edge: rendered at rest (a box toggles in one op), the notes editor while editing.
+    @ViewBuilder private var notes: some View {
+        if editingNotes {
+            NotesEditor(text: text, focus: $focus, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5, minHeight: 60) { _, _ in }
+                .accessibilityIdentifier("headingNotes")
+                .padding(.horizontal, Metric.rowPad)
+                .padding(.top, 3)
+                .padding(.bottom, 8)
+                .onAppear { DispatchQueue.main.async { focus = .notes } }
+        } else if !heading.notes.isEmpty {
+            MarkdownText(text: heading.notes, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5) { new, checking in
+                app.setNotes(heading.id, new, name: checking ? "Check Item" : "Uncheck Item")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .onTapGesture { app.editHeadingNotes(heading.id) }
+            .padding(.horizontal, Metric.rowPad)
+            .padding(.top, 3)
+            .padding(.bottom, 8)
+        }
     }
 }
 
@@ -200,32 +293,56 @@ struct DeletedListRow: View {
     }
 }
 
-/// The row a new task is typed into: the row's own fill with a 1.5pt accent ring and a quiet placeholder box.
+/// The row a new task is typed into: the row's own fill with a 1.5pt accent ring and a quiet placeholder box. A new
+/// heading's is the heading's row, with the same look on its name (§23).
 struct DraftRow: View {
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     @FocusState private var focused: Bool
     let token: UUID
 
+    private var heading: Bool {
+        if case .heading? = app.draft?.kind { true } else { false }
+    }
+    private var text: Binding<String> { Binding(get: { app.draft?.title ?? "" }, set: { app.draft?.title = $0 }) }
+
     var body: some View {
-        HStack(spacing: 0) {
-            Checkbox(checked: false, placeholder: true)
-                .padding(.leading, Metric.rowPad - 11)
-                .padding(.trailing, Metric.titleGap - 11)
-            TextField("New Task", text: Binding(get: { app.draft?.title ?? "" }, set: { app.draft?.title = $0 }),
-                      prompt: Text("New Task").foregroundStyle(p.inkTertiary))
-                .font(Typo.row)
-                .foregroundStyle(p.ink)
-                .focused($focused)
-                .accessibilityIdentifier("draft")
-                .submitLabel(.next)
-                .onSubmit { app.submitDraft() }
-            Spacer(minLength: 0)
+        Group {
+            if heading {
+                TextField("New Heading", text: text, prompt: Text("New Heading").foregroundStyle(p.inkTertiary))
+                    .font(Typo.heading)
+                    .foregroundStyle(p.ink)
+                    .focused($focused)
+                    .accessibilityIdentifier("draft")
+                    .submitLabel(.done)
+                    .onSubmit { app.submitDraft() }
+                    .padding(.leading, Metric.rowPad)
+                    .padding(.vertical, 9)
+                    .padding(.trailing, 44)
+                    .background(p.base, in: RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous).strokeBorder(p.accent, lineWidth: 1.5))
+                    .padding(.top, 11)
+                    .padding(.bottom, 4)
+            } else {
+                HStack(spacing: 0) {
+                    Checkbox(checked: false, placeholder: true)
+                        .padding(.leading, Metric.rowPad - 11)
+                        .padding(.trailing, Metric.titleGap - 11)
+                    TextField("New Task", text: text, prompt: Text("New Task").foregroundStyle(p.inkTertiary))
+                        .font(Typo.row)
+                        .foregroundStyle(p.ink)
+                        .focused($focused)
+                        .accessibilityIdentifier("draft")
+                        .submitLabel(.next)
+                        .onSubmit { app.submitDraft() }
+                    Spacer(minLength: 0)
+                }
+                .padding(.trailing, 12)
+                .frame(minHeight: Metric.rowHeight)
+                .background(p.base, in: RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous).strokeBorder(p.accent, lineWidth: 1.5))
+            }
         }
-        .padding(.trailing, 12)
-        .frame(minHeight: Metric.rowHeight)
-        .background(p.base, in: RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous).strokeBorder(p.accent, lineWidth: 1.5))
         .onAppear { DispatchQueue.main.async { focused = true } }
         .onChange(of: focused) { _, now in
             // The caret left the row (a tap elsewhere, the keyboard swiped away): a title is written, an empty row goes.

@@ -68,7 +68,7 @@ extension AppModel {
 /// (body, so it follows Dynamic Type).
 enum MenuName {
     static func fit(_ s: String, width: CGFloat = 145, font: UIFont = .preferredFont(forTextStyle: .body)) -> String {
-        func w(_ t: String) -> CGFloat { (t as NSString).size(withAttributes: [.font: font]).width }
+        func w(_ t: String) -> CGFloat { Self.width(t, font: font) }
         guard w(s) > width else { return s }
         var lo = 0, hi = s.count
         while lo < hi {
@@ -76,6 +76,11 @@ enum MenuName {
             if w(String(s.prefix(mid)).trimmingCharacters(in: .whitespaces) + "…") <= width { lo = mid } else { hi = mid - 1 }
         }
         return String(s.prefix(lo)).trimmingCharacters(in: .whitespaces) + "…"
+    }
+
+    /// A text's width in the menu's font.
+    static func width(_ s: String, font: UIFont = .preferredFont(forTextStyle: .body)) -> CGFloat {
+        (s as NSString).size(withAttributes: [.font: font]).width
     }
 }
 

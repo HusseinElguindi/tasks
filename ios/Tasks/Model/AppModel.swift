@@ -49,11 +49,42 @@ struct Notice: Identifiable {
     let undo: (() -> Void)?
 }
 
-/// The row a new task is being typed into.
+/// The text being typed in a list, in place: a new task or heading, or a heading's name or notes (§23). Each ends the
+/// same way (Return, a tap elsewhere, leaving, the app going to the background) and writes once, at the end.
 struct Draft: Equatable {
+    enum Kind: Equatable {
+        /// A new task: at the top of its list, or in a view.
+        case task
+        /// "New Task in <heading>": at the end of its section.
+        case taskIn(heading: EntityID)
+        /// A new heading, above a task (which becomes its section's first) or, nil, at the bottom of the list.
+        case heading(before: EntityID?)
+        /// A heading's name, in place; `original` is the name when the edit began (`EditSession`).
+        case rename(heading: EntityID, original: String)
+        /// A heading's notes, under it.
+        case notes(heading: EntityID, original: String)
+    }
     var source: Source
+    var kind: Kind = .task
+    /// The text typed: the title, the name or the notes.
     var title = ""
     var token = UUID()   // a new draft row after each commit
+
+    /// A new task's row: Return writes it and opens the next.
+    var addsTask: Bool {
+        switch kind {
+        case .task, .taskIn: true
+        default: false
+        }
+    }
+
+    /// The heading whose name or notes are being typed, in place.
+    var editedHeading: EntityID? {
+        switch kind {
+        case let .rename(h, _), let .notes(h, _): h
+        default: nil
+        }
+    }
 }
 
 /// The app's UI state, next to TasksCore's `Store`, which holds every task and list and makes every change (ops,
@@ -73,6 +104,14 @@ final class AppModel {
     var showCompleted: Set<String> = []
     /// Deleted lists opened in Trash.
     var expandedTrash: Set<EntityID> = []
+    /// Collapsed headings, by id (§23): saved per device, never synced, as the Mac's `WindowState.collapsed`. The
+    /// sample store keeps them only while it runs.
+    var collapsed: Set<EntityID> = [] {
+        didSet {
+            guard !isSample, collapsed != oldValue else { return }
+            UserDefaults.standard.set(collapsed.sorted(), forKey: Keys.collapsed)
+        }
+    }
     var notice: Notice?
     /// The new-task row. It lives only while its list is on screen and nothing else is opened: leaving the list,
     /// opening a task, a date, Settings or a list's name ends it (`endDraft`), as on the Mac (INTERACTIONS-v2 §6, "The
@@ -141,6 +180,8 @@ final class AppModel {
     enum Keys {
         static let appearance = "appearance"
         static let style = "style"
+        /// The Mac's key (`WindowState.collapsedKey`).
+        static let collapsed = "collapsedHeadings"
     }
 
     init(store: Store, isSample: Bool = false) {
@@ -151,6 +192,7 @@ final class AppModel {
         style = d.string(forKey: Keys.style).flatMap(InterfaceStyle.init(rawValue:)) ?? .classic
         serverURL = d.string(forKey: SyncKeys.serverURL) ?? Self.defaultServer
         hasToken = Keychain.token() != nil
+        collapsed = isSample ? [] : Set(d.stringArray(forKey: Keys.collapsed) ?? [])
     }
 
     // MARK: Lookups
@@ -304,14 +346,17 @@ final class AppModel {
 
     // MARK: The draft (INTERACTIONS-v2 §6): nothing is written until it has a title
 
-    func startDraft(_ source: Source) {
-        animate(Motion.layout) { draft = Draft(source: source) }
+    /// Starts typing in `source`. Text being typed elsewhere ends first, as a tap elsewhere would end it.
+    func startDraft(_ source: Source, _ kind: Draft.Kind = .task, text: String = "") {
+        if draft != nil { endDraft() }
+        animate(Motion.layout) { draft = Draft(source: source, kind: kind, title: text) }
     }
 
-    /// Return: a title makes the task, at the top of its list, and opens the next row; an empty row ends adding.
+    /// Return: a title makes the task and opens the next row (an empty row ends adding); a heading's name is written
+    /// and the field ends.
     func submitDraft() {
         guard let d = draft else { return }
-        animate(Motion.layout) { draft = write(d) ? Draft(source: d.source) : nil }
+        animate(Motion.layout) { draft = write(d) && d.addsTask ? Draft(source: d.source, kind: d.kind) : nil }
     }
 
     /// Done with the row any other way: a tap outside it, a swipe, leaving the list, opening something else, the app
@@ -336,19 +381,30 @@ final class AppModel {
     }
 
     /// One `task.create` for a titled draft (Today's has a When of today, Upcoming's tomorrow; outside a list it goes
-    /// to the default list); false, and nothing written, for an empty one.
+    /// to the default list); false, and nothing written, for an empty one. A heading's name or notes: one write, only
+    /// if the user changed them (`writeHeading`).
     private func write(_ d: Draft) -> Bool {
+        if case .notes = d.kind { return writeHeading(d) }
         let title = d.title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { return false }
         var listID: EntityID?
         var when: CalendarDate?
+        var anchor = Ordering.Anchor.top
         switch d.source {
         case let .list(id): listID = id
         case .today: when = today
         case .upcoming: when = today.adding(days: 1)
         default: break
         }
-        store.createTask(title: title, in: listID, at: .top, when: when, undoManager: undo)
+        switch d.kind {
+        case .task: break
+        case let .taskIn(h):
+            guard let listID else { return false }
+            anchor = sectionEnd(h, in: listID)
+        case .heading, .rename, .notes:
+            return writeHeading(Draft(source: d.source, kind: d.kind, title: title, token: d.token))
+        }
+        store.createTask(title: title, in: listID, at: anchor, when: when, undoManager: undo)
         return true
     }
 
@@ -377,5 +433,5 @@ final class AppModel {
         animate(Motion.natural) { notice = nil }
     }
 
-    private func short(_ s: String) -> String { s.count > 26 ? String(s.prefix(24)) + "…" : s }
+    func short(_ s: String) -> String { s.count > 26 ? String(s.prefix(24)) + "…" : s }
 }
