@@ -1992,4 +1992,223 @@ final class FlowTests: XCTestCase {
         }
         XCTAssertLessThan(y(school), y(completed), "above Completed")
     }
+
+    // MARK: Multi-select (batch 2 §3)
+
+    private var selectTitle: XCUIElement { app.staticTexts["selectTitle"].firstMatch }
+    private var selectBar: XCUIElement { app.descendants(matching: .any)["selectBar"].firstMatch }
+    private func segment(_ word: String) -> XCUIElement { selectBar.buttons[word].firstMatch }
+
+    /// Opens `screen` and selects these rows from the "…" (`menu`: "List actions" or "More").
+    private func select(_ titles: [String], on screen: String, menu: String = "List actions", hold: Bool = true,
+                        file: StaticString = #filePath, line: UInt = #line) {
+        app.launchArguments += ["-screen", screen] + (hold ? ["-hold", "YES"] : [])
+        app.launch()
+        let header = app.descendants(matching: .any)["listHeader"].firstMatch
+        XCTAssertTrue(header.waitForExistence(timeout: 10), "the screen", file: file, line: line)
+        sleep(1)
+        app.buttons[menu].tap()
+        app.buttons["Select"].firstMatch.tap()
+        XCTAssertTrue(selectTitle.waitForExistence(timeout: 3), "select mode", file: file, line: line)
+        for t in titles { app.staticTexts[t].firstMatch.tap() }
+        XCTAssertEqual(selectTitle.label, titles.isEmpty ? "Select Tasks" : "\(titles.count) Selected", file: file, line: line)
+    }
+
+    /// Select in the "…" starts with nothing selected; a tap selects a row (its box too) and opens nothing, again
+    /// deselects it; Select All takes every open task, then reads Deselect All; Done leaves, and nothing was checked.
+    func testSelectFromTheMenuAndLeave() {
+        select([], on: "list:school")
+        XCTAssertFalse(app.buttons["List actions"].exists, "no … while selecting")
+        XCTAssertEqual(app.navigationBars.firstMatch.buttons.element(boundBy: 0).label, "Select All", "no back button")
+        XCTAssertTrue(selectBar.exists, "the bar")
+        XCTAssertFalse(segment("Complete").isEnabled, "nothing selected: disabled")
+        XCTAssertFalse(segment("Delete").isEnabled)
+        XCTAssertFalse(app.buttons["New Task"].exists, "the + is gone")
+        let row = app.staticTexts["Submit MSE 333 A2"].firstMatch
+        row.tap()
+        XCTAssertEqual(selectTitle.label, "1 Selected")
+        XCTAssertTrue(segment("Complete").isEnabled)
+        XCTAssertFalse(app.textViews["Submit MSE 333 A2"].exists, "no sheet")
+        // The box takes no tap of its own: it selects the row.
+        let kit = app.staticTexts["Return the ECE 358 lab kit"].firstMatch
+        kit.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5)).withOffset(CGVector(dx: -23, dy: 0)).tap()
+        XCTAssertEqual(selectTitle.label, "2 Selected", "the box selects")
+        row.tap()
+        XCTAssertEqual(selectTitle.label, "1 Selected", "a second tap deselects")
+        let all = app.buttons.matching(NSPredicate(format: "label == 'Select All'"))
+        XCTAssertEqual(all.count, 1, "one Select All: \(all.debugDescription)")
+        all.firstMatch.tap()
+        XCTAssertEqual(selectTitle.label, "11 Selected", "every open task")
+        app.buttons["Deselect All"].firstMatch.tap()
+        XCTAssertEqual(app.staticTexts["Select Tasks"].label, "Select Tasks")
+        app.buttons["Done"].tap()
+        XCTAssertTrue(app.buttons["List actions"].waitForExistence(timeout: 3), "the … is back")
+        XCTAssertFalse(selectBar.exists, "the bar goes")
+        XCTAssertTrue(app.buttons["New Task"].waitForExistence(timeout: 3), "the + is back")
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Complete: Return the ECE 358 lab kit'")).firstMatch.exists,
+                      "its box wasn't checked")
+        // The two-finger swipe leaves one-finger scrolling alone.
+        let header = app.descendants(matching: .any)["listHeader"].firstMatch
+        let y0 = header.frame.minY
+        app.swipeUp()
+        sleep(1)
+        XCTAssertLessThan(header.frame.minY, y0 - 20, "one finger still scrolls")
+    }
+
+    /// Complete with a mixed selection completes the open ones: "Completed 2 tasks", with Undo ("Complete 3 Tasks");
+    /// select mode ends.
+    func testCompleteAMixedSelection() {
+        app.launchArguments += ["-completed", "tasks"]
+        select(["Sidebar footer: a settings button", "Try Glass on the detail pane", "Theme cards in Settings"], on: "list:tasks")
+        XCTAssertEqual(segment("Complete").label, "Complete", "a mixed selection reads Complete")
+        segment("Complete").tap()
+        XCTAssertTrue(notice("Completed 2 tasks").waitForExistence(timeout: 3), "the open ones")
+        XCTAssertFalse(selectTitle.exists, "select mode ends")
+        XCTAssertTrue(app.buttons["Mark not done: Try Glass on the detail pane"].exists, "checked")
+        app.buttons["Undo"].firstMatch.tap()
+        XCTAssertTrue(notice("Undo Complete 3 Tasks").waitForExistence(timeout: 3), "one step")
+        XCTAssertTrue(app.buttons["Complete: Try Glass on the detail pane"].waitForExistence(timeout: 3), "open again")
+        XCTAssertTrue(app.buttons["Mark not done: Theme cards in Settings"].exists, "the done one stays done")
+    }
+
+    /// In Completed the bar reads Not Done: all of them, one step, "Mark as Not Done", and no notice.
+    func testNotDoneInCompleted() {
+        select(["Submit ECE 358 lab 3", "Read MSE 333 chapter 6"], on: "completed", menu: "More")
+        XCTAssertTrue(segment("Not Done").exists, "Not Done")
+        XCTAssertTrue(segment("When").exists && segment("Move").exists && segment("Delete").exists)
+        segment("Not Done").tap()
+        XCTAssertTrue(app.staticTexts["Submit ECE 358 lab 3"].waitForNonExistence(timeout: 3), "out of Completed")
+        XCTAssertFalse(app.staticTexts["Read MSE 333 chapter 6"].exists)
+        XCTAssertFalse(app.buttons["Undo"].exists, "no notice")
+        app.buttons["More"].tap()
+        XCTAssertTrue(app.buttons["Undo Mark as Not Done"].waitForExistence(timeout: 3), "one step")
+        app.buttons["Undo Mark as Not Done"].tap()
+        XCTAssertTrue(app.staticTexts["Submit ECE 358 lab 3"].waitForExistence(timeout: 3), "back in Completed")
+        XCTAssertTrue(app.staticTexts["Read MSE 333 chapter 6"].exists)
+    }
+
+    /// When opens the date sheet for all of them ("When · 2 tasks"); a day that takes them out of Today says where,
+    /// with Undo ("Set When"); select mode ends. Closing the sheet without a day keeps it.
+    func testWhenForASelection() {
+        select(["Reply to the landlord about the lease", "Email TA about midterm regrade"], on: "today", menu: "More")
+        segment("When").tap()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS '2 tasks'")).firstMatch.waitForExistence(timeout: 3),
+                      "the sheet's title counts them")
+        app.buttons["Done"].firstMatch.tap()
+        sleep(1)
+        XCTAssertEqual(selectTitle.label, "2 Selected", "closed without a day: still selecting")
+        segment("When").tap()
+        let tomorrow = app.buttons["Tomorrow"].firstMatch
+        XCTAssertTrue(tomorrow.waitForExistence(timeout: 3))
+        tomorrow.tap()
+        XCTAssertTrue(notice(beginningWith: "Scheduled for ").waitForExistence(timeout: 3), "they left Today")
+        XCTAssertFalse(selectTitle.exists, "select mode ends")
+        XCTAssertFalse(app.staticTexts["Reply to the landlord about the lease"].exists)
+        XCTAssertFalse(app.staticTexts["Email TA about midterm regrade"].exists)
+        app.buttons["Undo"].firstMatch.tap()
+        XCTAssertTrue(notice("Undo Set When").waitForExistence(timeout: 3), "one step")
+        XCTAssertTrue(app.staticTexts["Reply to the landlord about the lease"].waitForExistence(timeout: 3), "back")
+        XCTAssertTrue(app.staticTexts["Email TA about midterm regrade"].exists)
+    }
+
+    /// Move out of the list on screen: "Move 2 tasks to", its own list checked and disabled; "Moved 2 tasks to
+    /// Errands", with Undo ("Move 2 Tasks").
+    func testMoveASelectionOutOfAList() {
+        select(["Sidebar footer: a settings button", "Try Glass on the detail pane"], on: "list:tasks")
+        segment("Move").tap()
+        XCTAssertTrue(app.staticTexts["Move 2 tasks to"].waitForExistence(timeout: 3), "the header")
+        XCTAssertFalse(app.buttons["Tasks app"].isEnabled, "their own list")
+        app.buttons["Errands"].tap()
+        XCTAssertTrue(notice("Moved 2 tasks to Errands").waitForExistence(timeout: 3))
+        XCTAssertFalse(selectTitle.exists, "select mode ends")
+        XCTAssertTrue(app.staticTexts["Try Glass on the detail pane"].waitForNonExistence(timeout: 3), "gone from Tasks app")
+        app.buttons["Undo"].firstMatch.tap()
+        XCTAssertTrue(notice("Undo Move 2 Tasks").waitForExistence(timeout: 3), "one step")
+        XCTAssertTrue(app.staticTexts["Try Glass on the detail pane"].waitForExistence(timeout: 3), "back")
+    }
+
+    /// In a view the tasks stay, regrouped, and nothing is said (IX §10).
+    func testMoveASelectionInAViewStays() {
+        select(["Reply to the landlord about the lease", "Email TA about midterm regrade"], on: "today", menu: "More")
+        segment("Move").tap()
+        XCTAssertTrue(app.staticTexts["Move 2 tasks to"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Inbox"].isEnabled, "not all of them are in Inbox")
+        app.buttons["Inbox"].tap()
+        sleep(1)
+        XCTAssertFalse(selectTitle.exists, "select mode ends")
+        let moved = app.staticTexts["Email TA about midterm regrade"].firstMatch
+        XCTAssertTrue(moved.exists, "still in Today")
+        XCTAssertFalse(notice(beginningWith: "Moved").exists, "no notice")
+        // Regrouped: at the end of Inbox's group, above School's.
+        XCTAssertGreaterThan(moved.frame.minY, app.staticTexts["Call the dentist about a cleaning"].firstMatch.frame.minY)
+        XCTAssertLessThan(moved.frame.minY, app.staticTexts["Review CS 489 lectures 10–14"].firstMatch.frame.minY)
+    }
+
+    /// Delete: all at once, "Deleted 3 tasks", with Undo ("Delete 3 Tasks").
+    func testDeleteASelection() {
+        select(["Ship the When and Deadline pickers", "Sidebar footer: a settings button", "Try Glass on the detail pane"],
+               on: "list:tasks")
+        segment("Delete").tap()
+        XCTAssertTrue(notice("Deleted 3 tasks").waitForExistence(timeout: 3))
+        XCTAssertFalse(selectTitle.exists, "select mode ends")
+        XCTAssertFalse(app.staticTexts["Sidebar footer: a settings button"].exists, "gone")
+        app.buttons["List actions"].tap()
+        app.buttons["Undo Delete 3 Tasks"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Sidebar footer: a settings button"].waitForExistence(timeout: 3), "back")
+        XCTAssertTrue(app.staticTexts["Ship the When and Deadline pickers"].exists)
+    }
+
+    /// Trash: Put Back sends each home ("Put back 2 tasks"); with a task whose list is in Trash, Put Back opens Put back
+    /// in for all of them ("Put back 2 tasks in School").
+    func testPutBackASelection() {
+        app.launchArguments += ["-expand", "move"]
+        select(["Buy a second lamp", "Try the new notes app"], on: "trash", menu: "More")
+        XCTAssertTrue(segment("Put Back in").exists)
+        segment("Put Back").tap()
+        XCTAssertTrue(notice("Put back 2 tasks").waitForExistence(timeout: 3), "each to its own list")
+        XCTAssertFalse(selectTitle.exists, "select mode ends")
+        XCTAssertFalse(app.staticTexts["Buy a second lamp"].exists, "out of Trash")
+        app.buttons["Undo"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["Buy a second lamp"].waitForExistence(timeout: 3), "back in Trash")
+        sleep(1)
+        app.buttons["More"].tap()
+        app.buttons["Select"].firstMatch.tap()
+        app.staticTexts["Buy a second lamp"].firstMatch.tap()
+        app.staticTexts["Cancel the old internet plan"].firstMatch.tap()
+        XCTAssertEqual(selectTitle.label, "2 Selected")
+        segment("Put Back").tap()
+        let school = app.buttons["School"].firstMatch
+        XCTAssertTrue(school.waitForExistence(timeout: 3), "Put back in, for all of them")
+        school.tap()
+        XCTAssertTrue(notice("Put back 2 tasks in School").waitForExistence(timeout: 3))
+    }
+
+    /// A long-press in select mode is the selection's menu, with the pressed row added; closed without a choice, the
+    /// row stays selected. Swipes are off.
+    func testALongPressAddsToTheSelection() {
+        select(["Ship the When and Deadline pickers"], on: "list:tasks")
+        let row = app.staticTexts["Try Glass on the detail pane"].firstMatch
+        menuOpen {
+            row.press(forDuration: 1.2)
+            XCTAssertTrue(app.buttons["Complete 2 Tasks"].waitForExistence(timeout: 3), "the menu acts on both")
+            XCTAssertTrue(app.buttons["Delete 2 Tasks"].exists)
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.03)).tap()
+        }
+        sleep(1)
+        XCTAssertEqual(selectTitle.label, "2 Selected", "the pressed row joined the selection")
+        row.swipeLeft()
+        sleep(1)
+        XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == 'Delete'")).count, 1, "no swipe actions: the bar's only")
+        XCTAssertEqual(selectTitle.label, "2 Selected")
+    }
+
+    /// A heading isn't selectable and its chevron still folds; the rows it folds away leave the selection.
+    func testFoldingLeavesTheSelection() {
+        select(["Read chapter 15 · oscillations", "Lab 3 report · pendulum"], on: "list:phys")
+        app.staticTexts["Lectures"].firstMatch.tap()
+        XCTAssertEqual(selectTitle.label, "2 Selected", "a heading doesn't select")
+        app.buttons["Collapse Lectures"].tap()
+        sleep(1)
+        XCTAssertEqual(selectTitle.label, "1 Selected", "the folded row left")
+    }
 }

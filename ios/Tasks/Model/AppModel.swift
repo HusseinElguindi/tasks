@@ -136,6 +136,16 @@ final class AppModel {
     /// The first of them, scrolled into view on its screen.
     var undoReveal: UndoReveal?
 
+    // Select mode (batch 2 §3; Select.swift)
+    /// The screen in select mode, or nil.
+    var selecting: Source?
+    /// The rows selected there.
+    var selected: Set<EntityID> = []
+    /// The boxes a bulk Complete checks or unchecks: they stay quiet, and one haptic goes for them all (`bulkChecks`).
+    var quietChecks: Set<EntityID> = []
+    var bulkChecks = 0
+    var bulkUnchecks = 0
+
     // Transient UI state
     /// Checked a moment ago: still shown in place, as the Mac's pins (§8), until the rows settle together.
     var completing: Set<EntityID> = []
@@ -169,10 +179,18 @@ final class AppModel {
     /// pointer while adding": anything else writes a title, then does that; an untitled one is dropped).
     var draft: Draft?
     var path: [Source] = [] {                 // the phone's stack
-        didSet { if !isSplit { endDraft(unlessShowing: path.last) } }
+        didSet {
+            guard !isSplit else { return }
+            endDraft(unlessShowing: path.last)
+            endSelecting(unlessShowing: path.last)
+        }
     }
     var selection: Source? = .today {         // the split view's sidebar
-        didSet { if isSplit { endDraft(unlessShowing: selection) } }
+        didSet {
+            guard isSplit else { return }
+            endDraft(unlessShowing: selection)
+            endSelecting(unlessShowing: selection)
+        }
     }
     var selectedTask: EntityID? {             // the split view's detail
         didSet { if selectedTask != nil { endDraft() } }
@@ -315,7 +333,7 @@ final class AppModel {
 
     /// Checked rows stay in place until 1.5 s pass with no further check; each check restarts the wait, so a run of
     /// checks moves together (IX:665–669; the Mac's `TK.Timer.settle`).
-    private func restartSettle() {
+    func restartSettle() {
         settleTask?.cancel()
         guard !completing.isEmpty else { return }
         settleTask = Task { @MainActor [weak self] in
@@ -344,6 +362,8 @@ final class AppModel {
     /// The same for several tasks (the date sheet's selection): one step, the same names and notice for any count, and
     /// the notice when any of them leaves the view (the Mac's `setDate` and `leavesView`).
     func setDate(_ ids: [EntityID], _ kind: DateKind, _ date: CalendarDate?) {
+        // A day chosen for a selection ends select mode, as every bar action does (§3).
+        endSelecting()
         let tasks = ids.compactMap { task($0) }.filter { !$0.isHeading && !isTrashed($0) }
         guard !tasks.isEmpty else { return }
         let ids = tasks.map(\.id)
@@ -449,8 +469,8 @@ final class AppModel {
 
     /// Starts typing in `source`. Text being typed elsewhere ends first, as a tap elsewhere would end it.
     func startDraft(_ source: Source, _ kind: Draft.Kind = .task, text: String = "") {
-        // A deleted list reads but doesn't edit (§28).
-        guard deletedList(source) == nil else { return }
+        // A deleted list reads but doesn't edit (§28); nothing is typed in select mode (§3).
+        guard deletedList(source) == nil, selecting == nil else { return }
         if draft != nil { endDraft() }
         animate(Motion.layout) { draft = Draft(source: source, kind: kind, title: text) }
     }

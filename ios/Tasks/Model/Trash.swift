@@ -19,7 +19,8 @@ extension AppModel {
     /// A tap on a deleted list's row in Trash: the list itself, read-only (§28's Open), pushed over Trash. iPad shows
     /// it in the list pane, as the Mac's detail pane does.
     func openDeletedList(_ id: EntityID) {
-        guard projection.isDeleted(list: id) else { return }
+        // Not in select mode, where the row isn't selectable and the screen stays put (§3).
+        guard projection.isDeleted(list: id), selecting == nil else { return }
         if isSplit {
             selection = .list(id)
             selectedTask = nil
@@ -40,13 +41,14 @@ extension AppModel {
         let home: Bool
     }
 
-    /// "Put back in" (the Mac's `putBackInItems`): every live list, and the task's own deleted list, in the sidebar's
-    /// order by key.
-    func putBackTargets(_ t: TaskModel) -> [PutBackTarget] {
+    /// "Put back in" (the Mac's `putBackInItems`): every live list, and the tasks' own deleted lists, in the sidebar's
+    /// order by key. One task's own live list is checked.
+    func putBackTargets(_ tasks: [TaskModel]) -> [PutBackTarget] {
         var lists = activeLists
-        if let own = list(t.list), own.isDeleted { lists.append(own) }
+        for h in Set(tasks.map(\.list)).sorted() { if let own = list(h), own.isDeleted { lists.append(own) } }
         lists.sort { orderPrecedes($0.order, $0.id, $1.order, $1.id) }
-        return lists.map { PutBackTarget(id: $0.id, inTrash: $0.isDeleted, home: $0.id == t.list) }
+        let home = tasks.count == 1 ? tasks[0].list : nil
+        return lists.map { PutBackTarget(id: $0.id, inTrash: $0.isDeleted, home: $0.id == home) }
     }
 
     /// Put Back: home, at its old place; or, given `list`, at the bottom of that live list (Put back in). Its details

@@ -81,16 +81,24 @@ struct FloatingControls: View {
     @Environment(\.palette) private var p
 
     var body: some View {
+        let selecting = !home && app.isSelecting(source)
         VStack(alignment: .leading, spacing: 12) {
             if let n = app.notice {
+                // 12 above the + or, in select mode, the bar.
                 NoticeView(notice: n)
                     .motionTransition(.move(edge: .bottom).combined(with: .opacity))
             }
             HStack(alignment: .center, spacing: 12) {
-                if home && showBar { HomeBar() } else { Spacer() }
-                if home || app.canAdd(source) {
-                    AddButton { add() }
-                        .motionTransition(.scale(scale: 0.6).combined(with: .opacity))
+                if selecting, let source {
+                    // Select mode's bar takes the +'s place: the + leaves on its scale and fade, the bar rises in (§3).
+                    SelectBar(source: source)
+                        .motionTransition(.move(edge: .bottom).combined(with: .opacity))
+                } else {
+                    if home && showBar { HomeBar() } else { Spacer() }
+                    if home || app.canAdd(source) {
+                        AddButton { add() }
+                            .motionTransition(.scale(scale: 0.6).combined(with: .opacity))
+                    }
                 }
             }
         }
@@ -99,6 +107,10 @@ struct FloatingControls: View {
         // Reduce Motion: they change at once (IX:255).
         .motion(Motion.natural, value: home)
         .motion(Motion.natural, value: app.canAdd(source))
+        .motion(Motion.natural, value: selecting)
+        // A bulk Complete's one haptic, for all the boxes it checks or unchecks (§3, §5).
+        .sensoryFeedback(.success, trigger: app.bulkChecks)
+        .sensoryFeedback(.selection, trigger: app.bulkUnchecks)
     }
 
     private func add() {

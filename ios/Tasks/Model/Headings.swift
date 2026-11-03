@@ -25,7 +25,7 @@ extension AppModel {
 
     /// Add Notes or Edit Notes in its menu, or a tap on them: the notes editor, under it. It expands first.
     func editHeadingNotes(_ id: EntityID) {
-        guard let h = task(id), h.isHeading, !isTrashed(h) else { return }
+        guard let h = task(id), h.isHeading, !isTrashed(h), selecting == nil else { return }
         expand(id)
         startDraft(.list(h.list), .notes(heading: id, original: h.notes), text: h.notes)
     }

@@ -69,6 +69,7 @@ extension AppModel {
     /// notice says what was undone, with no button, for 1.8 s.
     func restore(screen: Source?, ids: [EntityID], notice text: String) {
         if draft != nil { cancelDraft() }
+        endSelecting()
         listEditor = nil
         showSettings = false
         dateTarget = nil
@@ -107,7 +108,8 @@ extension AppModel {
         show(Notice(text: text, undo: nil))
     }
 
-    /// The menu's Undo, the notice's Undo, ⌘Z: what's being typed ends first, as on the Mac (`performUndo`).
+    /// The menu's Undo, the notice's Undo, ⌘Z: what's being typed ends first, as on the Mac (`performUndo`); select mode
+    /// ends in `restore`.
     func performUndo() {
         endDraft()
         guard undo.canUndo else { return }
@@ -144,20 +146,20 @@ struct UndoItems: View {
     }
 }
 
-/// A view's "…" (Today, Upcoming, Undated, Completed, Trash): Undo and Redo for now; Select joins them (batch 2 §0).
-/// With nothing in it, it isn't shown.
+/// A view's "…" (Today, Upcoming, Undated, Completed, Trash; batch 2 §0): Undo and Redo, each only when there's a
+/// step, and Select, so it's always there.
 struct ViewMenu: View {
+    let source: Source
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     var body: some View {
-        if app.undoName != nil || app.redoName != nil {
-            Menu {
-                UndoItems()
-            } label: {
-                Image(systemName: "ellipsis")
-            }
-            .tint(p.ink)
-            .accessibilityLabel("More")
+        Menu {
+            UndoItems()
+            SelectItem(source: source)
+        } label: {
+            Image(systemName: "ellipsis")
         }
+        .tint(p.ink)
+        .accessibilityLabel("More")
     }
 }

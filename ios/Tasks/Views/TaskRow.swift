@@ -11,6 +11,10 @@ struct TaskRow: View {
     /// In a month group of Completed or Trash: the day, after the list's name.
     var day: CalendarDate? = nil
     var selected = false
+    /// In select mode (§3): selected, and joined to the selected row above or below.
+    var picked = false
+    var joinTop = false
+    var joinBottom = false
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -22,9 +26,11 @@ struct TaskRow: View {
     private var settled: Bool { done && !app.completing.contains(task.id) }
     /// Checked here a moment ago (the box, a swipe, the menu): it sparks, and the row and its title flash warm.
     private var sparks: Bool { done && app.completing.contains(task.id) }
+    /// In select mode a tap anywhere on the row, its box too, selects it: no sheet, no haptic (§3).
+    private var selecting: Bool { app.isSelecting(source) }
 
     var body: some View {
-        Button { open() } label: {
+        Button { if selecting { app.toggleSelected(task.id) } else { open() } } label: {
             // The flash (COLOR.md §4, the Mac's `sparkFlashT`): 700 ms ease-out, only for a check made here; none under
             // Reduce Motion, where the title takes ink-tertiary at once.
             KeyframeAnimator(initialValue: 0.0, trigger: flashes) { heat in
@@ -37,16 +43,20 @@ struct TaskRow: View {
             }
         }
         .onChange(of: done) { _, now in if now, sparks, !reduceMotion { flashes += 1 } }
-        .buttonStyle(RowStyle(selected: selected, fadesOut: !app.isSplit))
+        .buttonStyle(RowStyle(selected: selected, fadesOut: !app.isSplit, picked: picked, joinTop: joinTop, joinBottom: joinBottom))
         .accessibilityElement(children: .contain)
-        .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityAddTraits(selected || picked ? .isSelected : [])
     }
 
     private func label(heat: Double) -> some View {
         HStack(spacing: 0) {
-            Checkbox(checked: done, title: title, cue: app.cue(task, in: source), readOnly: trashed, sparks: sparks) {
+            Checkbox(checked: done, title: title, cue: app.cue(task, in: source), readOnly: trashed, sparks: sparks,
+                     quiet: app.quietChecks.contains(task.id)) {
                 app.toggle(task.id)
             }
+            // In select mode it keeps its ring and cue, and takes no tap of its own: one gesture, one meaning (IX §2.1).
+            .allowsHitTesting(!selecting)
+            .accessibilityHidden(selecting)
             .padding(.leading, Metric.rowPad - 11)   // the 44pt hit area centres the 22pt ring
             .padding(.trailing, Metric.titleGap - 11)
 

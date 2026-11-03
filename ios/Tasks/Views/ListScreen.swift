@@ -18,15 +18,21 @@ struct ListScreen: View {
     @State private var sunRise = true
     /// Counts the times Today became all done while open, for the light haptic as the sun appears.
     @State private var sunHaptic = 0
+    /// The two-finger swipe that selects (§3), on this list's scroll view.
+    @State private var swipe = SwipeSelect()
 
     private static let space = "rows"
     private var adding: Bool { app.draft?.source == source }
     /// The list's notes are being typed, under its title.
     private var editingNotes: Bool { adding && app.draft?.editsListNotes == true }
+    /// In select mode (§3).
+    private var selecting: Bool { app.isSelecting(source) }
 
     var body: some View {
         let lines = app.lines(source)
         let allDone = lines.contains { $0.isAllDone }
+        let shownIDs = lines.compactMap { if case let .task(t, _, _, _) = $0 { t.id } else { nil } }
+        let picks = Picks(lines, selected: selecting ? app.selected : [])
         ScrollViewReader { proxy in
             List {
                 if let l = app.deletedList(source) {
@@ -41,6 +47,7 @@ struct ListScreen: View {
                 header
                     .endsAddingOnTap(!editingNotes)
                     .pressesShowAtOnce()
+                    .swipeSelects(swipe)
                     .listRow()
                 if let runs = app.dragRuns(lines, source) {
                     // Drag to reorder (Reorder.swift: the iPhone's own drag, and its three accepted differences from
@@ -48,16 +55,17 @@ struct ListScreen: View {
                     let airless = Set(runs.dropFirst().compactMap { $0.lines.first?.id })
                     ForEach(runs) { run in
                         ForEach(run.lines) { line in
-                            listLine(line, airless: airless.contains(line.id))
+                            listLine(line, airless: airless.contains(line.id), picks: picks)
                                 .contentShape(.dragPreview, RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous))
-                                .moveDisabled(!line.canDrag && !line.takesDrops)
+                                // Nothing lifts in select mode: the reorder brief drags one row at a time.
+                                .moveDisabled(selecting || (!line.canDrag && !line.takesDrops))
                         }
                         .onMove { from, to in
                             if app.drop(from, to, in: run.lines, source: source) { dropped += 1 }
                         }
                     }
                 } else {
-                    ForEach(lines) { line in listLine(line) }
+                    ForEach(lines) { line in listLine(line, picks: picks) }
                 }
                 Color.clear.frame(height: app.isSplit ? 24 : Metric.bottomClearance)
                     .listRow()
@@ -85,10 +93,18 @@ struct ListScreen: View {
                 app.revealTask = nil
             }
         }
-        // Deleted on another device while open: it turns read-only in place, and a row being typed is dropped.
+        // Deleted on another device while open: it turns read-only in place, a row being typed is dropped, and select
+        // mode ends.
         .onChange(of: app.deletedList(source) != nil) { _, deleted in
             if deleted, adding { app.cancelDraft() }
+            if deleted, selecting { app.endSelecting() }
         }
+        // The rows a swipe can cross; a task that's no longer shown leaves the selection.
+        .onChange(of: shownIDs, initial: true) { _, ids in
+            swipe.order = ids
+            if app.isSelecting(source) { app.pruneSelection(ids) }
+        }
+        .onAppear { setUpSwipe() }
         .sensoryFeedback(.impact(weight: .light), trigger: dropped)
         // A soft echo of the last check, as the sun appears (1.5 s after it, when the rows settle).
         .sensoryFeedback(.impact(weight: .light), trigger: sunHaptic)
@@ -122,16 +138,40 @@ struct ListScreen: View {
         }
         .navigationTitle(app.title(source))
         .navigationBarTitleDisplayMode(.inline)
+        // While selecting, the back button and the edge swipe back are off, so a stray swipe can't drop the selection.
+        .navigationBarBackButtonHidden(selecting)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                HStack(spacing: 7) {
-                    app.tile(for: source, palette: p, scale: 0.8)
-                    Text(app.title(source)).font(.system(size: 17, weight: .semibold)).foregroundStyle(p.ink)
+                if selecting {
+                    // "3 Selected", or "Select Tasks" while nothing is.
+                    let n = app.selectedIDs(source).count
+                    Text(n == 0 ? "Select Tasks" : "\(n) Selected")
+                        .font(.system(size: 17, weight: .semibold)).monospacedDigit()
+                        .foregroundStyle(n == 0 ? p.inkTertiary : p.ink)
+                        .accessibilityIdentifier("selectTitle")
+                } else {
+                    HStack(spacing: 7) {
+                        app.tile(for: source, palette: p, scale: 0.8)
+                        Text(app.title(source)).font(.system(size: 17, weight: .semibold)).foregroundStyle(p.ink)
+                    }
+                    .opacity(folded ? 1 : 0)
+                    .accessibilityHidden(!folded)
                 }
-                .opacity(folded ? 1 : 0)
-                .accessibilityHidden(!folded)
             }
-            if adding, app.draft?.editsNotes == true {
+            if selecting {
+                ToolbarItem(placement: .topBarLeading) {
+                    // ⌘A on a hardware keyboard, while it reads Select All (IX §5).
+                    let all = app.allSelected(source)
+                    Button(all ? "Deselect All" : "Select All") { app.toggleSelectAll(source) }
+                        .tint(p.ink)
+                        .keyboardShortcut(all ? nil : KeyboardShortcut("a", modifiers: .command))
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    // Esc on a hardware keyboard, unless the date sheet is up (it takes Esc itself).
+                    Button("Done") { app.endSelecting() }
+                        .keyboardShortcut(app.dateTarget == nil ? .cancelAction : nil)
+                }
+            } else if adding, app.draft?.editsNotes == true {
                 // A heading's or the list's notes: Done ends them, as Esc does on the Mac.
                 ToolbarItem(placement: .primaryAction) {
                     Button("Done") { app.endDraft() }
@@ -152,9 +192,19 @@ struct ListScreen: View {
             } else if case let .list(id) = source {
                 ToolbarItem(placement: .primaryAction) { ListMenu(listID: id) }
             } else {
-                ToolbarItem(placement: .primaryAction) { ViewMenu() }
+                ToolbarItem(placement: .primaryAction) { ViewMenu(source: source) }
             }
         }
+    }
+
+    /// The swipe's view of this screen: the app's state, and the floating bar over the list's foot.
+    private func setUpSwipe() {
+        let app = app, source = source
+        swipe.foot = app.isSplit ? 8 : Metric.fab + 6
+        swipe.canStart = { app.shown == source && app.deletedList(source) == nil && app.dateTarget == nil }
+        swipe.enter = { app.startSelecting(source) }
+        swipe.selection = { app.isSelecting(source) ? app.selected : [] }
+        swipe.apply = { app.selected = $0 }
     }
 
     // MARK: Header
@@ -211,8 +261,8 @@ struct ListScreen: View {
 
     // MARK: Rows
 
-    private func listLine(_ line: Line, airless: Bool = false) -> some View {
-        row(line, airless: airless)
+    private func listLine(_ line: Line, airless: Bool = false, picks: Picks) -> some View {
+        row(line, airless: airless, picks: picks)
             .endsAddingOnTap(!line.isDraft && !isEdited(line))
             .listRow()
     }
@@ -233,10 +283,10 @@ struct ListScreen: View {
             .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: {
                 if case .notes(h.id, _)? = app.draft?.kind { draftFrame = $0 }
             }
-            .contextMenu { HeadingMenu(heading: h) }
+            .contextMenu { if !selecting { HeadingMenu(heading: h) } }
     }
 
-    @ViewBuilder private func row(_ line: Line, airless: Bool = false) -> some View {
+    @ViewBuilder private func row(_ line: Line, airless: Bool = false, picks: Picks) -> some View {
         switch line {
         case let .group(_, title, sub, quiet):
             GroupLabel(title: title, sub: sub, quiet: quiet, top: airless ? 0 : GroupLabel.air)
@@ -248,7 +298,8 @@ struct ListScreen: View {
                     .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(Self.space)) } action: {
                         if case .rename(h.id, _)? = app.draft?.kind { draftFrame = $0 }
                     }
-                    .contextMenu { HeadingMenu(heading: h) }
+                    // In select mode a heading isn't selectable, and its menu is off; its chevron still folds (§3).
+                    .contextMenu { if !selecting { HeadingMenu(heading: h) } }
                 if notes { headingNotes(h) }
             }
         case let .headingNotes(h):
@@ -257,30 +308,50 @@ struct ListScreen: View {
         case let .task(t, indent, groupDay, day):
             // On the phone the row whose details are open keeps the selected fill, then fades out as they close.
             let row = TaskRow(task: t, source: source, indent: indent, groupDay: groupDay, day: day,
-                              selected: app.flashed.contains(t.id) || (app.isSplit ? app.selectedTask == t.id : app.detailTask == t.id))
+                              selected: app.flashed.contains(t.id) || (app.isSplit ? app.selectedTask == t.id : app.detailTask == t.id),
+                              picked: picks.selected.contains(t.id), joinTop: picks.above.contains(t.id),
+                              joinBottom: picks.below.contains(t.id))
                 .motionTransition(.opacity)
+                // The swipe's map of the rows on screen.
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { swipe.frames[t.id] = $0 }
+                .onDisappear { swipe.frames[t.id] = nil }
             if app.deletedList(source) != nil {
                 // A deleted list's rows are deaf, as on the Mac (§28, the user's A): a task comes out from Trash's
                 // row for its list, where a tap opens its details.
                 row.disabled(true)
             } else {
+                // In select mode, swipes are off and a long-press is the selection's menu, with the row added to the
+                // selection as the menu comes up (§3). The menu's content appears only then; a gesture on the row
+                // would stop the menu, and a hold beside it on the list never begins.
                 row
-                    .modifier(TaskSwipes(task: t, source: source))
-                    .contextMenu { TaskMenu(task: t, source: source) }
+                    .modifier(TaskSwipes(task: t, source: source, enabled: !selecting))
+                    .contextMenu {
+                        if selecting {
+                            SelectionMenu(ids: app.menuTargets(source, adding: t.id), source: source)
+                                .onAppear { if app.isSelecting(source) { app.selected.insert(t.id) } }
+                        } else {
+                            TaskMenu(task: t, source: source)
+                        }
+                    }
             }
         case let .completedToggle(key, count, open):
             CompletedToggleRow(key: key, count: count, open: open, top: 0)
         case let .deletedList(l, _, open, day):
+            // Not selectable: in select mode its chevron still expands it, and the tasks inside it select (§3).
             DeletedListRow(list: l, open: open, day: day)
                 .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                    Button { app.restoreList(l.id) } label: { Label("Restore", systemImage: "arrow.uturn.backward") }
-                        .tint(p.accent)
+                    if !selecting {
+                        Button { app.restoreList(l.id) } label: { Label("Restore", systemImage: "arrow.uturn.backward") }
+                            .tint(p.accent)
+                    }
                 }
                 .contextMenu {
-                    // The Mac's Open · Show Details · ── · Restore List; on the phone they open the same thing.
-                    Button { app.openDeletedList(l.id) } label: { Label("Open", systemImage: "arrow.right.circle") }
-                    Divider()
-                    Button { app.restoreList(l.id) } label: { Label("Restore List", systemImage: "arrow.uturn.backward") }
+                    if !selecting {
+                        // The Mac's Open · Show Details · ── · Restore List; on the phone they open the same thing.
+                        Button { app.openDeletedList(l.id) } label: { Label("Open", systemImage: "arrow.right.circle") }
+                        Divider()
+                        Button { app.restoreList(l.id) } label: { Label("Restore List", systemImage: "arrow.uturn.backward") }
+                    }
                 }
         case .draft:
             if let token = app.draft?.token {
@@ -316,17 +387,19 @@ private struct ListNotesEditor: View {
     }
 }
 
-/// Swipe right completes; swipe left sets the When or deletes. In Trash, swipe right puts back.
+/// Swipe right completes; swipe left sets the When or deletes. In Trash, swipe right puts back. None in select mode
+/// (`enabled`), where the rows keep their place in the view tree.
 private struct TaskSwipes: ViewModifier {
     let task: TaskModel
     let source: Source
+    var enabled = true
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
 
     func body(content: Content) -> some View {
         if source == .trash {
             content.swipeActions(edge: .leading, allowsFullSwipe: true) {
-                if app.canPutBack(task) {
+                if enabled, app.canPutBack(task) {
                     Button { app.putBack(task.id) } label: { Label("Put Back", systemImage: "arrow.uturn.backward") }
                         .tint(p.accent)
                 }
@@ -334,22 +407,52 @@ private struct TaskSwipes: ViewModifier {
         } else {
             content
                 .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                    Button { app.toggle(task.id) } label: {
-                        Label(task.isDone ? "Not Done" : "Complete", systemImage: task.isDone ? "arrow.uturn.backward" : "checkmark")
+                    if enabled {
+                        Button { app.toggle(task.id) } label: {
+                            Label(task.isDone ? "Not Done" : "Complete", systemImage: task.isDone ? "arrow.uturn.backward" : "checkmark")
+                        }
+                        .tint(p.accent)
                     }
-                    .tint(p.accent)
                 }
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    Button(role: .destructive) { app.delete(task.id) } label: { Label("Delete", systemImage: "trash") }
-                        .tint(p.danger)
-                    Button { app.dateTarget = DateTarget(taskID: task.id, kind: .when) } label: {
-                        Label("When", systemImage: "calendar")
+                    if enabled {
+                        Button(role: .destructive) { app.delete(task.id) } label: { Label("Delete", systemImage: "trash") }
+                            .tint(p.danger)
+                        Button { app.dateTarget = DateTarget(taskID: task.id, kind: .when) } label: {
+                            Label("When", systemImage: "calendar")
+                        }
+                        .tint(p.list(.magenta))
                     }
-                    .tint(p.list(.magenta))
                 }
         }
     }
 }
+
+/// In select mode, which rows are selected, and which join the selected row above or below them: their shared corners
+/// go square, so neighbours read as one block (§3). A heading, a label or the Completed row breaks the block.
+private struct Picks {
+    var selected: Set<EntityID> = []
+    var above: Set<EntityID> = []
+    var below: Set<EntityID> = []
+
+    @MainActor init(_ lines: [Line], selected: Set<EntityID>) {
+        self.selected = selected
+        guard !selected.isEmpty else { return }
+        var prev: EntityID?
+        for line in lines {
+            if case let .task(t, _, _, _) = line, selected.contains(t.id) {
+                if let p = prev {
+                    above.insert(t.id)
+                    below.insert(p)
+                }
+                prev = t.id
+            } else {
+                prev = nil
+            }
+        }
+    }
+}
+
 
 /// A task's long-press menu.
 struct TaskMenu: View {
@@ -400,17 +503,20 @@ struct TaskMenu: View {
     }
 }
 
-/// "Put back in" (§28; the Mac's `putBackInItems`): every live list and the task's own deleted list, in the sidebar's
-/// order, under the menu's "Put back in". Its own deleted list is disabled, "In Trash" its second line; its own live list
-/// is checked, and picking it is a plain Put Back. Names are cut as Move to cuts them.
+/// "Put back in" (§28; the Mac's `putBackInItems`): every live list and the tasks' own deleted lists, in the sidebar's
+/// order, under the menu's "Put back in". Their own deleted lists are disabled, "In Trash" the second line; one task's
+/// own live list is checked, and picking it is a plain Put Back. Names are cut as Move to cuts them.
 struct PutBackInItems: View {
-    let task: TaskModel
+    let ids: [EntityID]
     @Environment(AppModel.self) private var app
+    init(task: TaskModel) { ids = [task.id] }
+    /// A selection's (§3).
+    init(ids: [EntityID]) { self.ids = ids }
     var body: some View {
         Section("Put back in") {
-            ForEach(app.putBackTargets(task)) { target in
+            ForEach(app.putBackTargets(ids.compactMap(app.task))) { target in
                 let name = MenuName.fit(app.listName(target.id))
-                Button { app.putBack(task.id, in: target.id) } label: {
+                Button { app.putBackTasks(ids, in: target.id) } label: {
                     if target.inTrash {
                         Text(name)
                         Text("In Trash")
@@ -462,8 +568,8 @@ struct HeadingMenu: View {
     }
 }
 
-/// A list's menu in the bar: Rename, Add Notes or Edit Notes, New Heading, show or hide completed, Delete List (at
-/// once, with Undo).
+/// A list's "…" (batch 2 §0): Undo and Redo, Select, then New Heading, Rename, Add Notes or Edit Notes, show or hide
+/// completed, and Delete List (at once, with Undo).
 struct ListMenu: View {
     let listID: EntityID
     @Environment(AppModel.self) private var app
@@ -471,14 +577,16 @@ struct ListMenu: View {
     var body: some View {
         Menu {
             UndoItems()
+            SelectItem(source: .list(listID))
+            Divider()
+            Button { app.newHeading(in: listID) } label: {
+                Label("New Heading", systemImage: "text.line.first.and.arrowtriangle.forward")
+            }
             Button { app.listEditor = .init(listID: listID, name: app.list(listID)?.name ?? "") } label: {
                 Label("Rename", systemImage: "pencil")
             }
             Button { app.editListNotes(listID) } label: {
                 Label(app.list(listID)?.notes.isEmpty ?? true ? "Add Notes" : "Edit Notes", systemImage: "text.alignleft")
-            }
-            Button { app.newHeading(in: listID) } label: {
-                Label("New Heading", systemImage: "text.line.first.and.arrowtriangle.forward")
             }
             Button {
                 animate(Motion.layout) {

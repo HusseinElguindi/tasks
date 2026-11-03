@@ -214,6 +214,8 @@ struct Checkbox: View {
     /// Checked on this device, just now (the box, a swipe, the menu, the sheet's box): it sparks as it checks. A check
     /// that syncs in from elsewhere just shows the box done.
     var sparks = false
+    /// One of several a bulk Complete checks at once: the screen gives one haptic for them all (§3).
+    var quiet = false
     var action: () -> Void = {}
     @Environment(\.palette) private var p
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -253,7 +255,7 @@ struct Checkbox: View {
         }
         .buttonStyle(CheckPressStyle())
         .disabled(readOnly || placeholder)
-        .sensoryFeedback(trigger: checked) { _, new in new ? .success : .selection }
+        .sensoryFeedback(trigger: checked) { _, new in quiet ? nil : new ? .success : .selection }
         .accessibilityLabel(label)
         .accessibilityAddTraits(checked ? .isSelected : [])
     }
@@ -486,18 +488,36 @@ struct DateChip: View {
 /// A row's press: its own rounded fill, instant in, quick out. Selection uses the same shape. With `fadesOut`, the
 /// selected fill fades out over 300 ms ease-out when it goes (the phone's row whose details just closed, as in Mail
 /// and Settings), so you can see which row you came from; it comes in at once.
+///
+/// In select mode (`picked`, §3) the fill is the same, with no animation either way (IX §5: selection never animates),
+/// and selected neighbours join: the corners they share go square. The rows sit on a 48pt pitch with no gap, so there's
+/// none to fill (the Mac fills its 2pt one).
 struct RowStyle: ButtonStyle {
     var selected = false
     var focused = true
     var fadesOut = false
+    var picked = false
+    var joinTop = false
+    var joinBottom = false
     @Environment(\.palette) private var p
     func makeBody(configuration: Configuration) -> some View {
+        let r = Metric.rowRadius
         configuration.label
             .background {
-                RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous)
-                    .fill(configuration.isPressed ? p.press : selected ? (focused ? p.fillRowSelected : p.fillRowSelectedDim) : .clear)
-                    .motion(configuration.isPressed ? nil : .easeOut(duration: 0.085), value: configuration.isPressed)
-                    .motion(fadesOut && !selected ? .easeOut(duration: 0.3) : nil, value: selected)
+                ZStack {
+                    UnevenRoundedRectangle(topLeadingRadius: joinTop ? 0 : r, bottomLeadingRadius: joinBottom ? 0 : r,
+                                           bottomTrailingRadius: joinBottom ? 0 : r, topTrailingRadius: joinTop ? 0 : r,
+                                           style: .continuous)
+                        .fill(p.fillRowSelected)
+                        .opacity(picked ? 1 : 0)
+                        .animation(nil, value: picked)
+                        .animation(nil, value: joinTop)
+                        .animation(nil, value: joinBottom)
+                    RoundedRectangle(cornerRadius: r, style: .continuous)
+                        .fill(configuration.isPressed ? p.press : selected ? (focused ? p.fillRowSelected : p.fillRowSelectedDim) : .clear)
+                        .motion(configuration.isPressed ? nil : .easeOut(duration: 0.085), value: configuration.isPressed)
+                        .motion(fadesOut && !selected ? .easeOut(duration: 0.3) : nil, value: selected)
+                }
             }
             .contentShape(RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous))
     }
