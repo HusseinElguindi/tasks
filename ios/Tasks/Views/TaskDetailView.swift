@@ -31,7 +31,7 @@ struct TaskDetailView: View {
             }
         }
         .sheet(item: inline ? .constant(nil) : $app.dateTarget) { target in
-            DatePickerSheet(target: target).themed(app).datePickerPresentation()
+            DatePickerSheet(target: target).themed(app)
         }
     }
 }

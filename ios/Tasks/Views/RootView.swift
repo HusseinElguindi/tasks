@@ -63,7 +63,7 @@ struct PhoneRoot: View {
                 .presentationBackground(style == .glass ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(p.base))
         }
         .sheet(item: Binding(get: { app.detailTask == nil ? app.dateTarget : nil }, set: { app.dateTarget = $0 })) { t in
-            DatePickerSheet(target: t).themed(app).datePickerPresentation()
+            DatePickerSheet(target: t).themed(app)
         }
         .sheet(isPresented: $app.showSettings) {
             SettingsView().themed(app).presentationDragIndicator(.visible)
@@ -221,7 +221,7 @@ struct SplitRoot: View {
         }
         .navigationSplitViewStyle(.balanced)
         .background(AppBackground())
-        .sheet(item: $app.dateTarget) { t in DatePickerSheet(target: t).themed(app).datePickerPresentation() }
+        .sheet(item: $app.dateTarget) { t in DatePickerSheet(target: t).themed(app) }
         .sheet(isPresented: $app.showSettings) { SettingsView().themed(app) }
         .listEditorAlert()
     }
@@ -278,10 +278,6 @@ private struct PaneModifier: ViewModifier {
 
 extension View {
     func pane(focused: Bool) -> some View { modifier(PaneModifier(focused: focused)) }
-
-    func datePickerPresentation() -> some View {
-        presentationDetents([.height(560), .large]).presentationDragIndicator(.visible)
-    }
 
     /// Applies the theme: the appearance's palette, the interface style, the accent as tint and the colour scheme.
     func themed(_ app: AppModel) -> some View { modifier(Themed(app: app)) }

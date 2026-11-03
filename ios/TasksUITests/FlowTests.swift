@@ -1696,4 +1696,96 @@ final class FlowTests: XCTestCase {
         let undo = app.buttons.matching(NSPredicate(format: "label == 'Undo'")).allElementsBoundByIndex
         XCTAssertTrue(undo.contains { $0.isHittable }, "the notice's Undo shows over the sheet")
     }
+
+    // MARK: Typed dates (batch 2 §2)
+
+    private var dateField: XCUIElement { app.textFields["Date"] }
+    private var dateFooter: XCUIElement { app.descendants(matching: .any)["dateFooter"] }
+    /// A selected button whose label `op`s `text` (the highlighted day, a tinted pick).
+    private func selected(_ op: String, _ text: String) -> XCUIElement {
+        app.buttons.matching(NSPredicate(format: "isSelected == 1 AND label \(op) %@", text)).firstMatch
+    }
+
+    /// "Submit MSE 333 A2" (s4): a When in 2 days, a deadline in 3.
+    private func openDate(_ kind: String) {
+        app.launchArguments += ["-screen", "\(kind):s4"]
+        app.launch()
+        XCTAssertTrue(dateField.waitForExistence(timeout: 10), "the field")
+        sleep(1)
+    }
+
+    /// Typing moves the highlight, and the footer says what Return sets, with the Mac's note for a When after the
+    /// deadline. With the on-screen keyboard the sheet goes large and the footer rests on the keyboard. Return sets
+    /// the day and closes the sheet.
+    func testATypedDateSetsOnReturn() {
+        openDate("when")
+        let y0 = dateField.frame.minY
+        dateField.tap()
+        sleep(1)
+        let keyboard = app.keyboards.firstMatch
+        if keyboard.exists {
+            XCTAssertLessThan(dateField.frame.minY, y0 - 60, "the sheet went large")
+            XCTAssertLessThanOrEqual(dateFooter.frame.maxY, keyboard.frame.minY + 1, "the footer is above the keyboard")
+        }
+        dateField.typeText("5d")
+        XCTAssertTrue(dateFooter.label.hasSuffix(" · after the deadline"), dateFooter.label)
+        let day = dateFooter.label.components(separatedBy: " · ")[0]
+        XCTAssertTrue(selected("BEGINSWITH", day).exists, "the highlighted day")
+        dateField.typeText("\n")
+        XCTAssertTrue(dateField.waitForNonExistence(timeout: 3), "closed")
+        app.staticTexts["Submit MSE 333 A2"].firstMatch.tap()
+        let when = app.buttons["When"].firstMatch
+        XCTAssertTrue(when.waitForExistence(timeout: 5))
+        XCTAssertEqual(when.value as? String, day, "set")
+    }
+
+    /// Text that reads as no date: no day is highlighted, the footer says so, and Return keeps the sheet. Emptied, the
+    /// field shows the task's date again; the pick the text means is tinted.
+    func testNoDateMatchKeepsTheSheet() {
+        openDate("when")
+        let before = dateFooter.label
+        dateField.tap()
+        dateField.typeText("xyz")
+        XCTAssertEqual(dateFooter.label, "No date matches “xyz”")
+        XCTAssertFalse(selected("CONTAINS", ",").exists, "no day highlighted")
+        dateField.typeText("\n")
+        sleep(1)
+        XCTAssertTrue(dateField.exists, "Return set nothing")
+        dateField.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 3))
+        XCTAssertEqual(dateFooter.label, before, "the task's date again")
+        dateField.typeText("tomorrow")
+        XCTAssertTrue(selected("==", "Tomorrow").exists, "the pick the text means")
+    }
+
+    /// A deadline before the When says so where the relative words were.
+    func testADeadlineBeforeTheWhenSaysSo() {
+        openDate("deadline")
+        XCTAssertTrue(dateFooter.label.hasPrefix("Due "), dateFooter.label)
+        dateField.tap()
+        dateField.typeText("1d")
+        XCTAssertTrue(dateFooter.label.hasPrefix("Due "), dateFooter.label)
+        XCTAssertTrue(dateFooter.label.hasSuffix(" · before the When"), dateFooter.label)
+    }
+
+    /// A hardware keyboard's arrows move the highlight a day or a week; closing sets nothing. (Page Up, Page Down and
+    /// Esc are key commands, but the simulator doesn't pass XCTest's presses of them to the app: they're checked on
+    /// the phone.)
+    func testTheKeysMoveTheHighlight() {
+        openDate("when")
+        dateField.tap()
+        sleep(1)
+        let before = dateFooter.label
+        app.typeKey(.rightArrow, modifierFlags: [])
+        XCTAssertTrue(dateFooter.label.hasSuffix(" · in 3 days"), dateFooter.label)
+        app.typeKey(.leftArrow, modifierFlags: [])
+        XCTAssertEqual(dateFooter.label, before)
+        app.typeKey(.downArrow, modifierFlags: [])
+        XCTAssertTrue(dateFooter.label.hasSuffix(" · after the deadline"), dateFooter.label)
+        app.buttons["Done"].firstMatch.tap()
+        XCTAssertTrue(dateField.waitForNonExistence(timeout: 3), "closed")
+        app.staticTexts["Submit MSE 333 A2"].firstMatch.tap()
+        let when = app.buttons["When"].firstMatch
+        XCTAssertTrue(when.waitForExistence(timeout: 5))
+        XCTAssertEqual(when.value as? String, before.components(separatedBy: " · ")[0], "nothing set")
+    }
 }

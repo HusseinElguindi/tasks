@@ -36,10 +36,18 @@ enum Source: Hashable, Identifiable {
 
 enum DateKind: String, Identifiable { case when, deadline; var id: String { rawValue } }
 
+/// The date sheet's tasks (one, or a selection's: batch 2 §2, §3) and which date it sets.
 struct DateTarget: Identifiable, Equatable {
-    let taskID: EntityID
+    let ids: [EntityID]
     let kind: DateKind
-    var id: String { taskID + kind.rawValue }
+    init(taskID: EntityID, kind: DateKind) { self.init(ids: [taskID], kind: kind) }
+    init(ids: [EntityID], kind: DateKind) {
+        self.ids = ids
+        self.kind = kind
+    }
+    /// The first task: the one its sheet belongs to, and whose other date is the calendar's dot.
+    var taskID: EntityID { ids[0] }
+    var id: String { ids.joined(separator: ",") + kind.rawValue }
 }
 
 /// "Completed “Email TA…”" with Undo, for 5 s; one without Undo ("Create a list first") is information, for 1.8 s
@@ -342,17 +350,25 @@ final class AppModel {
     /// A When or a deadline. A change that takes the task out of the view on screen (Today's rule, Upcoming's and
     /// Undated's) says where it went, with Undo: "Scheduled for Fri, Nov 6", "Due …", "Removed from Today" (the Mac's
     /// `setDate`, IX:701–704).
-    func setDate(_ id: EntityID, _ kind: DateKind, _ date: CalendarDate?) {
-        guard let t = task(id), !t.isHeading, !isTrashed(t) else { return }
+    func setDate(_ id: EntityID, _ kind: DateKind, _ date: CalendarDate?) { setDate([id], kind, date) }
+
+    /// The same for several tasks (the date sheet's selection): one step, the same names and notice for any count, and
+    /// the notice when any of them leaves the view (the Mac's `setDate` and `leavesView`).
+    func setDate(_ ids: [EntityID], _ kind: DateKind, _ date: CalendarDate?) {
+        let tasks = ids.compactMap { task($0) }.filter { !$0.isHeading && !isTrashed($0) }
+        guard !tasks.isEmpty else { return }
+        let ids = tasks.map(\.id)
         let name = kind == .when ? (date == nil ? "Remove When" : "Set When") : (date == nil ? "Remove Deadline" : "Set Deadline")
         let view = shown
-        let leaves = leaves(view, when: kind == .when ? date : t.when, deadline: kind == .deadline ? date : t.deadline)
+        let leaves = tasks.contains { t in
+            self.leaves(view, when: kind == .when ? date : t.when, deadline: kind == .deadline ? date : t.deadline)
+        }
         var done = false
         animate(Motion.layout) {
-            done = undoable(name, ids: [id]) {
+            done = undoable(name, ids: ids) {
                 switch kind {
-                case .when: store.setWhen([id], date, name: name, undoManager: undo)
-                case .deadline: store.setDeadline([id], date, name: name, undoManager: undo)
+                case .when: store.setWhen(ids, date, name: name, undoManager: undo)
+                case .deadline: store.setDeadline(ids, date, name: name, undoManager: undo)
                 }
             }
         }
