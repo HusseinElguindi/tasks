@@ -904,6 +904,7 @@ The theme comes from `PaneTheme.swift`. Screen design follows the design directi
 - **Notes** show rendered at rest and as plain text while editing (the Mac edits them live, `design/MARKDOWN.md`).
 - **Leaving the app:** iOS may end an app in the background, so leaving the front writes what was typed: a task's title or notes mid-edit are written if they changed from where the edit began (the Mac's edit rule), and the edit carries on from that text; a new-task row ends (a typed title is written, an empty row goes); then the data is saved.
 - **Adding a task:** while a new task's row is open, a tap anywhere outside it only ends adding: the row tapped doesn't open and its box doesn't check, on iPhone and in iPad's sidebar and details. This differs from the Mac on purpose (the user, 2026-11-02), where a press elsewhere also does what it presses (`design/INTERACTIONS-v2.md` §6). A drag still scrolls.
+- **Completing a task** shows a notice with Undo, as deleting does. The Mac shows none, since ⌘Z undoes it there. The phone has no ⌘Z, so the notice is how a check is taken back (the user, 2026-11-03). Its timing and words are the Mac's notices': 5 s with Undo, titles cut at 28 characters.
 
 ## 9. Performance: view layer, indexes, budget
 
