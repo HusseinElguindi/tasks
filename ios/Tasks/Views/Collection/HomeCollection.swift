@@ -490,8 +490,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         copyView = v
     }
 
-    /// The copy flies to `frame` (160 ms, cubic-bezier(0.2, 0.8, 0.2, 1)); the row then shows under it at once, and
-    /// the copy fades out over it (150 ms ease-out). Reduce Motion: the row shows and the copy goes, at once.
+    /// The copy sets down at `frame` (`DragCopy.setDown`), and the row shows under it.
     private func land(at frame: CGRect?) {
         let done: () -> Void = { [weak self] in
             guard let self else { return }
@@ -501,19 +500,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         }
         guard let v = copyView else { done(); return }
         copyView = nil
-        guard !UIAccessibility.isReduceMotionEnabled else {
-            v.removeFromSuperview()
-            done()
-            return
-        }
-        let fly = UIViewPropertyAnimator(duration: 0.16, controlPoint1: CGPoint(x: 0.2, y: 0.8), controlPoint2: CGPoint(x: 0.2, y: 1)) {
-            if let frame { v.frame.origin.y = frame.minY }
-        }
-        fly.addCompletion { _ in
-            done()
-            UIView.animate(withDuration: 0.15, delay: 0, options: .curveEaseOut) { v.alpha = 0 } completion: { _ in v.removeFromSuperview() }
-        }
-        fly.startAnimation()
+        DragCopy.setDown(v, at: frame?.minY, landed: done)
     }
 }
 

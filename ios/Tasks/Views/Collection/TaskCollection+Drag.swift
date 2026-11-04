@@ -19,8 +19,8 @@ import UIKit
 //   at lift (CollectionFold's collapse), and its copy shows the open count in an accent badge.
 // - Upcoming: the gap opens where the drop puts it (`dropOnDay`'s rules, then list order in the day), and the day's
 //   label is lit (`hover`, read by +Screens' group label).
-// - A drop flies the copy into the row's place (160 ms, `Motion.flight`'s curve), the row shows under it and the copy
-//   fades (150 ms). One that's refused, or ends off the list, flies home as the finger lifts (`dropSessionDidEnd`):
+// - A drop sets the copy down in the row's place: it flies there (240 ms, `Motion.flight`'s curve) as its lift eases
+//   out, the row shows under it and the copy goes. One that's refused, or ends off the list, flies home as the finger lifts (`dropSessionDidEnd`):
 //   UIKit's own set-down of a refused drop runs about a second after that, and the drag session ends only then.
 // - The dragged row is hidden through its content's alpha: UIKit owns the dragged cell's own alpha (half, while it's
 //   lifting or dragging), so hiding the cell left a ghost in the gap (TaskCell keeps that alpha at 1).
@@ -412,25 +412,11 @@ final class CollectionDrag {
         copy = v
     }
 
-    /// The copy flies to `frame` (160 ms, cubic-bezier(0.2, 0.8, 0.2, 1)); the row then shows at once under it, and
-    /// the copy fades out over it (150 ms ease-out). With Reduce Motion it doesn't fly.
+    /// The copy sets down at `frame` (`DragCopy.setDown`), and the row shows under it.
     private func land(at frame: CGRect?) {
         guard let v = copy else { landed(); return }
         copy = nil
-        let done: () -> Void = { [weak self] in
-            self?.landed()
-            UIView.animate(withDuration: 0.15, delay: 0, options: .curveEaseOut) { v.alpha = 0 } completion: { _ in v.removeFromSuperview() }
-        }
-        guard !UIAccessibility.isReduceMotionEnabled else {
-            if let frame { v.frame.origin.y = frame.minY }
-            done()
-            return
-        }
-        let fly = UIViewPropertyAnimator(duration: 0.16, controlPoint1: CGPoint(x: 0.2, y: 0.8), controlPoint2: CGPoint(x: 0.2, y: 1)) {
-            if let frame { v.frame.origin.y = frame.minY }
-        }
-        fly.addCompletion { _ in done() }
-        fly.startAnimation()
+        DragCopy.setDown(v, at: frame?.minY) { [weak self] in self?.landed() }
     }
 
     /// The landed row shows; anything held back meanwhile is applied.
@@ -501,6 +487,41 @@ final class CollectionDrag {
         dropSession = nil
         // The finger lifted with no drop performed: the drop was refused, or the finger was off the list.
         goHome()
+    }
+}
+
+/// A drag's lifted copy, set down (the task lists' and Home's).
+@MainActor
+enum DragCopy {
+    /// The copy flies to `y` (240 ms, cubic-bezier(0.2, 0.8, 0.2, 1)) as its lift (the fill, the ring, the shadow)
+    /// eases out on the same curve, so it arrives as the row itself. `landed` then shows the row under it, and the copy
+    /// goes a frame later, with nothing left to fade. With Reduce Motion it doesn't fly: the lift fades where it lands.
+    static func setDown(_ v: UIView, at y: CGFloat?, landed: @escaping () -> Void) {
+        let reduce = UIAccessibility.isReduceMotionEnabled
+        let duration = reduce ? 0.15 : 0.24
+        if let y, reduce { v.frame.origin.y = y }
+        // The layer's shadow and ring aren't view-animatable: they ease out in CA animations on the same curve.
+        let curve = CAMediaTimingFunction(controlPoints: 0.2, 0.8, 0.2, 1)
+        for (key, from, to) in [("shadowOpacity", v.layer.shadowOpacity as Any, Float(0) as Any),
+                                ("borderWidth", v.layer.borderWidth as Any, CGFloat(0) as Any)] {
+            let a = CABasicAnimation(keyPath: key)
+            a.fromValue = from
+            a.toValue = to
+            a.duration = duration
+            a.timingFunction = curve
+            v.layer.add(a, forKey: key)
+        }
+        v.layer.shadowOpacity = 0
+        v.layer.borderWidth = 0
+        let fly = UIViewPropertyAnimator(duration: duration, controlPoint1: CGPoint(x: 0.2, y: 0.8), controlPoint2: CGPoint(x: 0.2, y: 1)) {
+            if let y, !reduce { v.frame.origin.y = y }
+            v.backgroundColor = .clear
+        }
+        fly.addCompletion { _ in
+            landed()
+            DispatchQueue.main.async { v.removeFromSuperview() }
+        }
+        fly.startAnimation()
     }
 }
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import TasksCore
 import TasksTheme
 
@@ -249,13 +250,15 @@ struct Checkbox: View {
         // The trigger counts, not `checked`, so the keyframes needn't know which way it went: a check made here sparks
         // and pops; an uncheck pops; a check from elsewhere just shows. Under Reduce Motion nothing runs.
         .onChange(of: checked) { _, now in
+            // The haptic is UIKit's: `.sensoryFeedback` stays silent in a UIHostingConfiguration cell, which is where
+            // the rows' boxes live since the collection view.
+            if !quiet { Haptic.check(now) }
             guard !reduceMotion, !now || sparks else { return }
             if now { sparkRuns += 1 }
             pops += 1
         }
         .buttonStyle(CheckPressStyle())
         .disabled(readOnly || placeholder)
-        .sensoryFeedback(trigger: checked) { _, new in quiet ? nil : new ? .success : .selection }
         .accessibilityLabel(label)
         .accessibilityAddTraits(checked ? .isSelected : [])
     }
@@ -696,5 +699,13 @@ extension View {
         overlay(alignment: .bottom) {
             Rectangle().fill(color).frame(height: 1).padding(.leading, leading).padding(.trailing, trailing)
         }
+    }
+}
+
+/// A box's haptic, from UIKit's generators: a check is `.success`, an uncheck `.selection` (§3).
+enum Haptic {
+    @MainActor static func check(_ checked: Bool) {
+        if checked { UINotificationFeedbackGenerator().notificationOccurred(.success) }
+        else { UISelectionFeedbackGenerator().selectionChanged() }
     }
 }

@@ -269,6 +269,8 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
         weak let owner = self
         cell.contentConfiguration = UIHostingConfiguration {
             CollectionLine(id: id, source: source, rows: rows, state: state, owner: owner).modifier(CellTheme(app: app))
+                // One identity per task, so a reused cell starts fresh: its box sees no "change" and gives no haptic.
+                .id(id)
         }
         .margins(.horizontal, Metric.rowInset)
         .margins(.vertical, 0)
