@@ -94,16 +94,90 @@ final class CollectionFold {
             }
         }
         active = plan
-        // Masks at the heading's foot, before the animation, so their move animates with the cells.
-        if plan.collapse, let clip = clipLine(for: plan.items.first ?? "") {
+        // Notes alone fold on the core's update: masks at the heading's foot, before the animation, so their move
+        // animates with the cells.
+        if plan.notesOnly, plan.collapse, let clip = clipLine(for: plan.items.first ?? "") {
             for case let c as TaskCell in cv.subviews where plan.items.contains(c.itemID ?? "") { c.installMask(clip) }
         }
     }
 
-    /// Runs `apply` on the fold's curve; false leaves notes alone to the core's spring.
-    func animate(_ plan: Plan, _ apply: @escaping () -> Void) -> Bool {
+    /// How far past the visible rows the layout makes cells while a fold moves them (rows an opening pushes out of
+    /// view slide out rather than vanish).
+    private(set) var layoutPad: CGFloat = 0
+
+    /// Applies `snap` and runs the fold on §23's curves; false leaves notes alone to the core's spring.
+    ///
+    /// The collection view's own update can't take these curves (for a diffable apply UIKit makes springs whatever the
+    /// block asks for; cut off at our duration they snapped 26–35 pt at a collapse's end, run to their end they
+    /// lingered and opened 55 ms early, filmed). So the snapshot is applied at once, and the rows are moved by plain
+    /// view animations, which keep their curves, as the drag gap's are: each row that stays starts where it was
+    /// (a transform) and goes to its place; an opening's rows start under the heading's foot, masked there, clear;
+    /// a collapse's rows go up under it as pictures, in a clip at the foot, behind the rows.
+    func animate(_ plan: Plan, _ snap: NSDiffableDataSourceSnapshot<Int, String>, done: @escaping () -> Void) -> Bool {
         guard !plan.notesOnly else { return false }
-        UIView.animate(springDuration: plan.collapse ? 0.15 : 0.22, bounce: 0, animations: apply)
+        let cv = owner.cv!, layout = owner.layout!, ds = owner.dataSource!
+        let collapse = plan.collapse
+        // Every row's top before, and the heading's foot (it doesn't move).
+        var before: [String: CGFloat] = [:]
+        for (i, id) in oldIDs.enumerated() { if let f = layout.modelFrame(i) { before[id] = f.minY } }
+        guard let h = oldIDs.firstIndex(of: plan.heading).flatMap({ layout.modelFrame($0) }) else { return false }
+        let foot = h.maxY
+        var ghost: UIView?
+        if collapse {
+            let clip = UIView(frame: CGRect(x: 0, y: foot, width: cv.bounds.width, height: max(1, cv.contentSize.height + cv.bounds.height)))
+            clip.clipsToBounds = true
+            clip.isUserInteractionEnabled = false
+            clip.accessibilityElementsHidden = true
+            for case let c as TaskCell in cv.subviews where plan.items.contains(c.itemID ?? "") && !c.isHidden {
+                guard let pic = c.snapshotView(afterScreenUpdates: false) else { continue }
+                pic.frame = c.frame.offsetBy(dx: 0, dy: -foot)
+                clip.addSubview(pic)
+            }
+            cv.insertSubview(clip, at: 0)
+            ghost = clip
+        }
+        layoutPad = distance
+        UIView.performWithoutAnimation {
+            ds.apply(snap, animatingDifferences: false)
+            cv.layoutIfNeeded()
+        }
+        // The opening's height, once laid out.
+        var height = distance
+        if !collapse {
+            let bottom = plan.items.compactMap { ds.indexPath(for: $0).flatMap { layout.modelFrame($0.item)?.maxY } }.max() ?? foot
+            height = bottom - foot
+            layoutPad = height
+            cv.layoutIfNeeded()
+        }
+        var appearing: [(cell: TaskCell, top: CGFloat)] = []
+        UIView.performWithoutAnimation {
+            for case let c as TaskCell in cv.subviews {
+                guard let id = c.itemID, let ip = ds.indexPath(for: id), let f = layout.modelFrame(ip.item) else { continue }
+                if !collapse, plan.items.contains(id) {
+                    c.transform = CGAffineTransform(translationX: 0, y: -height)
+                    c.contentView.alpha = 0
+                    c.installMask(foot, top: f.minY - height)
+                    appearing.append((c, f.minY))
+                } else if let y0 = before[id], y0 != f.minY {
+                    c.transform = CGAffineTransform(translationX: 0, y: y0 - f.minY)
+                }
+            }
+        }
+        let finish: () -> Void = { [weak self] in
+            ghost?.removeFromSuperview()
+            for a in appearing { a.cell.mask = nil }
+            self?.layoutPad = 0
+            done()
+        }
+        UIView.animate(withDuration: collapse ? 0.15 : 0.22, delay: 0,
+                       options: [collapse ? .curveEaseOut : .curveEaseIn, .allowUserInteraction, .overrideInheritedCurve, .overrideInheritedDuration]) {
+            for case let c as TaskCell in cv.subviews { c.transform = .identity }
+            for a in appearing {
+                a.cell.contentView.alpha = 1
+                a.cell.mask?.frame.origin.y = foot - a.top
+            }
+            ghost?.subviews.forEach { $0.frame.origin.y -= self.distance; $0.alpha = 0 }
+        } completion: { _ in finish() }
         return true
     }
 
@@ -140,15 +214,16 @@ final class CollectionFold {
         owner.dataSource.indexPath(for: f.heading).flatMap { owner.layout.base($0)?.frame }
     }
 
-    /// The line a folding row is masked at: its heading's foot.
+    /// The line a folding row is masked at: its heading's foot (notes alone, on the core's update; a fold's own masks
+    /// move with its animation).
     func clipLine(for id: String) -> CGFloat? {
-        guard let f = active, f.items.contains(id) else { return nil }
+        guard let f = active, f.notesOnly, f.items.contains(id) else { return nil }
         return headingFrame(f)?.maxY
     }
 
     /// An opening's rows start under the heading's foot, moved up by the section's height, clear.
     func initial(at ip: IndexPath, _ a: UICollectionViewLayoutAttributes?) -> UICollectionViewLayoutAttributes? {
-        guard let f = active, !f.collapse, let id = owner.dataSource.itemIdentifier(for: ip), f.items.contains(id),
+        guard let f = active, f.notesOnly, !f.collapse, let id = owner.dataSource.itemIdentifier(for: ip), f.items.contains(id),
               let h = headingFrame(f), let end = owner.layout.base(ip) else { return a }
         let c = end.copy() as! UICollectionViewLayoutAttributes
         let bottom = f.items.compactMap { owner.dataSource.indexPath(for: $0).flatMap { owner.layout.base($0)?.frame.maxY } }.max() ?? h.maxY
@@ -160,7 +235,7 @@ final class CollectionFold {
 
     /// A collapse's rows end moved up by the section's height, clear.
     func final(at ip: IndexPath, _ a: UICollectionViewLayoutAttributes?) -> UICollectionViewLayoutAttributes? {
-        guard let f = active, f.collapse, ip.item < oldIDs.count, f.items.contains(oldIDs[ip.item]),
+        guard let f = active, f.notesOnly, f.collapse, ip.item < oldIDs.count, f.items.contains(oldIDs[ip.item]),
               let start = oldFrames[oldIDs[ip.item]], let a else { return a }
         let c = a.copy() as! UICollectionViewLayoutAttributes
         c.frame = start
@@ -184,11 +259,14 @@ extension TaskCell {
     private static func maskRect(_ y: CGFloat, _ width: CGFloat) -> CGRect { CGRect(x: -200, y: y, width: width + 400, height: 5000) }
 
     /// A mask whose top is the clip line, in the cell's coordinates; set without animation.
-    func installMask(_ clip: CGFloat) {
+    func installMask(_ clip: CGFloat) { installMask(clip, top: frame.minY) }
+
+    /// A mask whose top is the clip line, for a cell whose top is drawn at `top`; set without animation.
+    func installMask(_ clip: CGFloat, top: CGFloat) {
         UIView.performWithoutAnimation {
             let m = mask ?? UIView()
             m.backgroundColor = .black
-            m.frame = Self.maskRect(clip - frame.minY, frame.width)
+            m.frame = Self.maskRect(clip - top, bounds.width)
             mask = m
         }
     }

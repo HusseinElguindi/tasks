@@ -380,13 +380,15 @@ struct DeletedListRow: View {
 /// read-only, and Restore. Two lines, as the Mac's is in a narrow pane.
 struct DeletedListBanner: View {
     let list: ListModel
+    /// When it was deleted, if not the list's own: kept while the banner fades out after a restore (TaskCollection+Screens).
+    var deletedAt: Int? = nil
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: "trash").foregroundStyle(p.inkSecondary)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Deleted " + (list.archivedAt.map { DateLabel.monthDay(app.localDay($0)) } ?? ""))
+                Text("Deleted " + ((deletedAt ?? list.archivedAt).map { DateLabel.monthDay(app.localDay($0)) } ?? ""))
                     .font(Typo.body).foregroundStyle(p.ink)
                 Text("Read-only until you restore it.").font(Typo.meta).foregroundStyle(p.inkSecondary)
             }
