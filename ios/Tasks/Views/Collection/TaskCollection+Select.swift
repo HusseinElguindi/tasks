@@ -15,6 +15,12 @@ final class CollectionSelect {
 
     func install() {}
     func stop() {}
+
+    // Stand-ins for cv-select's hooks (the interface agreed through sc), so +Swipes builds before it merges.
+    /// Select mode: no swipe actions.
+    var blocksSwipes: Bool { owner.app.isSelecting(owner.source) }
+    /// Select mode's menu for an item: nil when it isn't select's call, `.some(nil)` for none.
+    func menu(for id: String) -> UIContextMenuConfiguration?? { owner.app.isSelecting(owner.source) ? .some(nil) : nil }
     /// STAND-IN (cv-drag, until cv-select's +Select merges): true in select mode, where nothing lifts.
     var blocksDrag: Bool { owner.app.isSelecting(owner.source) }
 }

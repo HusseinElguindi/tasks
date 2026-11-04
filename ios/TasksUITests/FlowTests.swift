@@ -1211,6 +1211,22 @@ final class FlowTests: XCTestCase {
         app.typeText("Goggles\nLab coat\nThe manual")
         app.buttons["Done"].tap()
         sleep(2)
+        assertFoldsWithoutJumps()
+    }
+
+    /// The same, with notes that came from another device (two lines, wrapped).
+    func testFoldingAHeadingWithSyncedNotesDoesntJump() {
+        app.launchArguments += ["-screen", "list:phys"]
+        launch(remote: "h-lab", notes: "Goggles, a lab coat and the lab manual, every session; pre-labs are due at the start of the lab.")
+        XCTAssertTrue(heading("Labs").waitForExistence(timeout: 10), "PHYS 122")
+        sleep(1)
+        remoteEdit()
+        sleep(1)
+        assertFoldsWithoutJumps()
+    }
+
+    /// Labs has notes starting "Goggles": its fold and unfold, filmed, move Exam prep one way only and never past its end.
+    private func assertFoldsWithoutJumps() {
         let notes = app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Goggles'")).firstMatch
         XCTAssertTrue(notes.exists, "the notes, under the heading")
         let labs = heading("Labs").frame, exam = heading("Exam prep").frame, notesAt = notes.frame.minY - labs.minY
@@ -1228,7 +1244,9 @@ final class FlowTests: XCTestCase {
             func luma(_ x: Int, _ row: Int) -> Int { let i = (row * w + x) * 4; return (Int(px[i]) + Int(px[i + 1]) + Int(px[i + 2])) / 3 }
             let xs = [0.2, 0.35, 0.5, 0.65].map { Int(width * $0 * scale) }
             var rules: [Int] = []
-            for row in Int(labs.minY * scale)..<Int((height - 120) * scale) {
+            // Down to 40 above the bottom: the + is right of the columns looked at, and the iPhone 18 Pro has Exam
+            // prep's rule below the old 120 (it failed there on List too).
+            for row in Int(labs.minY * scale)..<Int((height - 40) * scale) {
                 let l = xs.map { luma($0, row) }, bg = luma(Int(4 * scale), row)
                 if l.allSatisfy({ abs($0 - bg) >= 6 }), l.max()! - l.min()! <= 3, rules.last.map({ row - $0 > 3 }) ?? true {
                     rules.append(row)
@@ -1239,6 +1257,8 @@ final class FlowTests: XCTestCase {
         }
         func track(_ label: String, folding: Bool) {
             let before = gap(XCUIScreen.main.screenshot().image.cgImage!)
+            // A mark to line a recording up with (Tools/film/film.sh, events.py).
+            print(String(format: "FILM %@ %.3f", label.replacingOccurrences(of: " ", with: "_"), Date().timeIntervalSince1970))
             let frames = filming(10) { app.buttons[label].tap() }
             sleep(1)
             let after = gap(XCUIScreen.main.screenshot().image.cgImage!)
@@ -1497,6 +1517,30 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["listHeader"].waitForExistence(timeout: 3))
         XCTAssertEqual(app.staticTexts["listHeader"].label, "Trash", "back to Trash")
         XCTAssertFalse(deleted.exists, "its row is gone")
+    }
+
+    /// A deleted list's row in Trash: its menu has Open and Restore List, and a swipe right says Restore.
+    func testADeletedListsRowHasItsMenuAndSwipe() {
+        app.launchArguments += ["-screen", "trash", "-hold", "YES"]
+        app.launch()
+        let deleted = app.buttons["Apartment move, deleted list, 2 tasks"]
+        XCTAssertTrue(deleted.waitForExistence(timeout: 10), "Trash")
+        menuOpen {
+            deleted.press(forDuration: 1.2)
+            XCTAssertTrue(app.buttons["Open"].waitForExistence(timeout: 3), "Open")
+            XCTAssertTrue(app.buttons["Restore List"].exists, "Restore List")
+            app.buttons["Open"].tap()
+        }
+        XCTAssertTrue(app.staticTexts["Read-only until you restore it."].waitForExistence(timeout: 3), "it opens")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(deleted.waitForExistence(timeout: 3), "back in Trash")
+        sleep(1)
+        deleted.swipeRight()
+        let restore = app.buttons["Restore"].firstMatch
+        XCTAssertTrue(restore.waitForExistence(timeout: 3), "the swipe says Restore")
+        restore.tap()
+        XCTAssertTrue(notice("Restored Apartment move").waitForExistence(timeout: 3), "the notice")
+        XCTAssertTrue(deleted.waitForNonExistence(timeout: 3), "out of Trash")
     }
 
     /// The chevron at a deleted list's right expands it in place: its tasks show under it, and Trash stays.
