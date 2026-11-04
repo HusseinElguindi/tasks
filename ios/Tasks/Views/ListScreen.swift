@@ -402,13 +402,15 @@ struct ListScreen: View {
 
 /// A list's notes being typed, under its title: the notes editor, written once as it ends ("Edit List Notes").
 struct ListNotesEditor: View {
+    /// Typed into as it appears (`NotesEditor.live`), on the collection view.
+    var live = false
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     @FocusState private var focus: DetailField?
     private var text: Binding<String> { Binding(get: { app.draft?.title ?? "" }, set: { app.draft?.title = $0 }) }
 
     var body: some View {
-        NotesEditor(text: text, focus: $focus, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5, minHeight: 60) { _, _ in }
+        NotesEditor(text: text, live: live, focus: $focus, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5, minHeight: 60) { _, _ in }
             .accessibilityIdentifier("listNotes")
             .onAppear { DispatchQueue.main.async { focus = .notes } }
             // The caret left the notes (a tap elsewhere, the keyboard put away): they're written, once.

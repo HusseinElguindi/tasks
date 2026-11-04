@@ -10,8 +10,39 @@ struct HomeView: View {
     @State private var dropped = 0
 
     var body: some View {
+        Group {
+            if ListContainer.collection {
+                HomeCollection(items: HomeCollection.items(app), sidebar: sidebar,
+                               folded: Binding(get: { folded }, set: { v in animate(.easeOut(duration: 0.15)) { folded = v } }))
+                    // Its own bottom inset on the phone, the floating controls' clearance (HomeCollection.swift).
+                    .ignoresSafeArea(.all, edges: sidebar ? [] : .bottom)
+            } else {
+                list
+            }
+        }
+        .background(AppBackground())
+        // The phone's bar stays, as on a list's screen (ListScreen): pull to refresh draws its indicator only with the
+        // bar there. Empty at rest; the name fades in once the large one has gone under it.
+        .navigationTitle("Tasks")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if !sidebar {
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 7) {
+                        LogoMark(size: 20)
+                        Text("Tasks").font(.system(size: 17, weight: .semibold)).foregroundStyle(p.ink)
+                    }
+                    .opacity(folded ? 1 : 0)
+                    .accessibilityHidden(!folded)
+                }
+            }
+        }
+    }
+
+    /// The List path (`ListContainer`).
+    private var list: some View {
         List {
-            header.pressesShowAtOnce().listRow()
+            HomeHeader(sidebar: sidebar).pressesShowAtOnce().listRow()
             SourceRow(source: .today, count: app.todayCount(), sidebar: sidebar).listRow()
             SourceRow(source: .upcoming, sidebar: sidebar).listRow()
             SourceRow(source: .undated, sidebar: sidebar).listRow()
@@ -48,31 +79,20 @@ struct HomeView: View {
         .refreshable { await app.syncNow() }
         .scrollContentBackground(.hidden)
         .environment(\.defaultMinListRowHeight, 0)
-        .background(AppBackground())
-        // The phone's bar stays, as on a list's screen (ListScreen): pull to refresh draws its indicator only with the
-        // bar there. Empty at rest; the name fades in once the large one has gone under it.
         .onScrollGeometryChange(for: Bool.self) { g in
             g.contentOffset.y + g.contentInsets.top > 40
         } action: { _, now in
             animate(.easeOut(duration: 0.15)) { folded = now }
         }
-        .navigationTitle("Tasks")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if !sidebar {
-                ToolbarItem(placement: .principal) {
-                    HStack(spacing: 7) {
-                        LogoMark(size: 20)
-                        Text("Tasks").font(.system(size: 17, weight: .semibold)).foregroundStyle(p.ink)
-                    }
-                    .opacity(folded ? 1 : 0)
-                    .accessibilityHidden(!folded)
-                }
-            }
-        }
     }
+}
 
-    private var header: some View {
+/// Home's header: the mark and "Tasks", large on the phone.
+struct HomeHeader: View {
+    let sidebar: Bool
+    @Environment(\.palette) private var p
+
+    var body: some View {
         HStack(spacing: sidebar ? 9 : 11) {
             LogoMark(size: sidebar ? 22 : 30)
             Text("Tasks")

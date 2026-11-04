@@ -30,37 +30,80 @@ enum ListContainer {
 
 /// What the cells read as they draw: each item's line, kept after it goes so a row keeps its content while it leaves.
 ///
-/// The controller's update runs inside the representable's update, where SwiftUI observes what's read: reading the
-/// lines there would make each write update it again, forever. So the lines aren't observed; a write stamps
-/// `version`, which the update only ever assigns, and the cells observe that.
+/// One observed box per item, written only when that item's line changed (`Line.cellKey`): a row redraws for its own
+/// changes only. (Redrawing every row on every update made the list cells re-lay themselves out mid-fold, which
+/// snapped the fold.) The controller's update runs inside the representable's update, where SwiftUI observes what's
+/// read: so it only ever writes a box, never reads one, or each write would update it again, forever.
 @MainActor
-@Observable
 final class CollectionRows {
-    private(set) var version = 0
-    @ObservationIgnored private var stamp = 0
-    @ObservationIgnored private var store: [String: Line] = [:]
-
-    /// An item's line (observed through `version`).
-    func line(_ id: String) -> Line? {
-        _ = version
-        return store[id]
+    @Observable final class Box {
+        var line: Line
+        init(_ line: Line) { self.line = line }
     }
+
+    @Observable final class Stamp { var value = 0 }
+
+    private var boxes: [String: Box] = [:]
+    private var keys: [String: String] = [:]
+    private let stamp = Stamp()
+    private var count = 0
+
+    /// Stamped each time the applied items change (observed): what depends on a row's neighbours reads it, as select
+    /// mode's joined fill does. Rows that don't, don't redraw then.
+    var version: Int { stamp.value }
+
+    /// The applied items changed (written only, never read, in the update).
+    func itemsChanged() {
+        count += 1
+        stamp.value = count
+    }
+
+    /// An item's line (observed: the row redraws when it changes).
+    func line(_ id: String) -> Line? { boxes[id]?.line }
 
     /// New lines over the old: the old stay, for rows that are leaving.
     func merge(_ new: [String: Line]) {
-        store.merge(new) { _, n in n }
-        stamp += 1
-        version = stamp
+        for (id, line) in new {
+            let key = line.cellKey
+            if let box = boxes[id] {
+                guard keys[id] != key else { continue }
+                box.line = line
+            } else {
+                boxes[id] = Box(line)
+            }
+            keys[id] = key
+        }
     }
 
     /// Drops the lines of items no longer shown.
     func keep(_ ids: Set<String>) {
-        guard store.keys.contains(where: { !ids.contains($0) }) else { return }
-        store = store.filter { ids.contains($0.key) }
+        guard boxes.keys.contains(where: { !ids.contains($0) }) else { return }
+        boxes = boxes.filter { ids.contains($0.key) }
+        keys = keys.filter { ids.contains($0.key) }
     }
 
     /// Today's all-done sun (ListScreen's `sunRise`).
-    @ObservationIgnored var sunRise: Binding<Bool> = .constant(false)
+    var sunRise: Binding<Bool> = .constant(false)
+}
+
+extension Line {
+    /// What a row draws from its line beyond its task's, heading's or list's own fields (which the row observes):
+    /// equal keys draw the same.
+    var cellKey: String {
+        func d(_ c: CalendarDate?) -> String { c.map { String(describing: $0) } ?? "-" }
+        switch self {
+        case let .group(key, title, sub, quiet): return "g|\(key)|\(title)|\(sub ?? "-")|\(quiet)"
+        case let .heading(h, count, notes): return "h|\(ObjectIdentifier(h).hashValue)|\(count)|\(notes)"
+        case let .headingNotes(h): return "n|\(ObjectIdentifier(h).hashValue)"
+        case let .task(t, indent, groupDay, day): return "t|\(ObjectIdentifier(t).hashValue)|\(indent)|\(d(groupDay))|\(d(day))"
+        case let .completedToggle(key, count, open): return "c|\(key)|\(count)|\(open)"
+        case let .deletedList(l, count, open, day): return "dl|\(ObjectIdentifier(l).hashValue)|\(count)|\(open)|\(d(day))"
+        case .draft: return "draft"
+        case let .empty(title, message, symbol): return "e|\(title)|\(message)|\(symbol)"
+        case .allDone: return "allDone"
+        case let .edge(key, height): return "edge|\(key)|\(height)"
+        }
+    }
 }
 
 /// ListScreen's handle on the collection, for what ScrollViewReader does for List.
@@ -272,6 +315,8 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
         let changed = new.keys.filter { new[$0] != before[$0] && before[$0] != nil && current.contains($0) && !justInserted.contains($0) }
         sizes = new
         if !drag.holdsUpdates, !changed.isEmpty { editor.resize(changed.sorted()) }
+        // Rows inserted by this update were configured with their new signatures; from the next one on, they resize.
+        justInserted = []
     }
 
     /// The items, at once (`animation` nil, or Reduce Motion), or animated: a fold on its own curves
@@ -281,6 +326,7 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
         let old = current
         current = items
         justInserted = Set(items).subtracting(old)
+        rows.itemsChanged()
         var snap = NSDiffableDataSourceSnapshot<Int, String>()
         snap.appendSections([0])
         snap.appendItems(items)
@@ -303,8 +349,12 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
         UIView.setAnimationsEnabled(true)
         defer { UIView.setAnimationsEnabled(was) }
         self.fold.prepare(fold, old: old, animated: true)
-        if let fold, self.fold.animate(fold, { self.dataSource.apply(snap, animatingDifferences: true) { finish() } }) { return }
-        UIView.animate(springDuration: 0.25, bounce: 0) {
+        if let fold, self.fold.animate(fold, snap, done: finish) {
+            return
+        }
+        // The inherited curve and duration (SwiftUI's, around this update) are overridden: see TaskCollection+Fold.swift.
+        UIView.animate(springDuration: 0.25, bounce: 0, initialSpringVelocity: 0, delay: 0,
+                       options: [.overrideInheritedCurve, .overrideInheritedDuration]) {
             self.dataSource.apply(snap, animatingDifferences: true) { finish() }
         }
     }
@@ -418,7 +468,7 @@ final class CollectionLayout: UICollectionViewCompositionalLayout {
     func base(_ ip: IndexPath) -> UICollectionViewLayoutAttributes? { super.layoutAttributesForItem(at: ip) }
 
     override func layoutAttributesForElements(in rect: CGRect) -> [UICollectionViewLayoutAttributes]? {
-        let pad = on { $0.drag.layoutPad } ?? 0
+        let pad = on { max($0.drag.layoutPad, $0.fold.layoutPad) } ?? 0
         return super.layoutAttributesForElements(in: rect.insetBy(dx: 0, dy: -pad))?.map(decorate)
     }
 
@@ -456,6 +506,18 @@ final class TaskCell: UICollectionViewListCell {
         super.prepareForReuse()
         MainActor.assumeIsolated { owner?.cellWillReuse(self) }
     }
+
+    /// While UIKit has this cell in a drag (lifting, dragging, a refused drop's ~1 s set-down) it draws it at half
+    /// alpha. Our drag hides the row by its content's alpha instead (CollectionDrag), so the cell's stays 1.
+    private var dragging = false
+    override func dragStateDidChange(_ s: UICollectionViewCell.DragState) {
+        dragging = s != .none
+        super.dragStateDidChange(s)
+    }
+    override var alpha: CGFloat {
+        get { super.alpha }
+        set { super.alpha = dragging ? 1 : newValue }
+    }
 }
 
 /// A layout attributes object handed across `MainActor.assumeIsolated` (the layout's callers are on the main thread).
@@ -475,3 +537,4 @@ struct CellTheme: ViewModifier {
             .tint(pal.accent)
     }
 }
+

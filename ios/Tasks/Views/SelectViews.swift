@@ -136,13 +136,16 @@ struct MoveItems: View {
 /// Mac's drag autoscroll × 1.3), and each change gives a `.selection` haptic.
 ///
 /// A two-touch pan on the list's own scroll view, which then scrolls with one finger only, as Mail's does. It maps the
-/// touch to the task rows' frames (`frames`, in the window), kept by each row while it's on screen.
+/// touch to the task rows' frames (`frames`, in the window), kept by each row while it's on screen; or, given `locate`,
+/// asks it for the row under the touch (the collection view's own hit test, CollectionSelect).
 @MainActor
 final class SwipeSelect: NSObject, UIGestureRecognizerDelegate {
     /// The task rows on screen, by id, in window coordinates.
     var frames: [EntityID: CGRect] = [:]
     /// Every task row, in the screen's order.
     var order: [EntityID] = []
+    /// The task row under a point in the window, in place of `frames`.
+    var locate: ((CGPoint) -> EntityID?)?
     /// What covers the list's foot: the floating bar (the phone), or nothing.
     var foot: CGFloat = 0
     /// Whether a swipe may start now (a live list or a view, on screen, nothing over it).
@@ -175,9 +178,17 @@ final class SwipeSelect: NSObject, UIGestureRecognizerDelegate {
         pan = p
     }
 
+    /// Stops the autoscroll, as the list goes.
+    func cancel() {
+        timer?.invalidate()
+        timer = nil
+        start = nil
+    }
+
     /// The task row under a point, by its index in `order`.
     private func row(at p: CGPoint) -> Int? {
-        order.firstIndex { id in frames[id].map { $0.minY <= p.y && p.y < $0.maxY } ?? false }
+        if let locate { return locate(p).flatMap { order.firstIndex(of: $0) } }
+        return order.firstIndex { id in frames[id].map { $0.minY <= p.y && p.y < $0.maxY } ?? false }
     }
 
     func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {

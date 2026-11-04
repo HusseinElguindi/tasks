@@ -679,6 +679,8 @@ final class FlowTests: XCTestCase {
         defer { if pad { XCUIDevice.shared.orientation = .portrait } }
         for look in ["dark", "light"] {
             app = XCUIApplication()
+            // A new app: the container too, as setUp gives it (Home's rows on the UICollectionView path).
+            if let c = ProcessInfo.processInfo.environment["LIST_CONTAINER"] { app.launchEnvironment["LIST_CONTAINER"] = c }
             app.launchArguments = ["-sampleData", "YES", "-appearance", look, "-style", "classic", "-screen", "upcoming",
                                    "-remoteTask", "s4", "-remoteTitle", Self.longTitle,
                                    "-remoteList", "school-9", "-remoteName", Self.longName]
@@ -829,6 +831,16 @@ final class FlowTests: XCTestCase {
         sleep(1)
         let before = y(reply)
         drag(reply, onto: app.staticTexts["Email TA about midterm regrade"].firstMatch)
+        if onCollection {
+            // The Mac's rule (§14): the copy stays inside its group, held 6 pt past its last slot, so the drop is that
+            // slot, Inbox's end. (List's copy crossed into School's group, and the system refused the drop there.)
+            XCTAssertGreaterThan(y(reply), y(dentist), "dragged over School's group: held to Inbox's, at its end")
+            XCTAssertLessThan(y(reply), y(app.staticTexts["School"].firstMatch), "still in Inbox's group")
+            drag(reply, onto: dentist)
+            XCTAssertLessThan(y(reply), y(dentist), "within Inbox's group: over the dentist")
+            XCTAssertEqual(y(reply), before, accuracy: 1, "back at Inbox's top")
+            return
+        }
         XCTAssertEqual(y(reply), before, accuracy: 1, "dropped in School's group: refused, back where it was")
         XCTAssertLessThan(y(reply), y(dentist))
         drag(reply, onto: dentist)
@@ -1211,6 +1223,22 @@ final class FlowTests: XCTestCase {
         app.typeText("Goggles\nLab coat\nThe manual")
         app.buttons["Done"].tap()
         sleep(2)
+        assertFoldsWithoutJumps()
+    }
+
+    /// The same, with notes that came from another device (two lines, wrapped).
+    func testFoldingAHeadingWithSyncedNotesDoesntJump() {
+        app.launchArguments += ["-screen", "list:phys"]
+        launch(remote: "h-lab", notes: "Goggles, a lab coat and the lab manual, every session; pre-labs are due at the start of the lab.")
+        XCTAssertTrue(heading("Labs").waitForExistence(timeout: 10), "PHYS 122")
+        sleep(1)
+        remoteEdit()
+        sleep(1)
+        assertFoldsWithoutJumps()
+    }
+
+    /// Labs has notes starting "Goggles": its fold and unfold, filmed, move Exam prep one way only and never past its end.
+    private func assertFoldsWithoutJumps() {
         let notes = app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Goggles'")).firstMatch
         XCTAssertTrue(notes.exists, "the notes, under the heading")
         let labs = heading("Labs").frame, exam = heading("Exam prep").frame, notesAt = notes.frame.minY - labs.minY
@@ -1228,7 +1256,9 @@ final class FlowTests: XCTestCase {
             func luma(_ x: Int, _ row: Int) -> Int { let i = (row * w + x) * 4; return (Int(px[i]) + Int(px[i + 1]) + Int(px[i + 2])) / 3 }
             let xs = [0.2, 0.35, 0.5, 0.65].map { Int(width * $0 * scale) }
             var rules: [Int] = []
-            for row in Int(labs.minY * scale)..<Int((height - 120) * scale) {
+            // Down to 40 above the bottom: the + is right of the columns looked at, and the iPhone 18 Pro has Exam
+            // prep's rule below the old 120 (it failed there on List too).
+            for row in Int(labs.minY * scale)..<Int((height - 40) * scale) {
                 let l = xs.map { luma($0, row) }, bg = luma(Int(4 * scale), row)
                 if l.allSatisfy({ abs($0 - bg) >= 6 }), l.max()! - l.min()! <= 3, rules.last.map({ row - $0 > 3 }) ?? true {
                     rules.append(row)
@@ -1239,6 +1269,8 @@ final class FlowTests: XCTestCase {
         }
         func track(_ label: String, folding: Bool) {
             let before = gap(XCUIScreen.main.screenshot().image.cgImage!)
+            // A mark to line a recording up with (Tools/film/film.sh, events.py).
+            print(String(format: "FILM %@ %.3f", label.replacingOccurrences(of: " ", with: "_"), Date().timeIntervalSince1970))
             let frames = filming(10) { app.buttons[label].tap() }
             sleep(1)
             let after = gap(XCUIScreen.main.screenshot().image.cgImage!)
@@ -1497,6 +1529,30 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["listHeader"].waitForExistence(timeout: 3))
         XCTAssertEqual(app.staticTexts["listHeader"].label, "Trash", "back to Trash")
         XCTAssertFalse(deleted.exists, "its row is gone")
+    }
+
+    /// A deleted list's row in Trash: its menu has Open and Restore List, and a swipe right says Restore.
+    func testADeletedListsRowHasItsMenuAndSwipe() {
+        app.launchArguments += ["-screen", "trash", "-hold", "YES"]
+        app.launch()
+        let deleted = app.buttons["Apartment move, deleted list, 2 tasks"]
+        XCTAssertTrue(deleted.waitForExistence(timeout: 10), "Trash")
+        menuOpen {
+            deleted.press(forDuration: 1.2)
+            XCTAssertTrue(app.buttons["Open"].waitForExistence(timeout: 3), "Open")
+            XCTAssertTrue(app.buttons["Restore List"].exists, "Restore List")
+            app.buttons["Open"].tap()
+        }
+        XCTAssertTrue(app.staticTexts["Read-only until you restore it."].waitForExistence(timeout: 3), "it opens")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(deleted.waitForExistence(timeout: 3), "back in Trash")
+        sleep(1)
+        deleted.swipeRight()
+        let restore = app.buttons["Restore"].firstMatch
+        XCTAssertTrue(restore.waitForExistence(timeout: 3), "the swipe says Restore")
+        restore.tap()
+        XCTAssertTrue(notice("Restored Apartment move").waitForExistence(timeout: 3), "the notice")
+        XCTAssertTrue(deleted.waitForNonExistence(timeout: 3), "out of Trash")
     }
 
     /// The chevron at a deleted list's right expands it in place: its tasks show under it, and Trash stays.
@@ -1926,6 +1982,20 @@ final class FlowTests: XCTestCase {
         sleep(2)
     }
 
+    /// The rows are on the UICollectionView path (TEST_RUNNER_LIST_CONTAINER=cv).
+    private var onCollection: Bool { ProcessInfo.processInfo.environment["LIST_CONTAINER"] == "cv" }
+
+    /// A heading's notes are with their heading, with nothing between: in its row on List; on the collection view they
+    /// are a cell of their own, starting at the heading cell's foot.
+    private func assertNotesWithHeading(_ notes: XCUIElement, _ name: String, _ message: String,
+                                        file: StaticString = #filePath, line: UInt = #line) {
+        if onCollection {
+            XCTAssertEqual(cell(notes).minY, cell(heading(name)).maxY, accuracy: 1, message, file: file, line: line)
+        } else {
+            XCTAssertEqual(cell(notes), cell(heading(name)), message, file: file, line: line)
+        }
+    }
+
     /// The list cell that holds `e`.
     private func cell(_ e: XCUIElement) -> CGRect {
         app.cells.allElementsBoundByIndex.first { $0.frame.contains(CGPoint(x: e.frame.midX, y: e.frame.midY)) }?.frame ?? e.frame
@@ -1945,13 +2015,13 @@ final class FlowTests: XCTestCase {
         sleep(2)
         let notes = app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Goggles'")).firstMatch
         XCTAssertTrue(notes.exists)
-        XCTAssertEqual(cell(notes), cell(heading("Labs")), "the notes are in the heading's row")
+        assertNotesWithHeading(notes, "Labs", "the notes are in the heading's row")
         let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
         dragTo(redo, y: notes.frame.midY)
         let lab3 = app.staticTexts["Lab 3 report · pendulum"].firstMatch
         XCTAssertGreaterThan(y(redo), y(notes), "under the notes")
         XCTAssertLessThan(y(redo), y(lab3), "the top of Labs")
-        XCTAssertEqual(cell(notes), cell(heading("Labs")), "still in the heading's row")
+        assertNotesWithHeading(notes, "Labs", "still in the heading's row")
     }
 
     /// A heading with no tasks takes a drop over its row or the air above the next heading: the top of its section.
@@ -2279,6 +2349,24 @@ final class FlowTests: XCTestCase {
         sleep(1)
         XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == 'Delete'")).count, 1, "no swipe actions: the bar's only")
         XCTAssertEqual(selectTitle.label, "2 Selected")
+    }
+
+    /// Selected rows that are neighbours read as one block: where they meet, the fill's corners are square; at the
+    /// block's ends they're round (the selected fill, as `lift` measures it, just inside the row's 10pt inset, where a
+    /// 12pt corner leaves the screen bare).
+    func testNeighboursInTheSelectionJoin() {
+        select(["Read chapter 15 · oscillations", "Redo the worked examples from lecture 9"], on: "list:phys")
+        let a = app.staticTexts["Read chapter 15 · oscillations"].firstMatch.frame.midY
+        let b = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch.frame.midY
+        let half = (b - a) / 2
+        sleep(1)
+        let cg = XCUIScreen.main.screenshot().image.cgImage!
+        let x: CGFloat = 12
+        print("join lifts: middle \(lift(cg, x: x, y: a)), joint \(lift(cg, x: x, y: a + half)), top \(lift(cg, x: x, y: a - half + 1.5)), bottom \(lift(cg, x: x, y: b + half - 1.5))")
+        XCTAssertGreaterThan(lift(cg, x: x, y: a), 8, "the fill reaches the inset")
+        XCTAssertGreaterThan(lift(cg, x: x, y: a + half), 8, "joined: square where they meet")
+        XCTAssertLessThan(lift(cg, x: x, y: a - half + 1.5), 4, "round at the block's top")
+        XCTAssertLessThan(lift(cg, x: x, y: b + half - 1.5), 4, "round at its foot")
     }
 
     /// A heading isn't selectable and its chevron still folds; the rows it folds away leave the selection.
