@@ -983,7 +983,25 @@ final class FlowTests: XCTestCase {
         app.descendants(matching: .any).matching(identifier: "heading").matching(NSPredicate(format: "label == %@", name)).firstMatch
     }
 
-    private func headingCount() -> Int { app.descendants(matching: .any).matching(identifier: "heading").count }
+    /// The list's headings, all of them: on the collection view only the rows on screen are in the tree, so it scrolls
+    /// to the top (the title shown), through to the end, and back to the top. It never pulls past the top (a refresh).
+    private func headingCount() -> Int {
+        func shown() -> [String] { app.descendants(matching: .any).matching(identifier: "heading").allElementsBoundByIndex.map { $0.label } }
+        let list = app.collectionViews.firstMatch, title = app.descendants(matching: .any)["listHeader"].firstMatch
+        func toTop() { for _ in 0..<6 where !title.exists { list.swipeDown() } }
+        toTop()
+        var last = shown(), names = Set(last)
+        for _ in 0..<6 {
+            list.swipeUp()
+            let now = shown()
+            names.formUnion(now)
+            if now == last { break }
+            last = now
+        }
+        toTop()
+        sleep(1)
+        return names.count
+    }
 
     private func openPhys() {
         app.launchArguments += ["-screen", "list:phys"]
@@ -1006,12 +1024,17 @@ final class FlowTests: XCTestCase {
         app.buttons["List actions"].tap()
         app.buttons["New Heading"].tap()
         XCTAssertTrue(draft.waitForExistence(timeout: 3))
+        // At the bottom of the list, it's scrolled above the keyboard.
+        let keyboard = app.keyboards.firstMatch
+        XCTAssertTrue(keyboard.waitForExistence(timeout: 3))
+        sleep(1)
+        XCTAssertLessThanOrEqual(draft.frame.maxY, keyboard.frame.minY, "above the keyboard")
         app.typeText("Problem sets\n")
         sleep(1)
         let new = heading("Problem sets")
         XCTAssertTrue(new.waitForExistence(timeout: 3), "written")
-        XCTAssertEqual(headingCount(), before + 1)
         XCTAssertGreaterThan(y(new), y(app.staticTexts["Ask about problem 7 at office hours"].firstMatch), "at the bottom")
+        XCTAssertEqual(headingCount(), before + 1)
     }
 
     /// New Heading Above in a task's menu: above it, and it becomes the section's first task. A tap elsewhere writes

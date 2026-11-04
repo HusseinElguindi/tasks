@@ -213,7 +213,7 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
         let layout = CollectionLayout { _, env in NSCollectionLayoutSection.list(using: config, layoutEnvironment: env) }
         layout.owner = self
         self.layout = layout
-        let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        let cv = TaskCollectionView(frame: .zero, collectionViewLayout: layout)
         cv.backgroundColor = .clear
         cv.allowsSelection = false
         cv.delegate = self

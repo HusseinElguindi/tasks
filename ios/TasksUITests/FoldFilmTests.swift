@@ -74,6 +74,13 @@ final class FoldFilmTests: XCTestCase {
         mark("newline")
         app.typeText("\nLab coat")
         pause()
+        // The third and fourth lines grow the editor past its least height.
+        mark("newline3")
+        app.typeText("\nLab manual")
+        pause()
+        mark("newline4")
+        app.typeText("\nPre-lab")
+        pause()
         mark("done1")
         app.buttons["Done"].tap()
         pause()
@@ -91,6 +98,27 @@ final class FoldFilmTests: XCTestCase {
         pause()
         mark("cancel")
         app.buttons["Cancel"].tap()
+        pause()
+        // The list's notes, under its title: a tap on them, a new line, Done; Edit Notes from its menu, Done.
+        // The title, scrolled back into view (the keyboard scrolled the notes above it).
+        let header = app.descendants(matching: .any)["listHeader"].firstMatch
+        for _ in 0..<3 where !header.exists { app.collectionViews.firstMatch.swipeDown() }
+        pause()
+        mark("listTap")
+        header.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.85)).tap()
+        pause()
+        mark("listNewline")
+        app.typeText("\nBring a calculator")
+        pause()
+        mark("listDone1")
+        app.buttons["Done"].tap()
+        pause()
+        mark("listMenu")
+        app.buttons["List actions"].tap()
+        app.buttons["Edit Notes"].tap()
+        pause()
+        mark("listDone2")
+        app.buttons["Done"].tap()
         pause()
     }
 }
