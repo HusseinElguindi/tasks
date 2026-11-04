@@ -679,6 +679,8 @@ final class FlowTests: XCTestCase {
         defer { if pad { XCUIDevice.shared.orientation = .portrait } }
         for look in ["dark", "light"] {
             app = XCUIApplication()
+            // A new app: the container too, as setUp gives it (Home's rows on the UICollectionView path).
+            if let c = ProcessInfo.processInfo.environment["LIST_CONTAINER"] { app.launchEnvironment["LIST_CONTAINER"] = c }
             app.launchArguments = ["-sampleData", "YES", "-appearance", look, "-style", "classic", "-screen", "upcoming",
                                    "-remoteTask", "s4", "-remoteTitle", Self.longTitle,
                                    "-remoteList", "school-9", "-remoteName", Self.longName]
