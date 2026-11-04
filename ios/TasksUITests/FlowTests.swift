@@ -1114,6 +1114,51 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(editor.waitForExistence(timeout: 3))
     }
 
+    /// A heading's notes emptied as they're edited go, and as the keyboard goes down the screen's background stays
+    /// whole: no black under where the keyboard was (the user, 2026-11-04). Done and a tap on another row both end
+    /// them; Dark and Light. The screen's right edge (clear of the rows, their lines and the +) is the background's
+    /// colour down to the bottom, as it is near the top.
+    func testEmptiedHeadingNotesLeaveNoBlackUnderTheKeyboard() {
+        for (look, end) in [("dark", "Done"), ("dark", "tap"), ("light", "Done")] {
+            app = XCUIApplication()
+            app.launchArguments = ["-sampleData", "YES", "-appearance", look, "-style", "classic", "-screen", "list:phys"]
+            app.launch()
+            XCTAssertTrue(heading("Labs").waitForExistence(timeout: 10), "PHYS 122")
+            sleep(1)
+            menuOpen {
+                heading("Labs").press(forDuration: 1.0)
+                app.buttons["Add Notes"].tap()
+            }
+            XCTAssertTrue(app.textViews["headingNotes"].waitForExistence(timeout: 3), "\(look): the notes editor")
+            app.typeText("Bring the goggles")
+            app.buttons["Done"].tap()
+            let notes = app.staticTexts["Bring the goggles"].firstMatch
+            XCTAssertTrue(notes.waitForExistence(timeout: 3), "\(look): the notes")
+            sleep(1)
+            notes.tap()
+            XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3), "\(look): editing them, with the keyboard")
+            app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 20))
+            sleep(1)
+            if end == "Done" {
+                app.buttons["Done"].tap()
+            } else {
+                app.staticTexts["Book a make-up lab bench"].firstMatch.tap()
+            }
+            sleep(2)
+            XCTAssertFalse(app.staticTexts["Bring the goggles"].exists, "\(look), \(end): the notes went")
+            XCTAssertFalse(app.keyboards.firstMatch.exists, "\(look), \(end): the keyboard went down")
+            shot("notes-emptied-\(look)-\(end)")
+            let cg = XCUIScreen.main.screenshot().image.cgImage!
+            let x = app.frame.width - 8, h = app.frame.height
+            let ground = luma(cg, CGPoint(x: x, y: h * 0.3))
+            for f in [0.6, 0.7, 0.8, 0.88] {
+                XCTAssertEqual(luma(cg, CGPoint(x: x, y: h * f)), ground, accuracy: 3,
+                               "\(look), \(end): the background at \(Int(f * 100))% down is the ground's (\(ground)), not the window's black or white")
+            }
+            app.terminate()
+        }
+    }
+
     // MARK: Parity batch 1, commit 4 (the Mac's rules: IOS-MAC-PARITY.md)
 
     /// A list's notes (IX:1540–1543): Add Notes in its menu opens the notes editor under the title; Done writes them;
