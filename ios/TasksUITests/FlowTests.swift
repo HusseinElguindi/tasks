@@ -785,9 +785,30 @@ final class FlowTests: XCTestCase {
 
     private func y(_ e: XCUIElement) -> CGFloat { e.frame.midY }
 
-    /// A task dragged over a heading joins that section, right where it's dropped: one op, list and order.
+    /// The last drag, as the app's debug probe saw it (`-dragProbe YES`, CollectionDrag's DragProbe): "ticks" (the
+    /// selection haptics, one per new slot or lit day), "drops" (the drop's impact), "dx" (the copy's sideways offset
+    /// from the row's place as the finger lifted) and "land" (the copy's last frame against the row's cell, "x,y").
+    private func probe() -> [String: String] {
+        let v = app.descendants(matching: .any)["dragProbe"].firstMatch.value as? String ?? ""
+        var out: [String: String] = [:]
+        for kv in v.split(separator: " ") {
+            let p = kv.split(separator: "=", maxSplits: 1)
+            if p.count == 2 { out[String(p[0])] = String(p[1]) }
+        }
+        return out
+    }
+
+    /// A drop's set-down ends exactly on the row's cell, and the row shows there (no jump between the copy and it).
+    private func assertLandedExactly(file: StaticString = #filePath, line: UInt = #line) {
+        let land = (probe()["land"] ?? "-").split(separator: ",").compactMap { Double($0) }
+        XCTAssertEqual(land.count, 2, "a set-down was probed: \(probe())", file: file, line: line)
+        for d in land { XCTAssertEqual(d, 0, accuracy: 0.5, "the copy ends on the row's cell, x and y", file: file, line: line) }
+    }
+
+    /// A task dragged over a heading joins that section, right where it's dropped: one op, list and order. The gap's
+    /// every new slot ticks, the drop thuds once, and the copy sets down exactly on the row.
     func testDragATaskIntoAnotherSection() {
-        app.launchArguments += ["-screen", "list:phys"]
+        app.launchArguments += ["-screen", "list:phys", "-dragProbe", "YES"]
         app.launch()
         let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
         XCTAssertTrue(redo.waitForExistence(timeout: 10))
@@ -797,6 +818,47 @@ final class FlowTests: XCTestCase {
         XCTAssertGreaterThan(y(redo), y(bench), "under the row it was dropped on, in Labs")
         XCTAssertLessThan(y(redo), y(exam), "and still above Exam prep")
         XCTAssertGreaterThan(y(redo), y(heading("Labs")), "under Labs")
+        XCTAssertGreaterThanOrEqual(Int(probe()["ticks"] ?? "") ?? 0, 3, "a tick at each slot the gap moved to: \(probe())")
+        XCTAssertEqual(probe()["drops"], "1", "one impact, at the drop")
+        assertLandedExactly()
+    }
+
+    /// The copy follows the finger sideways too, keeping the grab offset; the slot is still chosen by its height, and
+    /// it sets down back in the row's column.
+    func testDragCopyFollowsSideways() {
+        app.launchArguments += ["-screen", "list:phys", "-dragProbe", "YES"]
+        app.launch()
+        let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
+        XCTAssertTrue(redo.waitForExistence(timeout: 10))
+        sleep(1)
+        let bench = app.staticTexts["Book a make-up lab bench"].firstMatch
+        redo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.5, thenDragTo: bench.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: 70, dy: 0)),
+                   withVelocity: .default, thenHoldForDuration: 1)
+        sleep(2)
+        XCTAssertEqual(Double(probe()["dx"] ?? "") ?? 0, 70 + Double(bench.frame.midX - redo.frame.midX), accuracy: 4,
+                       "the copy was where the finger took it, 70 pt right: \(probe())")
+        XCTAssertGreaterThan(y(redo), y(bench), "dropped by its height: under the bench, as without the sideways move")
+        XCTAssertLessThan(y(redo), y(heading("Exam prep")))
+        assertLandedExactly()
+    }
+
+    /// Pulled up past its own slot, the first, and let go: refused, so nothing ticks (the lift's haptic is UIKit's
+    /// alone), nothing thuds, and the copy goes home exactly onto the row.
+    func testARefusedDragTicksNothingAndGoesHome() {
+        app.launchArguments += ["-screen", "list:phys", "-dragProbe", "YES"]
+        app.launch()
+        let glasses = app.staticTexts["Buy safety glasses for the lab"].firstMatch
+        XCTAssertTrue(glasses.waitForExistence(timeout: 10))
+        sleep(1)
+        let before = y(glasses)
+        let start = glasses.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        start.press(forDuration: 0.5, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -60)), withVelocity: .default, thenHoldForDuration: 1)
+        sleep(2)
+        XCTAssertEqual(y(glasses), before, accuracy: 1, "back at its place")
+        XCTAssertEqual(probe()["ticks"], "0", "the gap never moved: no tick (\(probe()))")
+        XCTAssertEqual(probe()["drops"], "0", "nothing written, no impact")
+        assertLandedExactly()
     }
 
     /// A heading takes its section: dropped inside Lectures, Labs and its three tasks land before Lectures, the
@@ -836,8 +898,9 @@ final class FlowTests: XCTestCase {
         XCTAssertEqual(y(reply), before, accuracy: 1, "back at Inbox's top")
     }
 
-    /// Lists reorder on Home; Today and the views stay put.
+    /// Lists reorder on Home; Today and the views stay put. The gap ticks, the drop thuds, the copy sets down exactly.
     func testDragAListOnHome() {
+        app.launchArguments += ["-dragProbe", "YES"]
         app.launch()
         let phys = app.buttons["PHYS 122"].firstMatch, school = app.buttons["School"].firstMatch
         XCTAssertTrue(phys.waitForExistence(timeout: 10))
@@ -845,6 +908,9 @@ final class FlowTests: XCTestCase {
         drag(phys, onto: school)
         XCTAssertLessThan(y(phys), y(school), "PHYS 122 above School")
         XCTAssertGreaterThan(y(phys), y(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Inbox'")).firstMatch), "and under Inbox")
+        XCTAssertGreaterThanOrEqual(Int(probe()["ticks"] ?? "") ?? 0, 1, "a tick at the new slot: \(probe())")
+        XCTAssertEqual(probe()["drops"], "1", "one impact, at the drop")
+        assertLandedExactly()
     }
 
     // MARK: The tapped row (§5; Mail and Settings)
@@ -2096,6 +2162,7 @@ final class FlowTests: XCTestCase {
     /// Dropped on another day, a task's When is that day: it takes its slot there by list order (PHYS 122 between
     /// School and Errands, the recording before the formula sheet in PHYS 122's order), wherever it was dropped.
     func testDragInUpcomingSetsTheDay() {
+        app.launchArguments += ["-dragProbe", "YES"]
         openUpcoming()
         let recording = t("Watch the recording on standing waves")
         XCTAssertLessThan(y(recording), y(t("Submit MSE 333 A2")), "on Tomorrow")
@@ -2103,6 +2170,9 @@ final class FlowTests: XCTestCase {
         XCTAssertLessThan(y(t("Submit MSE 333 A2")), y(recording), "on the day after, under School's")
         XCTAssertLessThan(y(recording), y(t("Make the midterm formula sheet")), "before the formula sheet")
         XCTAssertLessThan(y(t("Make the midterm formula sheet")), y(t("Return the boots")))
+        XCTAssertGreaterThanOrEqual(Int(probe()["ticks"] ?? "") ?? 0, 1, "a tick as the day lit: \(probe())")
+        XCTAssertEqual(probe()["drops"], "1", "one impact, at the drop")
+        assertLandedExactly()
         app.buttons["More"].tap()
         XCTAssertTrue(app.buttons["Undo Set When"].waitForExistence(timeout: 3), "one step, the Mac's name")
     }

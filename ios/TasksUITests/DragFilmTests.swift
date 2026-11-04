@@ -14,7 +14,9 @@ final class DragFilmTests: XCTestCase {
         continueAfterFailure = true
         expectSimulatorDaemonCrash()
         app = XCUIApplication()
-        app.launchArguments = ["-sampleData", "YES", "-appearance", "dark", "-style", "classic", "-screen", "list:phys"]
+        // -dragTrace: the app's own frame log of the copy and the row under it (CollectionDrag's DragProbe).
+        app.launchArguments = ["-sampleData", "YES", "-appearance", "dark", "-style", "classic", "-screen", "list:phys",
+                               "-dragTrace", "YES"]
     }
 
     func mark(_ s: String) { print(String(format: "FILM %@ %.3f", s, Date().timeIntervalSince1970)) }
@@ -23,23 +25,24 @@ final class DragFilmTests: XCTestCase {
         app.descendants(matching: .any).matching(identifier: "heading").matching(NSPredicate(format: "label == %@", name)).firstMatch
     }
 
-    /// Long-press, then drag `from` to `dy` points from its middle, as a finger does (FlowTests' `drag`).
-    func drag(_ label: String, _ from: XCUIElement, by dy: CGFloat) {
+    /// Long-press, then drag `from` to `dx`, `dy` points from its middle, as a finger does (FlowTests' `drag`).
+    func drag(_ label: String, _ from: XCUIElement, by dy: CGFloat, dx: CGFloat = 0) {
         mark(label)
         let start = from.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-        start.press(forDuration: 0.5, thenDragTo: start.withOffset(CGVector(dx: 0, dy: dy)), withVelocity: .default, thenHoldForDuration: 1)
+        start.press(forDuration: 0.5, thenDragTo: start.withOffset(CGVector(dx: dx, dy: dy)), withVelocity: .default, thenHoldForDuration: 1)
         sleep(2)
     }
 
-    /// A task into the next section (a drop), Labs up before Lectures (its section folds into the copy, with the count
-    /// badge; then opens), and the first task pulled up past its slot and let go there (refused: home).
+    /// A task into the next section, let go 60 pt right of its column (a drop: it falls back into the row's frame),
+    /// Labs up before Lectures (its section folds into the copy, with the count badge; then opens), and the first task
+    /// pulled up past its slot and let go there (refused: home).
     func testFilmDrag() {
         app.launch()
         XCTAssertTrue(heading("Labs").waitForExistence(timeout: 10))
         sleep(1)
         let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
         let bench = app.staticTexts["Book a make-up lab bench"].firstMatch
-        drag("task_down", redo, by: bench.frame.midY - redo.frame.midY)
+        drag("task_down", redo, by: bench.frame.midY - redo.frame.midY, dx: 60)
         let read = app.staticTexts["Read chapter 15 · oscillations"].firstMatch
         drag("heading_up", heading("Labs"), by: read.frame.midY - heading("Labs").frame.midY)
         // A small nudge opens the row's menu instead, so the list's first task is pulled 60 pt up: the copy is held 6 pt

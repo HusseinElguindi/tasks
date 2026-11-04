@@ -13,9 +13,11 @@ import UIKit
 // Lists reorder by drag (§14), on our own gap, as the spikes found works (memory: uicollectionview-spike-findings):
 // the drop delegate answers `.unspecified`, so the collection view never moves a cell itself; the dragged row is hidden
 // by its content's alpha, the others move by transforms to open a gap at our slot, and our own lifted copy follows the
-// finger, held to the first and last slot. The slots are the lists' run only, from just under "Lists" to the end of
-// the lists, so Today and the views never move. The drop is `AppModel.dropList`, given the run as `.onMove` gives it
-// (edges included, as nil). A drop at the row's own place is refused, so the copy flies home and nothing is written.
+// finger in x and y (its y held 6 pt past the first and last slot; the slot is chosen by y). The slots are the lists'
+// run only, from just under "Lists" to the end of the lists, so Today and the views never move. The drop is
+// `AppModel.dropList`, given the run as `.onMove` gives it (edges included, as nil). A drop at the row's own place is
+// refused, so the copy flies home and nothing is written. The haptics (`DragFeel`), the set-down (`DragCopy.setDown`)
+// and UIKit's invisible drop are the task lists' (TaskCollection+Drag.swift).
 
 struct HomeCollection: UIViewControllerRepresentable {
     let items: [String]
@@ -145,6 +147,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
     func stop() {
         copyView?.removeFromSuperview()
         copyView = nil
+        feel.end()
     }
 
     // MARK: Cells
@@ -274,10 +277,12 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         var id: String
         /// The dragged row's height: the gap's.
         var height: CGFloat
-        /// The finger's distance below the row's top at lift.
-        var grab: CGFloat
+        /// The finger's offset from the row's top-left corner at lift (the copy keeps it, in x and y).
+        var grab: CGPoint
         /// The slot among the other items (nil: no gap, the finger is off the list).
         var slot: Int?
+        /// The last slot the gap was open at: a new one ticks.
+        var ticked: Int?
     }
 
     private var drag: DragState?
@@ -285,8 +290,9 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
     private var landing: String?
     private weak var dragSession: UIDragSession?
     private weak var dropSession: UIDropSession?
-    /// Our lifted copy: `fill-lift`, radius 8, a shadow, the row's snapshot.
+    /// Our lifted copy: `fill-lift`, the row's radius (12, continuous), a shadow, the row's snapshot.
     private var copyView: UIView?
+    private let feel = DragFeel()
 
     /// A cell's place while a drag is on: hidden (the dragged row), or moved by `dy`. Nil: no drag.
     fileprivate func gapShift(_ id: String) -> (hide: Bool, dy: CGFloat)? {
@@ -316,17 +322,25 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         return f.maxY - (i > from ? d.height : 0)
     }
 
-    /// The copy follows the finger, kept within 6pt of the first and last slot; over the list, the gap follows the
-    /// copy, at the slot whose top is nearest the copy's.
+    /// The copy follows the finger in x and y, keeping the grab offset, its y kept within 6pt of the first and last
+    /// slot; over the list, the gap follows the copy's y, at the slot whose top is nearest the copy's. A new slot ticks.
     private func follow() {
         guard var d = drag, let session = dragSession else { return }
         cv.layoutIfNeeded()
         let tops = slotTops(d)
-        var copyTop = session.location(in: cv).y - d.grab
+        let finger = session.location(in: cv)
+        var copyTop = finger.y - d.grab.y
         if let lo = tops.map(\.y).min(), let hi = tops.map(\.y).max() { copyTop = min(max(copyTop, lo - 6), hi + 6) }
-        if let v = copyView, landing == nil { UIView.performWithoutAnimation { v.frame.origin.y = copyTop } }
+        if let v = copyView, landing == nil {
+            UIView.performWithoutAnimation { v.frame.origin = CGPoint(x: finger.x - d.grab.x + Metric.rowInset, y: copyTop) }
+        }
         guard dropSession != nil else { return }
         let s = tops.min { abs($0.y - copyTop) < abs($1.y - copyTop) }?.slot
+        if let s, s != d.ticked {
+            d.ticked = s
+            drag = d
+            feel.moved()
+        }
         guard s != d.slot else { return }
         d.slot = s
         drag = d
@@ -362,7 +376,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
             return UIDragPreview(view: UIView(frame: CGRect(x: 0, y: 0, width: 1, height: 1)), parameters: p)
         }
         item.localObject = id
-        drag = DragState(id: id, height: f.height, grab: p.y - f.minY, slot: ip.item)
+        drag = DragState(id: id, height: f.height, grab: CGPoint(x: p.x - f.minX, y: p.y - f.minY), slot: ip.item, ticked: ip.item)
         return [item]
     }
 
@@ -371,6 +385,8 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
     func collectionView(_ cv: UICollectionView, dragSessionWillBegin session: UIDragSession) {
         guard let d = drag else { return }
         dragSession = session
+        // The lift's haptic is UIKit's; the ticks and the drop's are ours, ready from here.
+        feel.begin(in: cv)
         makeCopy(d)
         // The dragged row leaves its place (the gap stays where it was).
         moveGap(animated: false)
@@ -378,15 +394,18 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
 
     func collectionView(_ cv: UICollectionView, dragSessionDidEnd session: UIDragSession) {
         dragSession = nil
+        feel.end()
         // A refused drop went home at the drop session's end already; this is a fallback (a drag that never entered).
         goHome()
         settle()
     }
 
+    /// The lift's preview; once the drag is on, UIKit's cancel preview draws nothing (our copy has gone home).
     func collectionView(_ cv: UICollectionView, dragPreviewParametersForItemAt ip: IndexPath) -> UIDragPreviewParameters? {
+        if dragSession != nil || landing != nil { return DragCopy.invisibleParameters }
         guard let cell = cv.cellForItem(at: ip) else { return nil }
         let p = UIDragPreviewParameters()
-        p.visiblePath = UIBezierPath(roundedRect: cell.bounds.insetBy(dx: Metric.rowInset, dy: 0), cornerRadius: Metric.rowRadius)
+        p.visiblePath = DragCopy.shape(cell.bounds.insetBy(dx: Metric.rowInset, dy: 0))
         p.backgroundColor = UIColor(palette.base)
         return p
     }
@@ -437,9 +456,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         let at = (d.slot ?? src) - top
         let to = at < from ? at : at + 1
         let ids: [EntityID?] = run.map { $0.hasPrefix("l:") ? String($0.dropFirst(2)) : nil }
-        if app.dropList(IndexSet(integer: from), to, in: ids) {
-            UIImpactFeedbackGenerator(style: .light, view: cv).impactOccurred()
-        }
+        if app.dropList(IndexSet(integer: from), to, in: ids) { feel.dropped() }
         wanted = HomeCollection.items(app)
         landing = d.id
         drag = nil
@@ -448,14 +465,14 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
             apply(wanted, animated: false)
             moveGap(animated: false)
         }
-        guard let ip = dataSource.indexPath(for: d.id) else {
-            landing = nil
-            moveGap(animated: false)
-            settle()
+        guard let ip = dataSource.indexPath(for: d.id), let f = layout.modelFrame(ip.item) else {
+            _ = c.drop(item.dragItem, to: DragCopy.invisibleDrop(at: copyView?.center ?? .zero, in: cv))
+            land(at: nil)
             return
         }
-        c.drop(item.dragItem, toItemAt: ip)
-        land(at: layout.modelFrame(ip.item))
+        // UIKit's drop goes nowhere to be seen: our copy sets down instead.
+        _ = c.drop(item.dragItem, to: DragCopy.invisibleDrop(at: CGPoint(x: f.midX, y: f.midY), in: cv))
+        land(at: f)
     }
 
     func collectionView(_ cv: UICollectionView, dropSessionDidEnd session: UIDropSession) {
@@ -472,14 +489,15 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         let inset = Metric.rowInset
         let v = UIView(frame: cell.frame.insetBy(dx: inset, dy: 0))
         v.backgroundColor = UIColor(palette.lift)
-        v.layer.cornerRadius = 8
+        DragCopy.round(v.layer)
         v.layer.shadowColor = UIColor.black.cgColor
         v.layer.shadowOpacity = 0.35
         v.layer.shadowRadius = 10
         v.layer.shadowOffset = CGSize(width: 0, height: 4)
+        v.layer.shadowPath = DragCopy.shape(v.bounds).cgPath
         let clip = UIView(frame: v.bounds)
         clip.clipsToBounds = true
-        clip.layer.cornerRadius = 8
+        DragCopy.round(clip.layer)
         snap.frame.origin = CGPoint(x: -inset, y: 0)
         clip.addSubview(snap)
         v.addSubview(clip)
@@ -488,9 +506,16 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         v.accessibilityElementsHidden = true
         cv.addSubview(v)
         copyView = v
+        #if DEBUG
+        let id = d.id
+        DragProbe.shared.trace(copy: v) { [weak self] in
+            guard let self, let ip = self.dataSource.indexPath(for: id) else { return nil }
+            return self.cv.cellForItem(at: ip)
+        }
+        #endif
     }
 
-    /// The copy sets down at `frame` (`DragCopy.setDown`), and the row shows under it.
+    /// The copy sets down on the row's `frame` (`DragCopy.setDown`), and the row shows under it.
     private func land(at frame: CGRect?) {
         let done: () -> Void = { [weak self] in
             guard let self else { return }
@@ -500,7 +525,18 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         }
         guard let v = copyView else { done(); return }
         copyView = nil
-        DragCopy.setDown(v, at: frame?.minY, landed: done)
+        let origin = frame.map { CGPoint(x: $0.minX + Metric.rowInset, y: $0.minY) }
+        #if DEBUG
+        DragProbe.shared.released(v, home: origin)
+        #endif
+        DragCopy.setDown(v, at: origin) { [weak self] in
+            #if DEBUG
+            if let self, let id = self.landing, let ip = self.dataSource.indexPath(for: id) {
+                DragProbe.shared.landed(v, on: self.cv.cellForItem(at: ip))
+            }
+            #endif
+            done()
+        }
     }
 }
 

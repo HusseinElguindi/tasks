@@ -14,14 +14,22 @@ import UIKit
 // - Slots (`slotTops`): never above the header, never between a heading and its notes, never past the Completed row; a
 //   heading only before another heading or at the end. In Today and Undated, only in the dragged row's run
 //   (`AppModel.dragRuns`: its list's group), so the gap and the copy stay in its group.
-// - Our own lifted copy (`fill-lift`, radius 8, `shadow-lift`, the row's snapshot) follows the finger vertically, held
-//   6 pt past the first and last slot. The system's preview is invisible once lifted. A heading's section folds into it
-//   at lift (CollectionFold's collapse), and its copy shows the open count in an accent badge.
+// - Our own lifted copy (`fill-lift`, the row's radius 12 with continuous corners, `shadow-lift`, the row's snapshot)
+//   follows the finger in x and y, keeping the grab offset, as the Mac's does; only its y is held, 6 pt past the first
+//   and last slot (the Mac's rule inside a group), and the slot is chosen by y alone. The system's preview is invisible
+//   once lifted. A heading's section folds into it at lift (CollectionFold's collapse), and its copy shows the open
+//   count in an accent badge.
+// - Haptics (`DragFeel`): UIKit's own at the lift (none of ours), a selection tick each time the gap moves to a new
+//   slot (in Upcoming also when another day lights), the light impact of a drop that writes.
 // - Upcoming: the gap opens where the drop puts it (`dropOnDay`'s rules, then list order in the day), and the day's
 //   label is lit (`hover`, read by +Screens' group label).
-// - A drop sets the copy down in the row's place: it flies there (240 ms, `Motion.flight`'s curve) as its lift eases
-//   out, the row shows under it and the copy goes. One that's refused, or ends off the list, flies home as the finger lifts (`dropSessionDidEnd`):
-//   UIKit's own set-down of a refused drop runs about a second after that, and the drag session ends only then.
+// - A drop sets the copy down as the Mac's does (`DragCopy.setDown`): lift and all, it flies into the row's exact frame
+//   (160 ms, `Motion.flight`'s curve), the row shows under it in that frame, and the copy fades out over it (150 ms
+//   ease-out). UIKit's own drop animation is made invisible (`DragCopy.invisibleDrop`): `drop(_:toItemAt:)` grew a
+//   picture of the destination cell (the hidden row: only the preview's fill) from the finger out to the row, over our
+//   copy, which read as a fade outwards from the centre. One that's refused, or ends off the list, flies home the same
+//   way as the finger lifts (`dropSessionDidEnd`): UIKit's own set-down of a refused drop runs about a second after
+//   that (its cancel preview is invisible too), and the drag session ends only then.
 // - The dragged row is hidden through its content's alpha: UIKit owns the dragged cell's own alpha (half, while it's
 //   lifting or dragging), so hiding the cell left a ghost in the gap (TaskCell keeps that alpha at 1).
 // - Drops write through AppModel.drop (dropOnDay in Upcoming), Reorder.swift.
@@ -45,10 +53,13 @@ final class CollectionDrag {
         var id: String
         /// The dragged row's height: the gap's.
         var height: CGFloat
-        /// The finger's distance below the row's top at lift.
-        var grab: CGFloat
+        /// The finger's offset from the row's top-left corner at lift (the copy keeps it, in x and y).
+        var grab: CGPoint
         /// The slot among the other items (nil: no gap, the finger is off the list).
         var slot: Int?
+        /// The last slot the gap was open at: a new one ticks (the gap closing off the list and opening again where it
+        /// was doesn't).
+        var ticked: Int?
         /// In Today and Undated, the items of the dragged row's run (`AppModel.dragRuns`: its list's group, the label
         /// first; the last group also has the Completed row and its done tasks). Nil elsewhere: one run.
         var run: Set<String>?
@@ -68,6 +79,7 @@ final class CollectionDrag {
     private weak var dragSession: UIDragSession?
     private weak var dropSession: UIDropSession?
     private var copy: UIView?
+    private let feel = DragFeel()
     /// Ticks while a drag is on: the list can scroll under a still finger (the edge autoscroll), and the copy and
     /// the slot follow.
     private var link: CADisplayLink?
@@ -85,6 +97,7 @@ final class CollectionDrag {
     func stop() {
         link?.invalidate()
         link = nil
+        feel.end()
     }
 
     var holdsUpdates: Bool { state != nil || landing != nil || lifted != nil }
@@ -219,8 +232,10 @@ final class CollectionDrag {
         return (s, others[label])
     }
 
-    /// The copy follows the finger, held within 6 pt of the first and last slot; over the list, the gap follows the
-    /// copy: the slot whose top is nearest the copy's (Upcoming: `upcomingTarget`).
+    /// The copy follows the finger in x and y, keeping the grab offset; its y is held within 6 pt of the first and
+    /// last slot (the Mac's rule in a group; x is free, as the Mac's pointer is). Over the list, the gap follows the
+    /// copy's y: the slot whose top is nearest the copy's (Upcoming: `upcomingTarget`). Each new slot, or newly lit
+    /// day, ticks.
     private func follow() {
         guard state != nil, let session = dragSession else { return }
         let cv = owner.cv!
@@ -228,15 +243,29 @@ final class CollectionDrag {
         cv.layoutIfNeeded()
         guard var d = state else { return }
         let tops = slotTops(d)
-        var copyTop = session.location(in: cv).y - d.grab
+        let finger = session.location(in: cv)
+        var copyTop = finger.y - d.grab.y
         if let lo = tops.map(\.y).min(), let hi = tops.map(\.y).max() { copyTop = min(max(copyTop, lo - 6), hi + 6) }
-        if let v = copy, landing == nil { UIView.performWithoutAnimation { v.frame.origin.y = copyTop } }
+        if let v = copy, landing == nil {
+            UIView.performWithoutAnimation { v.frame.origin = CGPoint(x: finger.x - d.grab.x + Metric.rowInset, y: copyTop) }
+        }
         guard dropSession != nil else { return }
         var s = tops.min { abs($0.y - copyTop) < abs($1.y - copyTop) }?.slot
+        var lit = false
         if owner.source == .upcoming {
             let target = upcomingTarget(d, copyTop)
             s = target.slot
-            if hover.key != target.hot { hover.key = target.hot }
+            if hover.key != target.hot {
+                hover.key = target.hot
+                lit = target.hot != nil
+            }
+        }
+        if let s, s != d.ticked {
+            d.ticked = s
+            state = d
+            feel.moved()
+        } else if lit {
+            feel.moved()
         }
         guard s != d.slot else { return }
         d.slot = s
@@ -269,37 +298,41 @@ final class CollectionDrag {
         }
         item.localObject = id
         session.localContext = id
-        pending = State(id: id, height: f.height, grab: p.y - f.minY, slot: ip.item, run: run(of: id))
+        pending = State(id: id, height: f.height, grab: CGPoint(x: p.x - f.minX, y: p.y - f.minY), slot: ip.item, run: run(of: id))
         return [item]
     }
 
-    /// The lift: the system's lift preview, drawn as our copy is (`fill-lift`, radius 8). It shows from the lift until
-    /// the finger moves, over our copy, which then takes over.
+    /// The lift: the system's lift preview, drawn as our copy is (`fill-lift`, the row's radius). It shows from the lift
+    /// until the finger moves, over our copy, which then takes over. Once the drag is on, UIKit asks again for its cancel
+    /// (a refused drop's set-down): nothing it draws then shows, our copy has gone home.
     func previewParameters(at ip: IndexPath) -> UIDragPreviewParameters? {
+        if dragSession != nil || landing != nil { return DragCopy.invisibleParameters }
         guard let cell = owner.cv.cellForItem(at: ip) else { return nil }
         let p = UIDragPreviewParameters()
-        p.visiblePath = UIBezierPath(roundedRect: cell.bounds.insetBy(dx: Metric.rowInset, dy: 0), cornerRadius: Self.radius)
+        p.visiblePath = DragCopy.shape(cell.bounds.insetBy(dx: Metric.rowInset, dy: 0))
         p.backgroundColor = UIColor(owner.palette.lift)
         return p
     }
-
-    /// The lifted copy's corner radius.
-    private static let radius: CGFloat = 8
 
     func willBegin(_ session: UIDragSession) {
         guard var d = pending, d.id == session.localContext as? String, let at = owner.current.firstIndex(of: d.id) else { return }
         pending = nil
         // The rows may have changed since the lift (a menu was open meanwhile): the gap starts at its place now.
         d.slot = at
+        d.ticked = at
         state = d
         dragSession = session
+        // The lift's haptic is UIKit's; the ticks and the drop's are ours, ready from here.
+        feel.begin(in: owner.cv)
         makeCopy(d)
         if d.id.hasPrefix("h:") {
             // A heading's section folds into it at lift (§23); the gap is the heading's own row.
             lifted = d.id
             let all = owner.current
             let items = shown(all)
-            state?.slot = items.firstIndex(of: d.id)
+            let slot = items.firstIndex(of: d.id)
+            state?.slot = slot
+            state?.ticked = slot
             owner.apply(items, fold: CollectionFold.Plan(heading: d.id, items: Set(CollectionFold.section(of: d.id, in: all)), collapse: true),
                         animation: .easeOut(duration: 0.15))
         }
@@ -315,6 +348,7 @@ final class CollectionDrag {
         link?.invalidate()
         link = nil
         dragSession = nil
+        feel.end()
         // A refused drop went home at the drop session's end already; this is the fallback.
         goHome()
         unfold()
@@ -354,7 +388,7 @@ final class CollectionDrag {
     }
 
     /// The drag ended with no drop (refused at the row's own place, or the finger off the list): the copy flies home
-    /// as the gap there closes; the row shows under it, the copy fades; a lifted heading's section opens.
+    /// as the gap there closes, and sets down there as a drop does; a lifted heading's section opens.
     private func goHome() {
         guard let d = state else { return }
         let home = owner.current.firstIndex(of: d.id).flatMap { owner.layout.modelFrame($0) }
@@ -375,17 +409,18 @@ final class CollectionDrag {
         let p = owner.palette, inset = Metric.rowInset
         let v = UIView(frame: cell.frame.insetBy(dx: inset, dy: 0))
         v.backgroundColor = UIColor(p.lift)
-        v.layer.cornerRadius = Self.radius
-        // `shadow-lift`: a 0.5 pt ring, and 0 8 24 (INTERACTIONS-v2, Shadows).
+        DragCopy.round(v.layer)
+        // `shadow-lift`: a 0.5 pt ring, and 0 8 24 (INTERACTIONS-v2, Shadows), cast by the copy's own shape.
         v.layer.borderWidth = 0.5
         v.layer.borderColor = UIColor(p.shadowLiftRing).cgColor
         v.layer.shadowColor = UIColor(p.shadowLift).cgColor
         v.layer.shadowOpacity = 1
         v.layer.shadowRadius = 12
         v.layer.shadowOffset = CGSize(width: 0, height: 8)
+        v.layer.shadowPath = DragCopy.shape(v.bounds).cgPath
         let clip = UIView(frame: v.bounds)
         clip.clipsToBounds = true
-        clip.layer.cornerRadius = Self.radius
+        DragCopy.round(clip.layer)
         snap.frame.origin = CGPoint(x: -inset, y: 0)
         clip.addSubview(snap)
         v.addSubview(clip)
@@ -410,13 +445,31 @@ final class CollectionDrag {
         v.accessibilityIdentifier = "dragCopy"
         cv.addSubview(v)
         copy = v
+        #if DEBUG
+        let id = d.id
+        DragProbe.shared.trace(copy: v) { [weak self] in
+            guard let self, let ip = self.owner.dataSource.indexPath(for: id) else { return nil }
+            return self.owner.cv.cellForItem(at: ip)
+        }
+        #endif
     }
 
-    /// The copy sets down at `frame` (`DragCopy.setDown`), and the row shows under it.
+    /// The copy sets down on the row's `frame` (`DragCopy.setDown`), and the row shows under it.
     private func land(at frame: CGRect?) {
         guard let v = copy else { landed(); return }
         copy = nil
-        DragCopy.setDown(v, at: frame?.minY) { [weak self] in self?.landed() }
+        let origin = frame.map { CGPoint(x: $0.minX + Metric.rowInset, y: $0.minY) }
+        #if DEBUG
+        DragProbe.shared.released(v, home: origin)
+        #endif
+        DragCopy.setDown(v, at: origin) { [weak self] in
+            #if DEBUG
+            if let self, let id = self.landing, let ip = self.owner.dataSource.indexPath(for: id) {
+                DragProbe.shared.landed(v, on: self.owner.cv.cellForItem(at: ip))
+            }
+            #endif
+            self?.landed()
+        }
     }
 
     /// The landed row shows; anything held back meanwhile is applied.
@@ -465,9 +518,7 @@ final class CollectionDrag {
         // `.onMove`'s offset in the items before the move: the slot among the others, as an index among them all.
         let to = at < from ? at : at + 1
         let lines = scope.map { owner.rows.line($0) ?? .edge(key: $0, height: 0) }
-        if app.drop(IndexSet(integer: from), to, in: lines, source: source) {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        }
+        if app.drop(IndexSet(integer: from), to, in: lines, source: source) { feel.dropped() }
         landing = d.id
         state = nil
         let items = shown(latest())
@@ -478,9 +529,14 @@ final class CollectionDrag {
             owner.cv.layoutIfNeeded()
             moveGap(animated: false)
         }
-        guard let ip = owner.dataSource.indexPath(for: d.id) else { land(at: nil); return }
-        c.drop(item.dragItem, toItemAt: ip)
-        land(at: owner.layout.modelFrame(ip.item))
+        guard let ip = owner.dataSource.indexPath(for: d.id), let f = owner.layout.modelFrame(ip.item) else {
+            _ = c.drop(item.dragItem, to: DragCopy.invisibleDrop(at: copy?.center ?? .zero, in: owner.cv))
+            land(at: nil)
+            return
+        }
+        // UIKit's drop goes nowhere to be seen: our copy sets down instead.
+        _ = c.drop(item.dragItem, to: DragCopy.invisibleDrop(at: CGPoint(x: f.midX, y: f.midY), in: owner.cv))
+        land(at: f)
     }
 
     func dropEnded() {
@@ -493,35 +549,97 @@ final class CollectionDrag {
 /// A drag's lifted copy, set down (the task lists' and Home's).
 @MainActor
 enum DragCopy {
-    /// The copy flies to `y` (240 ms, cubic-bezier(0.2, 0.8, 0.2, 1)) as its lift (the fill, the ring, the shadow)
-    /// eases out on the same curve, so it arrives as the row itself. `landed` then shows the row under it, and the copy
-    /// goes a frame later, with nothing left to fade. With Reduce Motion it doesn't fly: the lift fades where it lands.
-    static func setDown(_ v: UIView, at y: CGFloat?, landed: @escaping () -> Void) {
-        let reduce = UIAccessibility.isReduceMotionEnabled
-        let duration = reduce ? 0.15 : 0.24
-        if let y, reduce { v.frame.origin.y = y }
-        // The layer's shadow and ring aren't view-animatable: they ease out in CA animations on the same curve.
-        let curve = CAMediaTimingFunction(controlPoints: 0.2, 0.8, 0.2, 1)
-        for (key, from, to) in [("shadowOpacity", v.layer.shadowOpacity as Any, Float(0) as Any),
-                                ("borderWidth", v.layer.borderWidth as Any, CGFloat(0) as Any)] {
-            let a = CABasicAnimation(keyPath: key)
-            a.fromValue = from
-            a.toValue = to
-            a.duration = duration
-            a.timingFunction = curve
-            v.layer.add(a, forKey: key)
-        }
-        v.layer.shadowOpacity = 0
-        v.layer.borderWidth = 0
-        let fly = UIViewPropertyAnimator(duration: duration, controlPoint1: CGPoint(x: 0.2, y: 0.8), controlPoint2: CGPoint(x: 0.2, y: 1)) {
-            if let y, !reduce { v.frame.origin.y = y }
-            v.backgroundColor = .clear
-        }
-        fly.addCompletion { _ in
+    /// The Mac's set-down (INTERACTIONS-v2 §14 "Drop on the list", its DragOverlayView `flyCopy` then `settleCopy`):
+    /// the copy, lift and all (fill, ring, shadow), flies to `origin`, the row's own top-left, in x and y (160 ms,
+    /// cubic-bezier(0.2, 0.8, 0.2, 1)). There `landed` shows the row under it, in the same transaction, and the copy
+    /// fades out over it (150 ms ease-out), so the lift dissolves into the row: the row's pixels never move or fade.
+    /// With no origin (the row has gone), or with Reduce Motion, it doesn't fly: it fades where it is (at the origin).
+    static func setDown(_ v: UIView, at origin: CGPoint?, landed: @escaping () -> Void) {
+        let settle = {
+            CATransaction.begin()
             landed()
-            DispatchQueue.main.async { v.removeFromSuperview() }
+            UIView.animate(withDuration: 0.15, delay: 0, options: [.curveEaseOut, .allowUserInteraction]) {
+                v.alpha = 0
+            } completion: { _ in v.removeFromSuperview() }
+            CATransaction.commit()
         }
+        guard let origin, !UIAccessibility.isReduceMotionEnabled else {
+            if let origin { v.frame.origin = origin }
+            settle()
+            return
+        }
+        let fly = UIViewPropertyAnimator(duration: 0.16, controlPoint1: CGPoint(x: 0.2, y: 0.8), controlPoint2: CGPoint(x: 0.2, y: 1)) {
+            v.frame.origin = origin
+        }
+        fly.addCompletion { _ in settle() }
         fly.startAnimation()
+    }
+
+    /// The lifted row's shape (the copy, its clip and shadow, the lift preview): the row's tapped fill, radius 12 with
+    /// continuous corners (TaskRow's `RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous)`). The path
+    /// is UIKit's rounded rect, which is drawn with continuous corners itself.
+    static func shape(_ r: CGRect) -> UIBezierPath { UIBezierPath(roundedRect: r, cornerRadius: Metric.rowRadius) }
+
+    /// A layer rounded as the row's fill.
+    static func round(_ l: CALayer) {
+        l.cornerRadius = Metric.rowRadius
+        l.cornerCurve = .continuous
+    }
+
+    /// Preview parameters that draw nothing: a clear fill and no shadow, in a point.
+    static var invisibleParameters: UIDragPreviewParameters {
+        let p = UIDragPreviewParameters()
+        p.backgroundColor = .clear
+        p.shadowPath = UIBezierPath()
+        p.visiblePath = UIBezierPath(rect: CGRect(x: 0, y: 0, width: 1, height: 1))
+        return p
+    }
+
+    /// UIKit's drop animation, made to draw nothing: the drag's own preview (ours is a clear point, `itemsForBeginning`)
+    /// goes to `center`. `drop(_:toItemAt:)` instead animates a picture of the destination cell, made with the drag's
+    /// preview parameters, from the finger out to the cell, above the app's own views: with the row hidden under our
+    /// copy, that was the preview's fill growing from the finger outwards, over the copy setting down.
+    static func invisibleDrop(at center: CGPoint, in container: UIView) -> UIDragPreviewTarget {
+        UIDragPreviewTarget(container: container, center: center)
+    }
+}
+
+/// A drag's haptics (SwiftUI List's reorder and the Mac's feel): UIKit plays its own at the lift, and none of ours does;
+/// a selection tick each time the gap moves to a new slot (or, in Upcoming, another day lights); a light impact when a
+/// drop writes. The generators are made and prepared as the drag begins, so the first tick isn't late.
+@MainActor
+final class DragFeel {
+    private var tick: UISelectionFeedbackGenerator?
+    private var thud: UIImpactFeedbackGenerator?
+
+    func begin(in view: UIView) {
+        tick = UISelectionFeedbackGenerator(view: view)
+        tick?.prepare()
+        thud = UIImpactFeedbackGenerator(style: .light, view: view)
+        thud?.prepare()
+        #if DEBUG
+        DragProbe.shared.begin(view)
+        #endif
+    }
+
+    func moved() {
+        tick?.selectionChanged()
+        tick?.prepare()
+        #if DEBUG
+        DragProbe.shared.ticks += 1
+        #endif
+    }
+
+    func dropped() {
+        thud?.impactOccurred()
+        #if DEBUG
+        DragProbe.shared.drops += 1
+        #endif
+    }
+
+    func end() {
+        tick = nil
+        thud = nil
     }
 }
 
@@ -560,3 +678,146 @@ extension TaskCollectionController: UICollectionViewDragDelegate, UICollectionVi
     func collectionView(_ cv: UICollectionView, performDropWith c: UICollectionViewDropCoordinator) { drag.perform(c) }
     func collectionView(_ cv: UICollectionView, dropSessionDidEnd session: UIDropSession) { drag.dropEnded() }
 }
+
+#if DEBUG
+/// Debug only. `-dragProbe YES` (FlowTests): what the last drag did, as the collection view's accessibility value
+/// (identifier "dragProbe"), read once it's over: "ticks=3 drops=1 dx=80.0 land=0.0,0.0" (the haptic ticks and drops;
+/// the copy's sideways offset from the row's place as the finger lifted; the copy's last frame against the row cell's).
+/// `-dragTrace YES` (DragFilmTests): from each lift to 0.5 s after its set-down, every frame of the copy (presentation
+/// origin and size, opacity, shadow opacity, scale) and of the row under it (its cell's origin, its content's opacity),
+/// and any view UIKit shows outside the app's root view (its drag and drop previews), to tmp/drag-trace.log in the
+/// app's container.
+@MainActor
+final class DragProbe {
+    static let shared = DragProbe()
+    private let probing = UserDefaults.standard.bool(forKey: "dragProbe")
+    private let tracing = UserDefaults.standard.bool(forKey: "dragTrace")
+
+    var ticks = 0 { didSet { publish() } }
+    var drops = 0 { didSet { publish() } }
+    private var dx: CGFloat?
+    private var land: CGPoint?
+    private weak var view: UIView?
+
+    func begin(_ v: UIView) {
+        ticks = 0
+        drops = 0
+        dx = nil
+        land = nil
+        view = v
+        publish()
+        mark("lift")
+    }
+
+    func released(_ copy: UIView, home: CGPoint?) {
+        if let home { dx = copy.frame.minX - home.x }
+        mark("release copy=\(f(copy.frame.minX)),\(f(copy.frame.minY)) home=\(home.map { "\(f($0.x)),\(f($0.y))" } ?? "-")")
+        publish()
+    }
+
+    /// The copy at its set-down's end against the row's cell, which then shows under it.
+    func landed(_ copy: UIView, on cell: UIView?) {
+        if let cell { land = CGPoint(x: copy.frame.minX - (cell.frame.minX + Metric.rowInset), y: copy.frame.minY - cell.frame.minY) }
+        mark("landed copy=\(f(copy.frame.minX)),\(f(copy.frame.minY)) cell=\(cell.map { "\(f($0.frame.minX)),\(f($0.frame.minY))" } ?? "-")")
+        publish()
+        until = CACurrentMediaTime() + 0.5 + 0.15
+    }
+
+    private func publish() {
+        guard probing, let view else { return }
+        view.accessibilityIdentifier = "dragProbe"
+        view.accessibilityValue = "ticks=\(ticks) drops=\(drops) dx=\(dx.map(f) ?? "-") land=\(land.map { "\(f($0.x)),\(f($0.y))" } ?? "-")"
+    }
+
+    // MARK: The trace
+
+    private weak var copy: UIView?
+    private var row: () -> UIView? = { nil }
+    private var link: CADisplayLink?
+    private var until = CFTimeInterval.infinity
+    private var lines: [String] = []
+    private var lastUI = ""
+    private lazy var file: FileHandle? = {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("drag-trace.log")
+        if !FileManager.default.fileExists(atPath: url.path) { FileManager.default.createFile(atPath: url.path, contents: nil) }
+        let h = try? FileHandle(forWritingTo: url)
+        _ = try? h?.seekToEnd()
+        return h
+    }()
+    private let epoch = Date().timeIntervalSince1970 - CACurrentMediaTime()
+
+    func trace(copy v: UIView, row: @escaping () -> UIView?) {
+        guard tracing else { return }
+        copy = v
+        self.row = row
+        until = .infinity
+        link?.invalidate()
+        let l = CADisplayLink(target: Tick { [weak self] in self?.frame() }, selector: #selector(Tick.fire))
+        l.add(to: .main, forMode: .common)
+        link = l
+    }
+
+    private func mark(_ s: String) {
+        guard tracing else { return }
+        lines.append(String(format: "M %.4f ", Date().timeIntervalSince1970) + s)
+    }
+
+    private func frame() {
+        let now = CACurrentMediaTime()
+        var out = String(format: "F %.4f", now + epoch)
+        if let c = copy, c.superview != nil {
+            let p = c.layer.presentation() ?? c.layer
+            let sc = sqrt(p.transform.m11 * p.transform.m11 + p.transform.m12 * p.transform.m12)
+            out += " copy=\(f(p.frame.minX)),\(f(p.frame.minY)),\(f(p.frame.width)),\(f(p.frame.height)) a=\(f2(p.opacity)) sh=\(f2(p.shadowOpacity)) sc=\(f2(Float(sc)))"
+        }
+        if let cell = row() {
+            let p = cell.layer.presentation() ?? cell.layer
+            let ca = (cell as? UICollectionViewCell).map { $0.contentView.layer.presentation()?.opacity ?? $0.contentView.layer.opacity } ?? 1
+            out += " row=\(f(p.frame.minX)),\(f(p.frame.minY)) ra=\(f2(ca))"
+        }
+        // UIKit's previews: whatever is shown in the scene's windows outside the app's root view.
+        if let scene = copy?.window?.windowScene ?? view?.window?.windowScene {
+            var ui: [String] = []
+            for w in scene.windows where !w.isHidden {
+                let root = w.rootViewController?.view
+                for v in w.subviews where v !== root && !v.isHidden && v.alpha > 0.01 {
+                    ui.append("\(type(of: w)):\(type(of: v))[\(Self.leaves(v))]")
+                }
+            }
+            let sig = ui.joined(separator: " ")
+            if sig != lastUI { lastUI = sig; lines.append(String(format: "M %.4f ", now + epoch) + "uikit " + (sig.isEmpty ? "none" : sig)) }
+        }
+        lines.append(out)
+        if lines.count > 60 { flush() }
+        if now > until {
+            link?.invalidate()
+            link = nil
+            flush()
+        }
+    }
+
+    /// The visible views under `v`, by class, as UIKit's drop previews are made of.
+    private static func leaves(_ v: UIView) -> String {
+        var names: [String] = []
+        func walk(_ v: UIView, _ depth: Int) {
+            guard depth < 8, !v.isHidden, v.alpha > 0.01 else { return }
+            let n = String(describing: type(of: v))
+            if n.contains("Preview") || n.contains("Platter") || n.contains("Portal") || n.contains("Drag") || n.contains("Snapshot") {
+                names.append(n + "@\(f(v.frame.width))x\(f(v.frame.height))a\(f2((v.layer.presentation() ?? v.layer).opacity))")
+            }
+            v.subviews.forEach { walk($0, depth + 1) }
+        }
+        walk(v, 0)
+        return names.joined(separator: ",")
+    }
+
+    private func flush() {
+        guard !lines.isEmpty else { return }
+        file?.write(Data((lines.joined(separator: "\n") + "\n").utf8))
+        lines.removeAll()
+    }
+}
+
+private func f(_ v: CGFloat) -> String { String(format: "%.1f", v) }
+private func f2(_ v: Float) -> String { String(format: "%.2f", v) }
+#endif
