@@ -5,7 +5,10 @@ import UIKit
 // A heading folding or opening (§23): its notes and tasks slide up under its foot as they fade (150 ms ease-out), or
 // back down from it (220 ms ease-in), the rows below closing up on the same curve, rigidly with them. Measured exact in
 // the spike (ios-spike 25fabe4; memory uicollectionview-spike-findings), because:
-// - the curves are UIKit's own (`UIView.animate(withDuration:options:)`): the collection view doesn't take SwiftUI's;
+// - the curves are UIKit's own: the collection view doesn't take SwiftUI's. They're critically damped springs of the
+//   fold's durations (`UIView.animate(springDuration:bounce: 0)`): for a diffable apply UIKit makes springs whatever
+//   curve the block asks for, and with `withDuration:` it cut its 0.5 s springs off at our duration, 82% of the way
+//   (a 26–35 pt snap at a collapse's end, filmed; the cells' layer animations logged);
 // - an appearing row's offset is a transform: the collection view puts a self-sizing cell's first frame back at its
 //   final place;
 // - the update is one CATransaction (the core's `apply`);
@@ -100,8 +103,7 @@ final class CollectionFold {
     /// Runs `apply` on the fold's curve; false leaves notes alone to the core's spring.
     func animate(_ plan: Plan, _ apply: @escaping () -> Void) -> Bool {
         guard !plan.notesOnly else { return false }
-        UIView.animate(withDuration: plan.collapse ? 0.15 : 0.22, delay: 0,
-                       options: plan.collapse ? .curveEaseOut : .curveEaseIn, animations: apply)
+        UIView.animate(springDuration: plan.collapse ? 0.15 : 0.22, bounce: 0, animations: apply)
         return true
     }
 

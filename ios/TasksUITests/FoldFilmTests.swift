@@ -48,4 +48,49 @@ final class FoldFilmTests: XCTestCase {
             }
         }
     }
+
+    func menuOpen(_ steps: () -> Void) {
+        let on = app.responds(to: NSSelectorFromString("setIdleAnimationWaitEnabled:"))
+        if on { app.setValue(false, forKey: "idleAnimationWaitEnabled") }
+        defer { if on { app.setValue(true, forKey: "idleAnimationWaitEnabled") } }
+        steps()
+    }
+
+    /// Labs' notes, typed in place (it has none until the remote edit, which isn't posted here), a new line, Done; a tap
+    /// back into them and Done; a rename and Cancel. Exam prep's rule, below them, moves with each.
+    func testFilmEditing() {
+        app.launch()
+        XCTAssertTrue(heading("Labs").waitForExistence(timeout: 10))
+        sleep(1)
+        menuOpen {
+            heading("Labs").press(forDuration: 1.0)
+            mark("addNotes")
+            app.buttons["Add Notes"].tap()
+        }
+        pause()
+        mark("type")
+        app.typeText("Goggles")
+        pause()
+        mark("newline")
+        app.typeText("\nLab coat")
+        pause()
+        mark("done1")
+        app.buttons["Done"].tap()
+        pause()
+        mark("tapNotes")
+        app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Goggles'")).firstMatch.tap()
+        pause()
+        mark("done2")
+        app.buttons["Done"].tap()
+        pause()
+        menuOpen {
+            heading("Labs").press(forDuration: 1.0)
+            mark("rename")
+            app.buttons["Rename"].tap()
+        }
+        pause()
+        mark("cancel")
+        app.buttons["Cancel"].tap()
+        pause()
+    }
 }
