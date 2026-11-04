@@ -679,6 +679,8 @@ final class FlowTests: XCTestCase {
         defer { if pad { XCUIDevice.shared.orientation = .portrait } }
         for look in ["dark", "light"] {
             app = XCUIApplication()
+            // A new app: the container too, as setUp gives it (Home's rows on the UICollectionView path).
+            if let c = ProcessInfo.processInfo.environment["LIST_CONTAINER"] { app.launchEnvironment["LIST_CONTAINER"] = c }
             app.launchArguments = ["-sampleData", "YES", "-appearance", look, "-style", "classic", "-screen", "upcoming",
                                    "-remoteTask", "s4", "-remoteTitle", Self.longTitle,
                                    "-remoteList", "school-9", "-remoteName", Self.longName]
@@ -2347,6 +2349,24 @@ final class FlowTests: XCTestCase {
         sleep(1)
         XCTAssertEqual(app.buttons.matching(NSPredicate(format: "label == 'Delete'")).count, 1, "no swipe actions: the bar's only")
         XCTAssertEqual(selectTitle.label, "2 Selected")
+    }
+
+    /// Selected rows that are neighbours read as one block: where they meet, the fill's corners are square; at the
+    /// block's ends they're round (the selected fill, as `lift` measures it, just inside the row's 10pt inset, where a
+    /// 12pt corner leaves the screen bare).
+    func testNeighboursInTheSelectionJoin() {
+        select(["Read chapter 15 · oscillations", "Redo the worked examples from lecture 9"], on: "list:phys")
+        let a = app.staticTexts["Read chapter 15 · oscillations"].firstMatch.frame.midY
+        let b = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch.frame.midY
+        let half = (b - a) / 2
+        sleep(1)
+        let cg = XCUIScreen.main.screenshot().image.cgImage!
+        let x: CGFloat = 12
+        print("join lifts: middle \(lift(cg, x: x, y: a)), joint \(lift(cg, x: x, y: a + half)), top \(lift(cg, x: x, y: a - half + 1.5)), bottom \(lift(cg, x: x, y: b + half - 1.5))")
+        XCTAssertGreaterThan(lift(cg, x: x, y: a), 8, "the fill reaches the inset")
+        XCTAssertGreaterThan(lift(cg, x: x, y: a + half), 8, "joined: square where they meet")
+        XCTAssertLessThan(lift(cg, x: x, y: a - half + 1.5), 4, "round at the block's top")
+        XCTAssertLessThan(lift(cg, x: x, y: b + half - 1.5), 4, "round at its foot")
     }
 
     /// A heading isn't selectable and its chevron still folds; the rows it folds away leave the selection.

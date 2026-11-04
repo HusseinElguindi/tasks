@@ -33,7 +33,7 @@ struct CollectionLine: View {
 
     @ViewBuilder private var content: some View {
         switch id {
-        case "header": CollectionHeader(source: source)
+        case "header": CollectionHeader(source: source, editingOverride: state.map { $0.hasPrefix(TaskCollection.editingMark) })
         case "banner":
             if let l = app.deletedList(source) { DeletedListBanner(list: l).padding(.top, 4) }
         default:
@@ -50,11 +50,15 @@ struct CollectionLine: View {
         case let .heading(h, count, _):
             HeadingRow(heading: h, count: count, top: HeadingRow.air)
         case let .headingNotes(h):
-            HeadingNotesRow(heading: h)
+            // The state it was configured with (its signature): its height changes only as it's resized.
+            HeadingNotesRow(heading: h, editingOverride: state.map { $0.hasPrefix(TaskCollection.editingMark) } ?? false)
         case let .task(t, indent, groupDay, day):
             // On the phone the row whose details are open keeps the selected fill, then fades out as they close.
+            // In select mode, the joined fill (CollectionSelect).
+            let pick = owner?.select.pick(t.id) ?? .init()
             let row = TaskRow(task: t, source: source, indent: indent, groupDay: groupDay, day: day,
-                              selected: app.flashed.contains(t.id) || (app.isSplit ? app.selectedTask == t.id : app.detailTask == t.id))
+                              selected: app.flashed.contains(t.id) || (app.isSplit ? app.selectedTask == t.id : app.detailTask == t.id),
+                              picked: pick.picked, joinTop: pick.joinTop, joinBottom: pick.joinBottom)
             // A deleted list's rows are deaf, as on the Mac (§28).
             if app.deletedList(source) != nil { row.disabled(true) } else { row }
         case let .completedToggle(key, count, open):
@@ -77,10 +81,14 @@ struct CollectionLine: View {
 /// `header` on the List path).
 struct CollectionHeader: View {
     let source: Source
+    /// The editing state it was configured with (its signature), as `HeadingNotesRow.editingOverride`.
+    var editingOverride: Bool? = nil
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
 
-    private var editingNotes: Bool { app.draft?.source == source && app.draft?.editsListNotes == true }
+    private var editingNotes: Bool {
+        editingOverride ?? (app.draft?.source == source && app.draft?.editsListNotes == true)
+    }
 
     private var subtitle: String? {
         if app.deletedList(source) != nil { return "In Trash" }
@@ -118,7 +126,7 @@ struct CollectionHeader: View {
             .accessibilityAddTraits(.isHeader)
             .accessibilityIdentifier("listHeader")
             if editingNotes {
-                ListNotesEditor().padding(.top, 2)
+                ListNotesEditor(live: true).padding(.top, 2)
             }
         }
         .padding(.leading, Metric.rowPad)
