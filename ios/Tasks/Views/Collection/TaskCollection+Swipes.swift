@@ -20,3 +20,14 @@ final class CollectionSwipes {
     /// The swipe actions for the item at `ip`, on its leading or trailing edge; nil for none.
     func actions(_ ip: IndexPath, leading: Bool) -> UISwipeActionsConfiguration? { nil }
 }
+
+// A stand-in until the menus land: only select mode's (CollectionSelect.menu). The menus area's own method replaces it,
+// with the same first line.
+extension TaskCollectionController {
+    func collectionView(_ cv: UICollectionView, contextMenuConfigurationForItemsAt ips: [IndexPath],
+                        point: CGPoint) -> UIContextMenuConfiguration? {
+        guard ips.count == 1, let id = dataSource.itemIdentifier(for: ips[0]) else { return nil }
+        if let m = select.menu(for: id) { return m }
+        return nil
+    }
+}

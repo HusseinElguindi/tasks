@@ -52,8 +52,11 @@ struct CollectionLine: View {
             HeadingNotesRow(heading: h)
         case let .task(t, indent, groupDay, day):
             // On the phone the row whose details are open keeps the selected fill, then fades out as they close.
+            // In select mode, the joined fill (CollectionSelect).
+            let pick = owner?.select.pick(t.id) ?? .init()
             let row = TaskRow(task: t, source: source, indent: indent, groupDay: groupDay, day: day,
-                              selected: app.flashed.contains(t.id) || (app.isSplit ? app.selectedTask == t.id : app.detailTask == t.id))
+                              selected: app.flashed.contains(t.id) || (app.isSplit ? app.selectedTask == t.id : app.detailTask == t.id),
+                              picked: pick.picked, joinTop: pick.joinTop, joinBottom: pick.joinBottom)
             // A deleted list's rows are deaf, as on the Mac (§28).
             if app.deletedList(source) != nil { row.disabled(true) } else { row }
         case let .completedToggle(key, count, open):
