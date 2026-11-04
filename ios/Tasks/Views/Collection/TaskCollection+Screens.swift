@@ -47,7 +47,9 @@ struct CollectionLine: View {
             GroupLabel(title: title, sub: sub, quiet: quiet, hot: owner?.drag.hover.key == id, top: GroupLabel.air)
                 .allowsHitTesting(false)
         case let .heading(h, count, _):
-            HeadingRow(heading: h, count: count, top: HeadingRow.air)
+            // The state it was configured with (its signature): the field shows only as it's resized.
+            HeadingRow(heading: h, count: count, top: HeadingRow.air,
+                       editingOverride: state.map { $0.hasPrefix(TaskCollection.editingMark) } ?? false)
         case let .headingNotes(h):
             // The state it was configured with (its signature): its height changes only as it's resized.
             HeadingNotesRow(heading: h, editingOverride: state.map { $0.hasPrefix(TaskCollection.editingMark) } ?? false)

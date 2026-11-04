@@ -139,6 +139,11 @@ struct ListScreen: View {
                 ToolbarItem(placement: .primaryAction) { ViewMenu(source: source) }
             }
         }
+        // Out of SwiftUI's keyboard avoidance: the collection view keeps the rows clear of the keyboard itself (its
+        // bottom inset, TaskCollection.swift). Left in it, the screen's background was laid out short as the keyboard
+        // went down after the row holding the caret was removed (a heading's notes emptied): its foot stayed at the
+        // keyboard's top, 546 of 874 pt, and the window's black showed under it.
+        .ignoresSafeArea(.keyboard)
     }
 }
 

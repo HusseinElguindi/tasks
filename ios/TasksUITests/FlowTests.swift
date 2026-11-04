@@ -1156,6 +1156,100 @@ final class FlowTests: XCTestCase {
         }
     }
 
+    /// Renaming a heading that's partly under the bar (Lectures, PHYS 122 scrolled to its end): its field's box shows
+    /// whole from its first frame, never cut off at the list's top edge (the user, 2026-11-04: "cut off at the top,
+    /// then drops after a second"). The list eases the heading into view first, then the field shows. Screenshots are
+    /// taken on another thread from the tap on Rename; in each, where the box's stroke shows in a column through it,
+    /// both its top and its bottom edge are there, below the list's top, and the first that shows it shows it where it
+    /// stays (no drop). XCTest's screenshots come ~5 a second and only from the end of the tap, so the cut box itself
+    /// (4–6 frames on the simulator, filmed) is rarely caught; the drop after it is. Three renames a look. Dark and
+    /// Light.
+    func testARenamedHeadingsBoxIsWholeFromTheStart() {
+        final class Film: @unchecked Sendable {
+            let lock = NSLock()
+            var frames: [CGImage] = []
+            func add(_ f: CGImage) { lock.lock(); frames.append(f); lock.unlock() }
+        }
+        for look in ["dark", "light"] {
+            app = XCUIApplication()
+            app.launchArguments = ["-sampleData", "YES", "-appearance", look, "-style", "classic", "-screen", "list:phys"]
+            app.launch()
+            let lectures = heading("Lectures")
+            XCTAssertTrue(lectures.waitForExistence(timeout: 10), "PHYS 122")
+            sleep(1)
+            let top = app.collectionViews.firstMatch.frame.minY
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+            let field = app.textFields["headingName"]
+            var seen = 0
+            for attempt in 1...3 {
+                let what = "\(look), rename \(attempt)"
+                // To the list's end: Lectures' box top (its name's frame, padded as the box is) is under the bar, its
+                // name's foot still shows.
+                origin.withOffset(CGVector(dx: 200, dy: 650))
+                    .press(forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: 200, dy: 250)),
+                           withVelocity: 600, thenHoldForDuration: 0.5)
+                sleep(1)
+                let f = lectures.frame
+                XCTAssertLessThan(f.minY, top - 2, "\(what): Lectures' top under the bar (\(f), the list's top \(top))")
+                XCTAssertGreaterThan(f.maxY, top + 12, "\(what): its name shows")
+                let film = Film()
+                menuOpen {
+                    origin.withOffset(CGVector(dx: f.midX, dy: (max(f.minY, top) + f.maxY) / 2)).press(forDuration: 1.0)
+                    XCTAssertTrue(app.buttons["Rename"].waitForExistence(timeout: 3), "\(what): its menu")
+                    let thread = Thread { for _ in 0..<10 { if let cg = XCUIScreen.main.screenshot().image.cgImage { film.add(cg) } } }
+                    thread.start()
+                    app.buttons["Rename"].tap()
+                    while !thread.isFinished { usleep(20_000) }
+                }
+                XCTAssertTrue(field.waitForExistence(timeout: 3), "\(what): renaming in place")
+                sleep(1)
+                // A column through the box's right part (clear of the menu, the caret and the chevron), from the
+                // list's top to just under the settled box (clear of the next row's chips).
+                let x = field.frame.maxX - 12, bottom = field.frame.maxY + 14
+                let settled = strokes(XCUIScreen.main.screenshot().image.cgImage!, x: x, from: top - 1, to: bottom)
+                XCTAssertEqual(settled.count, 2, "\(what): settled, the box's top and bottom edges (\(settled))")
+                var firstTop: CGFloat?
+                for (i, cg) in film.frames.enumerated() {
+                    let runs = strokes(cg, x: x, from: top - 1, to: bottom)
+                    guard !runs.isEmpty else { continue }
+                    seen += 1
+                    if firstTop == nil { firstTop = runs.first }
+                    XCTAssertEqual(runs.count, 2, "\(what), frame \(i): the box whole, top and bottom edges (\(runs))")
+                    XCTAssertGreaterThan(runs.first ?? 0, top + 0.5, "\(what), frame \(i): its top edge below the list's top \(top)")
+                }
+                // No drop: the box first shows where it stays (before the fix it came in mid-scroll, short of it).
+                if let firstTop, let settledTop = settled.first {
+                    XCTAssertEqual(firstTop, settledTop, accuracy: 0.5, "\(what): the box shows at its place, no drop after")
+                }
+                app.buttons["Cancel"].tap()
+                sleep(1)
+            }
+            XCTAssertGreaterThan(seen, 0, "\(look): the box was filmed as it came")
+            app.terminate()
+        }
+    }
+
+    /// The tops (in points) of the coloured runs, a box's stroke, in a column of a screenshot between two heights:
+    /// pixels far more saturated than the greys and inks around them.
+    private func strokes(_ cg: CGImage, x: CGFloat, from y0: CGFloat, to y1: CGFloat) -> [CGFloat] {
+        let scale = CGFloat(cg.width) / app.frame.width
+        let h = cg.height
+        var px = [UInt8](repeating: 0, count: h * 4)
+        guard let ctx = CGContext(data: &px, width: 1, height: h, bitsPerComponent: 8, bytesPerRow: 4,
+                                  space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return [] }
+        ctx.draw(cg, in: CGRect(x: -Int(x * scale), y: 0, width: cg.width, height: h))
+        var tops: [CGFloat] = []
+        var inRun = false
+        for row in max(0, Int(y0 * scale))..<min(h, Int(y1 * scale)) {
+            let r = Int(px[row * 4]), g = Int(px[row * 4 + 1]), b = Int(px[row * 4 + 2])
+            let colored = max(r, g, b) - min(r, g, b) > 80
+            if colored, !inRun { tops.append(CGFloat(row) / scale) }
+            inRun = colored
+        }
+        return tops
+    }
+
     /// Add Notes opens the notes editor under the heading; Done writes them, and they show under it.
     func testAHeadingsNotes() {
         openPhys()
@@ -1178,6 +1272,51 @@ final class FlowTests: XCTestCase {
             app.buttons["Edit Notes"].tap()
         }
         XCTAssertTrue(editor.waitForExistence(timeout: 3))
+    }
+
+    /// A heading's notes emptied as they're edited go, and as the keyboard goes down the screen's background stays
+    /// whole: no black under where the keyboard was (the user, 2026-11-04). Done and a tap on another row both end
+    /// them; Dark and Light. The screen's right edge (clear of the rows, their lines and the +) is the background's
+    /// colour down to the bottom, as it is near the top.
+    func testEmptiedHeadingNotesLeaveNoBlackUnderTheKeyboard() {
+        for (look, end) in [("dark", "Done"), ("dark", "tap"), ("light", "Done")] {
+            app = XCUIApplication()
+            app.launchArguments = ["-sampleData", "YES", "-appearance", look, "-style", "classic", "-screen", "list:phys"]
+            app.launch()
+            XCTAssertTrue(heading("Labs").waitForExistence(timeout: 10), "PHYS 122")
+            sleep(1)
+            menuOpen {
+                heading("Labs").press(forDuration: 1.0)
+                app.buttons["Add Notes"].tap()
+            }
+            XCTAssertTrue(app.textViews["headingNotes"].waitForExistence(timeout: 3), "\(look): the notes editor")
+            app.typeText("Bring the goggles")
+            app.buttons["Done"].tap()
+            let notes = app.staticTexts["Bring the goggles"].firstMatch
+            XCTAssertTrue(notes.waitForExistence(timeout: 3), "\(look): the notes")
+            sleep(1)
+            notes.tap()
+            XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3), "\(look): editing them, with the keyboard")
+            app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 20))
+            sleep(1)
+            if end == "Done" {
+                app.buttons["Done"].tap()
+            } else {
+                app.staticTexts["Book a make-up lab bench"].firstMatch.tap()
+            }
+            sleep(2)
+            XCTAssertFalse(app.staticTexts["Bring the goggles"].exists, "\(look), \(end): the notes went")
+            XCTAssertFalse(app.keyboards.firstMatch.exists, "\(look), \(end): the keyboard went down")
+            shot("notes-emptied-\(look)-\(end)")
+            let cg = XCUIScreen.main.screenshot().image.cgImage!
+            let x = app.frame.width - 8, h = app.frame.height
+            let ground = luma(cg, CGPoint(x: x, y: h * 0.3))
+            for f in [0.6, 0.7, 0.8, 0.88] {
+                XCTAssertEqual(luma(cg, CGPoint(x: x, y: h * f)), ground, accuracy: 3,
+                               "\(look), \(end): the background at \(Int(f * 100))% down is the ground's (\(ground)), not the window's black or white")
+            }
+            app.terminate()
+        }
     }
 
     // MARK: Parity batch 1, commit 4 (the Mac's rules: IOS-MAC-PARITY.md)

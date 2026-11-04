@@ -159,17 +159,23 @@ struct HeadingRow: View {
     /// The air above its hairline: in a list it's an edge row of its own (`Line.edge`), so the row starts at the rule.
     var top: CGFloat = HeadingRow.air
     static let air: CGFloat = 11
+    /// On the collection view: the renaming state the cell was configured with, so the field shows only once the
+    /// collection view reconfigures the row, after easing it whole into view (TaskCollection+Editing.swift). Nil: the
+    /// draft's.
+    var editingOverride: Bool? = nil
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     @FocusState private var focus: DetailField?
 
     private var collapsed: Bool { app.collapsed.contains(heading.id) }
     private var renaming: Bool {
-        if case let .rename(h, _)? = app.draft?.kind { h == heading.id } else { false }
+        if let editingOverride { return editingOverride }
+        if case let .rename(h, _)? = app.draft?.kind { return h == heading.id } else { return false }
     }
-    /// Its name is one line: pasted line breaks become spaces.
+    /// Its name is one line: pasted line breaks become spaces. Its name for the moment the field outlives the draft
+    /// (until it's reconfigured).
     private var text: Binding<String> {
-        Binding(get: { app.draft?.title ?? "" }, set: { new in
+        Binding(get: { app.draft?.title ?? heading.title }, set: { new in
             let text = TitleText.oneLine(new)
             app.draft?.title = text
         })
