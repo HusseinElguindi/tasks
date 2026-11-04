@@ -7,6 +7,7 @@ final class FlowTests: XCTestCase {
 
     override func setUp() {
         continueAfterFailure = true
+        expectSimulatorDaemonCrash()
         app = XCUIApplication()
         // The sample lists and tasks, seeded fresh in a scratch store at each launch (never the app's data), in Dark and
         // Classic whatever an earlier run chose in Settings (launch arguments win over saved settings).
