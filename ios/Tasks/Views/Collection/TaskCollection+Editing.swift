@@ -44,12 +44,16 @@ final class CollectionEditing {
         UIView.setAnimationsEnabled(true)
         defer { UIView.setAnimationsEnabled(was) }
         CATransaction.begin()
-        UIView.animate(springDuration: 0.25, bounce: 0) { ds.apply(snap, animatingDifferences: true) }
+        UIView.animate(springDuration: 0.25, bounce: 0, initialSpringVelocity: 0, delay: 0,
+                       options: [.overrideInheritedCurve, .overrideInheritedDuration]) { ds.apply(snap, animatingDifferences: true) }
         CATransaction.commit()
     }
 }
 
 extension TaskCollection {
+    /// A signature's start while its row is being typed into (no notes or name starts so).
+    static let editingMark = "\u{0}e|"
+
     /// What decides the height of the rows whose height can change: a heading's notes (or their editor and its text), a
     /// heading's name field, the list's notes, the new row's kind, the empty state.
     @MainActor static func signatures(_ app: AppModel, _ source: Source, _ lines: [Line]) -> [String: String] {
@@ -57,13 +61,13 @@ extension TaskCollection {
         let typed = d?.title ?? ""
         var out: [String: String] = [:]
         if case let .list(l) = source {
-            out["header"] = d?.editsListNotes == true ? "e|" + typed : (app.list(l)?.notes ?? "")
+            out["header"] = d?.editsListNotes == true ? editingMark + typed : (app.list(l)?.notes ?? "")
         }
         for line in lines {
             switch line {
             case let .heading(h, count, notes):
                 let renaming = d?.editedHeading == h.id && d?.editsNotes == false
-                out["h:" + h.id] = renaming ? "e" : "\(h.title)|\(count)"
+                out["h:" + h.id] = renaming ? editingMark : "\(h.title)|\(count)"
                 if notes { out["n:" + h.id] = notesSignature(h, d, typed) }
             case let .headingNotes(h): out["n:" + h.id] = notesSignature(h, d, typed)
             case .draft: out["draft"] = d.map { "\($0.kind)" } ?? ""
@@ -75,6 +79,6 @@ extension TaskCollection {
     }
 
     @MainActor private static func notesSignature(_ h: TaskModel, _ d: Draft?, _ typed: String) -> String {
-        d?.editedHeading == h.id && d?.editsNotes == true ? "e|" + typed : h.notes
+        d?.editedHeading == h.id && d?.editsNotes == true ? editingMark + typed : h.notes
     }
 }

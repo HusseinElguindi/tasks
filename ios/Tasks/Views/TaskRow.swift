@@ -245,19 +245,24 @@ struct HeadingRow: View {
 /// heading with its tasks, and the rows below close up on the same curve (§23).
 struct HeadingNotesRow: View {
     let heading: TaskModel
+    /// On the collection view: the editing state the cell was configured with, so its height changes only when the
+    /// collection view reconfigures it, inside an animation (TaskCollection+Editing.swift). Nil: the draft's.
+    var editingOverride: Bool? = nil
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     @FocusState private var focus: DetailField?
 
     private var editing: Bool {
-        if case let .notes(h, _)? = app.draft?.kind { h == heading.id } else { false }
+        if let editingOverride { return editingOverride }
+        if case let .notes(h, _)? = app.draft?.kind { return h == heading.id } else { return false }
     }
-    private var text: Binding<String> { Binding(get: { app.draft?.title ?? "" }, set: { app.draft?.title = $0 }) }
+    /// The draft's text; its notes for the moment the editor outlives the draft (until it's reconfigured).
+    private var text: Binding<String> { Binding(get: { app.draft?.title ?? heading.notes }, set: { app.draft?.title = $0 }) }
 
     var body: some View {
         Group {
             if editing {
-                NotesEditor(text: text, focus: $focus, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5, minHeight: 60) { _, _ in }
+                NotesEditor(text: text, live: editingOverride != nil, focus: $focus, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5, minHeight: 60) { _, _ in }
                     .accessibilityIdentifier("headingNotes")
                     .onAppear { DispatchQueue.main.async { focus = .notes } }
             } else {

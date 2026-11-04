@@ -69,8 +69,9 @@ final class CollectionSelect {
     /// The row's fill. Read from a cell's body, so the row redraws when the selection or the items change (the
     /// selection is observed; the items through the cells' `CollectionRows.version`).
     func pick(_ id: EntityID) -> Pick {
-        _ = owner.rows.version
+        // Only in select mode (observed) does a row depend on the items: outside it, rows don't redraw as they change.
         guard active else { return Pick() }
+        _ = owner.rows.version
         let selected = app.selected
         let picks: Picks
         if let c = cache, c.selected == selected, c.items == owner.current {
