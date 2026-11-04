@@ -273,14 +273,18 @@ final class CollectionDrag {
         return [item]
     }
 
-    /// The lift: the system's lift preview, the row's cell with its radius on the base fill.
+    /// The lift: the system's lift preview, drawn as our copy is (`fill-lift`, radius 8). It shows from the lift until
+    /// the finger moves, over our copy, which then takes over.
     func previewParameters(at ip: IndexPath) -> UIDragPreviewParameters? {
         guard let cell = owner.cv.cellForItem(at: ip) else { return nil }
         let p = UIDragPreviewParameters()
-        p.visiblePath = UIBezierPath(roundedRect: cell.bounds.insetBy(dx: Metric.rowInset, dy: 0), cornerRadius: Metric.rowRadius)
-        p.backgroundColor = UIColor(owner.palette.base)
+        p.visiblePath = UIBezierPath(roundedRect: cell.bounds.insetBy(dx: Metric.rowInset, dy: 0), cornerRadius: Self.radius)
+        p.backgroundColor = UIColor(owner.palette.lift)
         return p
     }
+
+    /// The lifted copy's corner radius.
+    private static let radius: CGFloat = 8
 
     func willBegin(_ session: UIDragSession) {
         guard var d = pending, d.id == session.localContext as? String, let at = owner.current.firstIndex(of: d.id) else { return }
@@ -371,7 +375,7 @@ final class CollectionDrag {
         let p = owner.palette, inset = Metric.rowInset
         let v = UIView(frame: cell.frame.insetBy(dx: inset, dy: 0))
         v.backgroundColor = UIColor(p.lift)
-        v.layer.cornerRadius = 8
+        v.layer.cornerRadius = Self.radius
         // `shadow-lift`: a 0.5 pt ring, and 0 8 24 (INTERACTIONS-v2, Shadows).
         v.layer.borderWidth = 0.5
         v.layer.borderColor = UIColor(p.shadowLiftRing).cgColor
@@ -381,7 +385,7 @@ final class CollectionDrag {
         v.layer.shadowOffset = CGSize(width: 0, height: 8)
         let clip = UIView(frame: v.bounds)
         clip.clipsToBounds = true
-        clip.layer.cornerRadius = 8
+        clip.layer.cornerRadius = Self.radius
         snap.frame.origin = CGPoint(x: -inset, y: 0)
         clip.addSubview(snap)
         v.addSubview(clip)
