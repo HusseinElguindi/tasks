@@ -58,6 +58,9 @@ final class CollectionDrag {
     let hover = DragHover()
 
     private(set) var state: State?
+    /// The row lifted for a drag that hasn't begun: a long press asks for its drag items as it lifts, and may then
+    /// only open the row's menu, with no drag session at all.
+    private var pending: State?
     /// The dropped (or refused) row, kept hidden while the copy flies into its place.
     private var landing: String?
     /// A heading whose section is folded into its drag.
@@ -149,12 +152,6 @@ final class CollectionDrag {
         if !gapOn { placed = [] }
     }
 
-    /// The items under a heading's item: its notes and tasks, down to the next heading or the Completed row.
-    private static func section(of heading: String, in items: [String]) -> [String] {
-        guard let i = items.firstIndex(of: heading) else { return [] }
-        return Array(items[(i + 1)...].prefix { !$0.hasPrefix("h:") && !$0.hasPrefix("c:") })
-    }
-
     /// The run of `id`'s row, in Today and Undated (`State.run`).
     private func run(of id: String) -> Set<String>? {
         let app = owner.app, source = owner.source
@@ -191,17 +188,19 @@ final class CollectionDrag {
         return f.maxY - (i > from ? d.height : 0)
     }
 
-    /// Upcoming (IX §22, the Mac's `dayTarget`): the day is the group whose label is the last one above the copy's
-    /// middle (above them all, the first). On a day the task may take (not a month, not past its deadline, not its own
+    /// Upcoming (IX §22, the Mac's `dayTarget`): the day is the group whose label is the last one drawn above the
+    /// copy's middle (above them all, the first). On a day the task may take (not a month, not past its deadline, not its own
     /// day), the gap opens where the drop puts it, by list order among that day's tasks, and the label lights;
     /// elsewhere the gap stays at its own place (the drop writes nothing and it goes back).
     private func upcomingTarget(_ d: State, _ copyTop: CGFloat) -> (slot: Int, hot: String?) {
         let app = owner.app, current = owner.current
         guard let from = current.firstIndex(of: d.id), let t = app.task(String(d.id.dropFirst(2))) else { return (0, nil) }
         let others = current.filter { $0 != d.id }
+        // Where each row is drawn now: without the dragged row, and a row lower from the gap on. (The gap's own day
+        // keeps its label above the gap, so the target doesn't flicker at a label: it has the gap's height of give.)
         func top(_ s: Int) -> CGFloat {
             guard let i = current.firstIndex(of: others[s]), let f = owner.layout.modelFrame(i) else { return 0 }
-            return f.minY - (i > from ? d.height : 0)
+            return f.minY - (i > from ? d.height : 0) + (d.slot.map { s >= $0 } == true ? d.height : 0)
         }
         let mid = copyTop + d.height / 2
         let labels = others.indices.filter { others[$0].hasPrefix("g:") }
@@ -270,7 +269,7 @@ final class CollectionDrag {
         }
         item.localObject = id
         session.localContext = id
-        state = State(id: id, height: f.height, grab: p.y - f.minY, slot: ip.item, run: run(of: id))
+        pending = State(id: id, height: f.height, grab: p.y - f.minY, slot: ip.item, run: run(of: id))
         return [item]
     }
 
@@ -284,7 +283,11 @@ final class CollectionDrag {
     }
 
     func willBegin(_ session: UIDragSession) {
-        guard let d = state else { return }
+        guard var d = pending, d.id == session.localContext as? String, let at = owner.current.firstIndex(of: d.id) else { return }
+        pending = nil
+        // The rows may have changed since the lift (a menu was open meanwhile): the gap starts at its place now.
+        d.slot = at
+        state = d
         dragSession = session
         makeCopy(d)
         if d.id.hasPrefix("h:") {
@@ -293,7 +296,7 @@ final class CollectionDrag {
             let all = owner.current
             let items = shown(all)
             state?.slot = items.firstIndex(of: d.id)
-            owner.apply(items, fold: CollectionFold.Plan(heading: d.id, items: Set(Self.section(of: d.id, in: all)), collapse: true),
+            owner.apply(items, fold: CollectionFold.Plan(heading: d.id, items: Set(CollectionFold.section(of: d.id, in: all)), collapse: true),
                         animation: .easeOut(duration: 0.15))
         }
         // The dragged row leaves its place (the gap stays where it was).
@@ -304,6 +307,7 @@ final class CollectionDrag {
     }
 
     func dragEnded() {
+        pending = nil
         link?.invalidate()
         link = nil
         dragSession = nil
@@ -316,7 +320,7 @@ final class CollectionDrag {
     /// The items without a lifted heading's section.
     private func shown(_ items: [String]) -> [String] {
         guard let h = lifted else { return items }
-        let s = Set(Self.section(of: h, in: items))
+        let s = Set(CollectionFold.section(of: h, in: items))
         return items.filter { !s.contains($0) }
     }
 
@@ -334,7 +338,7 @@ final class CollectionDrag {
         guard let h = lifted else { return }
         lifted = nil
         let items = latest()
-        owner.apply(items, fold: CollectionFold.Plan(heading: h, items: Set(Self.section(of: h, in: items)), collapse: false),
+        owner.apply(items, fold: CollectionFold.Plan(heading: h, items: Set(CollectionFold.section(of: h, in: items)), collapse: false),
                     animation: .easeIn(duration: 0.22))
     }
 
@@ -497,10 +501,11 @@ final class CollectionDrag {
 }
 
 /// A display link's target (it holds its target strongly, and calls an Objective-C selector).
+@MainActor
 private final class Tick: NSObject {
-    let body: @MainActor () -> Void
-    init(_ body: @escaping @MainActor () -> Void) { self.body = body }
-    @objc func fire() { MainActor.assumeIsolated { body() } }
+    let body: () -> Void
+    init(_ body: @escaping () -> Void) { self.body = body }
+    @objc func fire() { body() }
 }
 
 // MARK: - The delegates
