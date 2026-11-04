@@ -597,6 +597,8 @@ struct GroupLabel: View {
     let title: String
     var sub: String? = nil
     var quiet = false
+    /// A drag in Upcoming is over its day (the Mac's `dayTarget`): the name in accent-text.
+    var hot = false
     /// The air above it: none when an edge row (`Line.edge`) holds it.
     var top: CGFloat = GroupLabel.air
     var bottom: CGFloat = 6
@@ -605,7 +607,7 @@ struct GroupLabel: View {
     var body: some View {
         // Cut off, the name and the day's date fade out at their ends, as a title does (the Mac's GroupLabelView).
         HStack(spacing: 6) {
-            Text(title).font(Typo.label).foregroundStyle(quiet ? p.inkQuiet : p.inkTertiary)
+            Text(title).font(Typo.label).foregroundStyle(hot ? p.accentText : quiet ? p.inkQuiet : p.inkTertiary)
                 .fadeTruncation(Metric.titleFade, text: title)
             if let sub {
                 Text(sub).font(Typo.quiet).foregroundStyle(p.inkQuiet).fadeTruncation(Metric.titleFade, text: sub)

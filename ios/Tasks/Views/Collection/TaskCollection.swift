@@ -456,6 +456,18 @@ final class TaskCell: UICollectionViewListCell {
         super.prepareForReuse()
         MainActor.assumeIsolated { owner?.cellWillReuse(self) }
     }
+
+    /// While UIKit has this cell in a drag (lifting, dragging, a refused drop's ~1 s set-down) it draws it at half
+    /// alpha. Our drag hides the row by its content's alpha instead (CollectionDrag), so the cell's stays 1.
+    private var dragging = false
+    override func dragStateDidChange(_ s: UICollectionViewCell.DragState) {
+        dragging = s != .none
+        super.dragStateDidChange(s)
+    }
+    override var alpha: CGFloat {
+        get { super.alpha }
+        set { super.alpha = dragging ? 1 : newValue }
+    }
 }
 
 /// A layout attributes object handed across `MainActor.assumeIsolated` (the layout's callers are on the main thread).

@@ -44,7 +44,8 @@ struct CollectionLine: View {
     @ViewBuilder private func row(_ line: Line) -> some View {
         switch line {
         case let .group(_, title, sub, quiet):
-            GroupLabel(title: title, sub: sub, quiet: quiet, top: GroupLabel.air)
+            // Lit while a drag in Upcoming is over its day (CollectionDrag.hover).
+            GroupLabel(title: title, sub: sub, quiet: quiet, hot: owner?.drag.hover.key == id, top: GroupLabel.air)
                 .allowsHitTesting(false)
         case let .heading(h, count, _):
             HeadingRow(heading: h, count: count, top: HeadingRow.air)

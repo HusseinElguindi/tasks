@@ -15,4 +15,6 @@ final class CollectionSelect {
 
     func install() {}
     func stop() {}
+    /// STAND-IN (cv-drag, until cv-select's +Select merges): true in select mode, where nothing lifts.
+    var blocksDrag: Bool { owner.app.isSelecting(owner.source) }
 }
