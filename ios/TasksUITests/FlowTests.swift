@@ -1519,6 +1519,30 @@ final class FlowTests: XCTestCase {
         XCTAssertFalse(deleted.exists, "its row is gone")
     }
 
+    /// A deleted list's row in Trash: its menu has Open and Restore List, and a swipe right says Restore.
+    func testADeletedListsRowHasItsMenuAndSwipe() {
+        app.launchArguments += ["-screen", "trash", "-hold", "YES"]
+        app.launch()
+        let deleted = app.buttons["Apartment move, deleted list, 2 tasks"]
+        XCTAssertTrue(deleted.waitForExistence(timeout: 10), "Trash")
+        menuOpen {
+            deleted.press(forDuration: 1.2)
+            XCTAssertTrue(app.buttons["Open"].waitForExistence(timeout: 3), "Open")
+            XCTAssertTrue(app.buttons["Restore List"].exists, "Restore List")
+            app.buttons["Open"].tap()
+        }
+        XCTAssertTrue(app.staticTexts["Read-only until you restore it."].waitForExistence(timeout: 3), "it opens")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(deleted.waitForExistence(timeout: 3), "back in Trash")
+        sleep(1)
+        deleted.swipeRight()
+        let restore = app.buttons["Restore"].firstMatch
+        XCTAssertTrue(restore.waitForExistence(timeout: 3), "the swipe says Restore")
+        restore.tap()
+        XCTAssertTrue(notice("Restored Apartment move").waitForExistence(timeout: 3), "the notice")
+        XCTAssertTrue(deleted.waitForNonExistence(timeout: 3), "out of Trash")
+    }
+
     /// The chevron at a deleted list's right expands it in place: its tasks show under it, and Trash stays.
     func testTheChevronExpandsADeletedList() {
         app.launchArguments += ["-screen", "trash"]
