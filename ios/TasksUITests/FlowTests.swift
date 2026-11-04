@@ -1745,7 +1745,9 @@ final class FlowTests: XCTestCase {
                 list.swipeDown()
                 if open.count == 0 { break }
             }
-            if let b = open.allElementsBoundByIndex.first(where: { $0.isHittable && $0.frame.minY > 120 && $0.frame.maxY < app.frame.maxY - 110 }) {
+            // Bound to each row, not to its place in the query: the rows checked before leave as they settle, which
+            // moves the rest up the query between finding one and tapping it.
+            if let b = open.allElementsBoundByAccessibilityElement.first(where: { $0.isHittable && $0.frame.minY > 120 && $0.frame.maxY < app.frame.maxY - 110 }) {
                 b.tap()
             } else {
                 list.swipeUp()
