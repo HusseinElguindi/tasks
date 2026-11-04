@@ -309,7 +309,7 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
         if !drag.holdsUpdates { apply(made.ids, fold: fold, animation: animation) }
         let changed = new.keys.filter { new[$0] != before[$0] && before[$0] != nil && current.contains($0) && !justInserted.contains($0) }
         sizes = new
-        if !drag.holdsUpdates, !changed.isEmpty { editor.resize(changed.sorted()) }
+        if !drag.holdsUpdates, !changed.isEmpty { editor.resize(changed.sorted(), from: before) }
         // Rows inserted by this update were configured with their new signatures; from the next one on, they resize.
         justInserted = []
     }

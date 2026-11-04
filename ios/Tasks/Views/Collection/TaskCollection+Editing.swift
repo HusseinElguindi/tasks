@@ -8,6 +8,12 @@ import UIKit
 // observes what it reads); when one changes, the row is reconfigured inside Motion.layout's spring, and the rows below
 // ease with it. Step 4 of the migration finishes it (the cells drawing the state they were configured with).
 //
+// A row that starts being typed into while it's cut off at the list's top (a heading renamed from its menu while it's
+// partly under the bar) is eased whole into view first, and only then shows its field (`resize`): shown at once, the
+// field's box was clipped at the collection view's top edge until the caret's and the keyboard's scrolls brought it
+// down (filmed: 4–6 frames on the simulator; the user saw it for about a second on the phone). The heading's row and
+// its notes' row draw the state they were configured with, so their fields wait for that reconfigure.
+//
 // A new line typed into notes also moves the caret down: the text view keeps it in view by scrolling the collection
 // view, at once (a 17–22 pt jump, filmed). `TaskCollectionView` puts that scroll on the same spring as the row's growth.
 //
@@ -34,7 +40,53 @@ final class CollectionEditing {
     }
 
     /// The rows, reconfigured with their new height inside an animation, so the update lays them out on its curve.
-    func resize(_ keys: [String]) {
+    /// A row that starts being typed into while it's cut off at the list's top (under the bar) is first eased whole
+    /// into view, on the same spring, and reconfigured once it's there: its field's box shows whole from its first
+    /// frame. (Shown at once, its top was clipped at the collection view's edge until the caret's and the keyboard's
+    /// scrolls brought it down, filmed.)
+    /// `from`: the signatures the rows had, so a row that only starts being typed into is revealed (not one being
+    /// typed into, whose top may be scrolled away on purpose).
+    func resize(_ keys: [String], from: [String: String] = [:]) {
+        guard let ds = owner.dataSource else { return }
+        let shown = Set(ds.snapshot().itemIdentifiers)
+        let keys = keys.filter(shown.contains)
+        guard !keys.isEmpty else { return }
+        if let key = item, keys.contains(key), from[key]?.hasPrefix(TaskCollection.editingMark) == false,
+           let y = reveal(key) {
+            scrolling = true
+            let done: () -> Void = { [weak self] in
+                self?.scrolling = false
+                self?.reconfigure(keys)
+            }
+            guard !UIAccessibility.isReduceMotionEnabled else {
+                owner.cv.contentOffset.y = y
+                done()
+                return
+            }
+            let was = UIView.areAnimationsEnabled
+            UIView.setAnimationsEnabled(true)
+            defer { UIView.setAnimationsEnabled(was) }
+            UIView.animate(springDuration: 0.25, bounce: 0, initialSpringVelocity: 0, delay: 0,
+                           options: [.overrideInheritedCurve, .overrideInheritedDuration, .beginFromCurrentState]) {
+                self.owner.cv.contentOffset.y = y
+            } completion: { _ in done() }
+            return
+        }
+        reconfigure(keys)
+    }
+
+    /// A reveal is under way (its rows are reconfigured in its completion); rows resized meanwhile are at once.
+    private var scrolling = false
+
+    /// The offset that shows the row whole at the list's top, if it's cut off there now.
+    private func reveal(_ id: String) -> CGFloat? {
+        guard !scrolling, let f = owner.modelFrame(id), let cv = owner.cv else { return nil }
+        let top = cv.contentOffset.y + cv.adjustedContentInset.top
+        guard f.minY < top - 0.5 else { return nil }
+        return max(f.minY - cv.adjustedContentInset.top, -cv.adjustedContentInset.top)
+    }
+
+    private func reconfigure(_ keys: [String]) {
         guard let ds = owner.dataSource else { return }
         var snap = ds.snapshot()
         let shown = Set(snap.itemIdentifiers)
