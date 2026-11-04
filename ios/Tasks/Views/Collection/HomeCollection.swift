@@ -16,8 +16,10 @@ import UIKit
 // finger in x and y (its y held 6 pt past the first and last slot; the slot is chosen by y). The slots are the lists'
 // run only, from just under "Lists" to the end of the lists, so Today and the views never move. The drop is
 // `AppModel.dropList`, given the run as `.onMove` gives it (edges included, as nil). A drop at the row's own place is
-// refused, so the copy flies home and nothing is written. The haptics (`DragFeel`), the set-down (`DragCopy.setDown`)
-// and UIKit's invisible drop are the task lists' (TaskCollection+Drag.swift).
+// refused, so the copy flies home and nothing is written. The haptics (`DragFeel`), the set-down (`DragCopy.setDown`),
+// UIKit's invisible drop and a fast flick's drop (`letGo`) are the task lists' (TaskCollection+Drag.swift). The lift
+// waits as `pending` until the drag begins: a long press that only opens the row's menu has no drag session, and a
+// drag set there refused every later drag and menu.
 
 struct HomeCollection: UIViewControllerRepresentable {
     let items: [String]
@@ -224,6 +226,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
     /// A list's long-press menu: Rename, then Delete List.
     func collectionView(_ cv: UICollectionView, contextMenuConfigurationForItemsAt ips: [IndexPath],
                         point: CGPoint) -> UIContextMenuConfiguration? {
+        probe(drag == nil ? "menuAsk" : "menuAsk-dragSet")
         guard drag == nil, ips.count == 1, let id = dataSource.itemIdentifier(for: ips[0]), id.hasPrefix("l:") else { return nil }
         let listID = String(id.dropFirst(2))
         return UIContextMenuConfiguration(identifier: id as NSString, previewProvider: nil) { [weak self] _ in
@@ -283,9 +286,16 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         var slot: Int?
         /// The last slot the gap was open at: a new one ticks.
         var ticked: Int?
+        /// A drop session has reached the list (before that, the gap follows the finger over the list, as in the task
+        /// lists' CollectionDrag: a fast flick let go before UIKit's first hit test is dropped by us).
+        var entered = false
     }
 
     private var drag: DragState?
+    /// The row lifted for a drag that hasn't begun: a long press asks for its drag items as it lifts, and may then
+    /// only open the row's menu, with no drag session at all (which left a drag set: every later drag and menu here
+    /// was refused, and updates held back).
+    private var pending: DragState?
     /// The dropped row, kept hidden while the copy flies into its place.
     private var landing: String?
     private weak var dragSession: UIDragSession?
@@ -334,7 +344,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         if let v = copyView, landing == nil {
             UIView.performWithoutAnimation { v.frame.origin = CGPoint(x: finger.x - d.grab.x + Metric.rowInset, y: copyTop) }
         }
-        guard dropSession != nil else { return }
+        guard dropSession != nil || (!d.entered && DragCopy.over(finger, cv)) else { return }
         let s = tops.min { abs($0.y - copyTop) < abs($1.y - copyTop) }?.slot
         if let s, s != d.ticked {
             d.ticked = s
@@ -365,7 +375,10 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
     }
 
     func collectionView(_ cv: UICollectionView, itemsForBeginning session: UIDragSession, at ip: IndexPath) -> [UIDragItem] {
-        guard !holds, let id = dataSource.itemIdentifier(for: ip), id.hasPrefix("l:"), let f = layout.modelFrame(ip.item) else { return [] }
+        guard !holds, let id = dataSource.itemIdentifier(for: ip), id.hasPrefix("l:"), let f = layout.modelFrame(ip.item) else {
+            probe("items0")
+            return []
+        }
         let p = session.location(in: cv)
         let item = UIDragItem(itemProvider: NSItemProvider())
         // The system's copy is invisible once lifted: ours is drawn instead.
@@ -376,14 +389,22 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
             return UIDragPreview(view: UIView(frame: CGRect(x: 0, y: 0, width: 1, height: 1)), parameters: p)
         }
         item.localObject = id
-        drag = DragState(id: id, height: f.height, grab: CGPoint(x: p.x - f.minX, y: p.y - f.minY), slot: ip.item, ticked: ip.item)
+        session.localContext = id
+        pending = DragState(id: id, height: f.height, grab: CGPoint(x: p.x - f.minX, y: p.y - f.minY), slot: ip.item, ticked: ip.item)
+        probe("items")
         return [item]
     }
 
     func collectionView(_ cv: UICollectionView, dragSessionIsRestrictedToDraggingApplication session: UIDragSession) -> Bool { true }
 
     func collectionView(_ cv: UICollectionView, dragSessionWillBegin session: UIDragSession) {
-        guard let d = drag else { return }
+        probe("begin")
+        guard var d = pending, d.id == session.localContext as? String, let at = current.firstIndex(of: d.id) else { return }
+        pending = nil
+        // The rows may have changed since the lift (a menu was open meanwhile): the gap starts at its place now.
+        d.slot = at
+        d.ticked = at
+        drag = d
         dragSession = session
         // The lift's haptic is UIKit's; the ticks and the drop's are ours, ready from here.
         feel.begin(in: cv)
@@ -393,6 +414,10 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
     }
 
     func collectionView(_ cv: UICollectionView, dragSessionDidEnd session: UIDragSession) {
+        probe("dragEnd")
+        pending = nil
+        // A flick UIKit ended without asking for a set-down first.
+        letGo()
         dragSession = nil
         feel.end()
         // A refused drop went home at the drop session's end already; this is a fallback (a drag that never entered).
@@ -402,6 +427,11 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
 
     /// The lift's preview; once the drag is on, UIKit's cancel preview draws nothing (our copy has gone home).
     func collectionView(_ cv: UICollectionView, dragPreviewParametersForItemAt ip: IndexPath) -> UIDragPreviewParameters? {
+        if dragSession != nil, drag?.entered == false {
+            // Asked for its set-down before any drop session reached the list: the finger has lifted (a flick let go
+            // before UIKit's first hit test), and UIKit's session ends only after its set-down, a second on.
+            DispatchQueue.main.async { [weak self] in self?.letGo() }
+        }
         if dragSession != nil || landing != nil { return DragCopy.invisibleParameters }
         guard let cell = cv.cellForItem(at: ip) else { return nil }
         let p = UIDragPreviewParameters()
@@ -425,20 +455,25 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
     // MARK: Drop
 
     func collectionView(_ cv: UICollectionView, canHandle session: UIDropSession) -> Bool {
-        session.localDragSession != nil && drag != nil
+        let can = session.localDragSession != nil && drag != nil
+        probe(can ? "can1" : "can0")
+        return can
     }
 
     func collectionView(_ cv: UICollectionView, dropSessionDidUpdate session: UIDropSession,
                         withDestinationIndexPath dest: IndexPath?) -> UICollectionViewDropProposal {
         guard session.localDragSession != nil, drag != nil else { return UICollectionViewDropProposal(operation: .forbidden) }
         dropSession = session
+        drag?.entered = true
         follow()
         // At its own place the drop is refused, so it goes back as a cancel and writes nothing.
-        let own = drag.map { $0.slot == current.firstIndex(of: $0.id) } == true
-        return UICollectionViewDropProposal(operation: own ? .cancel : .move, intent: .unspecified)
+        let move = drag.map(moves) == true
+        probe(move ? "upd-move" : "upd-cancel")
+        return UICollectionViewDropProposal(operation: move ? .move : .cancel, intent: .unspecified)
     }
 
     func collectionView(_ cv: UICollectionView, dropSessionDidExit session: UIDropSession) {
+        probe("exit")
         dropSession = nil
         guard drag?.slot != nil else { return }
         drag?.slot = nil
@@ -446,9 +481,44 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
     }
 
     func collectionView(_ cv: UICollectionView, performDropWith c: UICollectionViewDropCoordinator) {
+        probe("perform")
+        guard let item = c.items.first, let d = drag, current.contains(d.id) else { return }
+        let f = write(d)
+        // UIKit's drop goes nowhere to be seen: our copy sets down instead.
+        _ = c.drop(item.dragItem, to: DragCopy.invisibleDrop(at: f.map { CGPoint(x: $0.midX, y: $0.midY) } ?? copyView?.center ?? .zero, in: cv))
+        land(at: f)
+    }
+
+    /// The finger lifted with no drop session ever reaching the list (a fast flick, let go before UIKit's first hit
+    /// test; UIKit's session knows where): the drop at the finger's slot is ours, or it goes home, at once.
+    private func letGo() {
+        guard dragSession != nil, let d = drag, !d.entered else { return }
+        follow()
+        if let d = drag, moves(d) { drop(d) } else { goHome() }
+    }
+
+    /// The gap is at a new place: a drop there writes.
+    private func moves(_ d: DragState) -> Bool {
+        guard let s = d.slot, let i = current.firstIndex(of: d.id) else { return false }
+        return s != i
+    }
+
+    /// A drop UIKit didn't perform, though the finger lifted over a new slot: ours, set down the same way.
+    private func drop(_ d: DragState) {
+        probe("ourDrop")
+        let f = write(d)
+        land(at: f)
+    }
+
+    /// The drop at the gap: written (AppModel.dropList), the new order applied at once, the dropped row hidden under
+    /// the copy. Its frame, where the copy sets down (nil: it has gone).
+    private func write(_ d: DragState) -> CGRect? {
         dropSession = nil
-        guard let item = c.items.first, let d = drag, let src = current.firstIndex(of: d.id),
-              let top = current.firstIndex(of: "e:top"), let end = current.firstIndex(of: "e:end") else { return }
+        guard let src = current.firstIndex(of: d.id), let top = current.firstIndex(of: "e:top"),
+              let end = current.firstIndex(of: "e:end") else {
+            drag = nil
+            return nil
+        }
         // The lists' run, as `.onMove` gives it: the edges (nil), the lists.
         let run = Array(current[top...end])
         let from = src - top
@@ -465,20 +535,23 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
             apply(wanted, animated: false)
             moveGap(animated: false)
         }
-        guard let ip = dataSource.indexPath(for: d.id), let f = layout.modelFrame(ip.item) else {
-            _ = c.drop(item.dragItem, to: DragCopy.invisibleDrop(at: copyView?.center ?? .zero, in: cv))
-            land(at: nil)
-            return
-        }
-        // UIKit's drop goes nowhere to be seen: our copy sets down instead.
-        _ = c.drop(item.dragItem, to: DragCopy.invisibleDrop(at: CGPoint(x: f.midX, y: f.midY), in: cv))
-        land(at: f)
+        guard let ip = dataSource.indexPath(for: d.id) else { return nil }
+        return layout.modelFrame(ip.item)
     }
 
     func collectionView(_ cv: UICollectionView, dropSessionDidEnd session: UIDropSession) {
+        probe("dropEnd")
         dropSession = nil
-        // The finger lifted with no drop performed: the drop was refused, or the finger was off the list.
-        goHome()
+        // The finger lifted with no drop performed. Over a new slot, UIKit didn't get to it (a flick let go as its drop
+        // session began): the drop is ours. Otherwise it was refused, or the finger was off the list: home.
+        if let d = drag, moves(d) { drop(d) } else { goHome() }
+    }
+
+    /// Debug only: the call, in DragProbe's log (`-dragProbe`).
+    private func probe(_ s: String) {
+        #if DEBUG
+        DragProbe.shared.call(s, in: cv)
+        #endif
     }
 
     // MARK: The lifted copy

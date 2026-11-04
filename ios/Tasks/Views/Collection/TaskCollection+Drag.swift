@@ -30,6 +30,13 @@ import UIKit
 //   copy, which read as a fade outwards from the centre. One that's refused, or ends off the list, flies home the same
 //   way as the finger lifts (`dropSessionDidEnd`): UIKit's own set-down of a refused drop runs about a second after
 //   that (its cancel preview is invisible too), and the drag session ends only then.
+// - A fast flick: UIKit's lift starts a drag session only 0.2-0.4 s later, and a finger let go in between ends
+//   it with no drop. Let go within about 0.13 s of the lift's start, UIKit never begins it (no call at all: the row
+//   stays, nothing to do). Later, it begins, then either ends with no drop session ever reaching the list (asking
+//   first for its set-down's preview, or not), or reaches the list and then doesn't perform a `.move` it was given.
+//   Its session knows where the finger lifted, so the drop at that slot is ours (`letGo`, `dropEnded`), set down the
+//   same way: at once, not after UIKit's second-long set-down. Until a drop session has reached the list, the gap
+//   follows the finger wherever it's over the list.
 // - The dragged row is hidden through its content's alpha: UIKit owns the dragged cell's own alpha (half, while it's
 //   lifting or dragging), so hiding the cell left a ghost in the gap (TaskCell keeps that alpha at 1).
 // - Drops write through AppModel.drop (dropOnDay in Upcoming), Reorder.swift.
@@ -60,6 +67,10 @@ final class CollectionDrag {
         /// The last slot the gap was open at: a new one ticks (the gap closing off the list and opening again where it
         /// was doesn't).
         var ticked: Int?
+        /// A drop session has reached the list: from then on the gap follows it (and closes when it leaves). Before
+        /// that, the gap follows the finger wherever it's over the list: a fast flick can be let go before UIKit's
+        /// first hit test, and the drop is then ours (`letGo`).
+        var entered = false
         /// In Today and Undated, the items of the dragged row's run (`AppModel.dragRuns`: its list's group, the label
         /// first; the last group also has the Completed row and its done tasks). Nil elsewhere: one run.
         var run: Set<String>?
@@ -249,7 +260,7 @@ final class CollectionDrag {
         if let v = copy, landing == nil {
             UIView.performWithoutAnimation { v.frame.origin = CGPoint(x: finger.x - d.grab.x + Metric.rowInset, y: copyTop) }
         }
-        guard dropSession != nil else { return }
+        guard dropSession != nil || (!d.entered && DragCopy.over(finger, cv)) else { return }
         var s = tops.min { abs($0.y - copyTop) < abs($1.y - copyTop) }?.slot
         var lit = false
         if owner.source == .upcoming {
@@ -273,6 +284,12 @@ final class CollectionDrag {
         moveGap(animated: true)
     }
 
+
+    /// The gap is at a new place: a drop there writes.
+    private func moves(_ d: State) -> Bool {
+        guard let s = d.slot, let i = owner.current.firstIndex(of: d.id) else { return false }
+        return s != i
+    }
 
     // MARK: Lifting
 
@@ -306,6 +323,11 @@ final class CollectionDrag {
     /// until the finger moves, over our copy, which then takes over. Once the drag is on, UIKit asks again for its cancel
     /// (a refused drop's set-down): nothing it draws then shows, our copy has gone home.
     func previewParameters(at ip: IndexPath) -> UIDragPreviewParameters? {
+        if dragSession != nil, state?.entered == false {
+            // Asked for its set-down before any drop session reached the list: the finger has lifted (a flick let go
+            // before UIKit's first hit test), and UIKit's session ends only after its set-down, a second on.
+            DispatchQueue.main.async { [weak self] in self?.letGo() }
+        }
         if dragSession != nil || landing != nil { return DragCopy.invisibleParameters }
         guard let cell = owner.cv.cellForItem(at: ip) else { return nil }
         let p = UIDragPreviewParameters()
@@ -343,8 +365,18 @@ final class CollectionDrag {
         self.link = link
     }
 
+    /// The finger lifted with no drop session ever reaching the list (a fast flick, let go before UIKit's first hit
+    /// test; UIKit's session knows where): the drop at the finger's slot is ours, or it goes home, at once.
+    private func letGo() {
+        guard dragSession != nil, let d = state, !d.entered else { return }
+        follow()
+        if let d = state, moves(d) { drop(d) } else { goHome() }
+    }
+
     func dragEnded() {
         pending = nil
+        // A flick UIKit ended without asking for a set-down first.
+        letGo()
         link?.invalidate()
         link = nil
         dragSession = nil
@@ -486,11 +518,11 @@ final class CollectionDrag {
     func didUpdate(_ session: UIDropSession) -> UICollectionViewDropProposal {
         guard state != nil, session.localDragSession != nil else { return UICollectionViewDropProposal(operation: .forbidden) }
         dropSession = session
+        state?.entered = true
         follow()
         // At its own place (where it started, or a day it can't take) the drop is refused, so it goes back as a
         // cancel (a heading's performed no-move drop would still write an order).
-        let own = state.map { $0.slot == owner.current.firstIndex(of: $0.id) } ?? true
-        return UICollectionViewDropProposal(operation: own ? .cancel : .move, intent: .unspecified)
+        return UICollectionViewDropProposal(operation: state.map(moves) == true ? .move : .cancel, intent: .unspecified)
     }
 
     func didExit(_ session: UIDropSession) {
@@ -503,10 +535,32 @@ final class CollectionDrag {
     }
 
     func perform(_ c: UICollectionViewDropCoordinator) {
+        guard let item = c.items.first, let d = state, owner.current.contains(d.id) else { return }
+        let f = write(d)
+        // UIKit's drop goes nowhere to be seen: our copy sets down instead.
+        _ = c.drop(item.dragItem, to: DragCopy.invisibleDrop(at: f.map { CGPoint(x: $0.midX, y: $0.midY) } ?? copy?.center ?? .zero, in: owner.cv))
+        land(at: f)
+    }
+
+    /// A drop UIKit didn't perform, though the finger lifted over a new slot: ours, set down the same way.
+    private func drop(_ d: State) {
+        #if DEBUG
+        DragProbe.shared.call("ourDrop", in: owner.cv)
+        #endif
+        let f = write(d)
+        land(at: f)
+    }
+
+    /// The drop at the gap: written (AppModel.drop: dropOnDay in Upcoming), and the new order applied at once, the
+    /// dropped row hidden under the copy. Its frame, where the copy sets down (nil: it has gone).
+    private func write(_ d: State) -> CGRect? {
         dropSession = nil
         hover.key = nil
         let app = owner.app, source = owner.source, current = owner.current
-        guard let item = c.items.first, let d = state, let src = current.firstIndex(of: d.id) else { return }
+        guard let src = current.firstIndex(of: d.id) else {
+            state = nil
+            return nil
+        }
         let slot = d.slot ?? src
         let others = current.filter { $0 != d.id }
         // The drop's lines: the run's, as `.onMove` gives them per ForEach (Today and Undated: the group), or all.
@@ -529,20 +583,15 @@ final class CollectionDrag {
             owner.cv.layoutIfNeeded()
             moveGap(animated: false)
         }
-        guard let ip = owner.dataSource.indexPath(for: d.id), let f = owner.layout.modelFrame(ip.item) else {
-            _ = c.drop(item.dragItem, to: DragCopy.invisibleDrop(at: copy?.center ?? .zero, in: owner.cv))
-            land(at: nil)
-            return
-        }
-        // UIKit's drop goes nowhere to be seen: our copy sets down instead.
-        _ = c.drop(item.dragItem, to: DragCopy.invisibleDrop(at: CGPoint(x: f.midX, y: f.midY), in: owner.cv))
-        land(at: f)
+        guard let ip = owner.dataSource.indexPath(for: d.id) else { return nil }
+        return owner.layout.modelFrame(ip.item)
     }
 
     func dropEnded() {
         dropSession = nil
-        // The finger lifted with no drop performed: the drop was refused, or the finger was off the list.
-        goHome()
+        // The finger lifted with no drop performed. Over a new slot, UIKit didn't get to it (a flick let go as its drop
+        // session began): the drop is ours. Otherwise it was refused, or the finger was off the list: home.
+        if let d = state, moves(d) { drop(d) } else { goHome() }
     }
 }
 
@@ -584,6 +633,12 @@ enum DragCopy {
     static func round(_ l: CALayer) {
         l.cornerRadius = Metric.rowRadius
         l.cornerCurve = .continuous
+    }
+
+    /// `p` (in the list's coordinates) is over the list itself, not the bar or anything else drawn over it.
+    static func over(_ p: CGPoint, _ list: UIView) -> Bool {
+        guard let w = list.window, list.bounds.contains(p) else { return false }
+        return w.hitTest(list.convert(p, to: w), with: nil)?.isDescendant(of: list) == true
     }
 
     /// Preview parameters that draw nothing: a clear fill and no shadow, in a point.
@@ -655,34 +710,73 @@ private final class Tick: NSObject {
 
 extension TaskCollectionController: UICollectionViewDragDelegate, UICollectionViewDropDelegate {
     func collectionView(_ cv: UICollectionView, itemsForBeginning session: UIDragSession, at ip: IndexPath) -> [UIDragItem] {
-        drag.itemsForBeginning(session, at: ip)
+        let items = drag.itemsForBeginning(session, at: ip)
+        probe(items.isEmpty ? "items0" : "items")
+        return items
     }
 
     func collectionView(_ cv: UICollectionView, dragPreviewParametersForItemAt ip: IndexPath) -> UIDragPreviewParameters? {
-        drag.previewParameters(at: ip)
+        probe("params")
+        return drag.previewParameters(at: ip)
     }
 
-    func collectionView(_ cv: UICollectionView, dragSessionWillBegin session: UIDragSession) { drag.willBegin(session) }
-    func collectionView(_ cv: UICollectionView, dragSessionDidEnd session: UIDragSession) { drag.dragEnded() }
+    func collectionView(_ cv: UICollectionView, dragSessionWillBegin session: UIDragSession) {
+        probe("begin")
+        mark("begin at \(session.location(in: cv))")
+        drag.willBegin(session)
+    }
+    func collectionView(_ cv: UICollectionView, dragSessionDidEnd session: UIDragSession) {
+        probe("dragEnd")
+        mark("dragEnd at \(session.location(in: cv))")
+        drag.dragEnded()
+    }
 
     func collectionView(_ cv: UICollectionView, dragSessionIsRestrictedToDraggingApplication session: UIDragSession) -> Bool { true }
 
-    func collectionView(_ cv: UICollectionView, canHandle session: UIDropSession) -> Bool { drag.canHandle(session) }
+    func collectionView(_ cv: UICollectionView, canHandle session: UIDropSession) -> Bool {
+        let can = drag.canHandle(session)
+        probe(can ? "can1" : "can0")
+        return can
+    }
 
     func collectionView(_ cv: UICollectionView, dropSessionDidUpdate session: UIDropSession,
                         withDestinationIndexPath dest: IndexPath?) -> UICollectionViewDropProposal {
-        drag.didUpdate(session)
+        let p = drag.didUpdate(session)
+        probe(["upd-cancel", "upd-forbidden", "upd-copy", "upd-move"][max(0, min(3, Int(p.operation.rawValue)))])
+        return p
     }
 
-    func collectionView(_ cv: UICollectionView, dropSessionDidExit session: UIDropSession) { drag.didExit(session) }
-    func collectionView(_ cv: UICollectionView, performDropWith c: UICollectionViewDropCoordinator) { drag.perform(c) }
-    func collectionView(_ cv: UICollectionView, dropSessionDidEnd session: UIDropSession) { drag.dropEnded() }
+    func collectionView(_ cv: UICollectionView, dropSessionDidEnter session: UIDropSession) { probe("enter") }
+    func collectionView(_ cv: UICollectionView, dropSessionDidExit session: UIDropSession) { probe("exit"); drag.didExit(session) }
+    func collectionView(_ cv: UICollectionView, performDropWith c: UICollectionViewDropCoordinator) { probe("perform"); drag.perform(c) }
+    func collectionView(_ cv: UICollectionView, dropSessionDidEnd session: UIDropSession) {
+        probe("dropEnd")
+        mark("dropEnd at \(session.location(in: cv))")
+        drag.dropEnded()
+    }
+
+    func collectionView(_ cv: UICollectionView, willDisplayContextMenu c: UIContextMenuConfiguration,
+                        animator: (any UIContextMenuInteractionAnimating)?) { probe("menu") }
+
+    func mark(_ s: String) {
+        #if DEBUG
+        DragProbe.shared.mark(s, in: cv)
+        #endif
+    }
+
+    /// Debug only: the call, in DragProbe's log (`-dragProbe`).
+    func probe(_ s: String) {
+        #if DEBUG
+        DragProbe.shared.call(s, in: cv)
+        #endif
+    }
 }
 
 #if DEBUG
 /// Debug only. `-dragProbe YES` (FlowTests): what the last drag did, as the collection view's accessibility value
-/// (identifier "dragProbe"), read once it's over: "ticks=3 drops=1 dx=80.0 land=0.0,0.0" (the haptic ticks and drops;
-/// the copy's sideways offset from the row's place as the finger lifted; the copy's last frame against the row cell's).
+/// (identifier "dragProbe"), read once it's over: "ticks=3 drops=1 dx=80.0 land=0.0,0.0 ev=items>…" (the haptic ticks
+/// and drops; the copy's sideways offset from the row's place as the finger lifted; the copy's last frame against the
+/// row cell's; the drag and drop delegate calls since the lift, "ourDrop" a flick's drop of ours).
 /// `-dragTrace YES` (DragFilmTests): from each lift to 0.5 s after its set-down, every frame of the copy (presentation
 /// origin and size, opacity, shadow opacity, scale) and of the row under it (its cell's origin, its content's opacity),
 /// and any view UIKit shows outside the app's root view (its drag and drop previews), to tmp/drag-trace.log in the
@@ -709,6 +803,17 @@ final class DragProbe {
         mark("lift")
     }
 
+    /// The drag and drop delegate calls since the last lift's `items`, in order (a repeated one once): "ev=items>begin>
+    /// can1>upd>perform>dropEnd>dragEnd" ("can" with its answer, "upd" with the proposal's operation when it changes).
+    private var calls: [String] = []
+    func call(_ s: String, in v: UIView) {
+        if s == "items" { calls = [] }
+        view = v
+        if calls.last != s { calls.append(s) }
+        mark("call " + s)
+        publish()
+    }
+
     func released(_ copy: UIView, home: CGPoint?) {
         if let home { dx = copy.frame.minX - home.x }
         mark("release copy=\(f(copy.frame.minX)),\(f(copy.frame.minY)) home=\(home.map { "\(f($0.x)),\(f($0.y))" } ?? "-")")
@@ -726,7 +831,7 @@ final class DragProbe {
     private func publish() {
         guard probing, let view else { return }
         view.accessibilityIdentifier = "dragProbe"
-        view.accessibilityValue = "ticks=\(ticks) drops=\(drops) dx=\(dx.map(f) ?? "-") land=\(land.map { "\(f($0.x)),\(f($0.y))" } ?? "-")"
+        view.accessibilityValue = "ticks=\(ticks) drops=\(drops) dx=\(dx.map(f) ?? "-") land=\(land.map { "\(f($0.x)),\(f($0.y))" } ?? "-") ev=\(calls.joined(separator: ">"))"
     }
 
     // MARK: The trace
@@ -755,6 +860,11 @@ final class DragProbe {
         let l = CADisplayLink(target: Tick { [weak self] in self?.frame() }, selector: #selector(Tick.fire))
         l.add(to: .main, forMode: .common)
         link = l
+    }
+
+    func mark(_ s: String, in v: UIView) {
+        if view == nil { view = v }
+        mark(s)
     }
 
     private func mark(_ s: String) {

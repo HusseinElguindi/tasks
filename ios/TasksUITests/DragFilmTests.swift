@@ -33,6 +33,23 @@ final class DragFilmTests: XCTestCase {
         sleep(2)
     }
 
+    /// Fast flicks of a task onto the bench row, let go as they arrive (FlowTests' testAFastFlickDropsWhereTheFingerLetGo):
+    /// UIKit begins some late and ends them with no drop; ours then drops at the finger's slot. Relaunched for each.
+    func testFilmFlick() {
+        for (n, (hold, speed)) in [(0.5, 4000.0), (0.5, 4000), (0.55, 6000), (0.5, 6000)].enumerated() {
+            app.launch()
+            XCTAssertTrue(heading("Labs").waitForExistence(timeout: 10))
+            sleep(1)
+            let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
+            let bench = app.staticTexts["Book a make-up lab bench"].firstMatch
+            mark("flick\(n + 1)")
+            redo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                .press(forDuration: hold, thenDragTo: bench.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)),
+                       withVelocity: XCUIGestureVelocity(rawValue: speed), thenHoldForDuration: 0)
+            sleep(2)
+        }
+    }
+
     /// A task into the next section, let go 60 pt right of its column (a drop: it falls back into the row's frame),
     /// Labs up before Lectures (its section folds into the copy, with the count badge; then opens), and the first task
     /// pulled up past its slot and let go there (refused: home).

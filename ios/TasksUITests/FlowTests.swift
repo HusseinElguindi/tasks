@@ -823,6 +823,69 @@ final class FlowTests: XCTestCase {
         assertLandedExactly()
     }
 
+    /// Fast flicks, let go the moment they arrive, soon after the lift: UIKit begins the drag late, then ends it with
+    /// no drop session reaching the list, or with one it doesn't perform (the probe's "ev" has the calls; "ourDrop" is
+    /// ours). Each drag UIKit began drops at the finger's slot and sets down exactly on the row. One let go within about
+    /// 0.13 s of the lift's start UIKit never begins at all ("ev" is only the lift's calls), and says nothing: there's
+    /// nothing to drop, and the row stays.
+    func testAFastFlickDropsWhereTheFingerLetGo() {
+        app.launchArguments += ["-screen", "list:phys", "-dragProbe", "YES"]
+        var ours = 0, began = 0
+        for (hold, speed) in [(0.5, 3000.0), (0.5, 4000), (0.5, 6000), (0.55, 6000)] {
+            app.launch()
+            let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
+            XCTAssertTrue(redo.waitForExistence(timeout: 10))
+            sleep(1)
+            let bench = app.staticTexts["Book a make-up lab bench"].firstMatch
+            let before = y(redo)
+            redo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                .press(forDuration: hold, thenDragTo: bench.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)),
+                       withVelocity: XCUIGestureVelocity(rawValue: speed), thenHoldForDuration: 0)
+            sleep(2)
+            let ev = probe()["ev"] ?? ""
+            print("FLICK hold=\(hold) speed=\(Int(speed)) ev=\(ev)")
+            guard ev.contains("begin") else {
+                XCTAssertEqual(y(redo), before, accuracy: 1, "UIKit never began the drag: the row stays (\(ev))")
+                continue
+            }
+            began += 1
+            if ev.contains("ourDrop") { ours += 1 }
+            XCTAssertGreaterThan(y(redo), y(bench), "held \(hold) s, flicked at \(Int(speed)) pt/s: dropped under the bench (\(probe()))")
+            XCTAssertLessThan(y(redo), y(heading("Exam prep")))
+            XCTAssertEqual(probe()["drops"], "1", "one impact, at the drop")
+            assertLandedExactly()
+        }
+        print("FLICK began=\(began) ours=\(ours)")
+        XCTAssertGreaterThan(began, 0, "UIKit began at least one of the flicks")
+    }
+
+    /// A list's long-press menu used (Rename, then Cancel) leaves no drag behind: the next drag moves the list, and
+    /// the menu opens again after it.
+    func testAListMenuThenADragOnHome() {
+        app.launchArguments += ["-dragProbe", "YES"]
+        app.launch()
+        let phys = app.buttons["PHYS 122"].firstMatch, school = app.buttons["School"].firstMatch
+        XCTAssertTrue(phys.waitForExistence(timeout: 10))
+        sleep(1)
+        menuOpen {
+            app.buttons["Errands"].firstMatch.press(forDuration: 1.0)
+            sleep(1)
+            app.buttons["Rename"].firstMatch.tap()
+            sleep(1)
+            app.buttons["Cancel"].firstMatch.tap()
+            sleep(1)
+        }
+        drag(phys, onto: school)
+        XCTAssertLessThan(y(phys), y(school), "PHYS 122 dragged above School after the menu (\(probe()))")
+        XCTAssertEqual(probe()["drops"], "1")
+        assertLandedExactly()
+        menuOpen {
+            app.buttons["Errands"].firstMatch.press(forDuration: 1.0)
+            sleep(1)
+            XCTAssertTrue(app.buttons["Rename"].exists, "and the menu opens again")
+        }
+    }
+
     /// The copy follows the finger sideways too, keeping the grab offset; the slot is still chosen by its height, and
     /// it sets down back in the row's column.
     func testDragCopyFollowsSideways() {
