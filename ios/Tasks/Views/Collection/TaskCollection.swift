@@ -349,7 +349,7 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
         UIView.setAnimationsEnabled(true)
         defer { UIView.setAnimationsEnabled(was) }
         self.fold.prepare(fold, old: old, animated: true)
-        if let fold, self.fold.animate(fold, { self.dataSource.apply(snap, animatingDifferences: true) { finish() } }) {
+        if let fold, self.fold.animate(fold, snap, done: finish) {
             return
         }
         // The inherited curve and duration (SwiftUI's, around this update) are overridden: see TaskCollection+Fold.swift.
@@ -468,7 +468,7 @@ final class CollectionLayout: UICollectionViewCompositionalLayout {
     func base(_ ip: IndexPath) -> UICollectionViewLayoutAttributes? { super.layoutAttributesForItem(at: ip) }
 
     override func layoutAttributesForElements(in rect: CGRect) -> [UICollectionViewLayoutAttributes]? {
-        let pad = on { $0.drag.layoutPad } ?? 0
+        let pad = on { max($0.drag.layoutPad, $0.fold.layoutPad) } ?? 0
         return super.layoutAttributesForElements(in: rect.insetBy(dx: 0, dy: -pad))?.map(decorate)
     }
 
