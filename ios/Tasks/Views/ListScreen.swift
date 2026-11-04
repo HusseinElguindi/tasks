@@ -23,6 +23,8 @@ struct ListScreen: View {
     @State private var sunHaptic = 0
     /// The two-finger swipe that selects (§3), on this list's scroll view.
     @State private var swipe = SwipeSelect()
+    /// The collection's scrolling, on the UICollectionView path (`ListContainer`).
+    @State private var collection = CollectionProxy()
 
     private static let space = "rows"
     private var adding: Bool { app.draft?.source == source }
@@ -37,6 +39,17 @@ struct ListScreen: View {
         let shownIDs = lines.compactMap { if case let .task(t, _, _, _) = $0 { t.id } else { nil } }
         let picks = Picks(lines, selected: selecting ? app.selected : [])
         ScrollViewReader { proxy in
+            Group {
+            if ListContainer.collection {
+                TaskCollection(source: source, lines: lines, sizes: TaskCollection.signatures(app, source, lines),
+                               proxy: collection,
+                               folded: Binding(get: { folded }, set: { v in animate(.easeOut(duration: 0.15)) { folded = v } }),
+                               sunRise: $sunRise)
+                    // Its own insets: the keyboard's, and the floating controls' clearance (TaskCollection.swift).
+                    .ignoresSafeArea(.all, edges: .bottom)
+                    // A new one for another screen: the stack can swap a screen's source in place (an undo's).
+                    .id(source)
+            } else {
             List {
                 if let l = app.deletedList(source) {
                     // Above the large title, 10 in from the sides and 4 under the bar (§28's banner, the sheet's
@@ -78,25 +91,27 @@ struct ListScreen: View {
                     .listRow()
             }
             .listStyle(.plain)
+            }
+            }
             // A new heading's row (at the bottom, or above a task) and a new task's in a heading are scrolled into
             // view as adding starts; a new task's own row is at the top, where + is pressed from. The next row after
             // Return is under the last one, already in view.
             .onChange(of: app.draft?.kind) { _, kind in
                 guard let kind, adding, kind != .task, app.draft?.editedHeading == nil, !editingNotes else { return }
-                animate(Motion.layout) { proxy.scrollTo("draft") }
+                reveal("draft", proxy)
             }
             // An undo or a redo: the first row it touched, scrolled into view (the least that shows it).
             .task(id: app.undoReveal) {
                 guard let r = app.undoReveal, app.shown == source else { return }
                 try? await Task.sleep(for: .milliseconds(50))
-                animate(Motion.layout) { proxy.scrollTo("t:" + r.id) }
+                reveal("t:" + r.id, proxy)
                 app.undoReveal = nil
             }
             // Show in <list>: the task is scrolled into view once the list is up.
             .task(id: app.revealTask) {
                 guard let id = app.revealTask, source == .list(app.task(id)?.list ?? "") else { return }
                 try? await Task.sleep(for: .milliseconds(350))
-                animate(Motion.layout) { proxy.scrollTo("t:" + id, anchor: .center) }
+                reveal("t:" + id, proxy, center: true)
                 app.revealTask = nil
             }
         }
@@ -126,7 +141,7 @@ struct ListScreen: View {
         // space. Not adding, the list's taps are left alone.
         .simultaneousGesture(SpatialTapGesture(coordinateSpace: .named(Self.space)).onEnded { tap in
             if !(draftFrame?.contains(tap.location) ?? false) { app.endDraft() }
-        }, including: adding ? .all : .subviews)
+        }, including: adding && !ListContainer.collection ? .all : .subviews)
         // A swipe on the list puts the keyboard away, which ends adding.
         .scrollDismissesKeyboard(.immediately)
         .refreshable { await app.syncNow() }
@@ -201,6 +216,15 @@ struct ListScreen: View {
             } else {
                 ToolbarItem(placement: .primaryAction) { ViewMenu(source: source) }
             }
+        }
+    }
+
+    /// A row scrolled into view: the least that shows it, or centred.
+    private func reveal(_ id: String, _ proxy: ScrollViewProxy, center: Bool = false) {
+        if ListContainer.collection {
+            collection.scrollTo(id, center: center)
+        } else {
+            animate(Motion.layout) { proxy.scrollTo(id, anchor: center ? .center : nil) }
         }
     }
 
@@ -377,7 +401,7 @@ struct ListScreen: View {
 }
 
 /// A list's notes being typed, under its title: the notes editor, written once as it ends ("Edit List Notes").
-private struct ListNotesEditor: View {
+struct ListNotesEditor: View {
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     @FocusState private var focus: DetailField?
@@ -396,7 +420,7 @@ private struct ListNotesEditor: View {
 
 /// Swipe right completes; swipe left sets the When or deletes. In Trash, swipe right puts back. None in select mode
 /// (`enabled`), where the rows keep their place in the view tree.
-private struct TaskSwipes: ViewModifier {
+struct TaskSwipes: ViewModifier {
     let task: TaskModel
     let source: Source
     var enabled = true
@@ -437,7 +461,7 @@ private struct TaskSwipes: ViewModifier {
 
 /// In select mode, which rows are selected, and which join the selected row above or below them: their shared corners
 /// go square, so neighbours read as one block (§3). A heading, a label or the Completed row breaks the block.
-private struct Picks {
+struct Picks {
     var selected: Set<EntityID> = []
     var above: Set<EntityID> = []
     var below: Set<EntityID> = []

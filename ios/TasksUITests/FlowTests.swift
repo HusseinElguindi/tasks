@@ -12,6 +12,8 @@ final class FlowTests: XCTestCase {
         // The sample lists and tasks, seeded fresh in a scratch store at each launch (never the app's data), in Dark and
         // Classic whatever an earlier run chose in Settings (launch arguments win over saved settings).
         app.launchArguments = ["-sampleData", "YES", "-appearance", "dark", "-style", "classic"]
+        // TEST_RUNNER_LIST_CONTAINER=cv: the rows on the UICollectionView path (ListContainer), during the migration.
+        if let c = ProcessInfo.processInfo.environment["LIST_CONTAINER"] { app.launchEnvironment["LIST_CONTAINER"] = c }
         try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
     }
 
@@ -1668,7 +1670,14 @@ final class FlowTests: XCTestCase {
         sleep(1)
         let list = app.collectionViews.firstMatch
         for _ in 0..<60 {
-            guard open.count > 0 else { break }
+            if open.count == 0 {
+                // A collection view's rows off screen aren't in its tree (List's are): once the rows have settled,
+                // look again from the top.
+                sleep(2)
+                list.swipeDown()
+                list.swipeDown()
+                if open.count == 0 { break }
+            }
             if let b = open.allElementsBoundByIndex.first(where: { $0.isHittable && $0.frame.minY > 120 && $0.frame.maxY < app.frame.maxY - 110 }) {
                 b.tap()
             } else {
