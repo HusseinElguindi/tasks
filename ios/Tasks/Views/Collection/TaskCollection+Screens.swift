@@ -34,8 +34,7 @@ struct CollectionLine: View {
     @ViewBuilder private var content: some View {
         switch id {
         case "header": CollectionHeader(source: source)
-        case "banner":
-            if let l = app.deletedList(source) { DeletedListBanner(list: l).padding(.top, 4) }
+        case "banner": BannerLine(source: source)
         default:
             if let line = rows.line(id) { row(line) }
         }
@@ -55,11 +54,19 @@ struct CollectionLine: View {
             let row = TaskRow(task: t, source: source, indent: indent, groupDay: groupDay, day: day,
                               selected: app.flashed.contains(t.id) || (app.isSplit ? app.selectedTask == t.id : app.detailTask == t.id))
             // A deleted list's rows are deaf, as on the Mac (§28).
-            if app.deletedList(source) != nil { row.disabled(true) } else { row }
+            if app.deletedList(source) != nil {
+                row.disabled(true)
+            } else {
+                row.modifier(SwipeActionsForVoiceOver(task: t, source: source, enabled: !app.isSelecting(source)))
+            }
         case let .completedToggle(key, count, open):
             CompletedToggleRow(key: key, count: count, open: open, top: CompletedToggleRow.air)
         case let .deletedList(l, _, open, day):
             DeletedListRow(list: l, open: open, day: day)
+                // Its swipe's Restore, as List gives VoiceOver (none in select mode).
+                .accessibilityActions {
+                    if !app.isSelecting(source) { Button("Restore") { app.restoreList(l.id) } }
+                }
         case .draft:
             if let token = app.draft?.token { DraftRow(token: token).id(token) }
         case let .empty(title, message, symbol):
@@ -68,6 +75,55 @@ struct CollectionLine: View {
             AllDoneSun(rise: rows.sunRise)
         case .edge:
             EmptyView()
+        }
+    }
+}
+
+/// A row's swipe actions as VoiceOver's actions, named and ordered as List gives them for `TaskSwipes` (When, Delete,
+/// Complete or Not Done; in Trash, Put Back), on the row's container. On this path the swipes themselves are UIKit's
+/// (`CollectionSwipes`), not SwiftUI's, so VoiceOver gets them from here.
+private struct SwipeActionsForVoiceOver: ViewModifier {
+    let task: TaskModel
+    let source: Source
+    let enabled: Bool
+    @Environment(AppModel.self) private var app
+
+    func body(content: Content) -> some View {
+        content.accessibilityActions {
+            if enabled {
+                if source == .trash {
+                    if app.canPutBack(task) { Button("Put Back") { app.putBack(task.id) } }
+                } else {
+                    // VoiceOver lists them last first.
+                    Button(task.isDone ? "Not Done" : "Complete") { app.toggle(task.id) }
+                    Button("Delete") { app.delete(task.id) }
+                    Button("When") { app.dateTarget = DateTarget(taskID: task.id, kind: .when) }
+                }
+            }
+        }
+    }
+}
+
+/// A deleted list's banner (§28), 4 under the bar and 10 in from the sides (the cell's margins), as on the List path.
+/// Restored, its item goes and the cell fades out with the rows closing up: it keeps drawing the list as it was until
+/// then (the list and the day it was deleted, which the restore clears), not a blank or "Deleted" with no day.
+private struct BannerLine: View {
+    let source: Source
+    @Environment(AppModel.self) private var app
+    @State private var kept: (list: ListModel, at: Int)?
+
+    var body: some View {
+        let live = app.deletedList(source)
+        Group {
+            if let live {
+                DeletedListBanner(list: live)
+            } else if let kept {
+                DeletedListBanner(list: kept.list, deletedAt: kept.at)
+            }
+        }
+        .padding(.top, 4)
+        .onChange(of: live?.archivedAt, initial: true) { _, at in
+            if let live, let at { kept = (live, at) }
         }
     }
 }
