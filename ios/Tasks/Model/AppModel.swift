@@ -130,8 +130,6 @@ final class AppModel {
     var redoName: String?
     /// The rows an undo or redo touched: they show the selected fill for 0.6 s, then fade (Undo.swift).
     var flashed: Set<EntityID> = []
-    /// Headings whose notes are a row of their own for a moment, around a fold (`toggleCollapse`).
-    var splitNotes: Set<EntityID> = []
     @ObservationIgnored var flashToken: UUID?
     /// The first of them, scrolled into view on its screen.
     var undoReveal: UndoReveal?

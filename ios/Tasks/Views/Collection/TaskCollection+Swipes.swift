@@ -2,15 +2,15 @@ import SwiftUI
 import TasksCore
 import UIKit
 
-// Swipe actions and long-press menus on the collection view: what TaskSwipes, TaskMenu, HeadingMenu and the deleted
-// list's row do on the List path (ListScreen.swift), as UIKit's own. Step 3 of the migration.
+// Swipe actions and long-press menus on the collection view, as UIKit's own: a task's, a heading's and the deleted
+// list's row in Trash. Step 3 of the migration.
 //
 // - Swipes: the list layout's provider, both edges (`actions`). Right completes, left deletes or sets the When; in
 //   Trash right puts back; Trash's row for a deleted list restores it. A full swipe does the outermost action.
 // - Menus: the collection view's (the controller is its delegate). A task's, a heading's (its row and its notes' row),
 //   and a deleted list's row in Trash. Select mode's menus are `CollectionSelect`'s (`menu(for:)`).
 // - An action runs as it's picked, while the menu closes (the user's call 4): the collection view applies updates
-//   during a menu's dismissal, so a heading being renamed or given notes never draws blank, as it did on List.
+//   during a menu's dismissal, so a heading being renamed or given notes never draws blank.
 // - The preview is the row's fill: the cell less its sides' inset and a heading's air, with the row's corners.
 
 @MainActor
@@ -67,7 +67,7 @@ final class CollectionSwipes {
                 return swipes([action(t.isDone ? "Not Done" : "Complete", t.isDone ? "arrow.uturn.backward" : "checkmark",
                                       p.accent) { app.toggle(tid) }])
             }
-            // The outermost first: Delete is the full swipe's, as on List.
+            // The outermost first: Delete is the full swipe's.
             return swipes([
                 action("Delete", "trash", p.danger, destructive: true) { app.delete(tid) },
                 action("When", "calendar", p.list(.magenta)) { app.dateTarget = DateTarget(taskID: tid, kind: .when) },
@@ -169,7 +169,7 @@ final class CollectionSwipes {
         let collapsed = app.collapsed.contains(id)
         let fold = act(collapsed ? "Expand" : "Collapse", collapsed ? "chevron.down" : "chevron.right") { app.toggleCollapse(id) }
         if app.isTrashed(h) { return UIMenu(children: [fold]) }
-        // One line: the name is cut to what's left of the menu's 150pt, as on List.
+        // One line: the name is cut to what's left of the menu's 150pt.
         let name = MenuName.fit(h.title, width: 150 - MenuName.width("New Task in “”"))
         return UIMenu(children: [
             inline([

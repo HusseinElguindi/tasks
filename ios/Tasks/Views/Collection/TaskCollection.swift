@@ -21,13 +21,6 @@ import UIKit
 // their own, "n:<id>" (`Line.heading(notes:)` and `Line.headingNotes` both). Edge lines are left out: their air is
 // drawn in the row below them (a heading's, a label's, Completed's own `top`).
 
-enum ListContainer {
-    /// `-listContainer cv` (or LIST_CONTAINER=cv in the environment, for UI tests): ListScreen's rows are drawn by
-    /// `TaskCollection`, not List. List stays the default until the migration's last step.
-    static let collection: Bool = UserDefaults.standard.string(forKey: "listContainer") == "cv"
-        || ProcessInfo.processInfo.environment["LIST_CONTAINER"] == "cv"
-}
-
 /// What the cells read as they draw: each item's line, kept after it goes so a row keeps its content while it leaves.
 ///
 /// One observed box per item, written only when that item's line changed (`Line.cellKey`): a row redraws for its own
@@ -201,7 +194,7 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
 
     var dark: Bool { app.appearance == .system ? traitCollection.userInterfaceStyle == .dark : app.appearance == .dark }
     var palette: Palette { Palette.make(dark: dark) }
-    /// Space under the last row, clear of the floating bar and the + (List's last row on the List path).
+    /// Space under the last row, clear of the floating bar and the +.
     var bottomClearance: CGFloat { app.isSplit ? 24 : Metric.bottomClearance }
 
     override func loadView() {
@@ -218,9 +211,9 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
         cv.allowsSelection = false
         cv.delegate = self
         cv.keyboardDismissMode = .onDrag
-        // It pulls down even when the rows fit, as List does: to refresh, and to put the keyboard away.
+        // It pulls down even when the rows fit: to refresh, and to put the keyboard away.
         cv.alwaysBounceVertical = true
-        // A row's press shows the moment a finger lands (`pressesShowAtOnce` on the List path).
+        // A row's press shows the moment a finger lands.
         cv.delaysContentTouches = false
         // A row's height changes only when it's reconfigured, inside an animation (`CollectionEditing.resize`):
         // self-sizing on its own snaps, and races the updates' animations.

@@ -24,7 +24,7 @@ import UIKit
 //   UIKit's own set-down of a refused drop runs about a second after that, and the drag session ends only then.
 // - The dragged row is hidden through its content's alpha: UIKit owns the dragged cell's own alpha (half, while it's
 //   lifting or dragging), so hiding the cell left a ghost in the gap (TaskCell keeps that alpha at 1).
-// - Drops write through AppModel.drop (dropOnDay in Upcoming), as `.onMove` does on the List path.
+// - Drops write through AppModel.drop (dropOnDay in Upcoming), Reorder.swift.
 //
 // Hooks: `install` sets the collection view's drag and drop delegates (the controller conforms, below), `stop`;
 // `holdsUpdates` (while a drag, its landing or a lifted heading is on, the core keeps the latest items in `wanted`);
@@ -249,7 +249,7 @@ final class CollectionDrag {
 
     private func canLift(_ id: String) -> Bool {
         let app = owner.app, source = owner.source
-        // Not in select mode (`CollectionSelect.blocksDrag`: one row at a time, as on List), nor while adding here, nor
+        // Not in select mode (`CollectionSelect.blocksDrag`: one row at a time), nor while adding here, nor
         // where rows don't move (Completed, Trash, a deleted list).
         guard !owner.select.blocksDrag, app.draft?.source != source, app.dragRuns([], source) != nil else { return false }
         return owner.rows.line(id)?.canDrag == true && (id.hasPrefix("t:") || id.hasPrefix("h:"))

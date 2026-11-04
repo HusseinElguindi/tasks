@@ -2,8 +2,8 @@ import SwiftUI
 import TasksCore
 import UIKit
 
-// Home on a UICollectionView, in place of HomeView's List (`ListContainer`, the migration's step 8). The same rows as
-// the List path, each in a UIHostingConfiguration cell: the header, Today, Upcoming and Undated, "Lists", the lists
+// Home on a UICollectionView (the migration's step 8, in place of SwiftUI List). The app's own SwiftUI rows, each in a
+// UIHostingConfiguration cell: the header, Today, Upcoming and Undated, "Lists", the lists
 // between their two edges, Completed and Trash, and the sync line. Under the last row, the floating controls' clearance
 // (iPad's sidebar: 60) is the bottom inset, not a row.
 //
@@ -47,7 +47,7 @@ struct HomeCollection: UIViewControllerRepresentable {
     }
 }
 
-/// An item's SwiftUI row: the List path's own views. Each reads the app itself, so it stays live (Today's count, a
+/// An item's SwiftUI row (HomeView.swift's views). Each reads the app itself, so it stays live (Today's count, a
 /// list's name, the sync line's words).
 struct HomeLine: View {
     let id: String
@@ -104,7 +104,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         var config = UICollectionLayoutListConfiguration(appearance: .plain)
         config.showsSeparators = false
         config.backgroundColor = .clear
-        // No swipe actions on Home (the List path has none).
+        // No swipe actions on Home.
         let layout = HomeLayout { _, env in NSCollectionLayoutSection.list(using: config, layoutEnvironment: env) }
         self.layout = layout
         let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
@@ -114,14 +114,14 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         cv.dragDelegate = self
         cv.dropDelegate = self
         cv.dragInteractionEnabled = true
-        // It pulls down even when the rows fit, as List does, to refresh.
+        // It pulls down even when the rows fit, to refresh.
         cv.alwaysBounceVertical = true
-        // A row's press shows the moment a finger lands (`pressesShowAtOnce` on the List path).
+        // A row's press shows the moment a finger lands.
         cv.delaysContentTouches = false
         // The rows' heights don't change while shown; a new text size reconfigures them all (below).
         cv.selfSizingInvalidation = .disabled
         // Clear of the floating bar and the + on the phone (whose bottom safe area this ignores, as ListScreen's
-        // does); in iPad's sidebar, the List path's 60 over the HomeBar's inset.
+        // does); in iPad's sidebar, 60 over the HomeBar's inset.
         cv.contentInset.bottom = sidebar ? 60 : Metric.bottomClearance
         self.cv = cv
 
@@ -218,7 +218,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
 
     // MARK: Menus
 
-    /// A list's long-press menu: Rename, then Delete List (the List path's `contextMenu`).
+    /// A list's long-press menu: Rename, then Delete List.
     func collectionView(_ cv: UICollectionView, contextMenuConfigurationForItemsAt ips: [IndexPath],
                         point: CGPoint) -> UIContextMenuConfiguration? {
         guard drag == nil, ips.count == 1, let id = dataSource.itemIdentifier(for: ips[0]), id.hasPrefix("l:") else { return nil }

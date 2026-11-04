@@ -1,8 +1,8 @@
 import XCTest
 
-// Film scripts for the fold (§23) on the UICollectionView path, not tests: run with Tools/film/film.sh (TEST_RUNNER_FILM=1;
-// skipped otherwise) and TEST_RUNNER_LIST_CONTAINER=cv. Each step prints "FILM <label> <epoch>" to line the video up
-// with (Tools/film/events.py); rows.py then gives each frame's heading rules.
+// Film scripts for the fold (§23), not tests: run with Tools/film/film.sh (TEST_RUNNER_FILM=1; skipped otherwise).
+// Each step prints "FILM <label> <epoch>" to line the video up with (Tools/film/events.py); rows.py then gives each
+// frame's heading rules.
 final class FoldFilmTests: XCTestCase {
     var app: XCUIApplication!
 
@@ -16,7 +16,6 @@ final class FoldFilmTests: XCTestCase {
         app = XCUIApplication()
         app.launchArguments = ["-sampleData", "YES", "-appearance", "dark", "-style", "classic", "-screen", "list:phys",
                                "-remoteTask", "h-lab", "-remoteNotes", "Goggles, a lab coat and the lab manual, every session; pre-labs are due at the start of the lab."]
-        if let c = ProcessInfo.processInfo.environment["LIST_CONTAINER"] { app.launchEnvironment["LIST_CONTAINER"] = c }
     }
 
     func mark(_ s: String) { print(String(format: "FILM %@ %.3f", s, Date().timeIntervalSince1970)) }

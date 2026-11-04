@@ -1,10 +1,10 @@
 import SwiftUI
 import TasksCore
 
-// Each item's row, as ListScreen's `row(_:)` draws it on the List path, for every screen: a list, Today and Undated
-// (their group labels), Upcoming (its days and months), Completed, Trash and a deleted list (read-only). The rows are
-// the app's own SwiftUI views, hosted in the cells (UIHostingConfiguration); they look their task or heading up live,
-// so a row redraws for its own changes without a reconfigure.
+// Each item's row, for every screen: a list, Today and Undated (their group labels), Upcoming (its days and months),
+// Completed, Trash and a deleted list (read-only). The rows are the app's own SwiftUI views, hosted in the cells
+// (UIHostingConfiguration); they look their task or heading up live, so a row redraws for its own changes without a
+// reconfigure.
 //
 // Air: there are no edge items, so a heading, a group label and the Completed row draw their own air above them.
 
@@ -109,7 +109,7 @@ private struct SwipeActionsForVoiceOver: ViewModifier {
     }
 }
 
-/// A deleted list's banner (§28), 4 under the bar and 10 in from the sides (the cell's margins), as on the List path.
+/// A deleted list's banner (§28), 4 under the bar and 10 in from the sides (the cell's margins).
 /// Restored, its item goes and the cell fades out with the rows closing up: it keeps drawing the list as it was until
 /// then (the list and the day it was deleted, which the restore clears), not a blank or "Deleted" with no day.
 private struct BannerLine: View {
@@ -133,8 +133,7 @@ private struct BannerLine: View {
     }
 }
 
-/// The large title, Today's date or a deleted list's "In Trash" after it, and a list's notes under it (ListScreen's
-/// `header` on the List path).
+/// The large title, Today's date or a deleted list's "In Trash" after it, and a list's notes under it.
 struct CollectionHeader: View {
     let source: Source
     /// The editing state it was configured with (its signature), as `HeadingNotesRow.editingOverride`.

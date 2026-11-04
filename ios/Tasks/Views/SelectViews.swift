@@ -73,42 +73,6 @@ private struct Segment: View {
     }
 }
 
-/// A long-press in select mode: the menu for the whole selection (IX §15). Complete 3 Tasks (Mark as Not Done when all
-/// are done) · Today · Tomorrow · When… · Deadline… · Move to ▸ · ── · Delete 3 Tasks; in Trash, Put Back (when every
-/// task has a live list) · Put Back in ▸.
-struct SelectionMenu: View {
-    let ids: [EntityID]
-    let source: Source
-    @Environment(AppModel.self) private var app
-    var body: some View {
-        let tasks = ids.compactMap(app.task)
-        let n = tasks.count
-        if source == .trash {
-            if app.allGoHome(ids) {
-                Button { app.putBackTasks(ids) } label: {
-                    Label(n == 1 ? "Put Back" : "Put Back \(n) Tasks", systemImage: "arrow.uturn.backward")
-                }
-            }
-            Menu { PutBackInItems(ids: ids) } label: { Label("Put Back in", systemImage: "tray.and.arrow.up") }
-        } else {
-            let anyOpen = tasks.contains { !$0.isDone }
-            Button { app.completeTasks(ids) } label: {
-                Label(anyOpen ? (n == 1 ? "Complete" : "Complete \(n) Tasks") : "Mark as Not Done",
-                      systemImage: anyOpen ? "checkmark.circle" : "circle")
-            }
-            Button { app.setDate(ids, .when, app.today) } label: { Label("Today", systemImage: "sun.max") }
-            Button { app.setDate(ids, .when, app.today.adding(days: 1)) } label: { Label("Tomorrow", systemImage: "sunrise") }
-            Button { app.dateTarget = DateTarget(ids: ids, kind: .when) } label: { Label("When…", systemImage: "calendar") }
-            Button { app.dateTarget = DateTarget(ids: ids, kind: .deadline) } label: { Label("Deadline…", systemImage: "flag") }
-            Menu { MoveItems(ids: ids) } label: { Label("Move to", systemImage: "arrow.right.square") }
-            Divider()
-            Button(role: .destructive) { app.deleteTasks(ids) } label: {
-                Label(n == 1 ? "Delete" : "Delete \(n) Tasks", systemImage: "trash")
-            }
-        }
-    }
-}
-
 /// Move's lists for a selection: "Move 3 tasks to", then every live list; the list every task is already in is checked
 /// and disabled (§3; the Mac's `moveItems`).
 struct MoveItems: View {
@@ -135,17 +99,14 @@ struct MoveItems: View {
 /// enters select mode if it's off. Within 31pt of the list's top or bottom the list scrolls 10pt every 16 ms (the
 /// Mac's drag autoscroll × 1.3), and each change gives a `.selection` haptic.
 ///
-/// A two-touch pan on the list's own scroll view, which then scrolls with one finger only, as Mail's does. It maps the
-/// touch to the task rows' frames (`frames`, in the window), kept by each row while it's on screen; or, given `locate`,
-/// asks it for the row under the touch (the collection view's own hit test, CollectionSelect).
+/// A two-touch pan on the list's own scroll view, which then scrolls with one finger only, as Mail's does. It asks
+/// `locate` for the row under the touch (the collection view's own hit test, CollectionSelect).
 @MainActor
 final class SwipeSelect: NSObject, UIGestureRecognizerDelegate {
-    /// The task rows on screen, by id, in window coordinates.
-    var frames: [EntityID: CGRect] = [:]
     /// Every task row, in the screen's order.
     var order: [EntityID] = []
-    /// The task row under a point in the window, in place of `frames`.
-    var locate: ((CGPoint) -> EntityID?)?
+    /// The task row under a point in the window.
+    var locate: (CGPoint) -> EntityID? = { _ in nil }
     /// What covers the list's foot: the floating bar (the phone), or nothing.
     var foot: CGFloat = 0
     /// Whether a swipe may start now (a live list or a view, on screen, nothing over it).
@@ -187,8 +148,7 @@ final class SwipeSelect: NSObject, UIGestureRecognizerDelegate {
 
     /// The task row under a point, by its index in `order`.
     private func row(at p: CGPoint) -> Int? {
-        if let locate { return locate(p).flatMap { order.firstIndex(of: $0) } }
-        return order.firstIndex { id in frames[id].map { $0.minY <= p.y && p.y < $0.maxY } ?? false }
+        locate(p).flatMap { order.firstIndex(of: $0) }
     }
 
     func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
@@ -269,34 +229,5 @@ final class SwipeSelect: NSObject, UIGestureRecognizerDelegate {
         guard y != s.contentOffset.y else { return }
         s.contentOffset.y = y
         update()
-    }
-}
-
-extension View {
-    /// Installs the two-finger swipe on the list this row is in (as `pressesShowAtOnce`, on a row that's there when the
-    /// list appears: its header).
-    func swipeSelects(_ handler: SwipeSelect) -> some View {
-        background(SwipeSelectProbe(handler: handler).allowsHitTesting(false).accessibilityHidden(true))
-    }
-}
-
-private struct SwipeSelectProbe: UIViewRepresentable {
-    let handler: SwipeSelect
-    func makeUIView(context: Context) -> Probe { Probe(handler: handler) }
-    func updateUIView(_ view: Probe, context: Context) {}
-
-    final class Probe: UIView {
-        let handler: SwipeSelect
-        init(handler: SwipeSelect) {
-            self.handler = handler
-            super.init(frame: .zero)
-        }
-        required init?(coder: NSCoder) { fatalError() }
-        override func didMoveToWindow() {
-            super.didMoveToWindow()
-            var v = superview
-            while let s = v, !(s is UIScrollView) { v = s.superview }
-            if let scroll = v as? UIScrollView { handler.install(on: scroll) }
-        }
     }
 }

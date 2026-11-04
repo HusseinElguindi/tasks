@@ -6,84 +6,30 @@ struct HomeView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     @State private var folded = false
-    /// Counts drops that wrote something, for the light haptic on drop.
-    @State private var dropped = 0
 
     var body: some View {
-        Group {
-            if ListContainer.collection {
-                HomeCollection(items: HomeCollection.items(app), sidebar: sidebar,
-                               folded: Binding(get: { folded }, set: { v in animate(.easeOut(duration: 0.15)) { folded = v } }))
-                    // Its own bottom inset on the phone, the floating controls' clearance (HomeCollection.swift).
-                    .ignoresSafeArea(.all, edges: sidebar ? [] : .bottom)
-            } else {
-                list
-            }
-        }
-        .background(AppBackground())
-        // The phone's bar stays, as on a list's screen (ListScreen): pull to refresh draws its indicator only with the
-        // bar there. Empty at rest; the name fades in once the large one has gone under it.
-        .navigationTitle("Tasks")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if !sidebar {
-                ToolbarItem(placement: .principal) {
-                    HStack(spacing: 7) {
-                        LogoMark(size: 20)
-                        Text("Tasks").font(.system(size: 17, weight: .semibold)).foregroundStyle(p.ink)
-                    }
-                    .opacity(folded ? 1 : 0)
-                    .accessibilityHidden(!folded)
-                }
-            }
-        }
-    }
-
-    /// The List path (`ListContainer`).
-    private var list: some View {
-        List {
-            HomeHeader(sidebar: sidebar).pressesShowAtOnce().listRow()
-            SourceRow(source: .today, count: app.todayCount(), sidebar: sidebar).listRow()
-            SourceRow(source: .upcoming, sidebar: sidebar).listRow()
-            SourceRow(source: .undated, sidebar: sidebar).listRow()
-            GroupLabel(title: "Lists", bottom: 0).listRow()
-            // The air under "Lists" and the space under the last list are rows of the lists' own, so a drop there is
-            // the top or the end (Reorder.swift, "Edges"); nothing in them takes a touch, so they never lift.
-            let items = HomeItem.items(app.activeLists)
-            ForEach(items) { item in
-                switch item {
-                case .top: Color.clear.frame(height: 6).accessibilityHidden(true).listRow()
-                case .end: Color.clear.frame(height: 14).accessibilityHidden(true).listRow()
-                case let .list(l):
-                    // No count: only Today has one (the user, 2026-10-31; IX:37–39).
-                    SourceRow(source: .list(l.id), sidebar: sidebar)
-                        .contextMenu {
-                            Button { app.listEditor = .init(listID: l.id, name: l.name) } label: { Label("Rename", systemImage: "pencil") }
-                            Divider()
-                            Button(role: .destructive) { app.deleteList(l.id) } label: { Label("Delete List", systemImage: "trash") }
+        // A UICollectionView with the app's SwiftUI rows in its cells (HomeCollection.swift).
+        HomeCollection(items: HomeCollection.items(app), sidebar: sidebar,
+                       folded: Binding(get: { folded }, set: { v in animate(.easeOut(duration: 0.15)) { folded = v } }))
+            // Its own bottom inset on the phone, the floating controls' clearance (HomeCollection.swift).
+            .ignoresSafeArea(.all, edges: sidebar ? [] : .bottom)
+            .background(AppBackground())
+            // The phone's bar stays, as on a list's screen (ListScreen): pull to refresh draws its indicator only with
+            // the bar there. Empty at rest; the name fades in once the large one has gone under it.
+            .navigationTitle("Tasks")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if !sidebar {
+                    ToolbarItem(placement: .principal) {
+                        HStack(spacing: 7) {
+                            LogoMark(size: 20)
+                            Text("Tasks").font(.system(size: 17, weight: .semibold)).foregroundStyle(p.ink)
                         }
-                        .contentShape(.dragPreview, RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous))
-                        .listRow()
+                        .opacity(folded ? 1 : 0)
+                        .accessibilityHidden(!folded)
+                    }
                 }
             }
-            // Drag to reorder the lists (§14; Reorder.swift has the iPhone's drag and its differences from the Mac).
-            // Today and the views aren't in this ForEach, so they don't move.
-            .onMove { from, to in if app.dropList(from, to, in: items.map(\.listID)) { dropped += 1 } }
-            SourceRow(source: .completed, sidebar: sidebar).listRow()
-            SourceRow(source: .trash, sidebar: sidebar).listRow()
-            if let s = app.syncSummary { SyncLine(text: s).listRow() }
-            Color.clear.frame(height: sidebar ? 60 : Metric.bottomClearance).listRow()
-        }
-        .listStyle(.plain)
-        .sensoryFeedback(.impact(weight: .light), trigger: dropped)
-        .refreshable { await app.syncNow() }
-        .scrollContentBackground(.hidden)
-        .environment(\.defaultMinListRowHeight, 0)
-        .onScrollGeometryChange(for: Bool.self) { g in
-            g.contentOffset.y + g.contentInsets.top > 40
-        } action: { _, now in
-            animate(.easeOut(duration: 0.15)) { folded = now }
-        }
     }
 }
 

@@ -523,30 +523,6 @@ struct RowStyle: ButtonStyle {
     }
 }
 
-extension View {
-    /// Shows a row's press the moment a finger lands, not after the list's usual pause, by turning off the
-    /// enclosing scroll view's `delaysContentTouches`. `canCancelContentTouches` stays on, so a drag that starts on a
-    /// row still scrolls (cancelling the press, and opening nothing) and swipe actions still swipe. Put it on a row
-    /// that's there when the list appears (its header); the setting is the list's.
-    func pressesShowAtOnce() -> some View { background(ImmediateTouches().allowsHitTesting(false).accessibilityHidden(true)) }
-}
-
-private struct ImmediateTouches: UIViewRepresentable {
-    func makeUIView(context: Context) -> Probe { Probe() }
-    func updateUIView(_ view: Probe, context: Context) {}
-
-    final class Probe: UIView {
-        override func didMoveToWindow() {
-            super.didMoveToWindow()
-            var v = superview
-            while let s = v, !(s is UIScrollView) { v = s.superview }
-            guard let scroll = v as? UIScrollView else { return }
-            scroll.delaysContentTouches = false
-            scroll.canCancelContentTouches = true
-        }
-    }
-}
-
 /// Pane's capsule buttons: primary, tinted, neutral, destructive.
 struct CapsuleButtonStyle: ButtonStyle {
     enum Kind { case primary, tinted, neutral, destructive }

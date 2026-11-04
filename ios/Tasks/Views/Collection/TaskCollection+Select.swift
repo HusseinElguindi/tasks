@@ -83,8 +83,8 @@ final class CollectionSelect {
         return Pick(picked: picks.selected.contains(id), joinTop: picks.above.contains(id), joinBottom: picks.below.contains(id))
     }
 
-    /// `Picks` over the items: neighbouring selected task rows join; any other item between them breaks the block, as a
-    /// heading, a label or the Completed row does on the List path (the edge lines left out here sit only above those).
+    /// `Picks` over the items: neighbouring selected task rows join; any other item between them (a heading, a label,
+    /// the Completed row) breaks the block.
     static func picks(_ items: [String], selected: Set<EntityID>) -> Picks {
         var out = Picks([], selected: selected)
         guard !selected.isEmpty else { return out }
@@ -107,8 +107,7 @@ final class CollectionSelect {
 
     /// The menu for an item in select mode, for the menus area to return first: nil when select mode is off (the
     /// menus area decides); `.some(nil)` for no menu (a heading's menu is off, and nothing else but a task row has one);
-    /// otherwise the selection's menu (`SelectionMenu` on the List path), with the pressed row added to the selection
-    /// as the menu comes up. Closed without a choice, it stays selected.
+    /// otherwise the selection's menu (IX §15), with the pressed row added to the selection as the menu comes up. Closed without a choice, it stays selected.
     func menu(for item: String) -> UIContextMenuConfiguration?? {
         guard active else { return nil }
         guard let id = Self.task(item), app.deletedList(source) == nil else { return .some(nil) }

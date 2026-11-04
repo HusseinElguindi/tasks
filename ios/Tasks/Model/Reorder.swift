@@ -1,55 +1,27 @@
 import Foundation
 import TasksCore
 
-// Drag to reorder (§14, §23), on the iPhone's own drag: List's `.onMove` (ListScreen, HomeView). Long-press then move
-// lifts the row; holding still opens its menu. The other rows part to open a gap, and the list scrolls at its edges.
+// Drag to reorder (§14, §23): the model side. The drag itself is the collection view's (TaskCollection+Drag.swift
+// for a list and the views, HomeCollection.swift for Home's lists): our own gap at the slot the row will take, our own
+// lifted copy, a heading's section folded into the copy with its count, and Upcoming's day label lit. It hands its drop
+// here as an offset, as SwiftUI's `.onMove` did, and the writes are only the core's `reorder`, `moveSection` and
+// `reorderLists`; the code here only picks the anchor.
 //
-// Three deviations from the Mac, accepted by the user on 2026-11-03 (option A):
-// - The lifted copy is the system's: its platter and shadow, not `fill-lift` and `shadow-lift`. It has the row's
-//   radius (`contentShape(.dragPreview, …)`).
-// - A heading lifts alone. Its section doesn't fold into the copy and there's no count badge; the drop still moves
-//   the whole section (`Store.moveSection`).
-// - In Today and Undated the copy can cross into another list's group. The drop there is refused by the system (each
-//   group is its own ForEach): the copy flies back and nothing is written.
+// Runs (`dragRuns`): a drag stays within one. A list and Upcoming are one run each; Today and Undated have one per
+// list's group, so a row never crosses into another list's group. The air above a group label is the last row of the
+// run above (`Line.edge`), so a drop there is that group's end. Home's lists have an edge above and one below them
+// (`HomeItem`). A heading's notes are in its row (`Line.heading(notes:)`), so no slot opens between them.
 //
-// The writes are only the core's `reorder`, `moveSection` and `reorderLists`; the code here only picks the anchor.
-//
-// Edges. List refuses a drop while the finger is over a row that can't move (`moveDisabled`): a Today or Undated
-// group's label, the Completed row, and before this a heading's notes row. So the slot next to one was cut to the
-// half of the task row on the other side (24pt of a 48pt row's slot), or less: the end of a Today group, just above
-// the next label, and an empty heading's section were hard to hit. The fixes, with the resting layout unchanged:
-// - The air above a label, a heading and the Completed row is an edge row of its own (`Line.edge`), the last row of
-//   the run or section above, so a drop over it is that one's end (`DropSlot` passes over it). Home's lists get one
-//   above and one below them (`HomeItem`).
-// - Edge rows and labels stay movable, so they take drops, but nothing in them takes a touch, so they never lift.
-// - A heading's notes are in its row (`Line.heading(notes:)`), so no gap opens between them; they're a row of their own
-//   only for the moment of a fold (`AppModel.splitNotes`), so the fold stays smooth.
-// Crossing a Today or Undated group is still refused, as before.
-//
-// Upcoming (IX §22, the Mac's `dayTarget` and `endViewDrag`): the whole view is one run, so a row crosses days, and
-// each day's label after the first has the same edge above it. The group whose label is the last one above the drop
-// takes it (above them all, the first). On a day, When is set to that day, one "Set When" step (`setDate`), and the
-// deadline is never touched; the row then takes its slot in the day, by list order. A month, a day after the task's
-// deadline, or its own day writes nothing, and the row goes back. Two more differences from the Mac, as List draws the
-// drag: the gap opens under the finger, not at the slot the task will take, even over a month or past a deadline; and
-// the day's label doesn't light up.
+// Upcoming (IX §22, the Mac's `dayTarget` and `endViewDrag`): the whole view is one run, so a row crosses days. The
+// group whose label is the last one above the drop takes it (above them all, the first). On a day, When is set to that
+// day, one "Set When" step (`setDate`), and the deadline is never touched; the row then takes its slot in the day, by
+// list order. A month, a day after the task's deadline, or its own day writes nothing, and the row goes back.
 
 /// A run of lines that a drag stays within: a whole list, all of Upcoming, or one Today or Undated group (the last one
-/// with Today's Completed under it). Each is its own ForEach, so a drop never lands in another.
+/// with Today's Completed under it). The drag's gap and lifted copy stay within it (CollectionDrag).
 struct DragRun: Identifiable {
     let id: String
     var lines: [Line]
-
-    /// The labels whose air is an edge row of their own, just above them: they're drawn with none on top.
-    @MainActor static func airless(_ runs: [DragRun]) -> Set<String> {
-        var out: Set<String> = []
-        var above: Line?
-        for line in runs.lazy.flatMap(\.lines) {
-            if case .group = line, case let .edge(key, _)? = above, key == line.id { out.insert(line.id) }
-            above = line
-        }
-        return out
-    }
 }
 
 extension Line {
@@ -108,7 +80,8 @@ enum DropSlot {
         return t > 0 ? .after(others[t - 1]) : (others.isEmpty ? .top : .before(others[0]))
     }
 
-    /// `.onMove`'s destination is an offset in the run before the move; this is the slot among the others.
+    /// A drop's destination is an offset in the run before the move (as `.onMove` gives it); this is the slot among
+    /// the others.
     static func slot(_ from: IndexSet, _ to: Int) -> Int { to - from.count(in: 0..<to) }
 }
 
@@ -138,7 +111,7 @@ extension AppModel {
         return runs
     }
 
-    /// A drop from `.onMove` in one run. Returns whether anything was written.
+    /// A drop in one run. Returns whether anything was written.
     @discardableResult
     func drop(_ from: IndexSet, _ to: Int, in lines: [Line], source: Source) -> Bool {
         if source == .upcoming { return dropOnDay(from, to, in: lines) }
@@ -192,7 +165,7 @@ extension AppModel {
     }
 }
 
-/// Home's lists run: an edge above them, the lists, an edge below (`HomeView`).
+/// Home's lists run: an edge above them, the lists, an edge below (HomeCollection).
 @MainActor
 enum HomeItem: @MainActor Identifiable {
     case top, list(ListModel), end

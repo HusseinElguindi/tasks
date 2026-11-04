@@ -8,8 +8,8 @@ enum Line: @MainActor Identifiable {
     /// `notes`: its notes are drawn in its row, under its name, so a drag never opens a gap between them (§23: a
     /// heading's notes belong to its row).
     case heading(TaskModel, openCount: Int, notes: Bool = false)
-    /// A heading's notes as their own row, only around a fold (`AppModel.splitNotes`): they fold into it with its
-    /// tasks, and the rows below close up, on the one curve (§23).
+    /// A heading's notes as their own row: the collection view draws them as an item of their own
+    /// (`TaskCollection.items`), so they fold into the heading with its tasks (§23).
     case headingNotes(TaskModel)
     /// `groupDay`: in Upcoming, the day of the group it's in (its rows don't repeat that date). `day`: in a month group
     /// of Completed or Trash, the day it was done or deleted, after its list's name ("School · Oct 22").
@@ -36,20 +36,6 @@ enum Line: @MainActor Identifiable {
         case .empty: "empty"
         case .allDone: "allDone"
         case let .edge(key, _): "e:" + key
-        }
-    }
-
-    var isDraft: Bool {
-        if case .draft = self { true } else { false }
-    }
-
-    /// A row a drop may hover over without being able to lift: an edge, or a group's label (nothing in it takes a
-    /// touch, so it never lifts). List refuses a drop over a row that can't move (`moveDisabled`), so these are left
-    /// movable (Reorder.swift, "Edges").
-    var takesDrops: Bool {
-        switch self {
-        case .edge, .group: true
-        default: false
         }
     }
 
@@ -95,14 +81,12 @@ extension AppModel {
                 heading = m.id
                 // A heading's count: the open tasks under it, down to the next heading.
                 let section = models[(i + 1)...].prefix { !$0.isHeading }
-                // Its notes, or the notes editor while they're typed: in its row, or their own around a fold.
+                // Its notes, or the notes editor while they're typed, in its row.
                 let typed = draft?.editedHeading == m.id && draft?.editsNotes == true
                 let notes = !collapsed.contains(m.id) && (!m.notes.isEmpty || typed)
-                let split = notes && splitNotes.contains(m.id)
                 // Its air, a row of the section above (the end of that section, or the top of the list).
                 out.append(.edge(key: "h:" + m.id, height: HeadingRow.air))
-                out.append(.heading(m, openCount: section.filter { !$0.isDone }.count, notes: notes && !split))
-                if split { out.append(.headingNotes(m)) }
+                out.append(.heading(m, openCount: section.filter { !$0.isDone }.count, notes: notes))
                 continue
             }
             if kind == .heading(before: m.id) { out.append(.draft) }

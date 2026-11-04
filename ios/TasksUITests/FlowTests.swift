@@ -12,8 +12,6 @@ final class FlowTests: XCTestCase {
         // The sample lists and tasks, seeded fresh in a scratch store at each launch (never the app's data), in Dark and
         // Classic whatever an earlier run chose in Settings (launch arguments win over saved settings).
         app.launchArguments = ["-sampleData", "YES", "-appearance", "dark", "-style", "classic"]
-        // TEST_RUNNER_LIST_CONTAINER=cv: the rows on the UICollectionView path (ListContainer), during the migration.
-        if let c = ProcessInfo.processInfo.environment["LIST_CONTAINER"] { app.launchEnvironment["LIST_CONTAINER"] = c }
         try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
     }
 
@@ -679,8 +677,6 @@ final class FlowTests: XCTestCase {
         defer { if pad { XCUIDevice.shared.orientation = .portrait } }
         for look in ["dark", "light"] {
             app = XCUIApplication()
-            // A new app: the container too, as setUp gives it (Home's rows on the UICollectionView path).
-            if let c = ProcessInfo.processInfo.environment["LIST_CONTAINER"] { app.launchEnvironment["LIST_CONTAINER"] = c }
             app.launchArguments = ["-sampleData", "YES", "-appearance", look, "-style", "classic", "-screen", "upcoming",
                                    "-remoteTask", "s4", "-remoteTitle", Self.longTitle,
                                    "-remoteList", "school-9", "-remoteName", Self.longName]
@@ -831,21 +827,13 @@ final class FlowTests: XCTestCase {
         sleep(1)
         let before = y(reply)
         drag(reply, onto: app.staticTexts["Email TA about midterm regrade"].firstMatch)
-        if onCollection {
-            // The Mac's rule (§14): the copy stays inside its group, held 6 pt past its last slot, so the drop is that
-            // slot, Inbox's end. (List's copy crossed into School's group, and the system refused the drop there.)
-            XCTAssertGreaterThan(y(reply), y(dentist), "dragged over School's group: held to Inbox's, at its end")
-            XCTAssertLessThan(y(reply), y(app.staticTexts["School"].firstMatch), "still in Inbox's group")
-            drag(reply, onto: dentist)
-            XCTAssertLessThan(y(reply), y(dentist), "within Inbox's group: over the dentist")
-            XCTAssertEqual(y(reply), before, accuracy: 1, "back at Inbox's top")
-            return
-        }
-        XCTAssertEqual(y(reply), before, accuracy: 1, "dropped in School's group: refused, back where it was")
-        XCTAssertLessThan(y(reply), y(dentist))
-        drag(reply, onto: dentist)
-        XCTAssertGreaterThan(y(reply), y(dentist), "within Inbox's group: under the dentist")
+        // The Mac's rule (§14): the copy stays inside its group, held 6 pt past its last slot, so the drop is that
+        // slot, Inbox's end.
+        XCTAssertGreaterThan(y(reply), y(dentist), "dragged over School's group: held to Inbox's, at its end")
         XCTAssertLessThan(y(reply), y(app.staticTexts["School"].firstMatch), "still in Inbox's group")
+        drag(reply, onto: dentist)
+        XCTAssertLessThan(y(reply), y(dentist), "within Inbox's group: over the dentist")
+        XCTAssertEqual(y(reply), before, accuracy: 1, "back at Inbox's top")
     }
 
     /// Lists reorder on Home; Today and the views stay put.
@@ -2005,18 +1993,11 @@ final class FlowTests: XCTestCase {
         sleep(2)
     }
 
-    /// The rows are on the UICollectionView path (TEST_RUNNER_LIST_CONTAINER=cv).
-    private var onCollection: Bool { ProcessInfo.processInfo.environment["LIST_CONTAINER"] == "cv" }
-
-    /// A heading's notes are with their heading, with nothing between: in its row on List; on the collection view they
-    /// are a cell of their own, starting at the heading cell's foot.
+    /// A heading's notes are with their heading, with nothing between: a cell of their own, starting at the heading
+    /// cell's foot.
     private func assertNotesWithHeading(_ notes: XCUIElement, _ name: String, _ message: String,
                                         file: StaticString = #filePath, line: UInt = #line) {
-        if onCollection {
-            XCTAssertEqual(cell(notes).minY, cell(heading(name)).maxY, accuracy: 1, message, file: file, line: line)
-        } else {
-            XCTAssertEqual(cell(notes), cell(heading(name)), message, file: file, line: line)
-        }
+        XCTAssertEqual(cell(notes).minY, cell(heading(name)).maxY, accuracy: 1, message, file: file, line: line)
     }
 
     /// The list cell that holds `e`.

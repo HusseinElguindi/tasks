@@ -1,8 +1,8 @@
 import XCTest
 
-// Film scripts for drag (§14, §23) on the UICollectionView path, not tests: run with Tools/film/film.sh (TEST_RUNNER_FILM=1;
-// skipped otherwise) and TEST_RUNNER_LIST_CONTAINER=cv. Each drag prints "FILM <label> <epoch>" as its press starts, to
-// line the video up with (Tools/film/events.py, vgaps.py); rows.py blobs then gives each frame's rows of ink.
+// Film scripts for drag (§14, §23), not tests: run with Tools/film/film.sh (TEST_RUNNER_FILM=1; skipped otherwise). Each
+// drag prints "FILM <label> <epoch>" as its press starts, to line the video up with (Tools/film/events.py, vgaps.py);
+// rows.py blobs then gives each frame's rows of ink.
 final class DragFilmTests: XCTestCase {
     var app: XCUIApplication!
 
@@ -15,7 +15,6 @@ final class DragFilmTests: XCTestCase {
         expectSimulatorDaemonCrash()
         app = XCUIApplication()
         app.launchArguments = ["-sampleData", "YES", "-appearance", "dark", "-style", "classic", "-screen", "list:phys"]
-        if let c = ProcessInfo.processInfo.environment["LIST_CONTAINER"] { app.launchEnvironment["LIST_CONTAINER"] = c }
     }
 
     func mark(_ s: String) { print(String(format: "FILM %@ %.3f", s, Date().timeIntervalSince1970)) }
