@@ -7,8 +7,9 @@ import UIKit
 //
 // - Swipes: the list layout's provider, both edges (`actions`). Right completes, left deletes or sets the When; in
 //   Trash right puts back; Trash's row for a deleted list restores it. A full swipe does the outermost action.
-// - Menus: the collection view's (the controller is its delegate). A task's, a heading's (its row and its notes' row),
-//   and a deleted list's row in Trash. Select mode's menus are `CollectionSelect`'s (`menu(for:)`).
+// - Menus: the collection view's (the controller is its delegate). A task's, a heading's, and a deleted list's row in
+//   Trash. A heading's notes have none: held, they'd lift as a row of their own (the user, T31); they're the heading's
+//   text, edited with a tap. Select mode's menus are `CollectionSelect`'s (`menu(for:)`).
 // - An action runs as it's picked, while the menu closes (the user's call 4): the collection view applies updates
 //   during a menu's dismissal, so a heading being renamed or given notes never draws blank.
 // - The preview is the row's fill: the cell less its sides' inset and a heading's air, with the row's corners.
@@ -83,12 +84,12 @@ final class CollectionSwipes {
 
     // MARK: Menus
 
-    /// The menu for an item, or nil for none.
+    /// The menu for an item, or nil for none (a heading's notes: none, nor UIKit's preview of them).
     func menu(_ id: String) -> UIMenu? {
-        guard !deaf || id.hasPrefix("h:") || id.hasPrefix("n:") else { return nil }
+        guard !deaf || id.hasPrefix("h:") else { return nil }
         switch owner.rows.line(id) {
         case let .task(t, _, _, _)?: return taskMenu(app.task(t.id) ?? t)
-        case let .heading(h, _, _)?, let .headingNotes(h)?: return headingMenu(app.task(h.id) ?? h)
+        case let .heading(h, _, _)?: return headingMenu(app.task(h.id) ?? h)
         case let .deletedList(l, _, _, _)?: return deletedListMenu(l.id)
         default: return nil
         }
