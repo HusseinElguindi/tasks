@@ -65,7 +65,8 @@ struct CollectionLine: View {
                 row.disabled(true)
             } else {
                 row.modifier(SwipeActionsForVoiceOver(task: t, source: source, enabled: !app.isSelecting(source),
-                                                      move: owner.map { o in { o.drag.voiceOverMove(id, by: $0) } }))
+                                                      move: owner.map { o in { o.drag.voiceOverMove(id, by: $0) } },
+                                                      canMove: owner.map { o in { o.drag.voiceOverCanMove(id, by: $0) } }))
             }
         case let .completedToggle(key, count, open):
             CompletedToggleRow(key: key, count: count, open: open, top: CompletedToggleRow.air)
@@ -96,13 +97,15 @@ private struct SwipeActionsForVoiceOver: ViewModifier {
     let source: Source
     let enabled: Bool
     var move: ((Int) -> Bool)?
+    /// Whether a move that way has a slot (asked as the row is drawn; one that has gone since says so).
+    var canMove: ((Int) -> Bool)?
     @Environment(AppModel.self) private var app
 
     func body(content: Content) -> some View {
         content.accessibilityActions {
             if enabled, let move, source != .upcoming, app.dragRuns([], source) != nil {
-                Button("Move Up") { _ = move(-1) }
-                Button("Move Down") { _ = move(1) }
+                if canMove?(-1) ?? true { Button("Move Up") { _ = move(-1) } }
+                if canMove?(1) ?? true { Button("Move Down") { _ = move(1) } }
             }
             if enabled {
                 if source == .trash {

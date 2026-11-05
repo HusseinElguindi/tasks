@@ -467,18 +467,46 @@ final class CollectionDrag {
     /// VoiceOver's "Move Up" and "Move Down" on a task's row (not in Upcoming, where a drag sets the day): dropped at the
     /// slot before or after its own, as a drag would drop it there. Whether it moved.
     func voiceOverMove(_ id: String, by step: Int) -> Bool {
-        guard state == nil, held == nil, landing == nil, canLift(id), let at = owner.current.firstIndex(of: id),
-              let f = owner.layout.modelFrame(at), id.hasPrefix("t:"), owner.source != .upcoming else { return false }
-        var d = State(id: id, height: f.height, grab: .zero, slot: at, ticked: at, run: run(of: id))
-        let slots = slotTops(d).map(\.slot)
-        guard let next = step < 0 ? slots.last(where: { $0 < at }) : slots.first(where: { $0 > at }) else { return false }
-        d.slot = next
+        guard let d = voiceOverTarget(id, by: step) else {
+            VoiceOverMove.say(step < 0 ? "Can't move up" : "Can't move down")
+            return false
+        }
         state = d
         _ = write(d)
         landing = nil
         moveGap(animated: false)
         settle()
+        VoiceOverMove.say(movedTo(id))
         return true
+    }
+
+    /// Whether Move Up (-1) or Move Down (1) has a slot to drop `id` at (the row's actions offer only those).
+    func voiceOverCanMove(_ id: String, by step: Int) -> Bool { voiceOverTarget(id, by: step) != nil }
+
+    /// The drop that Move Up or Move Down would make: at the slot before or after the row's own.
+    private func voiceOverTarget(_ id: String, by step: Int) -> State? {
+        guard state == nil, held == nil, landing == nil, canLift(id), let at = owner.current.firstIndex(of: id),
+              let f = owner.layout.modelFrame(at), id.hasPrefix("t:"), owner.source != .upcoming else { return nil }
+        var d = State(id: id, height: f.height, grab: .zero, slot: at, ticked: at, run: run(of: id))
+        let slots = slotTops(d).map(\.slot)
+        guard let next = step < 0 ? slots.last(where: { $0 < at }) : slots.first(where: { $0 > at }) else { return nil }
+        d.slot = next
+        return d
+    }
+
+    /// Where a moved row is now, in words: after the task or under the heading above it, or first.
+    private func movedTo(_ id: String) -> String {
+        let current = owner.current
+        guard let i = current.firstIndex(of: id) else { return "Moved" }
+        for item in current[..<i].reversed() {
+            switch owner.rows.line(item) {
+            case let .task(t, _, _, _): return "Moved after \(t.title)"
+            case let .heading(h, _, _): return "Moved to the top of \(h.title)"
+            case let .group(_, title, _, _): return "Moved to the top of \(title)"
+            default: continue
+            }
+        }
+        return "Moved to the top"
     }
 
     /// The items without a lifted heading's section.
@@ -754,6 +782,12 @@ enum PressGate {
     static func touched() { until = 0 }
     /// May a row's button act now? Not in the touch-up of a press that lifted.
     static var allows: Bool { CACurrentMediaTime() >= until }
+}
+
+/// VoiceOver's word after a Move Up or Move Down (the task lists' and Home's), where the row went.
+@MainActor
+enum VoiceOverMove {
+    static func say(_ s: String) { UIAccessibility.post(notification: .announcement, argument: s) }
 }
 
 /// A drag's edge autoscroll (the task lists' and Home's), in place of UIKit's: with the finger near the list's top (its

@@ -77,11 +77,16 @@ struct HomeLine: View {
         default:
             // No count: only Today has one (the user, 2026-10-31; IX:37–39).
             if id.hasPrefix("l:") {
-                SourceRow(source: .list(String(id.dropFirst(2))), sidebar: sidebar)
+                let listID = String(id.dropFirst(2))
+                // Only the moves the list has (none up for the first, none down for the last), read from the app's
+                // order so they follow every move.
+                let order = app.activeLists.map(\.id)
+                let at = order.firstIndex(of: listID)
+                SourceRow(source: .list(listID), sidebar: sidebar)
                     .accessibilityActions {
-                        if let move {
-                            Button("Move Up") { _ = move(-1) }
-                            Button("Move Down") { _ = move(1) }
+                        if let move, let at {
+                            if at > 0 { Button("Move Up") { _ = move(-1) } }
+                            if at < order.count - 1 { Button("Move Down") { _ = move(1) } }
                         }
                     }
             }
@@ -566,13 +571,20 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         guard drag == nil, held == nil, landing == nil, let at = current.firstIndex(of: id), let f = layout.modelFrame(at) else { return false }
         var d = DragState(id: id, height: f.height, grab: .zero, slot: at, ticked: at)
         let slots = slotTops(d).map(\.slot)
-        guard let next = step < 0 ? slots.last(where: { $0 < at }) : slots.first(where: { $0 > at }) else { return false }
+        guard let next = step < 0 ? slots.last(where: { $0 < at }) : slots.first(where: { $0 > at }) else {
+            VoiceOverMove.say(step < 0 ? "Can't move up" : "Can't move down")
+            return false
+        }
         d.slot = next
         drag = d
         _ = write(d)
         landing = nil
         moveGap(animated: false)
         settle()
+        // Where it went: after the list now above it, or first.
+        let lists = current.filter { $0.hasPrefix("l:") }
+        let before = lists.firstIndex(of: id).flatMap { $0 > 0 ? lists[$0 - 1] : nil }
+        VoiceOverMove.say(before.flatMap { app.list(String($0.dropFirst(2)))?.name }.map { "Moved after \($0)" } ?? "Moved to the top of Lists")
         return true
     }
 
