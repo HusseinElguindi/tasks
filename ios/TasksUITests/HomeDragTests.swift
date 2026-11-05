@@ -103,19 +103,31 @@ final class HomeDragTests: XCTestCase {
     }
 
     /// Lifted and let go at once, before the menu's first stage (about 0.41 s): the copy sets down and nothing opens.
-    /// The row's SwiftUI button took that touch's end as a tap, and the list opened (T28, T26 #5).
+    /// The row's SwiftUI button took that touch's end as a tap, and the list opened (T28, T26 #5). A press that XCTest
+    /// ends before our 0.35 s lift (its 0.36 s press reached the app as about 0.34 s, traced: T30) is a plain tap, which
+    /// opens the list, rightly: it's tried again, up to three times (as FlowTests' `earlyDrag`). One that lifted and
+    /// still opened the list leaves no probe to read either, so it's tried again too, and fails all three.
     func testAHoldLetGoAtTheLiftOpensNothingOnHome() {
         for d in [0.36, 0.38] {
-            launchHome()
-            quick {
-                row("Errands").press(forDuration: d)
-                sleep(2)
+            var lifted = false
+            for _ in 0..<3 {
+                launchHome()
+                quick {
+                    row("Errands").press(forDuration: d)
+                    sleep(2)
+                }
+                let ev = probe()["ev"] ?? ""
+                // No lift (a tap, or no probe: the list opened): again.
+                guard ev.contains("lift") else { continue }
+                lifted = true
+                XCTAssertTrue(row("School").exists, "held \(d) s on Errands and let go: Home still shows, the list didn't open (\(ev))")
+                XCTAssertTrue(ev.contains("holdDown") || ev.contains("holdMenu"), "\(d) s: \(ev)")
+                break
             }
-            let ev = probe()["ev"] ?? ""
-            XCTAssertTrue(row("School").exists, "held \(d) s on Errands and let go: Home still shows, the list didn't open (\(ev))")
-            if ev.contains("lift") { XCTAssertTrue(ev.contains("holdDown") || ev.contains("holdMenu"), "\(d) s: \(ev)") }
+            XCTAssertTrue(lifted, "held \(d) s on Errands: in three tries, no press lifted with Home still showing")
         }
-        // A tap still opens it.
+        // A tap still opens it (relaunched: a hold may have ended in the row's menu, and a tap then only closes it).
+        launchHome()
         row("Errands").tap()
         XCTAssertTrue(app.navigationBars["Errands"].waitForExistence(timeout: 3), "a tap opens the list")
     }
@@ -123,18 +135,31 @@ final class HomeDragTests: XCTestCase {
     /// The same in a list: a task let go right after its lift opens no details, and neither checks it nor opens it.
     func testAHoldLetGoAtTheLiftOpensNothingInAList() {
         app.launchArguments += ["-screen", "list:phys"]
-        for d in [0.36, 0.38] {
+        let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
+        func open() {
             app.launch()
-            let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
             XCTAssertTrue(redo.waitForExistence(timeout: 10))
             sleep(1)
-            quick {
-                redo.press(forDuration: d)
-                sleep(2)
-            }
-            XCTAssertFalse(app.descendants(matching: .any)["detailList"].exists, "held \(d) s and let go: no details (\(probe()))")
         }
-        app.staticTexts["Redo the worked examples from lecture 9"].firstMatch.tap()
+        for d in [0.36, 0.38] {
+            var lifted = false
+            for _ in 0..<3 {
+                open()
+                quick {
+                    redo.press(forDuration: d)
+                    sleep(2)
+                }
+                // No lift: XCTest's press ended before ours lifted, a plain tap (its details open, rightly): again.
+                guard (probe()["ev"] ?? "").contains("lift") else { continue }
+                lifted = true
+                XCTAssertFalse(app.descendants(matching: .any)["detailList"].exists, "held \(d) s and let go: no details (\(probe()))")
+                break
+            }
+            XCTAssertTrue(lifted, "held \(d) s: in three tries, no press lifted (\(probe()))")
+        }
+        // A tap still opens them (relaunched, as on Home).
+        open()
+        redo.tap()
         XCTAssertTrue(app.descendants(matching: .any)["detailList"].waitForExistence(timeout: 3), "a tap opens its details")
     }
 
