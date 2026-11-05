@@ -32,7 +32,7 @@ import UIKit
 //   keeping the grab offset, as the Mac's does, every frame (a display link, so it follows the list's autoscroll under
 //   a still finger too); once the drag has begun its y is held, 6 pt past the first and last slot (the Mac's rule
 //   inside a group), and the slot is chosen by y alone. A heading's section folds into the copy as the drag
-//   begins (CollectionFold's collapse), and its copy shows the open count in an accent badge.
+//   begins (CollectionFold's collapse), and from then its copy shows the open count in an accent badge.
 // - Haptics (`DragFeel`): an impact at the lift, a selection tick each time the gap moves to a new slot (in Upcoming
 //   also when another day lights), the light impact of a drop that writes.
 // - Upcoming: the gap opens where the drop puts it (`dropOnDay`'s rules, then list order in the day), and the day's
@@ -415,6 +415,7 @@ final class CollectionDrag {
         FrameProbe.dragBegan()
         #endif
         if d.id.hasPrefix("h:") {
+            badge(d)
             // The gap is the heading's own row.
             lifted = d.id
             let all = owner.current
@@ -570,23 +571,6 @@ final class CollectionDrag {
         let p = owner.palette
         guard let i = owner.current.firstIndex(of: d.id), let cell = cv.cellForItem(at: IndexPath(item: i, section: 0)),
               let v = DragCopy.make(of: cell, palette: p, lead: Self.lead(d.id)) else { return }
-        if d.id.hasPrefix("h:") {
-            // A heading's open count, in an accent badge 7 pt past the copy's top-right corner.
-            let app = owner.app
-            let n = app.projection.section(of: String(d.id.dropFirst(2))).dropFirst().compactMap(app.task).filter { !$0.isDone }.count
-            let b = UILabel()
-            b.text = "\(n)"
-            b.font = .systemFont(ofSize: 11, weight: .semibold)
-            b.textColor = UIColor(p.onAccent)
-            b.backgroundColor = UIColor(p.accent)
-            b.textAlignment = .center
-            b.layer.cornerRadius = 9
-            b.layer.masksToBounds = true
-            b.accessibilityIdentifier = "dragBadge"
-            let w = max(18, b.intrinsicContentSize.width + 10)
-            b.frame = CGRect(x: v.bounds.width - w + 7, y: -7, width: w, height: 18)
-            v.addSubview(b)
-        }
         cv.addSubview(v)
         copy = v
         #if DEBUG || PERF_PROBE
@@ -596,6 +580,29 @@ final class CollectionDrag {
             return self.owner.cv.cellForItem(at: ip)
         }
         #endif
+    }
+
+    /// A heading's open count, in an accent badge 7 pt past the copy's top-right corner, fading in as the drag begins
+    /// (the Mac's shows with its drag; made at the lift, it showed on every hold, the menu's too).
+    private func badge(_ d: State) {
+        guard d.id.hasPrefix("h:"), let v = copy else { return }
+        let app = owner.app, p = owner.palette
+        let n = app.projection.section(of: String(d.id.dropFirst(2))).dropFirst().compactMap(app.task).filter { !$0.isDone }.count
+        let b = UILabel()
+        b.text = "\(n)"
+        b.font = .systemFont(ofSize: 11, weight: .semibold)
+        b.textColor = UIColor(p.onAccent)
+        b.backgroundColor = UIColor(p.accent)
+        b.textAlignment = .center
+        b.layer.cornerRadius = 9
+        b.layer.masksToBounds = true
+        b.accessibilityIdentifier = "dragBadge"
+        let w = max(18, b.intrinsicContentSize.width + 10)
+        b.frame = CGRect(x: v.bounds.width - w + 7, y: -7, width: w, height: 18)
+        v.addSubview(b)
+        guard !UIAccessibility.isReduceMotionEnabled else { return }
+        b.alpha = 0
+        UIView.animate(withDuration: 0.15, delay: 0, options: [.curveEaseOut, .allowUserInteraction]) { b.alpha = 1 }
     }
 
     /// The copy sets down on the row's `frame` (`DragCopy.setDown`), and the row `id` shows under it.
