@@ -96,6 +96,7 @@ final class CollectionDrag {
     /// The row whose copy was lifted at the hold, before any drag has begun (`lift`).
     private var heldCopy: String?
     private let feel = DragFeel()
+    private var catchUp = DragCatchUp()
     /// Ticks while a drag is on: the list can scroll under a still finger (the edge autoscroll), and the copy and
     /// the slot follow.
     private var link: CADisplayLink?
@@ -267,7 +268,10 @@ final class CollectionDrag {
         var copyTop = finger.y - d.grab.y
         if let lo = tops.map(\.y).min(), let hi = tops.map(\.y).max() { copyTop = min(max(copyTop, lo - 6), hi + 6) }
         if let v = copy, landing == nil {
-            UIView.performWithoutAnimation { v.frame.origin = CGPoint(x: finger.x - d.grab.x + Metric.rowInset, y: copyTop) }
+            // As a drag begins, the copy glides to the finger (DragCatchUp). The gap follows the finger's place, not the
+            // glide: a flick let go during it drops where the finger let go.
+            let p = catchUp.place(CGPoint(x: finger.x - d.grab.x + Metric.rowInset, y: copyTop), from: v.frame.origin)
+            UIView.performWithoutAnimation { v.frame.origin = p }
         }
         // Wherever the finger is (over the floating bar at the bottom, or off the list), the gap stays at the slot
         // nearest the copy, held to the list: letting go drops at the last slot shown (INTERACTIONS §14, "as in a Mac
@@ -398,6 +402,7 @@ final class CollectionDrag {
         dragSession = session
         // The lift's haptic is UIKit's; the ticks and the drop's are ours, ready from here.
         feel.begin(in: owner.cv)
+        catchUp.begin()
         #if DEBUG || PERF_PROBE
         DragProbe.shared.session = session
         DragProbe.shared.mark("willBegin start", in: owner.cv)
@@ -430,6 +435,8 @@ final class CollectionDrag {
     /// test; UIKit's session knows where): the drop at the finger's slot is ours, or it goes home, at once.
     private func letGo() {
         guard dragSession != nil, let d = state, !d.entered else { return }
+        // At the finger, where it let go.
+        catchUp.end()
         follow()
         if let d = state, moves(d) { drop(d) } else { goHome() }
     }
@@ -716,6 +723,43 @@ enum DragCopy {
     }
 }
 
+/// The copy's way to the finger as a drag begins (the task lists' and Home's). From the lift until UIKit's drag session
+/// begins (about 0.3 s, UIKit's), the copy waits where it lifted while the finger has gone on (UIKit takes the touch
+/// after 10-16 pt): followed at once, it jumped 35-77 pt in one frame (T22, measured), which read as a stutter over the
+/// first rows. It glides there instead: the copy's distance from the finger's place, at the drag's first follow,
+/// fades out over 0.15 s (ease-out), while it follows the finger's moves exactly. Its clock counts at most a frame
+/// (1/60 s) between follows, so UIKit's long frames as its drag begins (40-130 ms) don't skip the glide. Not with
+/// Reduce Motion.
+struct DragCatchUp {
+    static let duration: CFTimeInterval = 0.15
+    private var on = false
+    /// The glide's time so far, and the last follow's.
+    private var elapsed: CFTimeInterval = -1
+    private var last: CFTimeInterval = 0
+    private var offset: CGPoint = .zero
+
+    mutating func begin() { on = true; elapsed = -1 }
+    mutating func end() { on = false }
+
+    /// Where the copy is drawn, for the origin `want` the finger asks for, from where it is (`now`).
+    @MainActor mutating func place(_ want: CGPoint, from now: CGPoint) -> CGPoint {
+        guard on, !UIAccessibility.isReduceMotionEnabled else { return want }
+        let t = CACurrentMediaTime()
+        if elapsed < 0 {
+            elapsed = 0
+            offset = CGPoint(x: now.x - want.x, y: now.y - want.y)
+        } else {
+            elapsed += min(t - last, 1.0 / 60)
+        }
+        last = t
+        let x = elapsed / Self.duration
+        guard x < 1 else { on = false; return want }
+        // The first follow is drawn where it is (x 0), the next ones closer: (1 - x)^3 of the distance left.
+        let k = pow(1 - x, 3)
+        return CGPoint(x: want.x + offset.x * k, y: want.y + offset.y * k)
+    }
+}
+
 /// A drag's haptics (SwiftUI List's reorder and the Mac's feel): UIKit plays its own at the lift, and none of ours does;
 /// a selection tick each time the gap moves to a new slot (or, in Upcoming, another day lights); a light impact when a
 /// drop writes. The generators are made and prepared as the drag begins, so the first tick isn't late.
@@ -755,9 +799,10 @@ final class DragFeel {
     }
 }
 
-/// A display link's target (it holds its target strongly, and calls an Objective-C selector).
+/// A display link's target (it holds its target strongly, and calls an Objective-C selector). The task lists' drag
+/// and Home's.
 @MainActor
-private final class Tick: NSObject {
+final class Tick: NSObject {
     let body: () -> Void
     init(_ body: @escaping () -> Void) { self.body = body }
     @objc func fire() { body() }
@@ -888,6 +933,11 @@ final class DragProbe {
         drops = 0
         dx = nil
         land = nil
+        following = true
+        lastCopy = nil
+        step = 0
+        still = 0
+        stillRun = 0
         view = v
         publish()
         mark("lift")
@@ -952,6 +1002,7 @@ final class DragProbe {
     }
 
     func released(_ copy: UIView, home: CGPoint?) {
+        following = false
         if let home { dx = copy.frame.minX - home.x }
         mark("release copy=\(f(copy.frame.minX)),\(f(copy.frame.minY)) home=\(home.map { "\(f($0.x)),\(f($0.y))" } ?? "-")")
         publish()
@@ -973,7 +1024,29 @@ final class DragProbe {
     private func publish() {
         guard probing, let view else { return }
         view.accessibilityIdentifier = "dragProbe"
-        view.accessibilityValue = "ticks=\(ticks) drops=\(drops) dx=\(dx.map(f) ?? "-") land=\(land.map { "\(f($0.x)),\(f($0.y))" } ?? "-") lp=\(liftShape ?? "-") held=\(held ?? "-") scroll=\(scrolled) ev=\(calls.joined(separator: ">"))"
+        view.accessibilityValue = "step=\(f(step)) still=\(still) ticks=\(ticks) drops=\(drops) dx=\(dx.map(f) ?? "-") land=\(land.map { "\(f($0.x)),\(f($0.y))" } ?? "-") lp=\(liftShape ?? "-") held=\(held ?? "-") scroll=\(scrolled) ev=\(calls.joined(separator: ">"))"
+    }
+
+    // MARK: The copy against the finger (with -dragTrace YES, published with -dragProbe YES)
+
+    /// From the drag's begin to the finger's lift: the copy's largest step between two frames (pt), and the most frames
+    /// in a row it stood still while the drag session's finger moved (T22: on Home it stood still for 11 frames, then
+    /// jumped 104 pt, following only UIKit's drop updates; and it jumped 35-77 pt to the finger as the drag began).
+    private var following = false
+    private var lastCopy: (copy: CGFloat, finger: CGFloat)?
+    private var step: CGFloat = 0
+    private var still = 0
+    private var stillRun = 0
+
+    private func follow(copy y: CGFloat, finger fy: CGFloat) {
+        defer { lastCopy = (y, fy) }
+        guard following, let l = lastCopy else { return }
+        step = max(step, abs(y - l.copy))
+        if abs(y - l.copy) < 0.05, abs(fy - l.finger) > 0.5 { stillRun += 1 } else if abs(y - l.copy) >= 0.05 { stillRun = 0 }
+        if stillRun > still {
+            still = stillRun
+            publish()
+        }
     }
 
     // MARK: The trace
@@ -1047,6 +1120,7 @@ final class DragProbe {
             if let s = session {
                 let p = s.location(in: cv)
                 out += " fg=\(f(p.x)),\(f(p.y))"
+                if let c = copy, c.superview != nil { follow(copy: (c.layer.presentation() ?? c.layer).frame.minY, finger: p.y) }
             }
             out += " u=\(updates)"
             // The finger as the app's own touch, until UIKit hands it to the system as the drag begins.

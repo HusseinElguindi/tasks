@@ -16,7 +16,7 @@ lift, and the lift before it:
            largest single-frame step and change of speed (a jerk: the spring restarted from rest, or a jump).
 
 --frames N   the per-frame table of drag N (from 1): dt, work, commit, fg, u, copy, the gap's cells.
---all        every drag (default: those with a drag session).
+--all        the full figures for lifts with no drag session too (by default a line each: the touch, the calls).
 """
 import sys, re, statistics as st
 
@@ -130,7 +130,17 @@ def main():
     n = 0
     for d in drags:
         n += 1
-        if d["begin"] is None and not every: continue
+        if d["begin"] is None:
+            # A lift that no drag session followed: a hold that opened the menu, or a drag that didn't register.
+            calls = [m[len("call "):] for _, m in d["marks"] if m.startswith("call ")]
+            nxt = drags[n]["lift"] if n < len(drags) else float("inf")
+            seg = [f for f in DF if d["lift"] <= f["t"] < min(nxt, d["lift"] + 3)]
+            tc = [f for f in seg if "tc" in f]
+            last_tc = tc[-1]["t"] if tc else d["lift"]
+            moved = (f"the app's touch moved {tc[-1]['tc'][0] - tc[0]['tc'][0]:+.1f},{tc[-1]['tc'][1] - tc[0]['tc'][1]:+.1f} pt "
+                     f"until +{(last_tc - d['lift']) * 1000:.0f} ms (then lifted or taken by UIKit)") if tc else "no touch traced"
+            print(f"\ndrag {n}: lift with NO drag session: {moved}; calls {'>'.join(dict.fromkeys(calls))}")
+            if not every: continue
         end = d["release"] or d["landed"] or (d["marks"][-1][0])
         t0 = d["begin"] or d["lift"]
         print(f"\ndrag {n}: lift +0, begin +{((d['begin'] or d['lift']) - d['lift']) * 1000:.0f} ms, "

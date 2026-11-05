@@ -1089,6 +1089,30 @@ final class FlowTests: XCTestCase {
         XCTAssertGreaterThan(y(inbox), y(home), "and the drag dropped: Inbox under Home")
     }
 
+    /// The copy follows the finger smoothly from the drag's start (T22): on Home it moved only on UIKit's drop updates,
+    /// which pause for 0.2 s and more just after a drag begins (the copy stood still for up to 11 frames while the finger
+    /// went on, then jumped up to 104 pt), and as the drag began it jumped to the finger from where it lifted (35-77
+    /// pt). The drag probe (`-dragTrace YES -dragProbe YES`) gives the copy's largest step between two frames ("step",
+    /// pt) and the most frames in a row it stood still while the finger moved ("still").
+    func testTheCopyFollowsTheFingerSmoothly() {
+        app.launchArguments += ["-dragTrace", "YES", "-dragProbe", "YES"]
+        app.launch()
+        let inbox = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Inbox'")).firstMatch
+        let home = app.buttons["Home"].firstMatch
+        XCTAssertTrue(inbox.waitForExistence(timeout: 10))
+        sleep(3)
+        for (from, to) in [(inbox, home), (home, inbox)] {
+            from.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+                .press(forDuration: 0.6, thenDragTo: to.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)),
+                       withVelocity: XCUIGestureVelocity(rawValue: 400), thenHoldForDuration: 0.3)
+            sleep(2)
+            let p = probe()
+            XCTAssertLessThan(Double(p["step"] ?? "") ?? .infinity, 35, "the copy's largest step between frames, pt (39-104 before): \(p)")
+            XCTAssertLessThanOrEqual(Int(p["still"] ?? "") ?? .max, 2, "frames in a row the copy stood while the finger moved (11 before): \(p)")
+        }
+        XCTAssertLessThan(y(inbox), y(home), "and the drags dropped: Inbox over Home again, as it started")
+    }
+
     // MARK: The tapped row (§5; Mail and Settings)
 
     /// Screenshots taken on another thread while `gesture` runs (XCTest blocks for the length of a gesture), to see

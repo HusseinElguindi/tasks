@@ -148,6 +148,8 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
     }
 
     func stop() {
+        link?.invalidate()
+        link = nil
         copyView?.removeFromSuperview()
         copyView = nil
         heldCopy = nil
@@ -311,6 +313,11 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
     /// The list whose copy was lifted at the hold, before any drag has begun (`lift`).
     private var heldCopy: String?
     private let feel = DragFeel()
+    /// Ticks while a drag is on, so the copy follows the finger every frame. UIKit's drop updates alone pause for
+    /// 0.2 s and more just after the drag begins, while the finger goes on: the copy stood still, then jumped up to 100 pt
+    /// (T22, measured). As the task lists' (CollectionDrag.link).
+    private var link: CADisplayLink?
+    private var catchUp = DragCatchUp()
 
     /// A cell's place while a drag is on: hidden (the dragged row), or moved by `dy`. Nil: no drag.
     fileprivate func gapShift(_ id: String) -> (hide: Bool, dy: CGFloat)? {
@@ -352,7 +359,10 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         var copyTop = finger.y - d.grab.y
         if let lo = tops.map(\.y).min(), let hi = tops.map(\.y).max() { copyTop = min(max(copyTop, lo - 6), hi + 6) }
         if let v = copyView, landing == nil {
-            UIView.performWithoutAnimation { v.frame.origin = CGPoint(x: finger.x - d.grab.x + Metric.rowInset, y: copyTop) }
+            // As a drag begins, the copy glides to the finger (DragCatchUp). The gap follows the finger's place, not the
+            // glide: a flick let go during it drops where the finger let go.
+            let p = catchUp.place(CGPoint(x: finger.x - d.grab.x + Metric.rowInset, y: copyTop), from: v.frame.origin)
+            UIView.performWithoutAnimation { v.frame.origin = p }
         }
         // Wherever the finger is (over the floating bar, or off the list), the gap stays at the slot nearest the copy:
         // letting go drops at the last slot shown, as the task lists' (CollectionDrag.follow).
@@ -471,11 +481,16 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         #endif
         // The lift's haptic is UIKit's; the ticks and the drop's are ours, ready from here.
         feel.begin(in: cv)
+        catchUp.begin()
         // The copy lifted at the hold, or (a drag from the list's open menu) a new one.
         if heldCopy != d.id || copyView == nil { dropHeld(fade: false); makeCopy(d) }
         heldCopy = nil
         // The dragged row leaves its place (the gap stays where it was).
         moveGap(animated: false)
+        link?.invalidate()
+        let link = CADisplayLink(target: Tick { [weak self] in self?.follow() }, selector: #selector(Tick.fire))
+        link.add(to: .main, forMode: .common)
+        self.link = link
     }
 
     func collectionView(_ cv: UICollectionView, dragSessionDidEnd session: UIDragSession) {
@@ -483,6 +498,8 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         pending = nil
         // A flick UIKit ended without asking for a set-down first.
         letGo()
+        link?.invalidate()
+        link = nil
         dragSession = nil
         feel.end()
         // A refused drop went home at the drop session's end already; this is a fallback (a drag that never entered).
@@ -562,6 +579,8 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
     /// test; UIKit's session knows where): the drop at the finger's slot is ours, or it goes home, at once.
     private func letGo() {
         guard dragSession != nil, let d = drag, !d.entered else { return }
+        // At the finger, where it let go.
+        catchUp.end()
         follow()
         if let d = drag, moves(d) { drop(d) } else { goHome() }
     }
