@@ -29,7 +29,6 @@ xcrun devicectl device process launch --device <phone> --terminate-existing com.
 - `-frameProbe YES`: every display frame from launch, to `tmp/frame-trace.log` (FrameProbe.swift).
 - `-dragTrace YES`: every frame of each drag, from the lift to 0.5 s after the set-down, to `tmp/drag-trace.log`
   (DragProbe, in TaskCollection+Drag.swift).
-- `-noKeyboardWarmUp YES` (optional): no keyboard warm-up after launch (KeyboardWarmUp.swift), for an A/B.
 
 Both logs are appended to on every probe launch. Delete them (or copy them away) between runs. They are written
 about once a second, and again when the app leaves the foreground: before copying, send the app to the background

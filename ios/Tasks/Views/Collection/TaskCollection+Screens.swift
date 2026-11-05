@@ -64,7 +64,8 @@ struct CollectionLine: View {
             if app.deletedList(source) != nil {
                 row.disabled(true)
             } else {
-                row.modifier(SwipeActionsForVoiceOver(task: t, source: source, enabled: !app.isSelecting(source)))
+                row.modifier(SwipeActionsForVoiceOver(task: t, source: source, enabled: !app.isSelecting(source),
+                                                      move: owner.map { o in { o.drag.voiceOverMove(id, by: $0) } }))
             }
         case let .completedToggle(key, count, open):
             CompletedToggleRow(key: key, count: count, open: open, top: CompletedToggleRow.air)
@@ -88,15 +89,21 @@ struct CollectionLine: View {
 
 /// A row's swipe actions as VoiceOver's actions, named and ordered as List gives them for `TaskSwipes` (When, Delete,
 /// Complete or Not Done; in Trash, Put Back), on the row's container. On this path the swipes themselves are UIKit's
-/// (`CollectionSwipes`), not SwiftUI's, so VoiceOver gets them from here.
+/// (`CollectionSwipes`), not SwiftUI's, so VoiceOver gets them from here. Where rows reorder (not Upcoming, Completed or
+/// Trash), also Move Up and Move Down: the drag's drop at the slot before or after (`CollectionDrag.voiceOverMove`).
 private struct SwipeActionsForVoiceOver: ViewModifier {
     let task: TaskModel
     let source: Source
     let enabled: Bool
+    var move: ((Int) -> Bool)?
     @Environment(AppModel.self) private var app
 
     func body(content: Content) -> some View {
         content.accessibilityActions {
+            if enabled, let move, source != .upcoming, app.dragRuns([], source) != nil {
+                Button("Move Up") { _ = move(-1) }
+                Button("Move Down") { _ = move(1) }
+            }
             if enabled {
                 if source == .trash {
                     if app.canPutBack(task) { Button("Put Back") { app.putBack(task.id) } }

@@ -12,7 +12,7 @@ import UIKit
 //   TaskCollection+Fold.swift      CollectionFold      a heading folding or opening (§23)
 //   TaskCollection+Editing.swift   CollectionEditing   rows whose height changes as they're typed into
 //   TaskCollection+Swipes.swift    CollectionSwipes    swipe actions and long-press menus
-//   TaskCollection+Drag.swift      CollectionDrag      drag to reorder, our own gap and lifted copy (§14, §22)
+//   TaskCollection+Drag.swift      CollectionDrag      drag to reorder: our own press, gap and lifted copy (§14, §22)
 //   TaskCollection+Select.swift    CollectionSelect    select mode (§3)
 //   TaskCollection+Screens.swift   CollectionLine      each line's SwiftUI row, per screen
 //
@@ -518,19 +518,6 @@ final class TaskCell: UICollectionViewListCell {
         let t0 = MainActor.assumeIsolated { Perf.begin(.cellSize) }
         defer { MainActor.assumeIsolated { Perf.end(.cellSize, t0) } }
         return super.preferredLayoutAttributesFitting(a)
-    }
-
-    /// While UIKit has this cell in a drag (lifting, dragging, a refused drop's ~1 s set-down) it draws it at half
-    /// alpha. Our drag hides the row by its content's alpha instead (CollectionDrag), so the cell's stays 1.
-    private var dragging = false
-    override func dragStateDidChange(_ s: UICollectionViewCell.DragState) {
-        dragging = s != .none
-        super.dragStateDidChange(s)
-        MainActor.assumeIsolated { owner?.drag.cellDragState(self, s) }
-    }
-    override var alpha: CGFloat {
-        get { super.alpha }
-        set { super.alpha = dragging ? 1 : newValue }
     }
 }
 

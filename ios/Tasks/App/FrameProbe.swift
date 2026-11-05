@@ -96,7 +96,7 @@ enum Perf {
 /// - key=n/ms: `Perf` buckets since the last frame (PerfKey), calls and main-thread ms.
 /// Marks: "M <epoch s> <text>" (`mark`).
 ///
-/// For FlowTests: the longest frame in the 1.2 s after the last touch UIKit cancelled (a drag's begin), as the
+/// For FlowTests: the longest frame in the 1.2 s after a drag began (`dragBegan`) or a touch was cancelled, as the
 /// accessibility value of an element "frameProbe" ("dragWorst=287.6").
 @MainActor
 enum FrameProbe {
@@ -160,7 +160,13 @@ enum FrameProbe {
         for n in [UIApplication.willResignActiveNotification, UIApplication.didEnterBackgroundNotification] {
             nc.addObserver(forName: n, object: nil, queue: .main) { _ in MainActor.assumeIsolated { flush() } }
         }
-        mark("launch frameProbe" + (UserDefaults.standard.bool(forKey: "noKeyboardWarmUp") ? " noKeyboardWarmUp" : ""))
+        mark("launch frameProbe")
+    }
+
+    /// A drag has begun (CollectionDrag's and Home's): `dragWorst` is the longest frame of the 1.2 s from here.
+    static func dragBegan() {
+        cancelled = CACurrentMediaTime()
+        worst = 0
     }
 
     /// A line "M <epoch s> <text>" in the frame log.

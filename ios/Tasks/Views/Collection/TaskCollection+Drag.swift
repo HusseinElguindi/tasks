@@ -3,53 +3,51 @@ import SwiftUI
 import TasksCore
 import UIKit
 
-// Drag to reorder (§14, §23) and Upcoming's drag onto a day (§22), ported from the spike (ios-spike-drag 0d20941, its
-// "Drag: our own gap"; memory: uicollectionview-spike-findings). Step 5 of the migration.
+// Drag to reorder (§14, §23) and Upcoming's drag onto a day (§22), on our own press and pan (T24, in place of UIKit's
+// drag and drop sessions; memory: uicollectionview-spike-findings).
 //
-// - Our own gap. The drop delegate answers `.unspecified`, so the collection view never moves a cell itself (and never
-//   consults its retarget). The dragged row is hidden in place, and the gap opens at our own slot: the rows after the
-//   dragged one move up by its height, the rows from the slot on move down by it, as transforms set on the shown cells
-//   (`moveGap`), on Motion.layout's spring. Never by invalidating the layout: that re-measures every hosting cell
-//   (13.6 ms a move) and drops self-sized heights back to their estimates.
+// - The press (`PressDrag`, on the collection view): held 0.35 s within 10 pt, the row lifts; from there the finger
+//   drags it. No UIKit drag or drop session is ever made. UIKit's sessions outlived each drop by 0.6-0.9 s (its drop
+//   animation, a refused drop's set-down), and a press whose lift fell in that window got UIKit's lift haptic, then
+//   nothing (T23, on the phone): with no session, a press right after a drop lifts as any other.
+// - The hold and the menu: the row's long-press menu stays UIKit's (the controller's context-menu delegate), on its own
+//   clock: it opens about 0.8 s into a still hold. The lift (0.35 s) comes first, our copy on the row's exact frame, a
+//   haptic of ours. Still until 0.8 s, and the menu opens: the copy fades under its preview (`menuOpened`). Moved more
+//   than 10 pt from where it lifted, it's a drag (`begin`): the gap opens, and the menu is cut for this touch
+//   (`DragMenu.cut`). The row's own button lets the touch go at the lift (`DragMenu.release`), so no release opens it.
+// - Scrolls and swipes: before the lift, a move past 10 pt fails the press, and the list's pan or a row's swipe (pans
+//   both) takes the touch as before. Once lifted, no pan begins: the list scrolls only by our edge autoscroll
+//   (`EdgeScroll`), near its top and bottom.
+// - Our own gap. The collection view never moves a cell itself: the dragged row is hidden in place (its content's
+//   alpha), and the gap opens at our own slot: the rows after the dragged one move up by its height, the rows from the
+//   slot on move down by it, as transforms set on the shown cells (`moveGap`), on Motion.layout's spring. Never by
+//   invalidating the layout: that re-measures every hosting cell (13.6 ms a move) and drops self-sized heights back to
+//   their estimates.
 // - Slots (`slotTops`): never above the header, never between a heading and its notes, never past the Completed row; a
 //   heading only before another heading or at the end. In Today and Undated, only in the dragged row's run
 //   (`AppModel.dragRuns`: its list's group), so the gap and the copy stay in its group.
 // - Our own lifted copy (`fill-lift`, the row's radius 12 with continuous corners, `shadow-lift`, the row's snapshot)
-//   follows the finger in x and y, keeping the grab offset, as the Mac's does; only its y is held, 6 pt past the first
-//   and last slot (the Mac's rule inside a group), and the slot is chosen by y alone. It lifts at the hold, as UIKit
-//   lifts (the drag items asked), on the row's exact frame (`lift`); if no drag follows (the row's menu opens, or UIKit
-//   puts the lift down: the cell's drag state back to none) it goes again (`holdEnded`). Nothing of UIKit's shows,
-//   from the hold on: its lift preview and drag preview draw nothing (a lift preview of the row was shrunk by UIKit,
-//   as the drag began, into the drag preview at the finger: a second copy sliding there). The hold itself (0.41 s to
-//   the lift, 0.82 s to the menu) is UIKit's: its click-presentation driver, shared with the menu, has no public
-//   setting. A heading's section folds into the copy as the drag begins (CollectionFold's collapse), and its copy
-//   shows the open count in an accent badge.
-// - Haptics (`DragFeel`): UIKit's own at the lift (none of ours), a selection tick each time the gap moves to a new
-//   slot (in Upcoming also when another day lights), the light impact of a drop that writes.
+//   follows the finger in x and y, keeping the grab offset, as the Mac's does, every frame (a display link, so it
+//   follows the list's autoscroll under a still finger too); only its y is held, 6 pt past the first and last slot (the
+//   Mac's rule inside a group), and the slot is chosen by y alone. A heading's section folds into the copy as the drag
+//   begins (CollectionFold's collapse), and its copy shows the open count in an accent badge.
+// - Haptics (`DragFeel`): an impact at the lift, a selection tick each time the gap moves to a new slot (in Upcoming
+//   also when another day lights), the light impact of a drop that writes.
 // - Upcoming: the gap opens where the drop puts it (`dropOnDay`'s rules, then list order in the day), and the day's
 //   label is lit (`hover`, read by +Screens' group label).
-// - A drop sets the copy down as the Mac's does (`DragCopy.setDown`): lift and all, it flies into the row's exact frame
-//   (160 ms, `Motion.flight`'s curve), the row shows under it in that frame, and the copy fades out over it (150 ms
-//   ease-out). UIKit's own drop animation is made invisible (`DragCopy.invisibleDrop`): `drop(_:toItemAt:)` grew a
-//   picture of the destination cell (the hidden row: only the preview's fill) from the finger out to the row, over our
-//   copy, which read as a fade outwards from the centre. One that's refused (let go at its own slot) flies home the same
-//   way as the finger lifts (`dropSessionDidEnd`); let go anywhere else (over the floating bar, or off the list), it
-//   drops at the last slot shown, as on the Mac (§14: "as in a Mac list"): UIKit's own set-down of a refused drop runs about a second after
-//   that (its cancel preview is invisible too), and the drag session ends only then.
-// - A fast flick: UIKit's lift starts a drag session only 0.2-0.4 s later, and a finger let go in between ends
-//   it with no drop. Let go within about 0.13 s of the lift's start, UIKit never begins it (no call at all: the row
-//   stays, nothing to do). Later, it begins, then either ends with no drop session ever reaching the list (asking
-//   first for its set-down's preview, or not), or reaches the list and then doesn't perform a `.move` it was given.
-//   Its session knows where the finger lifted, so the drop at that slot is ours (`letGo`, `dropEnded`), set down the
-//   same way: at once, not after UIKit's second-long set-down. The gap follows the copy wherever the finger is.
-// - The dragged row is hidden through its content's alpha: UIKit owns the dragged cell's own alpha (half, while it's
-//   lifting or dragging), so hiding the cell left a ghost in the gap (TaskCell keeps that alpha at 1).
+// - A drop is the finger's lift, anywhere (over the floating bar, or off the list): at the last slot shown, as on the
+//   Mac (§14: "as in a Mac list"). It sets the copy down as the Mac's does (`DragCopy.setDown`): lift and all, it flies
+//   into the row's exact frame (160 ms, `Motion.flight`'s curve), the row shows under it in that frame, and the copy
+//   fades out over it (150 ms ease-out). One at the row's own place is refused and flies home the same way; nothing is
+//   written. A touch taken from us mid-drag (the system's) goes home too.
+// - VoiceOver: its double-tap-and-hold passes the touch through, so the same press drags; "Move Up" and "Move Down"
+//   (`voiceOverMove`, a task row's accessibility actions in +Screens) drop it at the slot before or after its own.
 // - Drops write through AppModel.drop (dropOnDay in Upcoming), Reorder.swift.
 //
-// Hooks: `install` sets the collection view's drag and drop delegates (the controller conforms, below), `stop`;
-// `holdsUpdates` (while a drag, its landing or a lifted heading is on, the core keeps the latest items in `wanted`);
-// `layoutPad` (the layout reaches a row's height past a rect, for cells the gap moves into it); a cell's `configured`,
-// `cellDidApply` and `reuse`.
+// Hooks: `install` adds the press to the collection view, `stop`; `holdsUpdates` (while a drag, its landing or a lifted
+// heading is on, the core keeps the latest items in `wanted`); `layoutPad` (the layout reaches a row's height past a
+// rect, for cells the gap moves into it); a cell's `configured`, `cellDidApply` and `reuse`; `menuOpened` (the
+// controller's willDisplayContextMenu).
 
 /// The day label a drag is over in Upcoming, drawn in accent-text (+Screens' group label observes it).
 @MainActor
@@ -71,9 +69,6 @@ final class CollectionDrag {
         var slot: Int?
         /// The last slot the gap was open at: a new one ticks.
         var ticked: Int?
-        /// A drop session has reached the list. Before that, UIKit asking for its set-down means the finger has lifted
-        /// (a fast flick let go before UIKit's first hit test), and the drop is ours (`letGo`).
-        var entered = false
         /// In Today and Undated, the items of the dragged row's run (`AppModel.dragRuns`: its list's group, the label
         /// first; the last group also has the Completed row and its done tasks). Nil elsewhere: one run.
         var run: Set<String>?
@@ -82,23 +77,24 @@ final class CollectionDrag {
     unowned let owner: TaskCollectionController
     let hover = DragHover()
 
+    /// The drag under way: the finger has moved since the lift, and the gap is open.
     private(set) var state: State?
-    /// The row lifted for a drag that hasn't begun: a long press asks for its drag items as it lifts, and may then
-    /// only open the row's menu, with no drag session at all.
-    private var pending: State?
+    /// The row lifted at the hold, before the finger has moved: its menu may still open (`menuOpened`).
+    private var held: State?
+    /// The finger's place at the lift, in the window: a move past `PressDrag.slop` from it begins the drag.
+    private var liftPoint: CGPoint = .zero
     /// The dropped (or refused) row, kept hidden while the copy flies into its place.
     private var landing: String?
+    /// The copy setting down (a new lift ends its set-down at once), and a count that tells its end from a later one's.
+    private var landingCopy: UIView?
+    private var landings = 0
     /// A heading whose section is folded into its drag.
     private var lifted: String?
-    private weak var dragSession: UIDragSession?
-    private weak var dropSession: UIDropSession?
     private var copy: UIView?
-    /// The row whose copy was lifted at the hold, before any drag has begun (`lift`).
-    private var heldCopy: String?
+    private var press: PressDrag?
     private let feel = DragFeel()
-    private var catchUp = DragCatchUp()
-    /// Ticks while a drag is on: the list can scroll under a still finger (the edge autoscroll), and the copy and
-    /// the slot follow.
+    private var edge = EdgeScroll()
+    /// Ticks from the lift to the release: the copy and the slot follow the finger, and the list's edge autoscroll.
     private var link: CADisplayLink?
     /// Items whose cells the gap has moved or hidden, put back when it closes.
     private var placed: Set<String> = []
@@ -106,14 +102,15 @@ final class CollectionDrag {
     init(owner: TaskCollectionController) { self.owner = owner }
 
     func install() {
-        owner.cv.dragDelegate = owner
-        owner.cv.dropDelegate = owner
-        owner.cv.dragInteractionEnabled = true
+        let p = PressDrag(target: self, action: #selector(pressed(_:)))
+        p.canLift = { [weak self] at in self?.item(at: at) != nil }
+        p.touched = { [weak self] in self?.touched() }
+        owner.cv.addGestureRecognizer(p)
+        press = p
     }
 
     func stop() {
-        link?.invalidate()
-        link = nil
+        stopLink()
         feel.end()
     }
 
@@ -149,7 +146,7 @@ final class CollectionDrag {
         return (false, dy)
     }
 
-    /// Its place for the gap: hidden by its content (UIKit owns the dragged cell's alpha), or moved by a transform.
+    /// Its place for the gap: hidden by its content, or moved by a transform.
     private func place(_ c: TaskCell) {
         guard let id = c.itemID else { return }
         guard let s = shift(id) else {
@@ -251,31 +248,30 @@ final class CollectionDrag {
         return (s, others[label])
     }
 
-    /// The copy follows the finger in x and y, keeping the grab offset; its y is held within 6 pt of the first and
-    /// last slot (the Mac's rule in a group; x is free, as the Mac's pointer is). Over the list, the gap follows the
-    /// copy's y: the slot whose top is nearest the copy's (Upcoming: `upcomingTarget`). Each new slot, or newly lit
-    /// day, ticks.
+    /// Each frame from the lift: the copy follows the finger in x and y, keeping the grab offset; its y is held within
+    /// 6 pt of the first and last slot (the Mac's rule in a group; x is free, as the Mac's pointer is). Once the drag
+    /// has begun, the list scrolls at its edges (`EdgeScroll`), and the gap follows the copy's y: the slot whose top is
+    /// nearest the copy's (Upcoming: `upcomingTarget`). Each new slot, or newly lit day, ticks.
     private func follow() {
-        guard state != nil, let session = dragSession else { return }
+        guard let base = state ?? held, let g = press else { return }
         let t0 = Perf.begin(.follow)
         defer { Perf.end(.follow, t0) }
         let cv = owner.cv!
+        if state != nil { edge.scroll(cv, finger: g.location(in: cv), foot: owner.bottomClearance) }
         // Sizing that rows scrolled into view still owe is settled first, so the slots' tops have no holes.
         Perf.measure(.layout) { cv.layoutIfNeeded() }
-        guard var d = state else { return }
+        var d = state ?? base
         let tops = slotTops(d)
-        let finger = session.location(in: cv)
+        let finger = g.location(in: cv)
         var copyTop = finger.y - d.grab.y
         if let lo = tops.map(\.y).min(), let hi = tops.map(\.y).max() { copyTop = min(max(copyTop, lo - 6), hi + 6) }
-        if let v = copy, landing == nil {
-            // As a drag begins, the copy glides to the finger (DragCatchUp). The gap follows the finger's place, not the
-            // glide: a flick let go during it drops where the finger let go.
-            let p = catchUp.place(CGPoint(x: finger.x - d.grab.x + Metric.rowInset, y: copyTop), from: v.frame.origin)
-            UIView.performWithoutAnimation { v.frame.origin = p }
+        if let v = copy {
+            UIView.performWithoutAnimation { v.frame.origin = CGPoint(x: finger.x - d.grab.x + Metric.rowInset, y: copyTop) }
         }
+        guard state != nil else { return }
         // Wherever the finger is (over the floating bar at the bottom, or off the list), the gap stays at the slot
         // nearest the copy, held to the list: letting go drops at the last slot shown (INTERACTIONS §14, "as in a Mac
-        // list"). A flick down ended over the bar, where the drop session exits: closing the gap sent the row home.
+        // list").
         var s = tops.min { abs($0.y - copyTop) < abs($1.y - copyTop) }?.slot
         var lit = false
         if owner.source == .upcoming {
@@ -302,14 +298,26 @@ final class CollectionDrag {
         moveGap(animated: true)
     }
 
-
     /// The gap is at a new place: a drop there writes.
     private func moves(_ d: State) -> Bool {
         guard let s = d.slot, let i = owner.current.firstIndex(of: d.id) else { return false }
         return s != i
     }
 
-    // MARK: Lifting
+    private func startLink() {
+        guard link == nil else { return }
+        let l = CADisplayLink(target: Tick { [weak self] in self?.follow() }, selector: #selector(Tick.fire))
+        l.add(to: .main, forMode: .common)
+        link = l
+    }
+
+    private func stopLink() {
+        link?.invalidate()
+        link = nil
+        edge.stop()
+    }
+
+    // MARK: The press
 
     private func canLift(_ id: String) -> Bool {
         let app = owner.app, source = owner.source
@@ -319,99 +327,84 @@ final class CollectionDrag {
         return owner.rows.line(id)?.canDrag == true && (id.hasPrefix("t:") || id.hasPrefix("h:"))
     }
 
-    func itemsForBeginning(_ session: UIDragSession, at ip: IndexPath) -> [UIDragItem] {
-        guard state == nil, landing == nil, let id = owner.dataSource.itemIdentifier(for: ip), canLift(id),
-              let f = owner.layout.modelFrame(ip.item) else { return [] }
-        let p = session.location(in: owner.cv)
-        let item = UIDragItem(itemProvider: NSItemProvider())
-        // The system's copy is invisible once lifted: ours is drawn instead.
-        item.previewProvider = {
-            let p = UIDragPreviewParameters()
-            p.backgroundColor = .clear
-            p.shadowPath = UIBezierPath()
-            return UIDragPreview(view: UIView(frame: CGRect(x: 0, y: 0, width: 1, height: 1)), parameters: p)
-        }
-        item.localObject = id
-        session.localContext = id
-        pending = State(id: id, height: f.height, grab: CGPoint(x: p.x - f.minX, y: p.y - f.minY), slot: ip.item, run: run(of: id))
-        lift(pending!)
-        return [item]
+    /// The row a press at `p` (in the list) would lift, if it may.
+    private func item(at p: CGPoint) -> (id: String, ip: IndexPath)? {
+        guard state == nil, held == nil, let ip = owner.cv.indexPathForItem(at: p),
+              let id = owner.dataSource.itemIdentifier(for: ip), canLift(id) else { return nil }
+        return (id, ip)
     }
 
-    /// The hold: our copy lifts in place, on the row's exact frame, as UIKit lifts (its own lift preview is
-    /// invisible, `previewParameters`), and follows the finger from there once the drag begins. With no drag
-    /// after it, it goes again (`holdEnded`).
-    private func lift(_ d: State) {
-        dropHeld(fade: false)
+    /// A finger is down: the haptics are made ready, so the lift's isn't late.
+    private func touched() {
+        feel.prepare(in: owner.cv)
+        #if DEBUG || PERF_PROBE
+        DragProbe.shared.pressed(owner.cv)
+        #endif
+    }
+
+    @objc private func pressed(_ g: PressDrag) {
+        switch g.state {
+        case .began: lift(g)
+        case .changed: moved(g)
+        case .ended: release(drop: true)
+        case .cancelled, .failed: release(drop: false)
+        default: break
+        }
+    }
+
+    /// The hold: our copy lifts in place, on the row's exact frame, with a haptic, and follows the finger from here.
+    private func lift(_ g: PressDrag) {
+        // A set-down still under way ends now, so the rows are where they'll stay.
+        endLanding()
+        let cv = owner.cv!
+        let p = g.location(in: cv)
+        guard let (id, ip) = item(at: p), let f = owner.layout.modelFrame(ip.item) else { return }
+        let d = State(id: id, height: f.height, grab: CGPoint(x: p.x - f.minX, y: p.y - f.minY), slot: ip.item, ticked: ip.item, run: run(of: id))
         makeCopy(d)
-        if copy != nil { heldCopy = d.id }
+        guard let v = copy else { return }
+        held = d
+        liftPoint = g.location(in: nil)
+        if let cell = cv.cellForItem(at: ip) { DragMenu.release(cell) }
+        feel.lifted(in: cv)
         #if DEBUG || PERF_PROBE
-        if let v = copy, let ip = owner.dataSource.indexPath(for: d.id), let cell = owner.cv.cellForItem(at: ip) {
+        DragProbe.shared.call("lift", in: cv)
+        DragProbe.shared.finger = { [weak g, weak cv] in
+            guard let g, let cv, g.numberOfTouches > 0 else { return nil }
+            return g.location(in: cv)
+        }
+        if let cell = cv.cellForItem(at: ip) {
             DragProbe.shared.held(v, on: cell)
+            DragProbe.shared.lift(cv) { [weak self] in self?.owner.dataSource.indexPath(for: id).flatMap { self?.owner.cv.cellForItem(at: $0) } }
         }
         #endif
+        startLink()
     }
 
-    /// The hold ended with no drag: the row's menu opened (its own preview rises over the copy as it fades), or UIKit
-    /// put the lift down. The copy fades where it is, over the row (150 ms): removed at once, the row showed bare for a
-    /// frame or two before the menu's preview. A drag from the open menu lifts a copy again (`willBegin`).
-    func holdEnded(menu: Bool) {
-        guard state == nil, dragSession == nil, heldCopy != nil else { return }
-        dropHeld(fade: true, menu: menu)
+    /// The finger moved: once past `PressDrag.slop` from where it lifted, the drag begins.
+    private func moved(_ g: PressDrag) {
+        guard let d = held else { return }
+        let w = g.location(in: nil)
+        guard hypot(w.x - liftPoint.x, w.y - liftPoint.y) > PressDrag.slop else { return }
+        begin(d)
     }
 
-    private func dropHeld(fade: Bool, menu: Bool = false) {
-        guard heldCopy != nil, let v = copy else { heldCopy = nil; return }
-        heldCopy = nil
-        copy = nil
-        #if DEBUG || PERF_PROBE
-        DragProbe.shared.call(menu ? "holdMenu" : fade ? "holdDown" : "holdDrop", in: owner.cv)
-        #endif
-        if fade { DragCopy.setDown(v, at: nil) {} } else { v.removeFromSuperview() }
-    }
-
-    /// UIKit's drag state of a row's cell (`TaskCell.dragStateDidChange`): back to none with no drag begun, the hold is
-    /// over.
-    func cellDragState(_ cell: TaskCell, _ s: UICollectionViewCell.DragState) {
-        #if DEBUG || PERF_PROBE
-        DragProbe.shared.call("cell-\(s == .none ? "none" : s == .lifting ? "lifting" : "dragging")", in: owner.cv)
-        #endif
-        if s == .none, cell.itemID == heldCopy { holdEnded(menu: false) }
-    }
-
-    /// UIKit's lift preview draws nothing: our copy lifts instead (`lift`). A lift preview of the row, drawn as our copy
-    /// is, was UIKit's own picture: at the drag's start UIKit shrank it, over 0.4 s, into the drag preview (ours, a
-    /// clear point at the finger), a second copy of the row sliding to the finger. Once the drag is on, UIKit asks again
-    /// for its cancel (a refused drop's set-down): nothing it draws then shows either, our copy has gone home.
-    func previewParameters(at ip: IndexPath) -> UIDragPreviewParameters? {
-        if dragSession != nil, state?.entered == false {
-            // Asked for its set-down before any drop session reached the list: the finger has lifted (a flick let go
-            // before UIKit's first hit test), and UIKit's session ends only after its set-down, a second on.
-            DispatchQueue.main.async { [weak self] in self?.letGo() }
-        }
-        return DragCopy.invisibleParameters
-    }
-
-    func willBegin(_ session: UIDragSession) {
-        guard var d = pending, d.id == session.localContext as? String, let at = owner.current.firstIndex(of: d.id) else { return }
-        pending = nil
-        // The rows may have changed since the lift (a menu was open meanwhile): the gap starts at its place now.
+    /// The drag begins: the row's menu won't open for this touch, the dragged row leaves its place (the gap stays where
+    /// it was), and a heading's section folds into it (§23).
+    private func begin(_ lift: State) {
+        held = nil
+        guard let at = owner.current.firstIndex(of: lift.id) else { release(drop: false); return }
+        var d = lift
+        // The rows may have changed since the lift (a sync): the gap starts at its place now.
         d.slot = at
         d.ticked = at
         state = d
-        dragSession = session
-        // The lift's haptic is UIKit's; the ticks and the drop's are ours, ready from here.
-        feel.begin(in: owner.cv)
-        catchUp.begin()
+        DragMenu.cut(owner.cv, keeping: press)
         #if DEBUG || PERF_PROBE
-        DragProbe.shared.session = session
-        DragProbe.shared.mark("willBegin start", in: owner.cv)
+        DragProbe.shared.call("begin", in: owner.cv)
+        FrameProbe.dragBegan()
         #endif
-        // The copy lifted at the hold, or (a drag from the row's open menu) a new one.
-        if heldCopy != d.id || copy == nil { dropHeld(fade: false); makeCopy(d) }
-        heldCopy = nil
         if d.id.hasPrefix("h:") {
-            // A heading's section folds into it at lift (§23); the gap is the heading's own row.
+            // The gap is the heading's own row.
             lifted = d.id
             let all = owner.current
             let items = shown(all)
@@ -421,38 +414,62 @@ final class CollectionDrag {
             owner.apply(items, fold: CollectionFold.Plan(heading: d.id, items: Set(CollectionFold.section(of: d.id, in: all)), collapse: true),
                         animation: .easeOut(duration: 0.15))
         }
-        // The dragged row leaves its place (the gap stays where it was).
         moveGap(animated: false)
-        let link = CADisplayLink(target: Tick { [weak self] in self?.follow() }, selector: #selector(Tick.fire))
-        link.add(to: .main, forMode: .common)
-        self.link = link
-        #if DEBUG || PERF_PROBE
-        DragProbe.shared.mark("willBegin end", in: owner.cv)
-        #endif
     }
 
-    /// The finger lifted with no drop session ever reaching the list (a fast flick, let go before UIKit's first hit
-    /// test; UIKit's session knows where): the drop at the finger's slot is ours, or it goes home, at once.
-    private func letGo() {
-        guard dragSession != nil, let d = state, !d.entered else { return }
-        // At the finger, where it let go.
-        catchUp.end()
+    /// The finger lifted (`drop`), or the touch was taken from us: a drag drops at its slot (or goes home, refused or
+    /// taken); a lift that never moved sets down on its row.
+    private func release(drop: Bool) {
+        if let d = held {
+            held = nil
+            stopLink()
+            #if DEBUG || PERF_PROBE
+            DragProbe.shared.call("holdDown", in: owner.cv)
+            #endif
+            land(at: owner.modelFrame(d.id), id: d.id)
+            return
+        }
+        guard state != nil else { stopLink(); return }
+        // At the finger's last place.
         follow()
-        if let d = state, moves(d) { drop(d) } else { goHome() }
-    }
-
-    func dragEnded() {
-        pending = nil
-        // A flick UIKit ended without asking for a set-down first.
-        letGo()
-        link?.invalidate()
-        link = nil
-        dragSession = nil
-        feel.end()
-        // A refused drop went home at the drop session's end already; this is the fallback.
-        goHome()
+        stopLink()
+        if drop, let d = state, moves(d) { self.drop(d) } else { goHome() }
         unfold()
         settle()
+    }
+
+    /// The row's menu opened (a still hold, about 0.8 s in): the copy fades where it is, over the row (150 ms), under
+    /// the menu's own preview of the row. Removed at once, the row showed bare for a frame or two before the preview.
+    func menuOpened() {
+        if held != nil, let v = copy {
+            held = nil
+            copy = nil
+            stopLink()
+            #if DEBUG || PERF_PROBE
+            DragProbe.shared.call("holdMenu", in: owner.cv)
+            #endif
+            DragCopy.setDown(v, at: nil) {}
+        } else if state != nil {
+            // A drag cuts the menu as it begins (`DragMenu.cut`); one that opened anyway goes.
+            owner.cv.contextMenuInteraction?.dismissMenu()
+        }
+    }
+
+    /// VoiceOver's "Move Up" and "Move Down" on a task's row (not in Upcoming, where a drag sets the day): dropped at the
+    /// slot before or after its own, as a drag would drop it there. Whether it moved.
+    func voiceOverMove(_ id: String, by step: Int) -> Bool {
+        guard state == nil, held == nil, landing == nil, canLift(id), let at = owner.current.firstIndex(of: id),
+              let f = owner.layout.modelFrame(at), id.hasPrefix("t:"), owner.source != .upcoming else { return false }
+        var d = State(id: id, height: f.height, grab: .zero, slot: at, ticked: at, run: run(of: id))
+        let slots = slotTops(d).map(\.slot)
+        guard let next = step < 0 ? slots.last(where: { $0 < at }) : slots.first(where: { $0 > at }) else { return false }
+        d.slot = next
+        state = d
+        _ = write(d)
+        landing = nil
+        moveGap(animated: false)
+        settle()
+        return true
     }
 
     /// The items without a lifted heading's section.
@@ -487,7 +504,7 @@ final class CollectionDrag {
         if items != owner.current { owner.apply(items, animation: nil) }
     }
 
-    /// The drag ended with no drop (refused: let go at the row's own place): the copy flies home
+    /// The drag ended with no drop (refused: let go at the row's own place; or the touch was taken): the copy flies home
     /// as the gap there closes, and sets down there as a drop does; a lifted heading's section opens.
     private func goHome() {
         guard let d = state else { return }
@@ -495,8 +512,11 @@ final class CollectionDrag {
         state = nil
         landing = d.id
         hover.key = nil
+        #if DEBUG || PERF_PROBE
+        DragProbe.shared.call("home", in: owner.cv)
+        #endif
         moveGap(animated: true)
-        land(at: home)
+        land(at: home, id: d.id)
         unfold()
     }
 
@@ -508,6 +528,7 @@ final class CollectionDrag {
               let snap = cell.snapshotView(afterScreenUpdates: false) else { return }
         let p = owner.palette, inset = Metric.rowInset
         let v = UIView(frame: cell.frame.insetBy(dx: inset, dy: 0))
+        v.isUserInteractionEnabled = false
         v.backgroundColor = UIColor(p.lift)
         DragCopy.round(v.layer)
         // `shadow-lift`: a 0.5 pt ring, and 0 8 24 (INTERACTIONS-v2, Shadows), cast by the copy's own shape.
@@ -554,22 +575,35 @@ final class CollectionDrag {
         #endif
     }
 
-    /// The copy sets down on the row's `frame` (`DragCopy.setDown`), and the row shows under it.
-    private func land(at frame: CGRect?) {
+    /// The copy sets down on the row's `frame` (`DragCopy.setDown`), and the row `id` shows under it.
+    private func land(at frame: CGRect?, id: String) {
         guard let v = copy else { landed(); return }
         copy = nil
+        landings += 1
+        let n = landings
+        landingCopy = v
         let origin = frame.map { CGPoint(x: $0.minX + Metric.rowInset, y: $0.minY) }
         #if DEBUG || PERF_PROBE
         DragProbe.shared.released(v, home: origin)
         #endif
         DragCopy.setDown(v, at: origin) { [weak self] in
+            guard let self, self.landings == n else { return }
             #if DEBUG || PERF_PROBE
-            if let self, let id = self.landing, let ip = self.owner.dataSource.indexPath(for: id) {
-                DragProbe.shared.landed(v, on: self.owner.cv.cellForItem(at: ip))
-            }
+            if let ip = self.owner.dataSource.indexPath(for: id) { DragProbe.shared.landed(v, on: self.owner.cv.cellForItem(at: ip)) }
             #endif
-            self?.landed()
+            self.landingCopy = nil
+            self.landed()
         }
+    }
+
+    /// A new lift while a copy still sets down: it ends now (its row shows, what was held back is applied).
+    private func endLanding() {
+        guard let v = landingCopy else { return }
+        landingCopy = nil
+        landings += 1
+        v.layer.removeAllAnimations()
+        v.removeFromSuperview()
+        landed()
     }
 
     /// The landed row shows; anything held back meanwhile is applied.
@@ -581,50 +615,18 @@ final class CollectionDrag {
 
     // MARK: Dropping
 
-    func canHandle(_ session: UIDropSession) -> Bool { state != nil && session.localDragSession != nil }
-
-    func didUpdate(_ session: UIDropSession) -> UICollectionViewDropProposal {
-        guard state != nil, session.localDragSession != nil else { return UICollectionViewDropProposal(operation: .forbidden) }
-        let t0 = Perf.begin(.update)
-        defer { Perf.end(.update, t0) }
-        #if DEBUG || PERF_PROBE
-        DragProbe.shared.updated()
-        #endif
-        dropSession = session
-        state?.entered = true
-        follow()
-        // At its own place (where it started, or a day it can't take) the drop is refused, so it goes back as a
-        // cancel (a heading's performed no-move drop would still write an order).
-        return UICollectionViewDropProposal(operation: state.map(moves) == true ? .move : .cancel, intent: .unspecified)
-    }
-
-    /// The finger left the list's drop area (over the floating bar, or off the list): the gap stays at the last slot
-    /// shown, and follows the copy still (`follow`).
-    func didExit(_ session: UIDropSession) {
-        dropSession = nil
-    }
-
-    func perform(_ c: UICollectionViewDropCoordinator) {
-        guard let item = c.items.first, let d = state, owner.current.contains(d.id) else { return }
-        let f = write(d)
-        // UIKit's drop goes nowhere to be seen: our copy sets down instead.
-        _ = c.drop(item.dragItem, to: DragCopy.invisibleDrop(at: f.map { CGPoint(x: $0.midX, y: $0.midY) } ?? copy?.center ?? .zero, in: owner.cv))
-        land(at: f)
-    }
-
-    /// A drop UIKit didn't perform, though the finger lifted over a new slot: ours, set down the same way.
+    /// The finger lifted over a new slot: written, and the copy sets down in the row's new place.
     private func drop(_ d: State) {
         #if DEBUG || PERF_PROBE
-        DragProbe.shared.call("ourDrop", in: owner.cv)
+        DragProbe.shared.call("drop", in: owner.cv)
         #endif
         let f = write(d)
-        land(at: f)
+        land(at: f, id: d.id)
     }
 
     /// The drop at the gap: written (AppModel.drop: dropOnDay in Upcoming), and the new order applied at once, the
     /// dropped row hidden under the copy. Its frame, where the copy sets down (nil: it has gone).
     private func write(_ d: State) -> CGRect? {
-        dropSession = nil
         hover.key = nil
         let app = owner.app, source = owner.source, current = owner.current
         guard let src = current.firstIndex(of: d.id) else {
@@ -656,12 +658,154 @@ final class CollectionDrag {
         guard let ip = owner.dataSource.indexPath(for: d.id) else { return nil }
         return owner.layout.modelFrame(ip.item)
     }
+}
 
-    func dropEnded() {
-        dropSession = nil
-        // The finger lifted with no drop performed. Over a new slot, UIKit didn't get to it (a flick let go as its drop
-        // session began): the drop is ours. Otherwise it was refused (let go at its own slot): home.
-        if let d = state, moves(d) { drop(d) } else { goHome() }
+/// Our press-and-drag on a list (the task lists' and Home's), in place of UIKit's drag interaction. One finger held
+/// `hold` (0.35 s) within `slop` (10 pt) of where it landed begins it (the lift); from there each move is a change,
+/// and the finger's lift ends it. UIKit lifted at about 0.41 s (its click driver's, shared with the menu; its own
+/// recognizer waits 0.325 s within 10 pt): ours lifts a little sooner, never later, and fails the same way, so a scroll
+/// or a row's swipe that moves 10 pt before the lift wins as before. Its delegate is itself: it runs alongside UIKit's
+/// own on the list (the row's long-press menu, which opens about 0.8 s into a still hold; the scroll indicator's), never
+/// a pan's (the list's scroll, a row's swipe), which it stops once it has begun; it isn't simultaneous with anything in
+/// the rows (their buttons' taps fail as it begins, so letting go opens nothing). Only a pan can prevent it.
+@MainActor
+final class PressDrag: UIGestureRecognizer, UIGestureRecognizerDelegate {
+    static let hold: TimeInterval = 0.35
+    static let slop: CGFloat = 10
+    /// May a press at this point (in the view) lift? Asked at the hold's end.
+    var canLift: (CGPoint) -> Bool = { _ in false }
+    /// A finger has landed.
+    var touched: () -> Void = {}
+    private var timer: Timer?
+    private var start: CGPoint = .zero
+    private weak var finger: UITouch?
+
+    override init(target: Any?, action: Selector?) {
+        super.init(target: target, action: action)
+        delegate = self
+        delaysTouchesBegan = false
+        delaysTouchesEnded = false
+    }
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
+        guard finger == nil else {
+            // Another finger: before the lift it's no press (two fingers select, `SwipeSelect`); after it, ignored.
+            if state == .possible { state = .failed } else { touches.forEach { ignore($0, for: event) } }
+            return
+        }
+        guard touches.count == 1, let t = touches.first else { state = .failed; return }
+        finger = t
+        start = t.location(in: nil)
+        touched()
+        let timer = Timer(timeInterval: Self.hold, repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated { self?.held() }
+        }
+        // In the tracking mode too: the list's run loop runs in it while a finger is down.
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
+    }
+
+    private func held() {
+        timer = nil
+        guard state == .possible, let v = view else { return }
+        state = canLift(location(in: v)) ? .began : .failed
+    }
+
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent) {
+        guard let t = finger, touches.contains(t) else { return }
+        if state == .possible {
+            let p = t.location(in: nil)
+            if hypot(p.x - start.x, p.y - start.y) > Self.slop { state = .failed }
+        } else if state == .began || state == .changed {
+            state = .changed
+        }
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent) {
+        guard let t = finger, touches.contains(t) else { return }
+        state = state == .possible ? .failed : .ended
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent) {
+        guard let t = finger, touches.contains(t) else { return }
+        state = state == .possible ? .failed : .cancelled
+    }
+
+    override func reset() {
+        timer?.invalidate()
+        timer = nil
+        finger = nil
+        super.reset()
+    }
+
+    override func canBePrevented(by p: UIGestureRecognizer) -> Bool { p is UIPanGestureRecognizer }
+
+    func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+        other.view === view && !(other is UIPanGestureRecognizer)
+    }
+}
+
+/// A drag's edge autoscroll (the task lists' and Home's), in place of UIKit's: with the finger near the list's top (its
+/// top inset, under the bar) or its foot (the floating bar's top), the list scrolls that way, faster the deeper the
+/// finger is: from 40 pt/s at 60 pt from the edge to 1200 pt/s at 20 pt past the top edge or 40 pt past the foot (over
+/// the bar), with the square of the depth (UIKit's grows the same way). It never scrolls past the content's ends.
+struct EdgeScroll {
+    static let reach: CGFloat = 60
+    private var last: CFTimeInterval = 0
+
+    mutating func stop() { last = 0 }
+
+    /// One frame's scroll, for the finger at `p` (in the list's content); `foot` is how far the list's clear bottom is
+    /// from its frame's (the floating bar's clearance).
+    @MainActor mutating func scroll(_ cv: UIScrollView, finger p: CGPoint, foot: CGFloat) {
+        let now = CACurrentMediaTime()
+        let dt = last > 0 ? min(now - last, 1.0 / 30) : 1.0 / 60
+        last = now
+        let y = p.y - cv.contentOffset.y
+        let top = cv.adjustedContentInset.top, bottom = cv.bounds.height - foot
+        let up = (top + Self.reach - y) / (Self.reach + 20), down = (y - (bottom - Self.reach)) / (Self.reach + 40)
+        let k = min(1, max(up, down))
+        guard k > 0 else { return }
+        let v = (40 + 1160 * k * k) * (up > 0 ? -1 : 1)
+        let lo = -cv.adjustedContentInset.top, hi = max(lo, cv.contentSize.height + cv.adjustedContentInset.bottom - cv.bounds.height)
+        let to = min(max(cv.contentOffset.y + v * dt, lo), hi)
+        guard abs(to - cv.contentOffset.y) > 0.01 else { return }
+        cv.contentOffset.y = to
+    }
+}
+
+/// What else the press's touch drives, once it's ours (the task lists' and Home's). A recognizer whose `isEnabled` goes
+/// off and on again is cancelled (or fails) at once, and is itself for the next touch.
+@MainActor
+enum DragMenu {
+    /// The row's menu still to come at the hold's end (UIKit's click presentation, about 0.8 s in) doesn't open, once a
+    /// drag has begun: the list's own recognizers still following this touch, but for our press and the pans (none
+    /// runs once ours has begun), are cancelled; the menu's are among them. UIKit cancels its menu itself once the finger
+    /// has gone far enough, but not for a slow drag: one of 12 pt in 0.3 s still opened the menu over the drag (T24,
+    /// measured). (Taking the list's context-menu interaction off and putting it back cut it too, but the list's
+    /// menus never opened again.)
+    static func cut(_ cv: UICollectionView, keeping press: UIGestureRecognizer?) {
+        for g in cv.gestureRecognizers ?? [] where g !== press && !(g is UIPanGestureRecognizer) && (g.state == .began || g.state == .changed) {
+            g.isEnabled = false
+            g.isEnabled = true
+        }
+        #if DEBUG || PERF_PROBE
+        DragProbe.shared.call("menuCut", in: cv)
+        #endif
+    }
+
+    /// The lifted row's own recognizers (its SwiftUI button's) let the touch go as it lifts, so letting go opens
+    /// nothing: they run alongside UIKit's in a hosting view, and only the row's menu, when it has one, used to take the
+    /// touch from them.
+    static func release(_ cell: UIView) {
+        var views = [cell]
+        while let v = views.popLast() {
+            for g in v.gestureRecognizers ?? [] where g.isEnabled {
+                g.isEnabled = false
+                g.isEnabled = true
+            }
+            views += v.subviews
+        }
     }
 }
 
@@ -694,9 +838,9 @@ enum DragCopy {
         fly.startAnimation()
     }
 
-    /// The lifted row's shape (the copy, its clip and shadow, the lift preview): the row's tapped fill, radius 12 with
-    /// continuous corners (TaskRow's `RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous)`). The path
-    /// is UIKit's rounded rect, which is drawn with continuous corners itself.
+    /// The lifted row's shape (the copy, its clip and shadow): the row's tapped fill, radius 12 with continuous corners
+    /// (TaskRow's `RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous)`). The path is UIKit's rounded
+    /// rect, which is drawn with continuous corners itself.
     static func shape(_ r: CGRect) -> UIBezierPath { UIBezierPath(roundedRect: r, cornerRadius: Metric.rowRadius) }
 
     /// A layer rounded as the row's fill.
@@ -704,75 +848,31 @@ enum DragCopy {
         l.cornerRadius = Metric.rowRadius
         l.cornerCurve = .continuous
     }
-
-    /// Preview parameters that draw nothing: a clear fill and no shadow, in a point.
-    static var invisibleParameters: UIDragPreviewParameters {
-        let p = UIDragPreviewParameters()
-        p.backgroundColor = .clear
-        p.shadowPath = UIBezierPath()
-        p.visiblePath = UIBezierPath(rect: CGRect(x: 0, y: 0, width: 1, height: 1))
-        return p
-    }
-
-    /// UIKit's drop animation, made to draw nothing: the drag's own preview (ours is a clear point, `itemsForBeginning`)
-    /// goes to `center`. `drop(_:toItemAt:)` instead animates a picture of the destination cell, made with the drag's
-    /// preview parameters, from the finger out to the cell, above the app's own views: with the row hidden under our
-    /// copy, that was the preview's fill growing from the finger outwards, over the copy setting down.
-    static func invisibleDrop(at center: CGPoint, in container: UIView) -> UIDragPreviewTarget {
-        UIDragPreviewTarget(container: container, center: center)
-    }
 }
 
-/// The copy's way to the finger as a drag begins (the task lists' and Home's). From the lift until UIKit's drag session
-/// begins (about 0.3 s, UIKit's), the copy waits where it lifted while the finger has gone on (UIKit takes the touch
-/// after 10-16 pt): followed at once, it jumped 35-77 pt in one frame (T22, measured), which read as a stutter over the
-/// first rows. It glides there instead: the copy's distance from the finger's place, at the drag's first follow,
-/// fades out over 0.15 s (ease-out), while it follows the finger's moves exactly. Its clock counts at most a frame
-/// (1/60 s) between follows, so UIKit's long frames as its drag begins (40-130 ms) don't skip the glide. Not with
-/// Reduce Motion.
-struct DragCatchUp {
-    static let duration: CFTimeInterval = 0.15
-    private var on = false
-    /// The glide's time so far, and the last follow's.
-    private var elapsed: CFTimeInterval = -1
-    private var last: CFTimeInterval = 0
-    private var offset: CGPoint = .zero
-
-    mutating func begin() { on = true; elapsed = -1 }
-    mutating func end() { on = false }
-
-    /// Where the copy is drawn, for the origin `want` the finger asks for, from where it is (`now`).
-    @MainActor mutating func place(_ want: CGPoint, from now: CGPoint) -> CGPoint {
-        guard on, !UIAccessibility.isReduceMotionEnabled else { return want }
-        let t = CACurrentMediaTime()
-        if elapsed < 0 {
-            elapsed = 0
-            offset = CGPoint(x: now.x - want.x, y: now.y - want.y)
-        } else {
-            elapsed += min(t - last, 1.0 / 60)
-        }
-        last = t
-        let x = elapsed / Self.duration
-        guard x < 1 else { on = false; return want }
-        // The first follow is drawn where it is (x 0), the next ones closer: (1 - x)^3 of the distance left.
-        let k = pow(1 - x, 3)
-        return CGPoint(x: want.x + offset.x * k, y: want.y + offset.y * k)
-    }
-}
-
-/// A drag's haptics (SwiftUI List's reorder and the Mac's feel): UIKit plays its own at the lift, and none of ours does;
-/// a selection tick each time the gap moves to a new slot (or, in Upcoming, another day lights); a light impact when a
-/// drop writes. The generators are made and prepared as the drag begins, so the first tick isn't late.
+/// A drag's haptics (SwiftUI List's reorder and the Mac's feel): an impact at the lift; a selection tick each time the
+/// gap moves to a new slot (or, in Upcoming, another day lights); a light impact when a drop writes. The generators are
+/// made and prepared as a finger lands, so the lift's isn't late.
 @MainActor
 final class DragFeel {
+    private var lift: UIImpactFeedbackGenerator?
     private var tick: UISelectionFeedbackGenerator?
     private var thud: UIImpactFeedbackGenerator?
 
-    func begin(in view: UIView) {
-        tick = UISelectionFeedbackGenerator(view: view)
+    func prepare(in view: UIView) {
+        if lift == nil {
+            lift = UIImpactFeedbackGenerator(style: .medium, view: view)
+            tick = UISelectionFeedbackGenerator(view: view)
+            thud = UIImpactFeedbackGenerator(style: .light, view: view)
+        }
+        lift?.prepare()
         tick?.prepare()
-        thud = UIImpactFeedbackGenerator(style: .light, view: view)
         thud?.prepare()
+    }
+
+    func lifted(in view: UIView) {
+        prepare(in: view)
+        lift?.impactOccurred()
         #if DEBUG || PERF_PROBE
         DragProbe.shared.begin(view)
         #endif
@@ -794,6 +894,7 @@ final class DragFeel {
     }
 
     func end() {
+        lift = nil
         tick = nil
         thud = nil
     }
@@ -808,77 +909,13 @@ final class Tick: NSObject {
     @objc func fire() { body() }
 }
 
-// MARK: - The delegates
+// MARK: - The menu, and the probe's hooks
 
-extension TaskCollectionController: UICollectionViewDragDelegate, UICollectionViewDropDelegate {
-    func collectionView(_ cv: UICollectionView, itemsForBeginning session: UIDragSession, at ip: IndexPath) -> [UIDragItem] {
-        #if DEBUG || PERF_PROBE
-        DragProbe.shared.pressed(cv)
-        #endif
-        let items = drag.itemsForBeginning(session, at: ip)
-        probe(items.isEmpty ? "items0" : "items")
-        #if DEBUG || PERF_PROBE
-        if !items.isEmpty, let id = dataSource.itemIdentifier(for: ip) {
-            DragProbe.shared.lift(cv) { [weak self] in self?.dataSource.indexPath(for: id).flatMap { self?.cv.cellForItem(at: $0) } }
-        }
-        #endif
-        return items
-    }
-
-    func collectionView(_ cv: UICollectionView, dragPreviewParametersForItemAt ip: IndexPath) -> UIDragPreviewParameters? {
-        probe("params")
-        let p = drag.previewParameters(at: ip)
-        #if DEBUG || PERF_PROBE
-        if let p { DragProbe.shared.liftPreview(p) }
-        #endif
-        return p
-    }
-
-    func collectionView(_ cv: UICollectionView, dragSessionWillBegin session: UIDragSession) {
-        probe("begin")
-        mark("begin at \(session.location(in: cv))")
-        drag.willBegin(session)
-    }
-    func collectionView(_ cv: UICollectionView, dragSessionDidEnd session: UIDragSession) {
-        probe("dragEnd")
-        mark("dragEnd at \(session.location(in: cv))")
-        drag.dragEnded()
-    }
-
-    func collectionView(_ cv: UICollectionView, dragSessionIsRestrictedToDraggingApplication session: UIDragSession) -> Bool { true }
-
-    func collectionView(_ cv: UICollectionView, canHandle session: UIDropSession) -> Bool {
-        let can = drag.canHandle(session)
-        probe(can ? "can1" : "can0")
-        return can
-    }
-
-    func collectionView(_ cv: UICollectionView, dropSessionDidUpdate session: UIDropSession,
-                        withDestinationIndexPath dest: IndexPath?) -> UICollectionViewDropProposal {
-        let p = drag.didUpdate(session)
-        probe(["upd-cancel", "upd-forbidden", "upd-copy", "upd-move"][max(0, min(3, Int(p.operation.rawValue)))])
-        return p
-    }
-
-    func collectionView(_ cv: UICollectionView, dropSessionDidEnter session: UIDropSession) { probe("enter") }
-    func collectionView(_ cv: UICollectionView, dropSessionDidExit session: UIDropSession) { probe("exit"); drag.didExit(session) }
-    func collectionView(_ cv: UICollectionView, performDropWith c: UICollectionViewDropCoordinator) { probe("perform"); drag.perform(c) }
-    func collectionView(_ cv: UICollectionView, dropSessionDidEnd session: UIDropSession) {
-        probe("dropEnd")
-        mark("dropEnd at \(session.location(in: cv))")
-        drag.dropEnded()
-    }
-
+extension TaskCollectionController {
     func collectionView(_ cv: UICollectionView, willDisplayContextMenu c: UIContextMenuConfiguration,
                         animator: (any UIContextMenuInteractionAnimating)?) {
         probe("menu")
-        drag.holdEnded(menu: true)
-    }
-
-    func mark(_ s: String) {
-        #if DEBUG || PERF_PROBE
-        DragProbe.shared.mark(s, in: cv)
-        #endif
+        drag.menuOpened()
     }
 
     /// Debug only: the call, in DragProbe's log (`-dragProbe`).
@@ -891,31 +928,31 @@ extension TaskCollectionController: UICollectionViewDragDelegate, UICollectionVi
 
 #if DEBUG || PERF_PROBE
 /// Debug builds and the phone's measuring build (`PERF_PROBE`, ios/Tools/perf/README.md) only.
-/// `-dragProbe YES` (FlowTests): what the last drag did, as the collection view's accessibility value
-/// (identifier "dragProbe"), read once it's over: "ticks=3 drops=1 dx=80.0 land=0.0,0.0 ev=items>…" (the haptic ticks
-/// and drops; the copy's sideways offset from the row's place as the finger lifted; the copy's last frame against the
-/// row cell's; the drag and drop delegate calls since the lift, "ourDrop" a flick's drop of ours).
+/// `-dragProbe YES` (FlowTests): what the last press did, as the collection view's accessibility value (identifier
+/// "dragProbe"), read once it's over: "pd=180 step=12.0 still=0 ticks=3 drops=1 dx=80.0 land=0.0,0.0 uk=0
+/// held=0.0,0.0 scroll=0.0 ev=press>lift>begin>menuCut>drop" (ms from the last copy's release to this press's touch;
+/// the copy's largest step and still run (with -dragTrace); the haptic ticks and drops; the copy's sideways offset
+/// from the row's place as the finger lifted; the copy's last frame against the row cell's; whether a UIKit drag or
+/// drop session was ever seen on the list (`hasActiveDrag`/`hasActiveDrop`); the copy at the hold against the row's
+/// cell; how far the list scrolled since the press; the press's calls in order: press, lift, begin, menuCut, drop,
+/// home, holdDown (let go where it lifted), holdMenu (the row's menu opened), menu, and the list's gesture recognizers
+/// that began or ended, "gr-…").
 /// `-dragTrace YES` (DragFilmTests, the phone): from each lift to 0.5 s after its set-down, every frame, to
 /// tmp/drag-trace.log in the app's container: "F <epoch s> copy=x,y,w,h a= sh= sc= cm=<model y> row=x,y ra= fg=<the
-/// drag session's finger x,y in the list> u=<drop updates since the last frame> tc=<the app's own touch x,y in the
-/// list, until the drag begins> g=<item>:<model ty>:<shown ty>[h],…"
-/// (each shown cell the gap moves or hides: its transform as set, and as drawn now; h: hidden). Marks: "M <epoch s>
-/// …" (delegate calls, "slot <new> was <old> at <copy top>", the copy's release and landing). With `-dragTraceUIKit
-/// YES` (DragFilmTests) also any view UIKit shows outside the app's root view (its drag and drop previews): a walk of
-/// every window's views, each frame, too slow to measure frame times with.
+/// press's finger x,y in the list> off=<the list's content offset y> tc=<the window's last touch x,y in the list>
+/// g=<item>:<model ty>:<shown ty>[h],…" (each shown cell the gap moves or hides: its transform as set, and as drawn
+/// now; h: hidden). Marks: "M <epoch s> …" (the calls, "slot <new> was <old> at <copy top>", the copy's release and
+/// landing), from each touch-down on the list. With `-dragTraceUIKit YES` (DragFilmTests) also any view UIKit shows
+/// outside the app's root view (a menu's previews): a walk of every window's views, each frame, too slow to measure
+/// frame times with.
 @MainActor
 final class DragProbe {
     static let shared = DragProbe()
     private let probing = UserDefaults.standard.bool(forKey: "dragProbe")
     private let tracing = UserDefaults.standard.bool(forKey: "dragTrace")
     private let tracingUIKit = UserDefaults.standard.bool(forKey: "dragTraceUIKit")
-    /// The drag session under way (its finger, each frame).
-    weak var session: (any UIDragSession)?
-    /// Drop session updates since the last frame.
-    private var updates = 0
-
-    /// A drop session update reached the list.
-    func updated() { updates += 1 }
+    /// The press under way: its finger in the list, each frame.
+    var finger: (() -> CGPoint?)?
 
     private init() {
         // Written out as the app leaves the foreground (the phone's logs are copied then: T22's last lift was lost).
@@ -952,18 +989,22 @@ final class DragProbe {
         mark("lift")
     }
 
-    /// The visible size of the lift preview UIKit was last given ("1x1": nothing of it shows), and our copy lifted at
-    /// the hold against the row's cell ("0.0,0.0": in place).
-    private var liftShape: String?
+    /// Our copy lifted at the hold against the row's cell ("0.0,0.0": in place).
     private var held: String?
-    /// A long press asks for drag items: a new lift.
+    /// A UIKit drag or drop session was seen on the list since the press (there should be none: T24).
+    private var uikit = false
+    /// From the last copy's release to this press's touch-down, ms.
+    private var sinceRelease: Double?
+    /// A finger landed on the list: a new press.
     func pressed(_ list: UIView) {
         held = nil
-        liftShape = nil
+        uikit = false
         calls = []
+        sinceRelease = releasedAt.map { (CACurrentMediaTime() - $0) * 1000 }
         view = list
         offset0 = (list as? UIScrollView)?.contentOffset.y
         watch(list)
+        call("press", in: list)
     }
 
     /// How far the list scrolled since the press (a pan that won over the drag scrolls it).
@@ -989,40 +1030,30 @@ final class DragProbe {
         let n = String(describing: type(of: g)).replacingOccurrences(of: "GestureRecognizer", with: "")
         call("gr-\(n)-\(st)", in: v)
     }
-    func liftPreview(_ p: UIDragPreviewParameters) {
-        let b = p.visiblePath?.bounds ?? .null
-        liftShape = b.isNull ? "whole" : "\(Int(b.width))x\(Int(b.height))"
-        publish()
-    }
     func held(_ copy: UIView, on cell: UIView) {
         held = "\(f(copy.frame.minX - (cell.frame.minX + Metric.rowInset))),\(f(copy.frame.minY - cell.frame.minY))"
         publish()
     }
 
-    /// The drag and drop delegate calls since the last lift's `items`, in order (a repeated one once): "ev=items>begin>
-    /// can1>upd>perform>dropEnd>dragEnd" ("can" with its answer, "upd" with the proposal's operation when it changes).
+    /// The press's calls since its touch-down, in order (a repeated one once).
     private var calls: [String] = []
-    /// From the copy's release to UIKit's drag session ending ("end=", ms) and to its drop session ending ("dend="):
-    /// until both have, no new drag can begin (T22: a refused drop kept the drag session on for about a second, a
-    /// performed one the drop session, 0.6-0.85 s, its drop animation).
     private var releasedAt: CFTimeInterval?
-    private var ended: Double?
-    private var dropEnded: Double?
     func call(_ s: String, in v: UIView) {
-        if s == "items", calls.contains("items") { calls = [] }
-        if s == "dragEnd", let r = releasedAt { ended = (CACurrentMediaTime() - r) * 1000 }
-        if s == "dropEnd", let r = releasedAt { dropEnded = (CACurrentMediaTime() - r) * 1000 }
         view = v
+        sampleUIKit()
         if calls.last != s { calls.append(s) }
         mark("call " + s)
         publish()
     }
 
+    /// Whether UIKit has a drag or drop session on the list now.
+    private func sampleUIKit() {
+        if let cv = view as? UICollectionView, cv.hasActiveDrag || cv.hasActiveDrop { uikit = true }
+    }
+
     func released(_ copy: UIView, home: CGPoint?) {
         following = false
         releasedAt = CACurrentMediaTime()
-        ended = nil
-        dropEnded = nil
         if let home { dx = copy.frame.minX - home.x }
         mark("release copy=\(f(copy.frame.minX)),\(f(copy.frame.minY)) home=\(home.map { "\(f($0.x)),\(f($0.y))" } ?? "-")")
         publish()
@@ -1044,14 +1075,14 @@ final class DragProbe {
     private func publish() {
         guard probing, let view else { return }
         view.accessibilityIdentifier = "dragProbe"
-        view.accessibilityValue = "end=\(ended.map { String(format: "%.0f", $0) } ?? "-") dend=\(dropEnded.map { String(format: "%.0f", $0) } ?? "-") step=\(f(step)) still=\(still) ticks=\(ticks) drops=\(drops) dx=\(dx.map(f) ?? "-") land=\(land.map { "\(f($0.x)),\(f($0.y))" } ?? "-") lp=\(liftShape ?? "-") held=\(held ?? "-") scroll=\(scrolled) ev=\(calls.joined(separator: ">"))"
+        view.accessibilityValue = "pd=\(sinceRelease.map { String(format: "%.0f", $0) } ?? "-") step=\(f(step)) still=\(still) ticks=\(ticks) drops=\(drops) dx=\(dx.map(f) ?? "-") land=\(land.map { "\(f($0.x)),\(f($0.y))" } ?? "-") uk=\(uikit ? 1 : 0) held=\(held ?? "-") scroll=\(scrolled) ev=\(calls.joined(separator: ">"))"
     }
 
     // MARK: The copy against the finger (with -dragTrace YES, published with -dragProbe YES)
 
-    /// From the drag's begin to the finger's lift: the copy's largest step between two frames (pt), and the most frames
-    /// in a row it stood still while the drag session's finger moved (T22: on Home it stood still for 11 frames, then
-    /// jumped 104 pt, following only UIKit's drop updates; and it jumped 35-77 pt to the finger as the drag began).
+    /// From the lift to the finger's lift: the copy's largest step between two frames (pt), and the most frames in a row
+    /// it stood still while the finger moved (T22, UIKit's drag: on Home it stood still for 11 frames, then jumped 104
+    /// pt, following only UIKit's drop updates; and it jumped 35-77 pt to the finger as the drag began).
     private var following = false
     private var lastCopy: (copy: CGFloat, finger: CGFloat)?
     private var step: CGFloat = 0
@@ -1093,17 +1124,17 @@ final class DragProbe {
         link = l
     }
 
-    /// From the lift (the drag items asked), before any copy: the row, and what UIKit shows; once per launch, the
-    /// list's gesture recognizers and interactions, with a long press's duration and allowable movement.
+    /// From the lift: the row, and what UIKit shows; once per launch, the list's gesture recognizers (whether each is a
+    /// pan) and interactions, with a long press's duration and allowable movement.
     private var listed = false
     func lift(_ list: UIView, row: @escaping () -> UIView?) {
         view = list
-        mark("lift-items")
+        mark("row at lift")
         if !listed, tracing {
             listed = true
             for g in list.gestureRecognizers ?? [] {
                 let lp = (g as? UILongPressGestureRecognizer).map { " min=\($0.minimumPressDuration) move=\($0.allowableMovement)" } ?? ""
-                mark("gr \(type(of: g)) name=\(g.name ?? "-") on=\(g.isEnabled)\(lp) delegate=\(g.delegate.map { "\(type(of: $0))" } ?? "-")")
+                mark("gr \(type(of: g)) name=\(g.name ?? "-") on=\(g.isEnabled) pan=\(g is UIPanGestureRecognizer)\(lp) delegate=\(g.delegate.map { "\(type(of: $0))" } ?? "-")")
             }
             for i in list.interactions { mark("interaction \(type(of: i))") }
         }
@@ -1139,13 +1170,16 @@ final class DragProbe {
             out += " row=\(f(p.frame.minX)),\(f(p.frame.minY)) ra=\(f2(ca))"
         }
         if let cv = view as? UICollectionView {
-            if let s = session {
-                let p = s.location(in: cv)
+            sampleUIKit()
+            if let p = finger?() {
                 out += " fg=\(f(p.x)),\(f(p.y))"
-                if let c = copy, c.superview != nil { follow(copy: (c.layer.presentation() ?? c.layer).frame.minY, finger: p.y) }
+                // In the window's terms (the copy moves with the list's autoscroll as the finger does).
+                if let c = copy, c.superview != nil {
+                    follow(copy: (c.layer.presentation() ?? c.layer).frame.minY - cv.contentOffset.y, finger: p.y - cv.contentOffset.y)
+                }
             }
-            out += " u=\(updates)"
-            // The finger as the app's own touch, until UIKit hands it to the system as the drag begins.
+            out += " off=\(f(cv.contentOffset.y))"
+            // The finger as the window's last touch.
             if let t = FrameProbe.touch {
                 let q = t.window.convert(t.point, to: cv)
                 out += " tc=\(f(q.x)),\(f(q.y))"
@@ -1161,7 +1195,6 @@ final class DragProbe {
             }
             if !g.isEmpty { out += " g=" + g.joined(separator: ",") }
         }
-        updates = 0
         // UIKit's previews: whatever is shown in the scene's windows outside the app's root view, and any preview,
         // platter or portal view anywhere in them (its frame in the window, opacity, scale).
         if tracingUIKit, let scene = copy?.window?.windowScene ?? view?.window?.windowScene {

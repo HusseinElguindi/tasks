@@ -77,7 +77,7 @@ def drags_from(M):
     """(lift, begin, release, landed) times per drag, from DragProbe's marks."""
     out, cur = [], None
     for t, s in M:
-        if s == "call items":
+        if s in ("call items", "call lift"):
             if cur: out.append(cur)
             cur = dict(lift=t, begin=None, release=None, landed=None, slots=[], marks=[])
         if cur is None: continue
