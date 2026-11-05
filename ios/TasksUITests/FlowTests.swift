@@ -141,14 +141,14 @@ final class FlowTests: XCTestCase {
             q.matching(NSPredicate(format: "value == %@", "Submit MSE 333 A2")).firstMatch
         }
         let field = titled(app.textViews).exists ? titled(app.textViews) : titled(app.textFields)
-        XCTAssertTrue(field.waitForExistence(timeout: 3))
+        XCTAssertTrue(field.appears(timeout: 3))
         // Right of the text: the caret goes to its end.
         field.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.5)).tap()
         app.typeText(" v2")
         shot("flow-edit-title")
         app.buttons["Done"].firstMatch.tap()
         sleep(1)
-        XCTAssertTrue(app.staticTexts["Submit MSE 333 A2 v2"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Submit MSE 333 A2 v2"].appears(timeout: 3))
         shot("flow-edit-title-done")
     }
 
@@ -173,9 +173,9 @@ final class FlowTests: XCTestCase {
     private func editTitle(_ text: String) {
         func titled(_ q: XCUIElementQuery) -> XCUIElement { q.matching(NSPredicate(format: "value == %@", text)).firstMatch }
         let field = titled(app.textViews).exists ? titled(app.textViews) : titled(app.textFields)
-        XCTAssertTrue(field.waitForExistence(timeout: 3), "the title field")
+        XCTAssertTrue(field.appears(timeout: 3), "the title field")
         field.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.5)).tap()
-        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3), "the title has the caret")
+        XCTAssertTrue(app.keyboards.firstMatch.appears(timeout: 3), "the title has the caret")
     }
 
     /// The caret sits in the title, untouched, while another device renames the task: closing the details writes
@@ -190,7 +190,7 @@ final class FlowTests: XCTestCase {
         remoteEdit()
         app.buttons["Done"].firstMatch.tap()
         sleep(1)
-        XCTAssertTrue(app.staticTexts["Submit MSE 333 A2 (from the Mac)"].waitForExistence(timeout: 3), "the synced title stands")
+        XCTAssertTrue(app.staticTexts["Submit MSE 333 A2 (from the Mac)"].appears(timeout: 3), "the synced title stands")
         XCTAssertFalse(app.staticTexts["Submit MSE 333 A2"].exists, "the old title isn't written back")
     }
 
@@ -206,7 +206,7 @@ final class FlowTests: XCTestCase {
         remoteEdit()
         app.buttons["Done"].firstMatch.tap()
         sleep(1)
-        XCTAssertTrue(app.staticTexts["Submit MSE 333 A2 v2"].waitForExistence(timeout: 3), "the typed title is written")
+        XCTAssertTrue(app.staticTexts["Submit MSE 333 A2 v2"].appears(timeout: 3), "the typed title is written")
         XCTAssertFalse(app.staticTexts["Submit MSE 333 A2 (from the Mac)"].exists)
     }
 
@@ -218,15 +218,15 @@ final class FlowTests: XCTestCase {
         app.staticTexts["Email TA about midterm regrade"].firstMatch.tap()
         sleep(1)
         let notes = app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Question 4(b)'")).firstMatch
-        XCTAssertTrue(notes.waitForExistence(timeout: 3), "the notes at rest")
+        XCTAssertTrue(notes.appears(timeout: 3), "the notes at rest")
         notes.tap()
-        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3), "the notes have the caret")
+        XCTAssertTrue(app.keyboards.firstMatch.appears(timeout: 3), "the notes have the caret")
         remoteEdit()
         app.buttons["Done"].firstMatch.tap()
         sleep(1)
         app.staticTexts["Email TA about midterm regrade"].firstMatch.tap()
         sleep(1)
-        XCTAssertTrue(app.staticTexts["Synced from the Mac."].waitForExistence(timeout: 3), "the synced notes stand")
+        XCTAssertTrue(app.staticTexts["Synced from the Mac."].appears(timeout: 3), "the synced notes stand")
         XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Question 4(b)'")).firstMatch.exists,
                        "the old notes aren't written back")
     }
@@ -239,12 +239,12 @@ final class FlowTests: XCTestCase {
             app.buttons["School"].firstMatch.press(forDuration: 1.0)
             app.buttons["Rename"].firstMatch.tap()
         }
-        XCTAssertTrue(app.alerts["Rename List"].waitForExistence(timeout: 3), "the rename alert")
+        XCTAssertTrue(app.alerts["Rename List"].appears(timeout: 3), "the rename alert")
         remoteEdit()
         app.alerts["Rename List"].buttons["Rename"].tap()
         sleep(1)
         // A list's row has no count (only Today's does), so its label is its name.
-        XCTAssertTrue(app.buttons["School (from the Mac)"].waitForExistence(timeout: 3), "the synced name stands")
+        XCTAssertTrue(app.buttons["School (from the Mac)"].appears(timeout: 3), "the synced name stands")
         XCTAssertFalse(app.buttons["School"].exists, "the old name isn't written back")
     }
 
@@ -263,7 +263,7 @@ final class FlowTests: XCTestCase {
         sleep(1)
         app.buttons["Done"].firstMatch.tap()
         sleep(1)
-        XCTAssertTrue(app.staticTexts["Submit MSE 333 A2 (from the Mac)"].waitForExistence(timeout: 3), "the synced title stands")
+        XCTAssertTrue(app.staticTexts["Submit MSE 333 A2 (from the Mac)"].appears(timeout: 3), "the synced title stands")
         XCTAssertFalse(app.staticTexts["Submit MSE 333 A2"].exists, "the old title isn't written back")
     }
 
@@ -279,19 +279,19 @@ final class FlowTests: XCTestCase {
         app.launch()
         app.buttons["Settings"].firstMatch.tap()
         let field = app.secureTextFields["Token"].firstMatch
-        XCTAssertTrue(field.waitForExistence(timeout: 3))
+        XCTAssertTrue(field.appears(timeout: 3))
         field.tap()
         field.typeText(token)
         app.buttons["Save"].firstMatch.tap()
         let synced = app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Up to date'")).firstMatch
-        XCTAssertTrue(synced.waitForExistence(timeout: 10))
+        XCTAssertTrue(synced.appears(timeout: 10))
         XCTAssertTrue(app.staticTexts["Saved in the Keychain."].exists)
 
         app.terminate()
         app.launch()
         app.buttons["Settings"].firstMatch.tap()
-        XCTAssertTrue(app.staticTexts["Saved in the Keychain."].waitForExistence(timeout: 3))
-        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Up to date'")).firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Saved in the Keychain."].appears(timeout: 3))
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Up to date'")).firstMatch.appears(timeout: 10))
     }
 
     // MARK: Adding a task: every way out of the new-task row
@@ -303,17 +303,17 @@ final class FlowTests: XCTestCase {
         // The + rides the keyboard, so after adding ends it slides back down: tap its middle once it has stopped (XCUITest
         // otherwise may pick a point near its frame's corner, outside the round button).
         let plus = app.buttons["New Task"].firstMatch
-        XCTAssertTrue(plus.waitForExistence(timeout: 3), "\(why): the +", file: file, line: line)
+        XCTAssertTrue(plus.appears(timeout: 3), "\(why): the +", file: file, line: line)
         _ = settledFrame(plus)
         plus.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
-        XCTAssertTrue(draft.waitForExistence(timeout: 3), why, file: file, line: line)
-        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3), "\(why): keyboard up", file: file, line: line)
+        XCTAssertTrue(draft.appears(timeout: 3), why, file: file, line: line)
+        XCTAssertTrue(app.keyboards.firstMatch.appears(timeout: 3), "\(why): keyboard up", file: file, line: line)
     }
 
     /// No new-task row and no keyboard: the list as it is when not adding.
     private func assertNotAdding(_ why: String, file: StaticString = #filePath, line: UInt = #line) {
-        XCTAssertTrue(draft.waitForNonExistence(timeout: 3), "no new-task row: \(why)", file: file, line: line)
-        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3), "no keyboard: \(why)", file: file, line: line)
+        XCTAssertTrue(draft.vanishes(timeout: 3), "no new-task row: \(why)", file: file, line: line)
+        XCTAssertTrue(app.keyboards.firstMatch.vanishes(timeout: 3), "no keyboard: \(why)", file: file, line: line)
     }
 
     private func back() {
@@ -327,7 +327,7 @@ final class FlowTests: XCTestCase {
     private func assertOpen(_ n: Int, in list: String = "School", file: StaticString = #filePath, line: UInt = #line) {
         app.buttons[list].firstMatch.tap()
         let boxes = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Complete: '"))
-        XCTAssertTrue(boxes.firstMatch.waitForExistence(timeout: 3), list, file: file, line: line)
+        XCTAssertTrue(boxes.firstMatch.appears(timeout: 3), list, file: file, line: line)
         sleep(1)
         XCTAssertEqual(boxes.count, n, "\(list)'s open tasks", file: file, line: line)
         back()
@@ -339,8 +339,8 @@ final class FlowTests: XCTestCase {
         app.buttons["School"].firstMatch.tap()
         add()
         app.typeText("Book a study room for Thursday\n")
-        XCTAssertTrue(app.staticTexts["Book a study room for Thursday"].waitForExistence(timeout: 3))
-        XCTAssertTrue(draft.waitForExistence(timeout: 3), "the next row opens")
+        XCTAssertTrue(app.staticTexts["Book a study room for Thursday"].appears(timeout: 3))
+        XCTAssertTrue(draft.appears(timeout: 3), "the next row opens")
         app.typeText("\n")
         assertNotAdding("Return on an empty row")
         back()
@@ -367,7 +367,7 @@ final class FlowTests: XCTestCase {
 
     /// Still on the list, as it is when not adding: no task's details, no other screen.
     private func assertNothingOpened(_ why: String, file: StaticString = #filePath, line: UInt = #line) {
-        XCTAssertFalse(app.buttons["When"].waitForExistence(timeout: 1.5), "no task's details: \(why)", file: file, line: line)
+        XCTAssertFalse(app.buttons["When"].appears(timeout: 1.5), "no task's details: \(why)", file: file, line: line)
         XCTAssertTrue(app.buttons["List actions"].exists, "still on the list: \(why)", file: file, line: line)
         XCTAssertTrue(app.descendants(matching: .any)["listHeader"].firstMatch.label.hasPrefix("School"),
                       "still on School: \(why)", file: file, line: line)
@@ -392,7 +392,7 @@ final class FlowTests: XCTestCase {
         shot("flow-add-tap-row")
         // Not adding, the same tap opens the task, as always.
         row.tap()
-        XCTAssertTrue(app.buttons["When"].waitForExistence(timeout: 3), "the task opens when not adding")
+        XCTAssertTrue(app.buttons["When"].appears(timeout: 3), "the task opens when not adding")
         app.buttons["Done"].firstMatch.tap()
         sleep(1)
         back()
@@ -416,13 +416,13 @@ final class FlowTests: XCTestCase {
         app.launch()
         app.buttons["School"].firstMatch.tap()
         let title = app.staticTexts["Submit MSE 333 A2"].firstMatch
-        XCTAssertTrue(title.waitForExistence(timeout: 3))
+        XCTAssertTrue(title.appears(timeout: 3))
         add()
         let y = settledFrame(title).midY
         let box = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Complete: '")).allElementsBoundByIndex.first { abs($0.frame.midY - y) < 12 }
         XCTAssertNotNil(box, "the task's box")
         box?.tap()
-        XCTAssertFalse(app.buttons["Undo"].waitForExistence(timeout: 1.5), "nothing completed (no notice)")
+        XCTAssertFalse(app.buttons["Undo"].appears(timeout: 1.5), "nothing completed (no notice)")
         assertNotAdding("tap on a box")
         assertNothingOpened("tap on a box")
         back()
@@ -509,7 +509,7 @@ final class FlowTests: XCTestCase {
         app.typeText("Water the plants")
         app.buttons["Settings"].firstMatch.tap()
         assertNotAdding("tap on Settings, titled")
-        XCTAssertFalse(app.buttons["Done"].waitForExistence(timeout: 1.5), "Settings didn't open")
+        XCTAssertFalse(app.buttons["Done"].appears(timeout: 1.5), "Settings didn't open")
         assertNothingOpened("tap on Settings, titled")
         XCTAssertTrue(app.staticTexts["Water the plants"].exists, "a titled row is written")
         shot("flow-add-ipad-sidebar")
@@ -570,7 +570,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "detail:s4", "-remoteList", "school-9", "-remoteName", Self.longName]
         app.launch()
         let chip = app.buttons["detailList"]
-        XCTAssertTrue(chip.waitForExistence(timeout: 5), "the details' List chip")
+        XCTAssertTrue(chip.appears(timeout: 5), "the details' List chip")
         XCTAssertTrue(chip.label.contains("School"))
         // The bar's last button: Done on the phone, × in iPad's details pane.
         let bar = app.buttons["Hide Details"].exists ? app.buttons["Hide Details"] : app.buttons["Done"]
@@ -590,7 +590,7 @@ final class FlowTests: XCTestCase {
             XCTAssertLessThanOrEqual(header.frame.maxX, delete.frame.minX, "and stops before the bar's buttons")
         }
         chip.tap()
-        XCTAssertTrue(longNameItem.waitForExistence(timeout: 3), "the List picker's item, cut with an ellipsis")
+        XCTAssertTrue(longNameItem.appears(timeout: 3), "the List picker's item, cut with an ellipsis")
         XCTAssertEqual(longNameItem.frame.height, app.buttons["PHYS 122"].firstMatch.frame.height, accuracy: 1,
                        "one line, as the other lists' items")
         shot("long-name-picker")
@@ -601,14 +601,14 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "list:inbox", "-remoteList", "school-9", "-remoteName", Self.longName]
         app.launch()
         let row = app.staticTexts["Look into a standing desk"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 5), "the Inbox")
+        XCTAssertTrue(row.appears(timeout: 5), "the Inbox")
         remoteEdit()
         menuOpen {
             row.press(forDuration: 1.2)
             let move = app.buttons["Move to"].firstMatch
-            XCTAssertTrue(move.waitForExistence(timeout: 3), "the row's menu")
+            XCTAssertTrue(move.appears(timeout: 3), "the row's menu")
             move.tap()
-            XCTAssertTrue(longNameItem.waitForExistence(timeout: 3), "the Move to item, cut with an ellipsis")
+            XCTAssertTrue(longNameItem.appears(timeout: 3), "the Move to item, cut with an ellipsis")
             XCTAssertEqual(longNameItem.frame.height, app.buttons["PHYS 122"].firstMatch.frame.height, accuracy: 1,
                            "one line, as the other lists' items")
             shot("long-name-move-to")
@@ -682,10 +682,10 @@ final class FlowTests: XCTestCase {
                                    "-remoteList", "school-9", "-remoteName", Self.longName]
             app.launch()
             let groceries = app.staticTexts["Get groceries for the week"].firstMatch
-            XCTAssertTrue(groceries.waitForExistence(timeout: 10), "Upcoming")
+            XCTAssertTrue(groceries.appears(timeout: 10), "Upcoming")
             remoteEdit()
             let title = app.staticTexts[Self.longTitle].firstMatch
-            XCTAssertTrue(title.waitForExistence(timeout: 3), "the long title, whole for VoiceOver")
+            XCTAssertTrue(title.appears(timeout: 3), "the long title, whole for VoiceOver")
             sleep(1)
             shot("fade-upcoming-\(look)")
             assertFades(title, "\(look): a long title")
@@ -709,7 +709,7 @@ final class FlowTests: XCTestCase {
             // Home on the phone; iPad's sidebar is beside the list.
             if !pad { back() }
             let school = app.buttons[Self.longName].firstMatch
-            XCTAssertTrue(school.waitForExistence(timeout: 3), "\(look): the long name's row, whole for VoiceOver")
+            XCTAssertTrue(school.appears(timeout: 3), "\(look): the long name's row, whole for VoiceOver")
             shot("fade-home-\(look)")
             // The row's frame takes in the list's 10pt insets. Its name starts after the tile (10 + 10 + 26 + 12), and,
             // with no count after it (the user, 2026-10-31), ends 13 short of the row's edge: read from 52 to 10 short
@@ -738,7 +738,7 @@ final class FlowTests: XCTestCase {
                                "-remoteTask", "i3", "-remoteTitle", Self.longTitle,
                                "-UIPreferredContentSizeCategoryName", size]
         app.launch()
-        XCTAssertTrue(app.staticTexts["Tomorrow"].firstMatch.waitForExistence(timeout: 10), "Upcoming", file: file, line: line)
+        XCTAssertTrue(app.staticTexts["Tomorrow"].firstMatch.appears(timeout: 10), "Upcoming", file: file, line: line)
         remoteEdit()
         sleep(1)
         shot("list-names-\(size)")
@@ -813,7 +813,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "list:phys", "-dragProbe", "YES"]
         app.launch()
         let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
-        XCTAssertTrue(redo.waitForExistence(timeout: 10))
+        XCTAssertTrue(redo.appears(timeout: 10))
         sleep(1)
         let bench = app.staticTexts["Book a make-up lab bench"].firstMatch, exam = heading("Exam prep")
         drag(redo, onto: bench)
@@ -840,7 +840,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "list:phys", "-dragProbe", "YES"]
         app.launch()
         let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
-        XCTAssertTrue(redo.waitForExistence(timeout: 10))
+        XCTAssertTrue(redo.appears(timeout: 10))
         sleep(1)
         menuOpen {
             redo.press(forDuration: 1.2)
@@ -859,7 +859,7 @@ final class FlowTests: XCTestCase {
         for (hold, speed) in [(0.5, 3000.0), (0.5, 4000), (0.5, 6000), (0.55, 6000), (0.4, 6000)] {
             app.launch()
             let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
-            XCTAssertTrue(redo.waitForExistence(timeout: 10))
+            XCTAssertTrue(redo.appears(timeout: 10))
             sleep(1)
             let bench = app.staticTexts["Book a make-up lab bench"].firstMatch
             let before = y(redo)
@@ -886,7 +886,7 @@ final class FlowTests: XCTestCase {
         for speed in [1500.0, 3000, 6000] {
             app.launch()
             let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
-            XCTAssertTrue(redo.waitForExistence(timeout: 10))
+            XCTAssertTrue(redo.appears(timeout: 10))
             sleep(1)
             let y0 = y(redo), bottom = app.windows.firstMatch.frame.maxY
             let start = redo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
@@ -909,7 +909,7 @@ final class FlowTests: XCTestCase {
         for speed in [1500.0, 3000, 6000] {
             app.launch()
             let phys = app.buttons["PHYS 122"].firstMatch, errands = app.buttons["Errands"].firstMatch
-            XCTAssertTrue(phys.waitForExistence(timeout: 10))
+            XCTAssertTrue(phys.appears(timeout: 10))
             sleep(1)
             let y0 = y(phys), bottom = app.windows.firstMatch.frame.maxY
             let start = phys.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
@@ -931,7 +931,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-dragProbe", "YES"]
         app.launch()
         let phys = app.buttons["PHYS 122"].firstMatch, school = app.buttons["School"].firstMatch
-        XCTAssertTrue(phys.waitForExistence(timeout: 10))
+        XCTAssertTrue(phys.appears(timeout: 10))
         sleep(1)
         menuOpen {
             app.buttons["Errands"].firstMatch.press(forDuration: 1.0)
@@ -959,7 +959,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "list:phys", "-dragProbe", "YES"]
         app.launch()
         let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
-        XCTAssertTrue(redo.waitForExistence(timeout: 10))
+        XCTAssertTrue(redo.appears(timeout: 10))
         sleep(1)
         let bench = app.staticTexts["Book a make-up lab bench"].firstMatch
         redo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
@@ -979,7 +979,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "list:phys", "-dragProbe", "YES"]
         app.launch()
         let glasses = app.staticTexts["Buy safety glasses for the lab"].firstMatch
-        XCTAssertTrue(glasses.waitForExistence(timeout: 10))
+        XCTAssertTrue(glasses.appears(timeout: 10))
         sleep(1)
         let before = y(glasses)
         let start = glasses.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
@@ -997,7 +997,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "list:phys"]
         app.launch()
         let labs = heading("Labs"), lectures = heading("Lectures")
-        XCTAssertTrue(labs.waitForExistence(timeout: 10))
+        XCTAssertTrue(labs.appears(timeout: 10))
         sleep(1)
         drag(labs, onto: app.staticTexts["Read chapter 15 · oscillations"].firstMatch)
         XCTAssertLessThan(y(labs), y(lectures), "Labs before Lectures")
@@ -1015,7 +1015,7 @@ final class FlowTests: XCTestCase {
         app.launch()
         let reply = app.staticTexts["Reply to the landlord about the lease"].firstMatch
         let dentist = app.staticTexts["Call the dentist about a cleaning"].firstMatch
-        XCTAssertTrue(reply.waitForExistence(timeout: 10))
+        XCTAssertTrue(reply.appears(timeout: 10))
         sleep(1)
         let before = y(reply)
         drag(reply, onto: app.staticTexts["Email TA about midterm regrade"].firstMatch)
@@ -1033,7 +1033,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-dragProbe", "YES"]
         app.launch()
         let phys = app.buttons["PHYS 122"].firstMatch, school = app.buttons["School"].firstMatch
-        XCTAssertTrue(phys.waitForExistence(timeout: 10))
+        XCTAssertTrue(phys.appears(timeout: 10))
         sleep(1)
         drag(phys, onto: school)
         XCTAssertLessThan(y(phys), y(school), "PHYS 122 above School")
@@ -1053,7 +1053,7 @@ final class FlowTests: XCTestCase {
         app.launch()
         let inbox = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Inbox'")).firstMatch
         let home = app.buttons["Home"].firstMatch
-        XCTAssertTrue(inbox.waitForExistence(timeout: 10))
+        XCTAssertTrue(inbox.appears(timeout: 10))
         // The launch settled.
         sleep(3)
         inbox.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
@@ -1076,7 +1076,7 @@ final class FlowTests: XCTestCase {
         app.launch()
         let inbox = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Inbox'")).firstMatch
         let home = app.buttons["Home"].firstMatch
-        XCTAssertTrue(inbox.waitForExistence(timeout: 10))
+        XCTAssertTrue(inbox.appears(timeout: 10))
         sleep(3)
         for (from, to) in [(inbox, home), (home, inbox)] {
             from.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
@@ -1100,7 +1100,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "list:phys", "-dragProbe", "YES"]
         app.launch()
         let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
-        XCTAssertTrue(redo.waitForExistence(timeout: 10))
+        XCTAssertTrue(redo.appears(timeout: 10))
         sleep(1)
         let bench = app.staticTexts["Book a make-up lab bench"].firstMatch
         let glasses = app.staticTexts["Buy safety glasses for the lab"].firstMatch
@@ -1136,7 +1136,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "list:phys", "-dragProbe", "YES", "-dragTrace", "YES"]
         app.launch()
         var redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
-        XCTAssertTrue(redo.waitForExistence(timeout: 10))
+        XCTAssertTrue(redo.appears(timeout: 10))
         sleep(1)
         menuOpen {
             redo.press(forDuration: 1.2)
@@ -1148,7 +1148,7 @@ final class FlowTests: XCTestCase {
         }
         app.launch()
         redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
-        XCTAssertTrue(redo.waitForExistence(timeout: 10))
+        XCTAssertTrue(redo.appears(timeout: 10))
         sleep(1)
         let before = y(redo)
         menuOpen {
@@ -1162,7 +1162,7 @@ final class FlowTests: XCTestCase {
         }
         app.launch()
         redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
-        XCTAssertTrue(redo.waitForExistence(timeout: 10))
+        XCTAssertTrue(redo.appears(timeout: 10))
         sleep(1)
         let c = redo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
         menuOpen {
@@ -1195,7 +1195,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "list:phys", "-dragProbe", "YES", "-frameProbe", "YES"]
         app.launch()
         let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
-        XCTAssertTrue(redo.waitForExistence(timeout: 10))
+        XCTAssertTrue(redo.appears(timeout: 10))
         sleep(1)
         let before = y(redo)
         earlyDrag(redo)
@@ -1204,12 +1204,12 @@ final class FlowTests: XCTestCase {
         assertLandedExactly()
         assertNoStall()
         redo.tap()
-        XCTAssertTrue(app.descendants(matching: .any)["detailList"].firstMatch.waitForExistence(timeout: 5), "and a tap still opens them")
+        XCTAssertTrue(app.descendants(matching: .any)["detailList"].firstMatch.appears(timeout: 5), "and a tap still opens them")
 
         app.launchArguments = ["-sampleData", "YES", "-appearance", "dark", "-style", "classic", "-dragProbe", "YES", "-frameProbe", "YES"]
         app.launch()
         let inbox = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Inbox'")).firstMatch
-        XCTAssertTrue(inbox.waitForExistence(timeout: 10))
+        XCTAssertTrue(inbox.appears(timeout: 10))
         sleep(1)
         earlyDrag(inbox)
         XCTAssertTrue(inbox.exists && inbox.isHittable, "on Home: the list didn't open")
@@ -1250,7 +1250,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "list:phys", "-dragProbe", "YES"]
         app.launch()
         let glasses = app.staticTexts["Buy safety glasses for the lab"].firstMatch
-        XCTAssertTrue(glasses.waitForExistence(timeout: 10))
+        XCTAssertTrue(glasses.appears(timeout: 10))
         sleep(1)
         let y0 = y(glasses)
         let c = glasses.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
@@ -1260,7 +1260,7 @@ final class FlowTests: XCTestCase {
         XCTAssertFalse(probe()["ev"]?.contains("lift") == true, "nothing lifted: \(probe())")
         app.launch()
         let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
-        XCTAssertTrue(redo.waitForExistence(timeout: 10))
+        XCTAssertTrue(redo.appears(timeout: 10))
         sleep(1)
         let mid = redo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
         mid.press(forDuration: 0.25, thenDragTo: mid.withOffset(CGVector(dx: -130, dy: 0)))
@@ -1276,7 +1276,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "list:phys", "-dragProbe", "YES"]
         app.launch()
         let glasses = app.staticTexts["Buy safety glasses for the lab"].firstMatch
-        XCTAssertTrue(glasses.waitForExistence(timeout: 10))
+        XCTAssertTrue(glasses.appears(timeout: 10))
         sleep(1)
         let window = app.windows.firstMatch.frame
         let origin = app.coordinate(withNormalizedOffset: .zero)
@@ -1340,7 +1340,7 @@ final class FlowTests: XCTestCase {
     func testAQuickTapShowsThePress() {
         app.launch()
         let row = app.buttons["Errands"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        XCTAssertTrue(row.appears(timeout: 10))
         sleep(2)
         let f = row.frame
         var seen = false
@@ -1350,7 +1350,7 @@ final class FlowTests: XCTestCase {
             print("press, lifts \(lifts)")
             seen = lifts.contains { $0 > 12 }
             back()
-            XCTAssertTrue(row.waitForExistence(timeout: 5))
+            XCTAssertTrue(row.appears(timeout: 5))
             sleep(1)
         }
         XCTAssertTrue(seen, "a 0.13 s tap shows the press fill")
@@ -1361,7 +1361,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "today"]
         app.launch()
         let row = app.staticTexts["Return the ECE 358 lab kit"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        XCTAssertTrue(row.appears(timeout: 10))
         sleep(1)
         let y0 = row.frame.midY
         // A finger's drag, 250pt up from the row's middle. (`swipeUp()` on the row's text stays inside its 22pt frame:
@@ -1378,7 +1378,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "list:phys"]
         app.launch()
         let row = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        XCTAssertTrue(row.appears(timeout: 10))
         sleep(1)
         let mid = row.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
         mid.press(forDuration: 0.05, thenDragTo: mid.withOffset(CGVector(dx: -130, dy: 0)))
@@ -1402,7 +1402,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "list:phys"]
         app.launch()
         let row = app.staticTexts["Buy safety glasses for the lab"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        XCTAssertTrue(row.appears(timeout: 10))
         sleep(1)
         let x = app.frame.maxX - 40, y = row.frame.midY
         let rest = XCUIScreen.main.screenshot().image.cgImage!
@@ -1412,7 +1412,7 @@ final class FlowTests: XCTestCase {
         var caught = false
         for _ in 0..<3 where !caught {
             row.tap()
-            XCTAssertTrue(details.waitForExistence(timeout: 5))
+            XCTAssertTrue(details.appears(timeout: 5))
             sleep(1)
             let open = XCUIScreen.main.screenshot().image.cgImage!
             XCTAssertGreaterThan(lift(open, x: x, y: y), 8, "selected while its details are open")
@@ -1458,7 +1458,7 @@ final class FlowTests: XCTestCase {
     private func openPhys() {
         app.launchArguments += ["-screen", "list:phys"]
         app.launch()
-        XCTAssertTrue(heading("Labs").waitForExistence(timeout: 10), "PHYS 122")
+        XCTAssertTrue(heading("Labs").appears(timeout: 10), "PHYS 122")
         sleep(1)
     }
 
@@ -1468,23 +1468,23 @@ final class FlowTests: XCTestCase {
         let before = headingCount()
         app.buttons["List actions"].tap()
         app.buttons["New Heading"].tap()
-        XCTAssertTrue(draft.waitForExistence(timeout: 3), "the new heading's field")
+        XCTAssertTrue(draft.appears(timeout: 3), "the new heading's field")
         app.typeText("\n")
         sleep(1)
         XCTAssertFalse(draft.exists, "an empty one ends")
         XCTAssertEqual(headingCount(), before, "and leaves nothing")
         app.buttons["List actions"].tap()
         app.buttons["New Heading"].tap()
-        XCTAssertTrue(draft.waitForExistence(timeout: 3))
+        XCTAssertTrue(draft.appears(timeout: 3))
         // At the bottom of the list, it's scrolled above the keyboard.
         let keyboard = app.keyboards.firstMatch
-        XCTAssertTrue(keyboard.waitForExistence(timeout: 3))
+        XCTAssertTrue(keyboard.appears(timeout: 3))
         sleep(1)
         XCTAssertLessThanOrEqual(draft.frame.maxY, keyboard.frame.minY, "above the keyboard")
         app.typeText("Problem sets\n")
         sleep(1)
         let new = heading("Problem sets")
-        XCTAssertTrue(new.waitForExistence(timeout: 3), "written")
+        XCTAssertTrue(new.appears(timeout: 3), "written")
         XCTAssertGreaterThan(y(new), y(app.staticTexts["Ask about problem 7 at office hours"].firstMatch), "at the bottom")
         XCTAssertEqual(headingCount(), before + 1)
     }
@@ -1498,13 +1498,13 @@ final class FlowTests: XCTestCase {
             bench.press(forDuration: 1.0)
             app.buttons["New Heading Above"].tap()
         }
-        XCTAssertTrue(draft.waitForExistence(timeout: 3))
+        XCTAssertTrue(draft.appears(timeout: 3))
         app.typeText("Make-ups")
         app.staticTexts["Read chapter 15 · oscillations"].firstMatch.tap()
         sleep(1)
         XCTAssertFalse(app.descendants(matching: .any)["detailList"].exists, "the tap only ended adding")
         let new = heading("Make-ups")
-        XCTAssertTrue(new.waitForExistence(timeout: 3), "written by the tap")
+        XCTAssertTrue(new.appears(timeout: 3), "written by the tap")
         XCTAssertGreaterThan(y(new), y(app.staticTexts["Lab 4 pre-lab · RC circuits"].firstMatch), "after the task above")
         XCTAssertLessThan(y(new), y(bench), "above its task")
     }
@@ -1515,7 +1515,7 @@ final class FlowTests: XCTestCase {
         let field = app.textFields["headingName"]
         // A tap on its name does nothing: Rename is in its menu only.
         heading("Labs").tap()
-        XCTAssertFalse(field.waitForExistence(timeout: 1.5), "a tap doesn't rename")
+        XCTAssertFalse(field.appears(timeout: 1.5), "a tap doesn't rename")
         func rename() {
             menuOpen {
                 heading("Labs").press(forDuration: 1.0)
@@ -1523,22 +1523,22 @@ final class FlowTests: XCTestCase {
             }
         }
         rename()
-        XCTAssertTrue(field.waitForExistence(timeout: 3), "renaming in place")
+        XCTAssertTrue(field.appears(timeout: 3), "renaming in place")
         XCTAssertEqual(field.value as? String, "Labs")
         app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 4) + "\n")
         sleep(1)
         XCTAssertTrue(heading("Labs").exists, "an empty name keeps the old one")
         rename()
-        XCTAssertTrue(field.waitForExistence(timeout: 3))
+        XCTAssertTrue(field.appears(timeout: 3))
         let long = "Labs and tutorials for the whole winter term"
         app.typeText(String(long.dropFirst(4)) + "\n")
         sleep(1)
-        XCTAssertTrue(heading(long).waitForExistence(timeout: 3), "renamed")
+        XCTAssertTrue(heading(long).appears(timeout: 3), "renamed")
         // Its menu's New Task item is one line, cut, as the Mac's menus cut a name.
         menuOpen {
             heading(long).press(forDuration: 1.0)
             let item = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'New Task in “La'")).firstMatch
-            XCTAssertTrue(item.waitForExistence(timeout: 3))
+            XCTAssertTrue(item.appears(timeout: 3))
             XCTAssertTrue((item.label as String).hasSuffix("…”"), "cut: \(item.label)")
             XCTAssertEqual(item.frame.height, app.buttons["Rename"].frame.height, accuracy: 1, "one line")
         }
@@ -1563,7 +1563,7 @@ final class FlowTests: XCTestCase {
             app.launchArguments = ["-sampleData", "YES", "-appearance", look, "-style", "classic", "-screen", "list:phys"]
             app.launch()
             let lectures = heading("Lectures")
-            XCTAssertTrue(lectures.waitForExistence(timeout: 10), "PHYS 122")
+            XCTAssertTrue(lectures.appears(timeout: 10), "PHYS 122")
             sleep(1)
             let top = app.collectionViews.firstMatch.frame.minY
             let origin = app.coordinate(withNormalizedOffset: .zero)
@@ -1583,13 +1583,13 @@ final class FlowTests: XCTestCase {
                 let film = Film()
                 menuOpen {
                     origin.withOffset(CGVector(dx: f.midX, dy: (max(f.minY, top) + f.maxY) / 2)).press(forDuration: 1.0)
-                    XCTAssertTrue(app.buttons["Rename"].waitForExistence(timeout: 3), "\(what): its menu")
+                    XCTAssertTrue(app.buttons["Rename"].appears(timeout: 3), "\(what): its menu")
                     let thread = Thread { for _ in 0..<10 { if let cg = XCUIScreen.main.screenshot().image.cgImage { film.add(cg) } } }
                     thread.start()
                     app.buttons["Rename"].tap()
                     while !thread.isFinished { usleep(20_000) }
                 }
-                XCTAssertTrue(field.waitForExistence(timeout: 3), "\(what): renaming in place")
+                XCTAssertTrue(field.appears(timeout: 3), "\(what): renaming in place")
                 sleep(1)
                 // A column through the box's right part (clear of the menu, the caret and the chevron), from the
                 // list's top to just under the settled box (clear of the next row's chips).
@@ -1646,20 +1646,20 @@ final class FlowTests: XCTestCase {
             app.buttons["Add Notes"].tap()
         }
         let editor = app.textViews["headingNotes"]
-        XCTAssertTrue(editor.waitForExistence(timeout: 3), "the notes editor, under it")
+        XCTAssertTrue(editor.appears(timeout: 3), "the notes editor, under it")
         app.typeText("Bring the goggles")
         app.buttons["Done"].tap()
         sleep(1)
         let notes = app.staticTexts["Bring the goggles"].firstMatch
-        XCTAssertTrue(notes.waitForExistence(timeout: 3), "they show under it")
+        XCTAssertTrue(notes.appears(timeout: 3), "they show under it")
         XCTAssertGreaterThan(y(notes), y(heading("Labs")))
         XCTAssertLessThan(y(notes), y(app.staticTexts["Lab 3 report · pendulum"].firstMatch))
         menuOpen {
             heading("Labs").press(forDuration: 1.0)
-            XCTAssertTrue(app.buttons["Edit Notes"].waitForExistence(timeout: 3), "now Edit Notes")
+            XCTAssertTrue(app.buttons["Edit Notes"].appears(timeout: 3), "now Edit Notes")
             app.buttons["Edit Notes"].tap()
         }
-        XCTAssertTrue(editor.waitForExistence(timeout: 3))
+        XCTAssertTrue(editor.appears(timeout: 3))
     }
 
     /// A heading's notes emptied as they're edited go, and as the keyboard goes down the screen's background stays
@@ -1671,20 +1671,20 @@ final class FlowTests: XCTestCase {
             app = XCUIApplication()
             app.launchArguments = ["-sampleData", "YES", "-appearance", look, "-style", "classic", "-screen", "list:phys"]
             app.launch()
-            XCTAssertTrue(heading("Labs").waitForExistence(timeout: 10), "PHYS 122")
+            XCTAssertTrue(heading("Labs").appears(timeout: 10), "PHYS 122")
             sleep(1)
             menuOpen {
                 heading("Labs").press(forDuration: 1.0)
                 app.buttons["Add Notes"].tap()
             }
-            XCTAssertTrue(app.textViews["headingNotes"].waitForExistence(timeout: 3), "\(look): the notes editor")
+            XCTAssertTrue(app.textViews["headingNotes"].appears(timeout: 3), "\(look): the notes editor")
             app.typeText("Bring the goggles")
             app.buttons["Done"].tap()
             let notes = app.staticTexts["Bring the goggles"].firstMatch
-            XCTAssertTrue(notes.waitForExistence(timeout: 3), "\(look): the notes")
+            XCTAssertTrue(notes.appears(timeout: 3), "\(look): the notes")
             sleep(1)
             notes.tap()
-            XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3), "\(look): editing them, with the keyboard")
+            XCTAssertTrue(app.keyboards.firstMatch.appears(timeout: 3), "\(look): editing them, with the keyboard")
             app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 20))
             sleep(1)
             if end == "Done" {
@@ -1714,12 +1714,12 @@ final class FlowTests: XCTestCase {
     func testAListsNotes() {
         app.launchArguments += ["-screen", "list:home"]
         app.launch()
-        XCTAssertTrue(app.buttons["List actions"].waitForExistence(timeout: 10), "Home")
+        XCTAssertTrue(app.buttons["List actions"].appears(timeout: 10), "Home")
         app.buttons["List actions"].tap()
         app.buttons["Add Notes"].tap()
         let editor = app.textViews["listNotes"]
-        XCTAssertTrue(editor.waitForExistence(timeout: 3), "the notes editor, under the title")
-        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3), "with the caret")
+        XCTAssertTrue(editor.appears(timeout: 3), "the notes editor, under the title")
+        XCTAssertTrue(app.keyboards.firstMatch.appears(timeout: 3), "with the caret")
         app.typeText("Measure the hallway")
         app.buttons["Done"].tap()
         sleep(1)
@@ -1728,15 +1728,15 @@ final class FlowTests: XCTestCase {
         let header = app.descendants(matching: .any)["listHeader"].firstMatch
         XCTAssertEqual(header.label, "Home, Measure the hallway", "they show under the title")
         app.buttons["List actions"].tap()
-        XCTAssertTrue(app.buttons["Edit Notes"].waitForExistence(timeout: 3), "now Edit Notes")
+        XCTAssertTrue(app.buttons["Edit Notes"].appears(timeout: 3), "now Edit Notes")
         app.buttons["Edit Notes"].tap()
-        XCTAssertTrue(editor.waitForExistence(timeout: 3))
+        XCTAssertTrue(editor.appears(timeout: 3))
         XCTAssertEqual(editor.value as? String, "Measure the hallway")
         app.buttons["Done"].tap()
         sleep(1)
         // A tap on them (the header's last line) edits them.
         header.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.85)).tap()
-        XCTAssertTrue(editor.waitForExistence(timeout: 3), "a tap on them edits them")
+        XCTAssertTrue(editor.appears(timeout: 3), "a tap on them edits them")
         app.typeText(" first")
         app.buttons["Done"].tap()
         sleep(1)
@@ -1755,7 +1755,7 @@ final class FlowTests: XCTestCase {
             sleep(1)
             app.buttons["When"].firstMatch.tap()
             let m = app.staticTexts["M"].firstMatch
-            XCTAssertTrue(m.waitForExistence(timeout: 3), "\(locale): the weekday letters")
+            XCTAssertTrue(m.appears(timeout: 3), "\(locale): the weekday letters")
             let s = app.staticTexts.matching(identifier: "S").allElementsBoundByIndex.filter { abs($0.frame.midY - m.frame.midY) < 2 }
             XCTAssertEqual(s.count, 2, "\(locale): two S's in the row")
             XCTAssertEqual(s.allSatisfy { $0.frame.minX > m.frame.minX }, monday, "\(locale): Monday first is \(monday)")
@@ -1772,22 +1772,22 @@ final class FlowTests: XCTestCase {
         sleep(1)
         editTitle("Submit MSE 333 A2")
         app.typeText(" v2\n")
-        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3), "Return ends the edit")
+        XCTAssertTrue(app.keyboards.firstMatch.vanishes(timeout: 3), "Return ends the edit")
         let field = titleField("Submit MSE 333 A2 v2")
-        XCTAssertTrue(field.waitForExistence(timeout: 3), "written, without a line break")
+        XCTAssertTrue(field.appears(timeout: 3), "written, without a line break")
         UIPasteboard.general.string = "Line one\nLine two"
         editTitle("Submit MSE 333 A2 v2")
         field.tap()
         let paste = app.menuItems["Paste"].exists ? app.menuItems["Paste"] : app.buttons["Paste"]
-        XCTAssertTrue(paste.waitForExistence(timeout: 3), "the edit menu's Paste")
+        XCTAssertTrue(paste.appears(timeout: 3), "the edit menu's Paste")
         paste.tap()
         sleep(1)
         // (iOS's smart paste adds the space before it.)
-        XCTAssertTrue(titleField("Submit MSE 333 A2 v2 Line one Line two").waitForExistence(timeout: 3),
+        XCTAssertTrue(titleField("Submit MSE 333 A2 v2 Line one Line two").appears(timeout: 3),
                       "the pasted line break is a space")
         app.buttons["Done"].firstMatch.tap()
         sleep(1)
-        XCTAssertTrue(app.staticTexts["Submit MSE 333 A2 v2 Line one Line two"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Submit MSE 333 A2 v2 Line one Line two"].appears(timeout: 3))
     }
 
     private func titleField(_ text: String) -> XCUIElement {
@@ -1806,12 +1806,12 @@ final class FlowTests: XCTestCase {
         app.staticTexts["Print ECE 358 formula sheet"].firstMatch.tap()
         sleep(1)
         func footer(_ s: String) -> XCUIElement { app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", s)).firstMatch }
-        XCTAssertTrue(footer("· 19,990 / 20,000").waitForExistence(timeout: 5), "the counter from 18,000")
+        XCTAssertTrue(footer("· 19,990 / 20,000").appears(timeout: 5), "the counter from 18,000")
         app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'word word'")).firstMatch.tap()
-        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3), "the notes have the caret")
+        XCTAssertTrue(app.keyboards.firstMatch.appears(timeout: 3), "the notes have the caret")
         app.typeText("abcdefghijkl")
-        XCTAssertTrue(app.staticTexts["Notes hold up to 20,000 characters"].waitForExistence(timeout: 3), "the notice")
-        XCTAssertTrue(footer("· 20,000 / 20,000").waitForExistence(timeout: 3), "cut at 20,000")
+        XCTAssertTrue(app.staticTexts["Notes hold up to 20,000 characters"].appears(timeout: 3), "the notice")
+        XCTAssertTrue(footer("· 20,000 / 20,000").appears(timeout: 3), "cut at 20,000")
     }
 
     /// A heading with notes folds as one without does (§23): its notes fold up into it with its tasks, and the next
@@ -1823,7 +1823,7 @@ final class FlowTests: XCTestCase {
             heading("Labs").press(forDuration: 1.0)
             app.buttons["Add Notes"].tap()
         }
-        XCTAssertTrue(app.textViews["headingNotes"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.textViews["headingNotes"].appears(timeout: 3))
         app.typeText("Goggles\nLab coat\nThe manual")
         app.buttons["Done"].tap()
         sleep(2)
@@ -1834,7 +1834,7 @@ final class FlowTests: XCTestCase {
     func testFoldingAHeadingWithSyncedNotesDoesntJump() {
         app.launchArguments += ["-screen", "list:phys"]
         launch(remote: "h-lab", notes: "Goggles, a lab coat and the lab manual, every session; pre-labs are due at the start of the lab.")
-        XCTAssertTrue(heading("Labs").waitForExistence(timeout: 10), "PHYS 122")
+        XCTAssertTrue(heading("Labs").appears(timeout: 10), "PHYS 122")
         sleep(1)
         remoteEdit()
         sleep(1)
@@ -1893,7 +1893,7 @@ final class FlowTests: XCTestCase {
         track("Collapse Labs", folding: true)
         XCTAssertFalse(notes.exists, "the notes fold away")
         track("Expand Labs", folding: false)
-        XCTAssertTrue(notes.waitForExistence(timeout: 3), "and back")
+        XCTAssertTrue(notes.appears(timeout: 3), "and back")
         XCTAssertEqual(heading("Exam prep").frame.minY - heading("Labs").frame.minY, exam.minY - labs.minY, accuracy: 1,
                        "where it was, under Labs")
         XCTAssertEqual(notes.frame.minY - heading("Labs").frame.minY, notesAt, accuracy: 1, "the notes back under it")
@@ -1924,13 +1924,13 @@ final class FlowTests: XCTestCase {
             heading("Labs").press(forDuration: 1.0)
             app.buttons["New Task in “Labs”"].tap()
         }
-        XCTAssertTrue(draft.waitForExistence(timeout: 3))
+        XCTAssertTrue(draft.appears(timeout: 3))
         app.typeText("Return the multimeter\n")
         sleep(1)
         app.buttons["Cancel"].tap()
         sleep(1)
         let new = app.staticTexts["Return the multimeter"].firstMatch
-        XCTAssertTrue(new.waitForExistence(timeout: 3), "expanded, and written")
+        XCTAssertTrue(new.appears(timeout: 3), "expanded, and written")
         XCTAssertGreaterThan(y(new), y(app.staticTexts["Book a make-up lab bench"].firstMatch), "at the end of Labs")
         XCTAssertLessThan(y(new), y(heading("Exam prep")))
     }
@@ -2016,18 +2016,18 @@ final class FlowTests: XCTestCase {
     func testNotesSyncedDuringADragTakeTheirHeight() {
         app.launchArguments += ["-screen", "list:phys", "-dragProbe", "YES"]
         launch(remote: "h-lab", notes: "Goggles, a lab coat and the lab manual, every session; pre-labs are due at the start of the lab.")
-        XCTAssertTrue(heading("Labs").waitForExistence(timeout: 10), "PHYS 122")
+        XCTAssertTrue(heading("Labs").appears(timeout: 10), "PHYS 122")
         sleep(1)
         menuOpen {
             heading("Labs").press(forDuration: 1.0)
             app.buttons["Add Notes"].tap()
         }
-        XCTAssertTrue(app.textViews["headingNotes"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.textViews["headingNotes"].appears(timeout: 3))
         app.typeText("Goggles")
         app.buttons["Done"].tap()
         sleep(1)
         let short = app.staticTexts["Goggles"].firstMatch
-        XCTAssertTrue(short.waitForExistence(timeout: 3))
+        XCTAssertTrue(short.appears(timeout: 3))
         let oneLine = cell(short).height
         // The other device's longer notes land mid-drag.
         let poster = Thread {
@@ -2043,7 +2043,7 @@ final class FlowTests: XCTestCase {
         sleep(2)
         XCTAssertTrue((probe()["ev"] ?? "").contains("home"), "dragged and refused: \(probe())")
         let notes = app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Goggles, a lab coat'")).firstMatch
-        XCTAssertTrue(notes.waitForExistence(timeout: 3), "the synced notes")
+        XCTAssertTrue(notes.appears(timeout: 3), "the synced notes")
         let after = cell(notes).height
         XCTAssertGreaterThan(after, oneLine + 10, "the row grew for the longer notes")
         // Their height as a fresh row measures it: folded and opened again.
@@ -2062,14 +2062,14 @@ final class FlowTests: XCTestCase {
             heading("Labs").press(forDuration: 1.0)
             app.buttons["Delete Heading"].tap()
         }
-        XCTAssertTrue(app.staticTexts["Deleted heading “Labs”"].waitForExistence(timeout: 3), "the notice")
+        XCTAssertTrue(app.staticTexts["Deleted heading “Labs”"].appears(timeout: 3), "the notice")
         XCTAssertFalse(heading("Labs").exists)
         let lab3 = app.staticTexts["Lab 3 report · pendulum"].firstMatch
         XCTAssertTrue(lab3.exists, "its tasks stay")
         XCTAssertGreaterThan(y(lab3), y(heading("Lectures")), "under the heading above")
         app.buttons["Undo"].firstMatch.tap()
         sleep(1)
-        XCTAssertTrue(heading("Labs").waitForExistence(timeout: 3), "back")
+        XCTAssertTrue(heading("Labs").appears(timeout: 3), "back")
         XCTAssertLessThan(y(heading("Labs")), y(lab3))
     }
 
@@ -2084,16 +2084,16 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "list:inbox"]
         app.launch()
         let row = app.staticTexts["Back up the laptop"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10), "the Inbox")
+        XCTAssertTrue(row.appears(timeout: 10), "the Inbox")
         menuOpen {
             row.press(forDuration: 1.2)
             app.buttons["Move to"].firstMatch.tap()
             app.buttons["Errands"].firstMatch.tap()
         }
-        XCTAssertTrue(app.staticTexts["Moved to Errands"].waitForExistence(timeout: 3), "the notice")
-        XCTAssertTrue(row.waitForNonExistence(timeout: 3), "gone from the Inbox")
+        XCTAssertTrue(app.staticTexts["Moved to Errands"].appears(timeout: 3), "the notice")
+        XCTAssertTrue(row.vanishes(timeout: 3), "gone from the Inbox")
         app.buttons["Undo"].firstMatch.tap()
-        XCTAssertTrue(row.waitForExistence(timeout: 3), "back")
+        XCTAssertTrue(row.appears(timeout: 3), "back")
     }
 
     /// A date that takes a task out of Today says where it went, with Undo; one that keeps it there says nothing.
@@ -2101,7 +2101,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "today"]
         app.launch()
         let row = app.staticTexts["Reply to the landlord about the lease"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10), "Today")
+        XCTAssertTrue(row.appears(timeout: 10), "Today")
         menuOpen {
             row.press(forDuration: 1.2)
             app.buttons["Today"].firstMatch.tap()
@@ -2112,10 +2112,10 @@ final class FlowTests: XCTestCase {
             row.press(forDuration: 1.2)
             app.buttons["Tomorrow"].firstMatch.tap()
         }
-        XCTAssertTrue(notice(beginningWith: "Scheduled for ").waitForExistence(timeout: 3), "the notice")
-        XCTAssertTrue(row.waitForNonExistence(timeout: 3), "gone from Today")
+        XCTAssertTrue(notice(beginningWith: "Scheduled for ").appears(timeout: 3), "the notice")
+        XCTAssertTrue(row.vanishes(timeout: 3), "gone from Today")
         app.buttons["Undo"].firstMatch.tap()
-        XCTAssertTrue(row.waitForExistence(timeout: 3), "back")
+        XCTAssertTrue(row.appears(timeout: 3), "back")
     }
 
     /// A task in Trash is put back, a list is restored (the Mac's `TrashVerb`): "Put back “…” in Home". Trash's
@@ -2125,16 +2125,16 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "trash"]
         app.launch()
         let row = app.staticTexts["Buy a second lamp"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10), "Trash")
+        XCTAssertTrue(row.appears(timeout: 10), "Trash")
         // The Mac's §28: no line under the title; a deleted list counts its open tasks.
         XCTAssertEqual(app.staticTexts["listHeader"].label, "Trash")
         XCTAssertTrue(app.buttons["Winter 2026, deleted list, 1 task"].exists, "a deleted list's open tasks")
         row.swipeRight()
         let button = app.buttons["Put Back"].firstMatch
-        XCTAssertTrue(button.waitForExistence(timeout: 3), "the swipe says Put Back")
+        XCTAssertTrue(button.appears(timeout: 3), "the swipe says Put Back")
         button.tap()
-        XCTAssertTrue(app.staticTexts["Put back “Buy a second lamp” in Home"].waitForExistence(timeout: 3), "the notice")
-        XCTAssertTrue(row.waitForNonExistence(timeout: 3), "out of Trash")
+        XCTAssertTrue(app.staticTexts["Put back “Buy a second lamp” in Home"].appears(timeout: 3), "the notice")
+        XCTAssertTrue(row.vanishes(timeout: 3), "out of Trash")
     }
 
     // MARK: Trash: Put back in, and a deleted list opened (batch 2 §4)
@@ -2145,22 +2145,22 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "trash", "-hold", "YES"]
         app.launch()
         let row = app.staticTexts["Buy a second lamp"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10), "Trash")
+        XCTAssertTrue(row.appears(timeout: 10), "Trash")
         menuOpen {
             row.press(forDuration: 1.2)
-            XCTAssertTrue(app.buttons["Put Back"].waitForExistence(timeout: 3), "Put Back")
+            XCTAssertTrue(app.buttons["Put Back"].appears(timeout: 3), "Put Back")
             let into = app.buttons["Put Back in"].firstMatch
             XCTAssertTrue(into.exists, "Put Back in")
             into.tap()
-            XCTAssertTrue(app.buttons["Errands"].waitForExistence(timeout: 3), "the live lists")
+            XCTAssertTrue(app.buttons["Errands"].appears(timeout: 3), "the live lists")
             XCTAssertTrue(app.buttons["Home"].exists, "its own list")
             XCTAssertFalse(app.buttons["Apartment move"].exists, "no other deleted list")
             app.buttons["Errands"].tap()
         }
-        XCTAssertTrue(notice("Put back “Buy a second lamp” in Errands").waitForExistence(timeout: 3), "the notice")
-        XCTAssertTrue(row.waitForNonExistence(timeout: 3), "out of Trash")
+        XCTAssertTrue(notice("Put back “Buy a second lamp” in Errands").appears(timeout: 3), "the notice")
+        XCTAssertTrue(row.vanishes(timeout: 3), "out of Trash")
         app.buttons["Undo"].firstMatch.tap()
-        XCTAssertTrue(row.waitForExistence(timeout: 3), "back in Trash")
+        XCTAssertTrue(row.appears(timeout: 3), "back in Trash")
     }
 
     /// A task whose list is in Trash has nowhere to go back to: Put Back in ▸ only, with its own list there but
@@ -2169,21 +2169,21 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "trash", "-expand", "move", "-hold", "YES"]
         app.launch()
         let row = app.staticTexts["Cancel the old internet plan"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10), "under its deleted list")
+        XCTAssertTrue(row.appears(timeout: 10), "under its deleted list")
         menuOpen {
             row.press(forDuration: 1.2)
             let into = app.buttons["Put Back in"].firstMatch
-            XCTAssertTrue(into.waitForExistence(timeout: 3), "Put Back in")
+            XCTAssertTrue(into.appears(timeout: 3), "Put Back in")
             XCTAssertFalse(app.buttons["Put Back"].exists, "no Put Back")
             into.tap()
-            XCTAssertTrue(app.buttons["School"].waitForExistence(timeout: 3), "the live lists")
+            XCTAssertTrue(app.buttons["School"].appears(timeout: 3), "the live lists")
             let own = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Apartment move'")).firstMatch
             XCTAssertTrue(own.exists, "its own list is there")
             XCTAssertFalse(own.isEnabled, "and disabled")
             app.buttons["School"].tap()
         }
-        XCTAssertTrue(notice("Put back “Cancel the old internet plan” in School").waitForExistence(timeout: 3), "the notice")
-        XCTAssertTrue(row.waitForNonExistence(timeout: 3), "out of Trash")
+        XCTAssertTrue(notice("Put back “Cancel the old internet plan” in School").appears(timeout: 3), "the notice")
+        XCTAssertTrue(row.vanishes(timeout: 3), "out of Trash")
     }
 
     /// The sheet of a task whose list is in Trash: "School  In Trash", and the banner's Put Back in (a menu) and Restore
@@ -2192,21 +2192,21 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "trash", "-expand", "move", "-hold", "YES"]
         app.launch()
         let row = app.staticTexts["Return the moving boxes"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10), "under its deleted list")
+        XCTAssertTrue(row.appears(timeout: 10), "under its deleted list")
         row.tap()
         let words = app.staticTexts["Its list is in Trash. Put it in another list, or restore the list."]
-        XCTAssertTrue(words.waitForExistence(timeout: 3), "the banner")
+        XCTAssertTrue(words.appears(timeout: 3), "the banner")
         XCTAssertTrue(app.staticTexts["In Trash"].exists, "the List row")
         XCTAssertTrue(app.buttons["Restore List"].exists, "Restore List")
         let into = app.buttons.matching(NSPredicate(format: "label == 'Put Back in'"))
         XCTAssertEqual(into.count, 2, "the bar's ↶ and the banner's")
         into.element(boundBy: 1).tap()
         let home = app.buttons["Home"].firstMatch
-        XCTAssertTrue(home.waitForExistence(timeout: 3), "Put back in")
+        XCTAssertTrue(home.appears(timeout: 3), "Put back in")
         home.tap()
-        XCTAssertTrue(notice("Put back “Return the moving boxes” in Home").waitForExistence(timeout: 3), "the notice")
-        XCTAssertTrue(words.waitForNonExistence(timeout: 3), "the sheet closed")
-        XCTAssertTrue(row.waitForNonExistence(timeout: 3), "out of Trash")
+        XCTAssertTrue(notice("Put back “Return the moving boxes” in Home").appears(timeout: 3), "the notice")
+        XCTAssertTrue(words.vanishes(timeout: 3), "the sheet closed")
+        XCTAssertTrue(row.vanishes(timeout: 3), "out of Trash")
     }
 
     /// A tap on a deleted list's row opens it, read-only: the banner, "In Trash", deaf rows, no + and no "…". Restore
@@ -2215,10 +2215,10 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "trash", "-hold", "YES"]
         app.launch()
         let deleted = app.buttons["Apartment move, deleted list, 2 tasks"]
-        XCTAssertTrue(deleted.waitForExistence(timeout: 10), "Trash")
+        XCTAssertTrue(deleted.appears(timeout: 10), "Trash")
         deleted.tap()
         let banner = app.staticTexts["Read-only until you restore it."]
-        XCTAssertTrue(banner.waitForExistence(timeout: 3), "the banner")
+        XCTAssertTrue(banner.appears(timeout: 3), "the banner")
         XCTAssertTrue(app.staticTexts["listHeader"].label.contains("In Trash"), "In Trash after the title")
         XCTAssertTrue(app.buttons["Restore List"].exists, "the bar's ↶")
         XCTAssertFalse(app.buttons["List actions"].exists, "no …")
@@ -2226,15 +2226,15 @@ final class FlowTests: XCTestCase {
         let task = app.staticTexts["Cancel the old internet plan"].firstMatch
         XCTAssertTrue(task.exists, "its tasks")
         task.tap()
-        XCTAssertFalse(app.buttons["Done"].waitForExistence(timeout: 1.5), "a row takes no tap")
+        XCTAssertFalse(app.buttons["Done"].appears(timeout: 1.5), "a row takes no tap")
         app.buttons["Restore"].tap()
-        XCTAssertTrue(notice("Restored Apartment move").waitForExistence(timeout: 3), "the notice")
-        XCTAssertTrue(banner.waitForNonExistence(timeout: 3), "the banner goes")
-        XCTAssertTrue(app.buttons["List actions"].waitForExistence(timeout: 3), "the … is back")
+        XCTAssertTrue(notice("Restored Apartment move").appears(timeout: 3), "the notice")
+        XCTAssertTrue(banner.vanishes(timeout: 3), "the banner goes")
+        XCTAssertTrue(app.buttons["List actions"].appears(timeout: 3), "the … is back")
         XCTAssertTrue(app.buttons["New Task"].exists, "the + is back")
         XCTAssertFalse(app.staticTexts["listHeader"].label.contains("In Trash"), "In Trash goes")
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(app.staticTexts["listHeader"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["listHeader"].appears(timeout: 3))
         XCTAssertEqual(app.staticTexts["listHeader"].label, "Trash", "back to Trash")
         XCTAssertFalse(deleted.exists, "its row is gone")
     }
@@ -2244,23 +2244,23 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "trash", "-hold", "YES"]
         app.launch()
         let deleted = app.buttons["Apartment move, deleted list, 2 tasks"]
-        XCTAssertTrue(deleted.waitForExistence(timeout: 10), "Trash")
+        XCTAssertTrue(deleted.appears(timeout: 10), "Trash")
         menuOpen {
             deleted.press(forDuration: 1.2)
-            XCTAssertTrue(app.buttons["Open"].waitForExistence(timeout: 3), "Open")
+            XCTAssertTrue(app.buttons["Open"].appears(timeout: 3), "Open")
             XCTAssertTrue(app.buttons["Restore List"].exists, "Restore List")
             app.buttons["Open"].tap()
         }
-        XCTAssertTrue(app.staticTexts["Read-only until you restore it."].waitForExistence(timeout: 3), "it opens")
+        XCTAssertTrue(app.staticTexts["Read-only until you restore it."].appears(timeout: 3), "it opens")
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(deleted.waitForExistence(timeout: 3), "back in Trash")
+        XCTAssertTrue(deleted.appears(timeout: 3), "back in Trash")
         sleep(1)
         deleted.swipeRight()
         let restore = app.buttons["Restore"].firstMatch
-        XCTAssertTrue(restore.waitForExistence(timeout: 3), "the swipe says Restore")
+        XCTAssertTrue(restore.appears(timeout: 3), "the swipe says Restore")
         restore.tap()
-        XCTAssertTrue(notice("Restored Apartment move").waitForExistence(timeout: 3), "the notice")
-        XCTAssertTrue(deleted.waitForNonExistence(timeout: 3), "out of Trash")
+        XCTAssertTrue(notice("Restored Apartment move").appears(timeout: 3), "the notice")
+        XCTAssertTrue(deleted.vanishes(timeout: 3), "out of Trash")
     }
 
     /// The chevron at a deleted list's right expands it in place: its tasks show under it, and Trash stays.
@@ -2268,10 +2268,10 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "trash"]
         app.launch()
         let deleted = app.buttons["Apartment move, deleted list, 2 tasks"]
-        XCTAssertTrue(deleted.waitForExistence(timeout: 10), "Trash")
+        XCTAssertTrue(deleted.appears(timeout: 10), "Trash")
         XCTAssertFalse(app.staticTexts["Cancel the old internet plan"].exists, "closed")
         deleted.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 0.5)).withOffset(CGVector(dx: -23, dy: 0)).tap()
-        XCTAssertTrue(app.staticTexts["Cancel the old internet plan"].waitForExistence(timeout: 3), "expanded")
+        XCTAssertTrue(app.staticTexts["Cancel the old internet plan"].appears(timeout: 3), "expanded")
         XCTAssertEqual(app.staticTexts["listHeader"].label, "Trash", "still Trash")
     }
 
@@ -2279,7 +2279,7 @@ final class FlowTests: XCTestCase {
     func testTheCheckboxNamesItsTask() {
         app.launchArguments += ["-screen", "list:school"]
         app.launch()
-        XCTAssertTrue(app.buttons["Complete: ECE 358 lab report, overdue"].waitForExistence(timeout: 10), "overdue")
+        XCTAssertTrue(app.buttons["Complete: ECE 358 lab report, overdue"].appears(timeout: 10), "overdue")
         XCTAssertTrue(app.buttons["Complete: Return the ECE 358 lab kit, due today"].exists, "due today")
         XCTAssertTrue(app.buttons["Complete: Pay the MSE 333 field trip fee, due today, planned for today"].exists,
                       "due and planned")
@@ -2293,7 +2293,7 @@ final class FlowTests: XCTestCase {
         app.launch()
         let a = app.buttons["Complete: Print ECE 358 formula sheet"]
         let b = app.buttons["Complete: Ask about co-op interview slots"]
-        XCTAssertTrue(a.waitForExistence(timeout: 10), "School")
+        XCTAssertTrue(a.appears(timeout: 10), "School")
         a.tap()
         let tA = Date()
         b.tap()
@@ -2303,7 +2303,7 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(app.buttons["Mark not done: Print ECE 358 formula sheet"].exists,
                       "the first check waits for the second (\(Date().timeIntervalSince(tA)) s)")
         XCTAssertTrue(app.buttons["Mark not done: Ask about co-op interview slots"].exists)
-        XCTAssertTrue(app.buttons["Mark not done: Print ECE 358 formula sheet"].waitForNonExistence(timeout: 4), "settled")
+        XCTAssertTrue(app.buttons["Mark not done: Print ECE 358 formula sheet"].vanishes(timeout: 4), "settled")
         XCTAssertFalse(app.buttons["Mark not done: Ask about co-op interview slots"].exists, "together")
     }
 
@@ -2317,7 +2317,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "today"]
         app.launch()
         let row = app.staticTexts["Return the ECE 358 lab kit"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10), "Today")
+        XCTAssertTrue(row.appears(timeout: 10), "Today")
         XCTAssertEqual(whenLabels().count, 0, "Today's Whens place their rows")
         menuOpen {
             row.press(forDuration: 1.2)
@@ -2335,13 +2335,13 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "today"]
         app.launch()
         let box = app.buttons["Complete: Reply to the landlord about the lease"]
-        XCTAssertTrue(box.waitForExistence(timeout: 10), "Today")
+        XCTAssertTrue(box.appears(timeout: 10), "Today")
         box.tap()
         sleep(3)
         app.swipeUp()
         app.swipeUp()
         let done = app.staticTexts["Reply to the landlord about the lease"].firstMatch
-        XCTAssertTrue(done.waitForExistence(timeout: 3), "in the Completed group, open by default")
+        XCTAssertTrue(done.appears(timeout: 3), "in the Completed group, open by default")
         XCTAssertTrue(app.buttons["Hide completed tasks"].exists, "open")
         XCTAssertNotNil(level(app.staticTexts, "Inbox", with: done), "its list's name")
     }
@@ -2351,7 +2351,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "completed"]
         app.launch()
         let done = app.staticTexts["Register for winter courses"].firstMatch
-        XCTAssertTrue(done.waitForExistence(timeout: 10), "Completed")
+        XCTAssertTrue(done.appears(timeout: 10), "Completed")
         let name = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'School · '")).allElementsBoundByIndex
             .first { abs($0.frame.midY - done.frame.midY) < 12 }
         XCTAssertNotNil(name, "School and the day it was done")
@@ -2364,7 +2364,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "today"]
         app.launch()
         let lab = app.staticTexts["Lab 3 report · pendulum"].firstMatch
-        XCTAssertTrue(lab.waitForExistence(timeout: 10), "Today")
+        XCTAssertTrue(lab.appears(timeout: 10), "Today")
         menuOpen {
             lab.press(forDuration: 1.2)
             app.buttons["Show in PHYS 122"].firstMatch.tap()
@@ -2372,12 +2372,12 @@ final class FlowTests: XCTestCase {
         sleep(1)
         let header = app.descendants(matching: .any)["listHeader"].firstMatch
         XCTAssertTrue(header.label.hasPrefix("PHYS 122, Waves"), "PHYS 122 opens, with no count by its title: \(header.label)")
-        XCTAssertTrue(lab.waitForExistence(timeout: 3) && lab.isHittable, "with the task shown")
+        XCTAssertTrue(lab.appears(timeout: 3) && lab.isHittable, "with the task shown")
         back()
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Today'")).firstMatch.tap()
         app.staticTexts["Reply to the landlord about the lease"].firstMatch.tap()
         let show = app.buttons["Show in Inbox"]
-        XCTAssertTrue(show.waitForExistence(timeout: 3), "the details' header")
+        XCTAssertTrue(show.appears(timeout: 3), "the details' header")
         show.tap()
         sleep(1)
         XCTAssertTrue(header.label.hasPrefix("Inbox"), "the Inbox opens: \(header.label)")
@@ -2405,7 +2405,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "list:phys"]
         app.launch()
         let box = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Complete: Buy safety glasses'")).firstMatch
-        XCTAssertTrue(box.waitForExistence(timeout: 10))
+        XCTAssertTrue(box.appears(timeout: 10))
         sleep(1)
         let c = CGPoint(x: box.frame.midX, y: box.frame.midY)
         let ray = CGPoint(x: c.x, y: c.y + 19), end = CGPoint(x: app.frame.maxX - 40, y: c.y)
@@ -2430,7 +2430,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "today"]
         app.launch()
         let open = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Complete: '"))
-        XCTAssertTrue(open.firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(open.firstMatch.appears(timeout: 10))
         sleep(1)
         let list = app.collectionViews.firstMatch
         for _ in 0..<60 {
@@ -2452,7 +2452,7 @@ final class FlowTests: XCTestCase {
         }
         XCTAssertEqual(open.count, 0, "every Today task checked")
         let sun = app.staticTexts["All done for today"].firstMatch
-        XCTAssertTrue(sun.waitForExistence(timeout: 5), "the all-done block, once the rows settle")
+        XCTAssertTrue(sun.appears(timeout: 5), "the all-done block, once the rows settle")
         list.swipeDown()
         list.swipeDown()
         sleep(1)
@@ -2475,7 +2475,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "list:phys", "-hold", "YES"]
         app.launch()
         let row = app.staticTexts["Buy safety glasses for the lab"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        XCTAssertTrue(row.appears(timeout: 10))
         sleep(1)
         let more = app.buttons["List actions"]
         more.tap()
@@ -2490,13 +2490,13 @@ final class FlowTests: XCTestCase {
         XCTAssertFalse(row.exists, "deleted")
         more.tap()
         app.buttons["Undo Delete Task"].firstMatch.tap()
-        XCTAssertTrue(row.waitForExistence(timeout: 3), "undone: the row is back")
-        XCTAssertTrue(notice("Undo Delete Task").waitForExistence(timeout: 2), "the notice says what was undone")
+        XCTAssertTrue(row.appears(timeout: 3), "undone: the row is back")
+        XCTAssertTrue(notice("Undo Delete Task").appears(timeout: 2), "the notice says what was undone")
         more.tap()
         app.buttons["Redo Delete Task"].firstMatch.tap()
         sleep(1)
         XCTAssertFalse(row.exists, "redone: the row goes again")
-        XCTAssertTrue(notice("Redo Delete Task").waitForExistence(timeout: 2))
+        XCTAssertTrue(notice("Redo Delete Task").appears(timeout: 2))
     }
 
     /// Undo from another screen goes back to the one the change was made on, at once, and shows the row.
@@ -2505,7 +2505,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "list:phys", "-hold", "YES"]
         app.launch()
         let box = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Complete: Buy safety glasses'")).firstMatch
-        XCTAssertTrue(box.waitForExistence(timeout: 10))
+        XCTAssertTrue(box.appears(timeout: 10))
         sleep(1)
         box.tap()
         sleep(2)
@@ -2514,7 +2514,7 @@ final class FlowTests: XCTestCase {
         sleep(1)
         app.buttons["More"].tap()
         app.buttons["Undo Complete"].firstMatch.tap()
-        XCTAssertTrue(notice("Undo Complete").waitForExistence(timeout: 2), "the notice says what was undone")
+        XCTAssertTrue(notice("Undo Complete").appears(timeout: 2), "the notice says what was undone")
         let header = app.descendants(matching: .any)["listHeader"].firstMatch
         XCTAssertTrue(header.label.hasPrefix("PHYS 122"), "back in PHYS 122: \(header.label)")
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Complete: Buy safety glasses'")).firstMatch.exists,
@@ -2526,11 +2526,11 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "list:phys"]
         app.launch()
         let box = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Complete: Buy safety glasses'")).firstMatch
-        XCTAssertTrue(box.waitForExistence(timeout: 10))
+        XCTAssertTrue(box.appears(timeout: 10))
         sleep(1)
         box.tap()
         app.buttons["Undo"].firstMatch.tap()
-        XCTAssertTrue(notice("Undo Complete").waitForExistence(timeout: 2))
+        XCTAssertTrue(notice("Undo Complete").appears(timeout: 2))
         XCTAssertTrue(box.exists, "open again")
     }
 
@@ -2539,7 +2539,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "list:phys"]
         app.launch()
         let row = app.staticTexts["Buy safety glasses for the lab"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        XCTAssertTrue(row.appears(timeout: 10))
         sleep(1)
         menuOpen {
             row.press(forDuration: 1.2)
@@ -2548,7 +2548,7 @@ final class FlowTests: XCTestCase {
         sleep(1)
         XCTAssertFalse(row.exists)
         app.typeKey("z", modifierFlags: .command)
-        XCTAssertTrue(row.waitForExistence(timeout: 3), "⌘Z undoes")
+        XCTAssertTrue(row.appears(timeout: 3), "⌘Z undoes")
         app.typeKey("z", modifierFlags: [.command, .shift])
         sleep(1)
         XCTAssertFalse(row.exists, "⇧⌘Z redoes")
@@ -2559,7 +2559,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "list:phys"]
         app.launch()
         let box = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Complete: Buy safety glasses'")).firstMatch
-        XCTAssertTrue(box.waitForExistence(timeout: 10))
+        XCTAssertTrue(box.appears(timeout: 10))
         sleep(1)
         box.tap()
         sleep(2)
@@ -2576,10 +2576,10 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "list:phys"]
         app.launch()
         let row = app.staticTexts["Buy safety glasses for the lab"].firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        XCTAssertTrue(row.appears(timeout: 10))
         sleep(1)
         row.tap()
-        XCTAssertTrue(app.descendants(matching: .any)["detailList"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["detailList"].appears(timeout: 5))
         sleep(1)
         app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Complete: Buy safety glasses'")).allElementsBoundByIndex
             .first { $0.isHittable }?.tap()
@@ -2600,7 +2600,7 @@ final class FlowTests: XCTestCase {
     private func openDate(_ kind: String) {
         app.launchArguments += ["-screen", "\(kind):s4"]
         app.launch()
-        XCTAssertTrue(dateField.waitForExistence(timeout: 10), "the field")
+        XCTAssertTrue(dateField.appears(timeout: 10), "the field")
         sleep(1)
     }
 
@@ -2625,10 +2625,10 @@ final class FlowTests: XCTestCase {
         let day = dateFooter.label.components(separatedBy: " · ")[0]
         XCTAssertTrue(selected("BEGINSWITH", day).exists, "the highlighted day")
         dateField.typeText("\n")
-        XCTAssertTrue(dateField.waitForNonExistence(timeout: 3), "closed")
+        XCTAssertTrue(dateField.vanishes(timeout: 3), "closed")
         app.staticTexts["Submit MSE 333 A2"].firstMatch.tap()
         let when = app.buttons["When"].firstMatch
-        XCTAssertTrue(when.waitForExistence(timeout: 5))
+        XCTAssertTrue(when.appears(timeout: 5))
         XCTAssertEqual(when.value as? String, day, "set")
     }
 
@@ -2675,10 +2675,10 @@ final class FlowTests: XCTestCase {
         app.typeKey(.downArrow, modifierFlags: [])
         XCTAssertTrue(dateFooter.label.hasSuffix(" · after the deadline"), dateFooter.label)
         app.buttons["Done"].firstMatch.tap()
-        XCTAssertTrue(dateField.waitForNonExistence(timeout: 3), "closed")
+        XCTAssertTrue(dateField.vanishes(timeout: 3), "closed")
         app.staticTexts["Submit MSE 333 A2"].firstMatch.tap()
         let when = app.buttons["When"].firstMatch
-        XCTAssertTrue(when.waitForExistence(timeout: 5))
+        XCTAssertTrue(when.appears(timeout: 5))
         XCTAssertEqual(when.value as? String, before.components(separatedBy: " · ")[0], "nothing set")
     }
 
@@ -2712,7 +2712,7 @@ final class FlowTests: XCTestCase {
             heading("Labs").press(forDuration: 1.0)
             app.buttons["Add Notes"].tap()
         }
-        XCTAssertTrue(app.textViews["headingNotes"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.textViews["headingNotes"].appears(timeout: 3))
         app.typeText("Goggles\nLab coat")
         app.buttons["Done"].tap()
         sleep(2)
@@ -2736,12 +2736,12 @@ final class FlowTests: XCTestCase {
             heading("Labs").press(forDuration: 1.0)
             app.buttons["Add Notes"].tap()
         }
-        XCTAssertTrue(app.textViews["headingNotes"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.textViews["headingNotes"].appears(timeout: 3))
         app.typeText("Bring the goggles")
         app.buttons["Done"].tap()
         sleep(1)
         let notes = app.staticTexts["Bring the goggles"].firstMatch
-        XCTAssertTrue(notes.waitForExistence(timeout: 3))
+        XCTAssertTrue(notes.appears(timeout: 3))
         func assertNothing(_ what: String, editor: XCUIElement) {
             sleep(1)
             let ev = probe()["ev"] ?? ""
@@ -2759,7 +2759,7 @@ final class FlowTests: XCTestCase {
         menuOpen { notes.press(forDuration: 1.2) }
         assertNothing("a heading's notes", editor: app.textViews["headingNotes"])
         notes.tap()
-        XCTAssertTrue(app.textViews["headingNotes"].waitForExistence(timeout: 3), "a tap on them still edits them")
+        XCTAssertTrue(app.textViews["headingNotes"].appears(timeout: 3), "a tap on them still edits them")
         app.buttons["Done"].tap()
         sleep(1)
 
@@ -2768,10 +2768,10 @@ final class FlowTests: XCTestCase {
         app = XCUIApplication()
         app.launchArguments = ["-sampleData", "YES", "-appearance", "dark", "-style", "classic", "-screen", "list:home", "-dragProbe", "YES"]
         app.launch()
-        XCTAssertTrue(app.buttons["List actions"].waitForExistence(timeout: 10), "Home")
+        XCTAssertTrue(app.buttons["List actions"].appears(timeout: 10), "Home")
         app.buttons["List actions"].tap()
         app.buttons["Add Notes"].tap()
-        XCTAssertTrue(app.textViews["listNotes"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.textViews["listNotes"].appears(timeout: 3))
         app.typeText("Measure the hallway")
         app.buttons["Done"].tap()
         sleep(1)
@@ -2780,7 +2780,7 @@ final class FlowTests: XCTestCase {
         menuOpen { on.press(forDuration: 1.2) }
         assertNothing("a list's notes", editor: app.textViews["listNotes"])
         on.tap()
-        XCTAssertTrue(app.textViews["listNotes"].waitForExistence(timeout: 3), "a tap on them still edits them")
+        XCTAssertTrue(app.textViews["listNotes"].appears(timeout: 3), "a tap on them still edits them")
     }
 
     /// A heading with notes dragged off its place and let go there again (refused: it goes home) leaves its notes as
@@ -2859,7 +2859,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", "today"]
         app.launch()
         let reply = app.staticTexts["Reply to the landlord about the lease"].firstMatch
-        XCTAssertTrue(reply.waitForExistence(timeout: 10))
+        XCTAssertTrue(reply.appears(timeout: 10))
         sleep(1)
         let dentist = app.staticTexts["Call the dentist about a cleaning"].firstMatch
         let school = app.staticTexts["School"].firstMatch
@@ -2872,7 +2872,7 @@ final class FlowTests: XCTestCase {
     func testADropAtTheEndOfHomesLists() {
         app.launch()
         let school = app.buttons["School"].firstMatch
-        XCTAssertTrue(school.waitForExistence(timeout: 10))
+        XCTAssertTrue(school.appears(timeout: 10))
         sleep(1)
         let completed = app.buttons["Completed"].firstMatch
         dragTo(school, y: cell(completed).minY - 6)
@@ -2890,7 +2890,7 @@ final class FlowTests: XCTestCase {
     private func openUpcoming() {
         app.launchArguments += ["-screen", "upcoming"]
         app.launch()
-        XCTAssertTrue(app.staticTexts["Return the boots"].firstMatch.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Return the boots"].firstMatch.appears(timeout: 10))
         sleep(1)
     }
 
@@ -2911,7 +2911,7 @@ final class FlowTests: XCTestCase {
         XCTAssertEqual(probe()["drops"], "1", "one impact, at the drop")
         assertLandedExactly()
         app.buttons["More"].tap()
-        XCTAssertTrue(app.buttons["Undo Set When"].waitForExistence(timeout: 3), "one step, the Mac's name")
+        XCTAssertTrue(app.buttons["Undo Set When"].appears(timeout: 3), "one step, the Mac's name")
     }
 
     /// The drop's step undoes: the task goes back to its day.
@@ -2938,7 +2938,7 @@ final class FlowTests: XCTestCase {
         XCTAssertEqual(order(), titles, "as it was")
         XCTAssertLessThan(y(t("Get groceries for the week")), y(t("Submit MSE 333 A2")), "still on Tomorrow")
         app.buttons["More"].tap()
-        XCTAssertTrue(app.buttons["Select"].firstMatch.waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Select"].firstMatch.appears(timeout: 3))
         XCTAssertFalse(app.buttons["Undo Set When"].exists, "nothing to undo")
     }
 
@@ -2951,7 +2951,7 @@ final class FlowTests: XCTestCase {
         XCTAssertLessThan(y(boots), y(t("Past midterms 2024 and 2025, timed")), "still on its day")
         XCTAssertLessThan(y(t("Make the midterm formula sheet")), y(boots), "at its place")
         app.buttons["More"].tap()
-        XCTAssertTrue(app.buttons["Select"].firstMatch.waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["Select"].firstMatch.appears(timeout: 3))
         XCTAssertFalse(app.buttons["Undo Set When"].exists, "nothing written")
     }
 
@@ -2967,11 +2967,11 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["-screen", screen] + (hold ? ["-hold", "YES"] : [])
         app.launch()
         let header = app.descendants(matching: .any)["listHeader"].firstMatch
-        XCTAssertTrue(header.waitForExistence(timeout: 10), "the screen", file: file, line: line)
+        XCTAssertTrue(header.appears(timeout: 10), "the screen", file: file, line: line)
         sleep(1)
         app.buttons[menu].tap()
         app.buttons["Select"].firstMatch.tap()
-        XCTAssertTrue(selectTitle.waitForExistence(timeout: 3), "select mode", file: file, line: line)
+        XCTAssertTrue(selectTitle.appears(timeout: 3), "select mode", file: file, line: line)
         for t in titles { app.staticTexts[t].firstMatch.tap() }
         XCTAssertEqual(selectTitle.label, titles.isEmpty ? "Select Tasks" : "\(titles.count) Selected", file: file, line: line)
     }
@@ -3004,9 +3004,9 @@ final class FlowTests: XCTestCase {
         app.buttons["Deselect All"].firstMatch.tap()
         XCTAssertEqual(app.staticTexts["Select Tasks"].label, "Select Tasks")
         app.buttons["Done"].tap()
-        XCTAssertTrue(app.buttons["List actions"].waitForExistence(timeout: 3), "the … is back")
+        XCTAssertTrue(app.buttons["List actions"].appears(timeout: 3), "the … is back")
         XCTAssertFalse(selectBar.exists, "the bar goes")
-        XCTAssertTrue(app.buttons["New Task"].waitForExistence(timeout: 3), "the + is back")
+        XCTAssertTrue(app.buttons["New Task"].appears(timeout: 3), "the + is back")
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Complete: Return the ECE 358 lab kit'")).firstMatch.exists,
                       "its box wasn't checked")
         // The two-finger swipe leaves one-finger scrolling alone.
@@ -3024,12 +3024,12 @@ final class FlowTests: XCTestCase {
         select(["Sidebar footer: a settings button", "Try Glass on the detail pane", "Theme cards in Settings"], on: "list:tasks")
         XCTAssertEqual(segment("Complete").label, "Complete", "a mixed selection reads Complete")
         segment("Complete").tap()
-        XCTAssertTrue(notice("Completed 2 tasks").waitForExistence(timeout: 3), "the open ones")
+        XCTAssertTrue(notice("Completed 2 tasks").appears(timeout: 3), "the open ones")
         XCTAssertFalse(selectTitle.exists, "select mode ends")
         XCTAssertTrue(app.buttons["Mark not done: Try Glass on the detail pane"].exists, "checked")
         app.buttons["Undo"].firstMatch.tap()
-        XCTAssertTrue(notice("Undo Complete 3 Tasks").waitForExistence(timeout: 3), "one step")
-        XCTAssertTrue(app.buttons["Complete: Try Glass on the detail pane"].waitForExistence(timeout: 3), "open again")
+        XCTAssertTrue(notice("Undo Complete 3 Tasks").appears(timeout: 3), "one step")
+        XCTAssertTrue(app.buttons["Complete: Try Glass on the detail pane"].appears(timeout: 3), "open again")
         XCTAssertTrue(app.buttons["Mark not done: Theme cards in Settings"].exists, "the done one stays done")
     }
 
@@ -3039,13 +3039,13 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(segment("Not Done").exists, "Not Done")
         XCTAssertTrue(segment("When").exists && segment("Move").exists && segment("Delete").exists)
         segment("Not Done").tap()
-        XCTAssertTrue(app.staticTexts["Submit ECE 358 lab 3"].waitForNonExistence(timeout: 3), "out of Completed")
+        XCTAssertTrue(app.staticTexts["Submit ECE 358 lab 3"].vanishes(timeout: 3), "out of Completed")
         XCTAssertFalse(app.staticTexts["Read MSE 333 chapter 6"].exists)
         XCTAssertFalse(app.buttons["Undo"].exists, "no notice")
         app.buttons["More"].tap()
-        XCTAssertTrue(app.buttons["Undo Mark as Not Done"].waitForExistence(timeout: 3), "one step")
+        XCTAssertTrue(app.buttons["Undo Mark as Not Done"].appears(timeout: 3), "one step")
         app.buttons["Undo Mark as Not Done"].tap()
-        XCTAssertTrue(app.staticTexts["Submit ECE 358 lab 3"].waitForExistence(timeout: 3), "back in Completed")
+        XCTAssertTrue(app.staticTexts["Submit ECE 358 lab 3"].appears(timeout: 3), "back in Completed")
         XCTAssertTrue(app.staticTexts["Read MSE 333 chapter 6"].exists)
     }
 
@@ -3054,22 +3054,22 @@ final class FlowTests: XCTestCase {
     func testWhenForASelection() {
         select(["Reply to the landlord about the lease", "Email TA about midterm regrade"], on: "today", menu: "More")
         segment("When").tap()
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS '2 tasks'")).firstMatch.waitForExistence(timeout: 3),
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS '2 tasks'")).firstMatch.appears(timeout: 3),
                       "the sheet's title counts them")
         app.buttons["Done"].firstMatch.tap()
         sleep(1)
         XCTAssertEqual(selectTitle.label, "2 Selected", "closed without a day: still selecting")
         segment("When").tap()
         let tomorrow = app.buttons["Tomorrow"].firstMatch
-        XCTAssertTrue(tomorrow.waitForExistence(timeout: 3))
+        XCTAssertTrue(tomorrow.appears(timeout: 3))
         tomorrow.tap()
-        XCTAssertTrue(notice(beginningWith: "Scheduled for ").waitForExistence(timeout: 3), "they left Today")
+        XCTAssertTrue(notice(beginningWith: "Scheduled for ").appears(timeout: 3), "they left Today")
         XCTAssertFalse(selectTitle.exists, "select mode ends")
         XCTAssertFalse(app.staticTexts["Reply to the landlord about the lease"].exists)
         XCTAssertFalse(app.staticTexts["Email TA about midterm regrade"].exists)
         app.buttons["Undo"].firstMatch.tap()
-        XCTAssertTrue(notice("Undo Set When").waitForExistence(timeout: 3), "one step")
-        XCTAssertTrue(app.staticTexts["Reply to the landlord about the lease"].waitForExistence(timeout: 3), "back")
+        XCTAssertTrue(notice("Undo Set When").appears(timeout: 3), "one step")
+        XCTAssertTrue(app.staticTexts["Reply to the landlord about the lease"].appears(timeout: 3), "back")
         XCTAssertTrue(app.staticTexts["Email TA about midterm regrade"].exists)
     }
 
@@ -3078,22 +3078,22 @@ final class FlowTests: XCTestCase {
     func testMoveASelectionOutOfAList() {
         select(["Sidebar footer: a settings button", "Try Glass on the detail pane"], on: "list:tasks")
         segment("Move").tap()
-        XCTAssertTrue(app.staticTexts["Move 2 tasks to"].waitForExistence(timeout: 3), "the header")
+        XCTAssertTrue(app.staticTexts["Move 2 tasks to"].appears(timeout: 3), "the header")
         XCTAssertFalse(app.buttons["Tasks app"].isEnabled, "their own list")
         app.buttons["Errands"].tap()
-        XCTAssertTrue(notice("Moved 2 tasks to Errands").waitForExistence(timeout: 3))
+        XCTAssertTrue(notice("Moved 2 tasks to Errands").appears(timeout: 3))
         XCTAssertFalse(selectTitle.exists, "select mode ends")
-        XCTAssertTrue(app.staticTexts["Try Glass on the detail pane"].waitForNonExistence(timeout: 3), "gone from Tasks app")
+        XCTAssertTrue(app.staticTexts["Try Glass on the detail pane"].vanishes(timeout: 3), "gone from Tasks app")
         app.buttons["Undo"].firstMatch.tap()
-        XCTAssertTrue(notice("Undo Move 2 Tasks").waitForExistence(timeout: 3), "one step")
-        XCTAssertTrue(app.staticTexts["Try Glass on the detail pane"].waitForExistence(timeout: 3), "back")
+        XCTAssertTrue(notice("Undo Move 2 Tasks").appears(timeout: 3), "one step")
+        XCTAssertTrue(app.staticTexts["Try Glass on the detail pane"].appears(timeout: 3), "back")
     }
 
     /// In a view the tasks stay, regrouped, and nothing is said (IX §10).
     func testMoveASelectionInAViewStays() {
         select(["Reply to the landlord about the lease", "Email TA about midterm regrade"], on: "today", menu: "More")
         segment("Move").tap()
-        XCTAssertTrue(app.staticTexts["Move 2 tasks to"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Move 2 tasks to"].appears(timeout: 3))
         XCTAssertTrue(app.buttons["Inbox"].isEnabled, "not all of them are in Inbox")
         app.buttons["Inbox"].tap()
         sleep(1)
@@ -3111,12 +3111,12 @@ final class FlowTests: XCTestCase {
         select(["Ship the When and Deadline pickers", "Sidebar footer: a settings button", "Try Glass on the detail pane"],
                on: "list:tasks")
         segment("Delete").tap()
-        XCTAssertTrue(notice("Deleted 3 tasks").waitForExistence(timeout: 3))
+        XCTAssertTrue(notice("Deleted 3 tasks").appears(timeout: 3))
         XCTAssertFalse(selectTitle.exists, "select mode ends")
         XCTAssertFalse(app.staticTexts["Sidebar footer: a settings button"].exists, "gone")
         app.buttons["List actions"].tap()
         app.buttons["Undo Delete 3 Tasks"].firstMatch.tap()
-        XCTAssertTrue(app.staticTexts["Sidebar footer: a settings button"].waitForExistence(timeout: 3), "back")
+        XCTAssertTrue(app.staticTexts["Sidebar footer: a settings button"].appears(timeout: 3), "back")
         XCTAssertTrue(app.staticTexts["Ship the When and Deadline pickers"].exists)
     }
 
@@ -3127,11 +3127,11 @@ final class FlowTests: XCTestCase {
         select(["Buy a second lamp", "Try the new notes app"], on: "trash", menu: "More")
         XCTAssertTrue(segment("Put Back in").exists)
         segment("Put Back").tap()
-        XCTAssertTrue(notice("Put back 2 tasks").waitForExistence(timeout: 3), "each to its own list")
+        XCTAssertTrue(notice("Put back 2 tasks").appears(timeout: 3), "each to its own list")
         XCTAssertFalse(selectTitle.exists, "select mode ends")
         XCTAssertFalse(app.staticTexts["Buy a second lamp"].exists, "out of Trash")
         app.buttons["Undo"].firstMatch.tap()
-        XCTAssertTrue(app.staticTexts["Buy a second lamp"].waitForExistence(timeout: 3), "back in Trash")
+        XCTAssertTrue(app.staticTexts["Buy a second lamp"].appears(timeout: 3), "back in Trash")
         sleep(1)
         app.buttons["More"].tap()
         app.buttons["Select"].firstMatch.tap()
@@ -3140,9 +3140,9 @@ final class FlowTests: XCTestCase {
         XCTAssertEqual(selectTitle.label, "2 Selected")
         segment("Put Back").tap()
         let school = app.buttons["School"].firstMatch
-        XCTAssertTrue(school.waitForExistence(timeout: 3), "Put back in, for all of them")
+        XCTAssertTrue(school.appears(timeout: 3), "Put back in, for all of them")
         school.tap()
-        XCTAssertTrue(notice("Put back 2 tasks in School").waitForExistence(timeout: 3))
+        XCTAssertTrue(notice("Put back 2 tasks in School").appears(timeout: 3))
     }
 
     /// A long-press in select mode is the selection's menu, with the pressed row added; closed without a choice, the
@@ -3152,7 +3152,7 @@ final class FlowTests: XCTestCase {
         let row = app.staticTexts["Try Glass on the detail pane"].firstMatch
         menuOpen {
             row.press(forDuration: 1.2)
-            XCTAssertTrue(app.buttons["Complete 2 Tasks"].waitForExistence(timeout: 3), "the menu acts on both")
+            XCTAssertTrue(app.buttons["Complete 2 Tasks"].appears(timeout: 3), "the menu acts on both")
             XCTAssertTrue(app.buttons["Delete 2 Tasks"].exists)
             app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.03)).tap()
         }

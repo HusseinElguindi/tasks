@@ -28,7 +28,7 @@ final class FoldFilmTests: XCTestCase {
     /// Lectures (no notes) and Labs (with notes, from "another device"), folded and opened twice each.
     func testFilmFold() {
         app.launch()
-        XCTAssertTrue(heading("Labs").waitForExistence(timeout: 10))
+        XCTAssertTrue(heading("Labs").appears(timeout: 10))
         sleep(1)
         for name in ["Lectures", "Labs"] {
             if name == "Labs" {
@@ -59,7 +59,7 @@ final class FoldFilmTests: XCTestCase {
     /// back into them and Done; a rename and Cancel. Exam prep's rule, below them, moves with each.
     func testFilmEditing() {
         app.launch()
-        XCTAssertTrue(heading("Labs").waitForExistence(timeout: 10))
+        XCTAssertTrue(heading("Labs").appears(timeout: 10))
         sleep(1)
         menuOpen {
             heading("Labs").press(forDuration: 1.0)

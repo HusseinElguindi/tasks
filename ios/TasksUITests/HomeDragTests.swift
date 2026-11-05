@@ -46,7 +46,7 @@ final class HomeDragTests: XCTestCase {
     private func launchHome(_ extra: [String] = []) {
         app.launchArguments += extra
         app.launch()
-        XCTAssertTrue(row("Errands").waitForExistence(timeout: 10))
+        XCTAssertTrue(row("Errands").appears(timeout: 10))
         sleep(1)
     }
 
@@ -129,7 +129,7 @@ final class HomeDragTests: XCTestCase {
         // A tap still opens it (relaunched: a hold may have ended in the row's menu, and a tap then only closes it).
         launchHome()
         row("Errands").tap()
-        XCTAssertTrue(app.navigationBars["Errands"].waitForExistence(timeout: 3), "a tap opens the list")
+        XCTAssertTrue(app.navigationBars["Errands"].appears(timeout: 3), "a tap opens the list")
     }
 
     /// The same in a list: a task let go right after its lift opens no details, and neither checks it nor opens it.
@@ -138,7 +138,7 @@ final class HomeDragTests: XCTestCase {
         let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
         func open() {
             app.launch()
-            XCTAssertTrue(redo.waitForExistence(timeout: 10))
+            XCTAssertTrue(redo.appears(timeout: 10))
             sleep(1)
         }
         for d in [0.36, 0.38] {
@@ -160,7 +160,7 @@ final class HomeDragTests: XCTestCase {
         // A tap still opens them (relaunched, as on Home).
         open()
         redo.tap()
-        XCTAssertTrue(app.descendants(matching: .any)["detailList"].waitForExistence(timeout: 3), "a tap opens its details")
+        XCTAssertTrue(app.descendants(matching: .any)["detailList"].appears(timeout: 3), "a tap opens its details")
     }
 
     /// A row dragged away leaves its place clean as the drag begins: UIKit's click highlight of it (the menu's first
@@ -184,7 +184,7 @@ final class HomeDragTests: XCTestCase {
         app.launchArguments += ["-screen", "list:phys"]
         app.launch()
         let task = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
-        XCTAssertTrue(task.waitForExistence(timeout: 10))
+        XCTAssertTrue(task.appears(timeout: 10))
         sleep(1)
         drag(task, "a task")
         let labs = app.descendants(matching: .any).matching(identifier: "heading").matching(NSPredicate(format: "label == %@", "Labs")).firstMatch
@@ -267,7 +267,7 @@ final class HomeDragTests: XCTestCase {
         app.launchArguments += ["-screen", "list:phys", "-dragTrace", "YES"]
         app.launch()
         let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
-        XCTAssertTrue(redo.waitForExistence(timeout: 10))
+        XCTAssertTrue(redo.appears(timeout: 10))
         sleep(1)
         let names = ["Redo the worked examples from lecture 9", "Read chapter 15 · oscillations", "Lab 3 report · pendulum",
                      "Lab 4 pre-lab · RC circuits", "Book a make-up lab bench"]

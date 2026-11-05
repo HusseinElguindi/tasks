@@ -37,7 +37,7 @@ final class DragFilmTests: XCTestCase {
     /// as the drag begins), then, relaunched, a task held 1.2 s without moving (its long-press menu).
     func testFilmLift() {
         app.launch()
-        XCTAssertTrue(heading("Labs").waitForExistence(timeout: 10))
+        XCTAssertTrue(heading("Labs").appears(timeout: 10))
         sleep(1)
         let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
         let bench = app.staticTexts["Book a make-up lab bench"].firstMatch
@@ -47,7 +47,7 @@ final class DragFilmTests: XCTestCase {
                    withVelocity: XCUIGestureVelocity(rawValue: 300), thenHoldForDuration: 0.5)
         sleep(2)
         app.launch()
-        XCTAssertTrue(heading("Labs").waitForExistence(timeout: 10))
+        XCTAssertTrue(heading("Labs").appears(timeout: 10))
         sleep(1)
         mark("menu")
         app.staticTexts["Redo the worked examples from lecture 9"].firstMatch.press(forDuration: 1.2)
@@ -56,7 +56,7 @@ final class DragFilmTests: XCTestCase {
         app.launchArguments = app.launchArguments.filter { $0 != "-screen" && $0 != "list:phys" }
         app.launch()
         let phys = app.buttons["PHYS 122"].firstMatch, school = app.buttons["School"].firstMatch
-        XCTAssertTrue(phys.waitForExistence(timeout: 10))
+        XCTAssertTrue(phys.appears(timeout: 10))
         sleep(1)
         mark("home_drag")
         phys.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
@@ -64,7 +64,7 @@ final class DragFilmTests: XCTestCase {
                    withVelocity: XCUIGestureVelocity(rawValue: 300), thenHoldForDuration: 0.5)
         sleep(2)
         app.launch()
-        XCTAssertTrue(phys.waitForExistence(timeout: 10))
+        XCTAssertTrue(phys.appears(timeout: 10))
         sleep(1)
         mark("home_menu")
         app.buttons["Errands"].firstMatch.press(forDuration: 1.2)
@@ -76,7 +76,7 @@ final class DragFilmTests: XCTestCase {
     func testFilmFlick() {
         for (n, (hold, speed)) in [(0.5, 4000.0), (0.5, 4000), (0.55, 6000), (0.5, 6000)].enumerated() {
             app.launch()
-            XCTAssertTrue(heading("Labs").waitForExistence(timeout: 10))
+            XCTAssertTrue(heading("Labs").appears(timeout: 10))
             sleep(1)
             let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
             let bench = app.staticTexts["Book a make-up lab bench"].firstMatch
@@ -92,7 +92,7 @@ final class DragFilmTests: XCTestCase {
     /// let go there (the list's end), then held under the top bar (it scrolls back up) and let go (the top).
     func testFilmAutoscroll() {
         app.launch()
-        XCTAssertTrue(heading("Labs").waitForExistence(timeout: 10))
+        XCTAssertTrue(heading("Labs").appears(timeout: 10))
         sleep(1)
         let glasses = app.staticTexts["Buy safety glasses for the lab"].firstMatch
         let window = app.windows.firstMatch.frame
@@ -114,7 +114,7 @@ final class DragFilmTests: XCTestCase {
     /// pulled up past its slot and let go there (refused: home).
     func testFilmDrag() {
         app.launch()
-        XCTAssertTrue(heading("Labs").waitForExistence(timeout: 10))
+        XCTAssertTrue(heading("Labs").appears(timeout: 10))
         sleep(1)
         let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
         let bench = app.staticTexts["Book a make-up lab bench"].firstMatch
