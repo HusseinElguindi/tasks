@@ -33,6 +33,44 @@ final class DragFilmTests: XCTestCase {
         sleep(2)
     }
 
+    /// The hold, from touch-down: a task held 0.6 s and dragged slowly onto the bench row (what shows at the lift, and
+    /// as the drag begins), then, relaunched, a task held 1.2 s without moving (its long-press menu).
+    func testFilmLift() {
+        app.launch()
+        XCTAssertTrue(heading("Labs").waitForExistence(timeout: 10))
+        sleep(1)
+        let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
+        let bench = app.staticTexts["Book a make-up lab bench"].firstMatch
+        mark("lift_drag")
+        redo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.6, thenDragTo: bench.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)),
+                   withVelocity: XCUIGestureVelocity(rawValue: 300), thenHoldForDuration: 0.5)
+        sleep(2)
+        app.launch()
+        XCTAssertTrue(heading("Labs").waitForExistence(timeout: 10))
+        sleep(1)
+        mark("menu")
+        app.staticTexts["Redo the worked examples from lecture 9"].firstMatch.press(forDuration: 1.2)
+        sleep(2)
+        // Home: a list dragged slowly, then (relaunched) a list's menu.
+        app.launchArguments = app.launchArguments.filter { $0 != "-screen" && $0 != "list:phys" }
+        app.launch()
+        let phys = app.buttons["PHYS 122"].firstMatch, school = app.buttons["School"].firstMatch
+        XCTAssertTrue(phys.waitForExistence(timeout: 10))
+        sleep(1)
+        mark("home_drag")
+        phys.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.6, thenDragTo: school.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)),
+                   withVelocity: XCUIGestureVelocity(rawValue: 300), thenHoldForDuration: 0.5)
+        sleep(2)
+        app.launch()
+        XCTAssertTrue(phys.waitForExistence(timeout: 10))
+        sleep(1)
+        mark("home_menu")
+        app.buttons["Errands"].firstMatch.press(forDuration: 1.2)
+        sleep(2)
+    }
+
     /// Fast flicks of a task onto the bench row, let go as they arrive (FlowTests' testAFastFlickDropsWhereTheFingerLetGo):
     /// UIKit begins some late and ends them with no drop; ours then drops at the finger's slot. Relaunched for each.
     func testFilmFlick() {

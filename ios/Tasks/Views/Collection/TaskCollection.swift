@@ -508,6 +508,7 @@ final class TaskCell: UICollectionViewListCell {
     override func dragStateDidChange(_ s: UICollectionViewCell.DragState) {
         dragging = s != .none
         super.dragStateDidChange(s)
+        MainActor.assumeIsolated { owner?.drag.cellDragState(self, s) }
     }
     override var alpha: CGFloat {
         get { super.alpha }

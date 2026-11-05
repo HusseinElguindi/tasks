@@ -821,11 +821,37 @@ final class FlowTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(Int(probe()["ticks"] ?? "") ?? 0, 3, "a tick at each slot the gap moved to: \(probe())")
         XCTAssertEqual(probe()["drops"], "1", "one impact, at the drop")
         assertLandedExactly()
+        assertOnlyOurCopyLifted()
+    }
+
+    /// At the hold, nothing of UIKit's shows (its lift preview is a clear point, so there's nothing for it to shrink
+    /// to the finger as the drag begins: a second copy of the row), and our copy lifted in place, on the row's frame.
+    private func assertOnlyOurCopyLifted(file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertEqual(probe()["lp"], "1x1", "UIKit's lift preview draws nothing: \(probe())", file: file, line: line)
+        XCTAssertEqual(probe()["held"], "0.0,0.0", "our copy lifted on the row's exact frame", file: file, line: line)
+    }
+
+    /// A hold that opens a task's menu: our copy lifted in place at the hold, and went as the menu opened (the menu's
+    /// own preview of the row shows, not ours or UIKit's drag lift).
+    func testAHoldThatOpensTheMenuLeavesNoCopy() {
+        app.launchArguments += ["-screen", "list:phys", "-dragProbe", "YES"]
+        app.launch()
+        let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
+        XCTAssertTrue(redo.waitForExistence(timeout: 10))
+        sleep(1)
+        menuOpen {
+            redo.press(forDuration: 1.2)
+            sleep(1)
+            XCTAssertTrue(app.buttons["Complete"].firstMatch.exists, "the row's menu is open")
+            XCTAssertFalse(app.descendants(matching: .any)["dragCopy"].exists, "and our lifted copy has gone")
+            XCTAssertTrue(probe()["ev"]?.contains("holdMenu") == true, "it went as the menu opened: \(probe())")
+            assertOnlyOurCopyLifted()
+        }
     }
 
     /// Fast flicks, let go the moment they arrive, soon after the lift: UIKit begins the drag late, then ends it with
     /// no drop session reaching the list, or with one it doesn't perform (the probe's "ev" has the calls; "ourDrop" is
-    /// ours). Each drag UIKit began drops at the finger's slot and sets down exactly on the row. One let go within about
+    /// ours). Each drag UIKit began drops (at the finger's slot as UIKit last saw it) and sets down exactly on the row. One let go within about
     /// 0.13 s of the lift's start UIKit never begins at all ("ev" is only the lift's calls), and says nothing: there's
     /// nothing to drop, and the row stays.
     func testAFastFlickDropsWhereTheFingerLetGo() {
@@ -849,8 +875,14 @@ final class FlowTests: XCTestCase {
                 continue
             }
             began += 1
-            if ev.contains("ourDrop") { ours += 1 }
-            XCTAssertGreaterThan(y(redo), y(bench), "held \(hold) s, flicked at \(Int(speed)) pt/s: dropped under the bench (\(probe()))")
+            if ev.contains("ourDrop") {
+                // Ours drops where UIKit's session last saw the finger: the bench, or (begun mid-flick, its touches
+                // gone to the system) a slot on the way.
+                ours += 1
+                XCTAssertGreaterThan(y(redo), before + 20, "held \(hold) s, flicked at \(Int(speed)) pt/s: dropped on the way down (\(probe()))")
+            } else {
+                XCTAssertGreaterThan(y(redo), y(bench), "held \(hold) s, flicked at \(Int(speed)) pt/s: dropped under the bench (\(probe()))")
+            }
             XCTAssertLessThan(y(redo), y(heading("Exam prep")))
             XCTAssertEqual(probe()["drops"], "1", "one impact, at the drop")
             assertLandedExactly()
@@ -870,6 +902,7 @@ final class FlowTests: XCTestCase {
         menuOpen {
             app.buttons["Errands"].firstMatch.press(forDuration: 1.0)
             sleep(1)
+            XCTAssertFalse(app.descendants(matching: .any)["dragCopy"].exists, "the menu is open, and our lifted copy has gone")
             app.buttons["Rename"].firstMatch.tap()
             sleep(1)
             app.buttons["Cancel"].firstMatch.tap()
@@ -974,6 +1007,7 @@ final class FlowTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(Int(probe()["ticks"] ?? "") ?? 0, 1, "a tick at the new slot: \(probe())")
         XCTAssertEqual(probe()["drops"], "1", "one impact, at the drop")
         assertLandedExactly()
+        assertOnlyOurCopyLifted()
     }
 
     // MARK: The tapped row (§5; Mail and Settings)

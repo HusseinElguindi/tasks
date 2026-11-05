@@ -16,9 +16,14 @@ import UIKit
 //   (`AppModel.dragRuns`: its list's group), so the gap and the copy stay in its group.
 // - Our own lifted copy (`fill-lift`, the row's radius 12 with continuous corners, `shadow-lift`, the row's snapshot)
 //   follows the finger in x and y, keeping the grab offset, as the Mac's does; only its y is held, 6 pt past the first
-//   and last slot (the Mac's rule inside a group), and the slot is chosen by y alone. The system's preview is invisible
-//   once lifted. A heading's section folds into it at lift (CollectionFold's collapse), and its copy shows the open
-//   count in an accent badge.
+//   and last slot (the Mac's rule inside a group), and the slot is chosen by y alone. It lifts at the hold, as UIKit
+//   lifts (the drag items asked), on the row's exact frame (`lift`); if no drag follows (the row's menu opens, or UIKit
+//   puts the lift down: the cell's drag state back to none) it goes again (`holdEnded`). Nothing of UIKit's shows,
+//   from the hold on: its lift preview and drag preview draw nothing (a lift preview of the row was shrunk by UIKit,
+//   as the drag began, into the drag preview at the finger: a second copy sliding there). The hold itself (0.41 s to
+//   the lift, 0.82 s to the menu) is UIKit's: its click-presentation driver, shared with the menu, has no public
+//   setting. A heading's section folds into the copy as the drag begins (CollectionFold's collapse), and its copy
+//   shows the open count in an accent badge.
 // - Haptics (`DragFeel`): UIKit's own at the lift (none of ours), a selection tick each time the gap moves to a new
 //   slot (in Upcoming also when another day lights), the light impact of a drop that writes.
 // - Upcoming: the gap opens where the drop puts it (`dropOnDay`'s rules, then list order in the day), and the day's
@@ -90,6 +95,8 @@ final class CollectionDrag {
     private weak var dragSession: UIDragSession?
     private weak var dropSession: UIDropSession?
     private var copy: UIView?
+    /// The row whose copy was lifted at the hold, before any drag has begun (`lift`).
+    private var heldCopy: String?
     private let feel = DragFeel()
     /// Ticks while a drag is on: the list can scroll under a still finger (the edge autoscroll), and the copy and
     /// the slot follow.
@@ -316,24 +323,62 @@ final class CollectionDrag {
         item.localObject = id
         session.localContext = id
         pending = State(id: id, height: f.height, grab: CGPoint(x: p.x - f.minX, y: p.y - f.minY), slot: ip.item, run: run(of: id))
+        lift(pending!)
         return [item]
     }
 
-    /// The lift: the system's lift preview, drawn as our copy is (`fill-lift`, the row's radius). It shows from the lift
-    /// until the finger moves, over our copy, which then takes over. Once the drag is on, UIKit asks again for its cancel
-    /// (a refused drop's set-down): nothing it draws then shows, our copy has gone home.
+    /// The hold: our copy lifts in place, on the row's exact frame, as UIKit lifts (its own lift preview is
+    /// invisible, `previewParameters`), and follows the finger from there once the drag begins. With no drag
+    /// after it, it goes again (`holdEnded`).
+    private func lift(_ d: State) {
+        dropHeld(fade: false)
+        makeCopy(d)
+        if copy != nil { heldCopy = d.id }
+        #if DEBUG
+        if let v = copy, let ip = owner.dataSource.indexPath(for: d.id), let cell = owner.cv.cellForItem(at: ip) {
+            DragProbe.shared.held(v, on: cell)
+        }
+        #endif
+    }
+
+    /// The hold ended with no drag: the row's menu opened (its own preview rises over the copy as it fades), or UIKit
+    /// put the lift down. The copy fades where it is, over the row (150 ms): removed at once, the row showed bare for a
+    /// frame or two before the menu's preview. A drag from the open menu lifts a copy again (`willBegin`).
+    func holdEnded(menu: Bool) {
+        guard state == nil, dragSession == nil, heldCopy != nil else { return }
+        dropHeld(fade: true, menu: menu)
+    }
+
+    private func dropHeld(fade: Bool, menu: Bool = false) {
+        guard heldCopy != nil, let v = copy else { heldCopy = nil; return }
+        heldCopy = nil
+        copy = nil
+        #if DEBUG
+        DragProbe.shared.call(menu ? "holdMenu" : fade ? "holdDown" : "holdDrop", in: owner.cv)
+        #endif
+        if fade { DragCopy.setDown(v, at: nil) {} } else { v.removeFromSuperview() }
+    }
+
+    /// UIKit's drag state of a row's cell (`TaskCell.dragStateDidChange`): back to none with no drag begun, the hold is
+    /// over.
+    func cellDragState(_ cell: TaskCell, _ s: UICollectionViewCell.DragState) {
+        #if DEBUG
+        DragProbe.shared.call("cell-\(s == .none ? "none" : s == .lifting ? "lifting" : "dragging")", in: owner.cv)
+        #endif
+        if s == .none, cell.itemID == heldCopy { holdEnded(menu: false) }
+    }
+
+    /// UIKit's lift preview draws nothing: our copy lifts instead (`lift`). A lift preview of the row, drawn as our copy
+    /// is, was UIKit's own picture: at the drag's start UIKit shrank it, over 0.4 s, into the drag preview (ours, a
+    /// clear point at the finger), a second copy of the row sliding to the finger. Once the drag is on, UIKit asks again
+    /// for its cancel (a refused drop's set-down): nothing it draws then shows either, our copy has gone home.
     func previewParameters(at ip: IndexPath) -> UIDragPreviewParameters? {
         if dragSession != nil, state?.entered == false {
             // Asked for its set-down before any drop session reached the list: the finger has lifted (a flick let go
             // before UIKit's first hit test), and UIKit's session ends only after its set-down, a second on.
             DispatchQueue.main.async { [weak self] in self?.letGo() }
         }
-        if dragSession != nil || landing != nil { return DragCopy.invisibleParameters }
-        guard let cell = owner.cv.cellForItem(at: ip) else { return nil }
-        let p = UIDragPreviewParameters()
-        p.visiblePath = DragCopy.shape(cell.bounds.insetBy(dx: Metric.rowInset, dy: 0))
-        p.backgroundColor = UIColor(owner.palette.lift)
-        return p
+        return DragCopy.invisibleParameters
     }
 
     func willBegin(_ session: UIDragSession) {
@@ -346,7 +391,12 @@ final class CollectionDrag {
         dragSession = session
         // The lift's haptic is UIKit's; the ticks and the drop's are ours, ready from here.
         feel.begin(in: owner.cv)
-        makeCopy(d)
+        #if DEBUG
+        DragProbe.shared.mark("willBegin start", in: owner.cv)
+        #endif
+        // The copy lifted at the hold, or (a drag from the row's open menu) a new one.
+        if heldCopy != d.id || copy == nil { dropHeld(fade: false); makeCopy(d) }
+        heldCopy = nil
         if d.id.hasPrefix("h:") {
             // A heading's section folds into it at lift (§23); the gap is the heading's own row.
             lifted = d.id
@@ -363,6 +413,9 @@ final class CollectionDrag {
         let link = CADisplayLink(target: Tick { [weak self] in self?.follow() }, selector: #selector(Tick.fire))
         link.add(to: .main, forMode: .common)
         self.link = link
+        #if DEBUG
+        DragProbe.shared.mark("willBegin end", in: owner.cv)
+        #endif
     }
 
     /// The finger lifted with no drop session ever reaching the list (a fast flick, let go before UIKit's first hit
@@ -710,14 +763,26 @@ private final class Tick: NSObject {
 
 extension TaskCollectionController: UICollectionViewDragDelegate, UICollectionViewDropDelegate {
     func collectionView(_ cv: UICollectionView, itemsForBeginning session: UIDragSession, at ip: IndexPath) -> [UIDragItem] {
+        #if DEBUG
+        DragProbe.shared.pressed()
+        #endif
         let items = drag.itemsForBeginning(session, at: ip)
         probe(items.isEmpty ? "items0" : "items")
+        #if DEBUG
+        if !items.isEmpty, let id = dataSource.itemIdentifier(for: ip) {
+            DragProbe.shared.lift(cv) { [weak self] in self?.dataSource.indexPath(for: id).flatMap { self?.cv.cellForItem(at: $0) } }
+        }
+        #endif
         return items
     }
 
     func collectionView(_ cv: UICollectionView, dragPreviewParametersForItemAt ip: IndexPath) -> UIDragPreviewParameters? {
         probe("params")
-        return drag.previewParameters(at: ip)
+        let p = drag.previewParameters(at: ip)
+        #if DEBUG
+        if let p { DragProbe.shared.liftPreview(p) }
+        #endif
+        return p
     }
 
     func collectionView(_ cv: UICollectionView, dragSessionWillBegin session: UIDragSession) {
@@ -756,7 +821,10 @@ extension TaskCollectionController: UICollectionViewDragDelegate, UICollectionVi
     }
 
     func collectionView(_ cv: UICollectionView, willDisplayContextMenu c: UIContextMenuConfiguration,
-                        animator: (any UIContextMenuInteractionAnimating)?) { probe("menu") }
+                        animator: (any UIContextMenuInteractionAnimating)?) {
+        probe("menu")
+        drag.holdEnded(menu: true)
+    }
 
     func mark(_ s: String) {
         #if DEBUG
@@ -803,11 +871,31 @@ final class DragProbe {
         mark("lift")
     }
 
+    /// The visible size of the lift preview UIKit was last given ("1x1": nothing of it shows), and our copy lifted at
+    /// the hold against the row's cell ("0.0,0.0": in place).
+    private var liftShape: String?
+    private var held: String?
+    /// A long press asks for drag items: a new lift.
+    func pressed() {
+        held = nil
+        liftShape = nil
+        calls = []
+    }
+    func liftPreview(_ p: UIDragPreviewParameters) {
+        let b = p.visiblePath?.bounds ?? .null
+        liftShape = b.isNull ? "whole" : "\(Int(b.width))x\(Int(b.height))"
+        publish()
+    }
+    func held(_ copy: UIView, on cell: UIView) {
+        held = "\(f(copy.frame.minX - (cell.frame.minX + Metric.rowInset))),\(f(copy.frame.minY - cell.frame.minY))"
+        publish()
+    }
+
     /// The drag and drop delegate calls since the last lift's `items`, in order (a repeated one once): "ev=items>begin>
     /// can1>upd>perform>dropEnd>dragEnd" ("can" with its answer, "upd" with the proposal's operation when it changes).
     private var calls: [String] = []
     func call(_ s: String, in v: UIView) {
-        if s == "items" { calls = [] }
+        if s == "items", calls.contains("items") { calls = [] }
         view = v
         if calls.last != s { calls.append(s) }
         mark("call " + s)
@@ -831,7 +919,7 @@ final class DragProbe {
     private func publish() {
         guard probing, let view else { return }
         view.accessibilityIdentifier = "dragProbe"
-        view.accessibilityValue = "ticks=\(ticks) drops=\(drops) dx=\(dx.map(f) ?? "-") land=\(land.map { "\(f($0.x)),\(f($0.y))" } ?? "-") ev=\(calls.joined(separator: ">"))"
+        view.accessibilityValue = "ticks=\(ticks) drops=\(drops) dx=\(dx.map(f) ?? "-") land=\(land.map { "\(f($0.x)),\(f($0.y))" } ?? "-") lp=\(liftShape ?? "-") held=\(held ?? "-") ev=\(calls.joined(separator: ">"))"
     }
 
     // MARK: The trace
@@ -851,15 +939,32 @@ final class DragProbe {
     }()
     private let epoch = Date().timeIntervalSince1970 - CACurrentMediaTime()
 
-    func trace(copy v: UIView, row: @escaping () -> UIView?) {
+    func trace(copy v: UIView?, row: @escaping () -> UIView?) {
         guard tracing else { return }
         copy = v
         self.row = row
         until = .infinity
-        link?.invalidate()
+        guard link == nil else { return }
         let l = CADisplayLink(target: Tick { [weak self] in self?.frame() }, selector: #selector(Tick.fire))
         l.add(to: .main, forMode: .common)
         link = l
+    }
+
+    /// From the lift (the drag items asked), before any copy: the row, and what UIKit shows; once per launch, the
+    /// list's gesture recognizers and interactions, with a long press's duration and allowable movement.
+    private var listed = false
+    func lift(_ list: UIView, row: @escaping () -> UIView?) {
+        view = list
+        mark("lift-items")
+        if !listed, tracing {
+            listed = true
+            for g in list.gestureRecognizers ?? [] {
+                let lp = (g as? UILongPressGestureRecognizer).map { " min=\($0.minimumPressDuration) move=\($0.allowableMovement)" } ?? ""
+                mark("gr \(type(of: g)) name=\(g.name ?? "-") on=\(g.isEnabled)\(lp) delegate=\(g.delegate.map { "\(type(of: $0))" } ?? "-")")
+            }
+            for i in list.interactions { mark("interaction \(type(of: i))") }
+        }
+        trace(copy: nil, row: row)
     }
 
     func mark(_ s: String, in v: UIView) {
@@ -885,7 +990,8 @@ final class DragProbe {
             let ca = (cell as? UICollectionViewCell).map { $0.contentView.layer.presentation()?.opacity ?? $0.contentView.layer.opacity } ?? 1
             out += " row=\(f(p.frame.minX)),\(f(p.frame.minY)) ra=\(f2(ca))"
         }
-        // UIKit's previews: whatever is shown in the scene's windows outside the app's root view.
+        // UIKit's previews: whatever is shown in the scene's windows outside the app's root view, and any preview,
+        // platter or portal view anywhere in them (its frame in the window, opacity, scale).
         if let scene = copy?.window?.windowScene ?? view?.window?.windowScene {
             var ui: [String] = []
             for w in scene.windows where !w.isHidden {
@@ -893,6 +999,7 @@ final class DragProbe {
                 for v in w.subviews where v !== root && !v.isHidden && v.alpha > 0.01 {
                     ui.append("\(type(of: w)):\(type(of: v))[\(Self.leaves(v))]")
                 }
+                if let root { let l = Self.leaves(root, in: w); if !l.isEmpty { ui.append("\(type(of: w)):root[\(l)]") } }
             }
             let sig = ui.joined(separator: " ")
             if sig != lastUI { lastUI = sig; lines.append(String(format: "M %.4f ", now + epoch) + "uikit " + (sig.isEmpty ? "none" : sig)) }
@@ -906,14 +1013,22 @@ final class DragProbe {
         }
     }
 
-    /// The visible views under `v`, by class, as UIKit's drop previews are made of.
-    private static func leaves(_ v: UIView) -> String {
+    /// The visible views under `v`, by class, as UIKit's lift, drag and drop previews are made of (with `window`: their
+    /// presented frame in it, and scale).
+    private static func leaves(_ v: UIView, in window: UIView? = nil) -> String {
         var names: [String] = []
         func walk(_ v: UIView, _ depth: Int) {
-            guard depth < 8, !v.isHidden, v.alpha > 0.01 else { return }
+            guard depth < 40, !v.isHidden, v.alpha > 0.01 else { return }
             let n = String(describing: type(of: v))
-            if n.contains("Preview") || n.contains("Platter") || n.contains("Portal") || n.contains("Drag") || n.contains("Snapshot") {
-                names.append(n + "@\(f(v.frame.width))x\(f(v.frame.height))a\(f2((v.layer.presentation() ?? v.layer).opacity))")
+            if n.contains("Preview") || n.contains("Platter") || n.contains("Portal") || n.contains("Drag") || n.contains("Snapshot")
+                || n.contains("Lift") || n.contains("ContextMenu") {
+                let p = v.layer.presentation() ?? v.layer
+                var s = n + "@\(f(v.frame.width))x\(f(v.frame.height))a\(f2(p.opacity))"
+                if let w = window, let sv = v.superview {
+                    let r = sv.convert(p.frame, to: w)
+                    s += "(\(f(r.minX)),\(f(r.minY)) \(f(r.width))x\(f(r.height)) sc\(f2(Float(p.transform.m11))))"
+                }
+                names.append(s)
             }
             v.subviews.forEach { walk($0, depth + 1) }
         }
