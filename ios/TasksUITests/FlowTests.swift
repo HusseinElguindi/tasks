@@ -1756,10 +1756,29 @@ final class FlowTests: XCTestCase {
             app.buttons["When"].firstMatch.tap()
             let m = app.staticTexts["M"].firstMatch
             XCTAssertTrue(m.appears(timeout: 3), "\(locale): the weekday letters")
-            _ = settledFrame(m)   // the sheet has stopped moving: its letters don't change under the query
-            let s = app.staticTexts.matching(identifier: "S").allElementsBoundByIndex.filter { abs($0.frame.midY - m.frame.midY) < 2 }
-            XCTAssertEqual(s.count, 2, "\(locale): two S's in the row")
-            XCTAssertEqual(s.allSatisfy { $0.frame.minX > m.frame.minX }, monday, "\(locale): Monday first is \(monday)")
+            // The letters' frames from one snapshot of the screen, so none can go between finding it and reading it
+            // (the calendar's letters change for a moment after the sheet is up; an element-by-element read failed on
+            // one that had gone). Read again until the M's row shows its two S's.
+            var mFrame = CGRect.null, sFrames: [CGRect] = []
+            let screen: XCUIApplication = app
+            _ = eventually(3) { MainActor.assumeIsolated {   // (a test runs on the main thread)
+                guard let snap = try? screen.snapshot() else { return false }
+                var ms: [CGRect] = [], ss: [CGRect] = []
+                func walk(_ e: XCUIElementSnapshot) {
+                    if e.elementType == .staticText {
+                        if e.identifier == "M" || e.label == "M" { ms.append(e.frame) }
+                        if e.identifier == "S" || e.label == "S" { ss.append(e.frame) }
+                    }
+                    e.children.forEach(walk)
+                }
+                walk(snap)
+                guard let first = ms.first else { return false }
+                mFrame = first
+                sFrames = ss.filter { abs($0.midY - first.midY) < 2 }
+                return sFrames.count == 2
+            } }
+            XCTAssertEqual(sFrames.count, 2, "\(locale): two S's in the row")
+            XCTAssertEqual(sFrames.allSatisfy { $0.minX > mFrame.minX }, monday, "\(locale): Monday first is \(monday)")
             app.terminate()
         }
     }
