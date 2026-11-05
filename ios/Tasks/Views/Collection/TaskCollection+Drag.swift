@@ -527,27 +527,9 @@ final class CollectionDrag {
 
     private func makeCopy(_ d: State) {
         let cv = owner.cv!
+        let p = owner.palette
         guard let i = owner.current.firstIndex(of: d.id), let cell = cv.cellForItem(at: IndexPath(item: i, section: 0)),
-              let snap = cell.snapshotView(afterScreenUpdates: false) else { return }
-        let p = owner.palette, inset = Metric.rowInset
-        let v = UIView(frame: cell.frame.insetBy(dx: inset, dy: 0))
-        v.isUserInteractionEnabled = false
-        v.backgroundColor = UIColor(p.lift)
-        DragCopy.round(v.layer)
-        // `shadow-lift`: a 0.5 pt ring, and 0 8 24 (INTERACTIONS-v2, Shadows), cast by the copy's own shape.
-        v.layer.borderWidth = 0.5
-        v.layer.borderColor = UIColor(p.shadowLiftRing).cgColor
-        v.layer.shadowColor = UIColor(p.shadowLift).cgColor
-        v.layer.shadowOpacity = 1
-        v.layer.shadowRadius = 12
-        v.layer.shadowOffset = CGSize(width: 0, height: 8)
-        v.layer.shadowPath = DragCopy.shape(v.bounds).cgPath
-        let clip = UIView(frame: v.bounds)
-        clip.clipsToBounds = true
-        DragCopy.round(clip.layer)
-        snap.frame.origin = CGPoint(x: -inset, y: 0)
-        clip.addSubview(snap)
-        v.addSubview(clip)
+              let v = DragCopy.make(of: cell, palette: p) else { return }
         if d.id.hasPrefix("h:") {
             // A heading's open count, in an accent badge 7 pt past the copy's top-right corner.
             let app = owner.app
@@ -565,8 +547,6 @@ final class CollectionDrag {
             b.frame = CGRect(x: v.bounds.width - w + 7, y: -7, width: w, height: 18)
             v.addSubview(b)
         }
-        v.layer.zPosition = 1000
-        v.accessibilityIdentifier = "dragCopy"
         cv.addSubview(v)
         copy = v
         #if DEBUG || PERF_PROBE
@@ -871,6 +851,34 @@ enum DragCopy {
             DispatchQueue.main.asyncAfter(deadline: .now() + wait) { settle() }
         }
         fly.startAnimation()
+    }
+
+    /// A row's lifted copy (the task lists' and Home's): `fill-lift`, the row's radius (12, continuous corners),
+    /// `shadow-lift` (a 0.5 pt ring, and 0 8 24: INTERACTIONS-v2, Shadows) cast by the copy's own shape, and the row's
+    /// snapshot, on the cell's frame inside the row's inset. Home's had a plain black shadow and no ring (T28).
+    static func make(of cell: UIView, palette p: Palette) -> UIView? {
+        guard let snap = cell.snapshotView(afterScreenUpdates: false) else { return nil }
+        let inset = Metric.rowInset
+        let v = UIView(frame: cell.frame.insetBy(dx: inset, dy: 0))
+        v.isUserInteractionEnabled = false
+        v.backgroundColor = UIColor(p.lift)
+        round(v.layer)
+        v.layer.borderWidth = 0.5
+        v.layer.borderColor = UIColor(p.shadowLiftRing).cgColor
+        v.layer.shadowColor = UIColor(p.shadowLift).cgColor
+        v.layer.shadowOpacity = 1
+        v.layer.shadowRadius = 12
+        v.layer.shadowOffset = CGSize(width: 0, height: 8)
+        v.layer.shadowPath = shape(v.bounds).cgPath
+        let clip = UIView(frame: v.bounds)
+        clip.clipsToBounds = true
+        round(clip.layer)
+        snap.frame.origin = CGPoint(x: -inset, y: 0)
+        clip.addSubview(snap)
+        v.addSubview(clip)
+        v.layer.zPosition = 1000
+        v.accessibilityIdentifier = "dragCopy"
+        return v
     }
 
     /// The lifted row's shape (the copy, its clip and shadow): the row's tapped fill, radius 12 with continuous corners

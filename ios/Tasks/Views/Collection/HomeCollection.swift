@@ -314,7 +314,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
     /// The copy setting down, and a count that tells its end from a later one's.
     private var landingCopy: UIView?
     private var landings = 0
-    /// Our lifted copy: `fill-lift`, the row's radius (12, continuous), a shadow, the row's snapshot.
+    /// Our lifted copy (`DragCopy.make`, the task lists').
     private var copyView: UIView?
     private var press: PressDrag?
     private let feel = DragFeel()
@@ -610,26 +610,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
 
     private func makeCopy(_ d: DragState) {
         guard let i = current.firstIndex(of: d.id), let cell = cv.cellForItem(at: IndexPath(item: i, section: 0)),
-              let snap = cell.snapshotView(afterScreenUpdates: false) else { return }
-        let inset = Metric.rowInset
-        let v = UIView(frame: cell.frame.insetBy(dx: inset, dy: 0))
-        v.isUserInteractionEnabled = false
-        v.backgroundColor = UIColor(palette.lift)
-        DragCopy.round(v.layer)
-        v.layer.shadowColor = UIColor.black.cgColor
-        v.layer.shadowOpacity = 0.35
-        v.layer.shadowRadius = 10
-        v.layer.shadowOffset = CGSize(width: 0, height: 4)
-        v.layer.shadowPath = DragCopy.shape(v.bounds).cgPath
-        let clip = UIView(frame: v.bounds)
-        clip.clipsToBounds = true
-        DragCopy.round(clip.layer)
-        snap.frame.origin = CGPoint(x: -inset, y: 0)
-        clip.addSubview(snap)
-        v.addSubview(clip)
-        v.layer.zPosition = 1000
-        v.isAccessibilityElement = false
-        v.accessibilityElementsHidden = true
+              let v = DragCopy.make(of: cell, palette: palette) else { return }
         cv.addSubview(v)
         copyView = v
         #if DEBUG || PERF_PROBE
