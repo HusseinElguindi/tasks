@@ -191,8 +191,9 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
 
     // MARK: Applying
 
-    /// A drag, or its copy's landing, holds updates back: they're applied at its end (`settle`).
-    private var holds: Bool { drag != nil || landing != nil }
+    /// A lift, its drag, or its copy's landing holds updates back: they're applied at its end (`settle`). From the lift,
+    /// so a sync doesn't move rows under the still copy (T28).
+    private var holds: Bool { held != nil || drag != nil || landing != nil }
 
     func update(_ items: [String], animated: Bool) {
         wanted = items
@@ -348,7 +349,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         return (false, dy)
     }
 
-    fileprivate var gapOn: Bool { holds }
+    fileprivate var gapOn: Bool { drag != nil || landing != nil }
 
     /// The slots a list may take, with the y the gap would open at (in the items without the dragged row): after the
     /// top edge, after each other list.
@@ -507,7 +508,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
             land(at: current.firstIndex(of: d.id).flatMap { layout.modelFrame($0) }, id: d.id)
             return
         }
-        guard drag != nil else { stopLink(); return }
+        guard drag != nil else { stopLink(); settle(); return }
         follow()
         stopLink()
         if drop, let d = drag, moves(d) {
@@ -527,6 +528,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
             stopLink()
             probe("holdMenu")
             DragCopy.setDown(v, at: nil) {}
+            settle()
         } else if drag != nil {
             cv.contextMenuInteraction?.dismissMenu()
         }

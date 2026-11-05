@@ -116,7 +116,8 @@ final class CollectionDrag {
         feel.end()
     }
 
-    var holdsUpdates: Bool { state != nil || landing != nil || lifted != nil }
+    /// From the lift (a sync between the lift and the begin moved rows under the still copy: T28) to the landing's end.
+    var holdsUpdates: Bool { held != nil || state != nil || landing != nil || lifted != nil }
     var layoutPad: CGFloat { state.map { $0.height + 8 } ?? 0 }
     private var gapOn: Bool { state != nil || landing != nil }
 
@@ -432,7 +433,7 @@ final class CollectionDrag {
             land(at: owner.modelFrame(d.id), id: d.id)
             return
         }
-        guard state != nil else { stopLink(); return }
+        guard state != nil else { stopLink(); settle(); return }
         // At the finger's last place.
         follow()
         stopLink()
@@ -452,6 +453,7 @@ final class CollectionDrag {
             DragProbe.shared.call("holdMenu", in: owner.cv)
             #endif
             DragCopy.setDown(v, at: nil) {}
+            settle()
         } else if state != nil {
             // A drag cuts the menu as it begins (`DragMenu.cut`); one that opened anyway goes.
             owner.cv.contextMenuInteraction?.dismissMenu()
