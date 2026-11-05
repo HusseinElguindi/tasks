@@ -1083,6 +1083,8 @@ final class DragProbe {
     }
 
     var ticks = 0 { didSet { publish() } }
+    /// The most two things drawn in the list overlapped during a fold, since launch (`FoldProbe`).
+    var foldOverlap: CGFloat = 0 { didSet { publish() } }
     var drops = 0 { didSet { publish() } }
     private var dx: CGFloat?
     private var land: CGPoint?
@@ -1197,7 +1199,7 @@ final class DragProbe {
     private func publish() {
         guard probing, let view else { return }
         view.accessibilityIdentifier = "dragProbe"
-        view.accessibilityValue = "pd=\(sinceRelease.map { String(format: "%.0f", $0) } ?? "-") step=\(f(step)) still=\(still) ticks=\(ticks) drops=\(drops) dx=\(dx.map(f) ?? "-") land=\(land.map { "\(f($0.x)),\(f($0.y))" } ?? "-") uk=\(uikit ? 1 : 0) held=\(held ?? "-") scroll=\(scrolled) gapLeft=\(gapLeft.map(f) ?? "-") ev=\(calls.joined(separator: ">"))"
+        view.accessibilityValue = "pd=\(sinceRelease.map { String(format: "%.0f", $0) } ?? "-") step=\(f(step)) still=\(still) ticks=\(ticks) drops=\(drops) dx=\(dx.map(f) ?? "-") land=\(land.map { "\(f($0.x)),\(f($0.y))" } ?? "-") uk=\(uikit ? 1 : 0) held=\(held ?? "-") scroll=\(scrolled) gapLeft=\(gapLeft.map(f) ?? "-") fo=\(f(foldOverlap)) ev=\(calls.joined(separator: ">"))"
     }
 
     // MARK: The copy against the finger (with -dragTrace YES, published with -dragProbe YES)

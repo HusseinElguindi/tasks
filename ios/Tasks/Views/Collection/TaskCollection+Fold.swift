@@ -13,7 +13,11 @@ import UIKit
 //   final place;
 // - the update is one CATransaction (the core's `apply`);
 // - a mask at the heading's foot keeps the sliding rows from drawing above it, and headings draw over the rows;
-// - a collapse near the end has slack under it, so the scroll offset isn't clamped mid-fold (it snapped 43 pt).
+// - a collapse near the end has slack under it, so the scroll offset isn't clamped mid-fold (it snapped 43 pt);
+// - one fold at a time: an update that comes while a fold is still under way (the chevron tapped twice, a heading let
+//   go right after its drag began and folded its section) ends that fold at its end state first (`end`), and only
+//   the latest fold's completion cleans up. (Two at once, the first's end took the second's masks and pad mid-way:
+//   rows drawn over the heading and each other, a heading gone for 200 ms, T27, filmed.)
 // Notes that come or go alone (Add Notes, notes emptied) fold from or into their heading the same way, on the draft's
 // curve (Motion.layout's spring, the core's).
 //
@@ -42,10 +46,17 @@ final class CollectionFold {
     /// Room under the last row while a collapse near the end closes up, so the offset stays (given back as the list
     /// scrolls up).
     private(set) var slack: CGFloat = 0
+    /// The fold under way (`animate`): its number, its collapse's pictures and the opening rows it masks.
+    private var running: (count: Int, ghost: UIView?, masked: [TaskCell])?
+    private var folds = 0
 
     init(owner: TaskCollectionController) { self.owner = owner }
 
     func install() { collapsed = owner.app.collapsed }
+
+    #if DEBUG || PERF_PROBE
+    private let probe = FoldProbe()
+    #endif
 
     /// The items under a heading's item: its notes and tasks, down to the next heading or the Completed row.
     static func section(of heading: String, in items: [String]) -> [String] {
@@ -73,6 +84,7 @@ final class CollectionFold {
 
     /// Before the apply: the folding rows' frames and height, their masks, and the slack under a collapse.
     func prepare(_ plan: Plan?, old: [String], animated: Bool) {
+        end()
         active = nil
         guard let plan, animated else { return }
         oldIDs = old
@@ -101,6 +113,21 @@ final class CollectionFold {
         }
     }
 
+    /// A fold still under way ends now, at its end state (another update has come): its pictures go, its rows stop
+    /// where they're going (their animations removed: their model values are the end's), its masks and pad go. Its
+    /// own completion, when it comes, does nothing (`animate`).
+    private func end() {
+        guard let r = running else { return }
+        running = nil
+        r.ghost?.removeFromSuperview()
+        for case let c as TaskCell in owner.cv.subviews {
+            c.layer.removeAllAnimations()
+            c.contentView.layer.removeAllAnimations()
+        }
+        for c in r.masked { c.mask = nil }
+        layoutPad = 0
+    }
+
     /// How far past the visible rows the layout makes cells while a fold moves them (rows an opening pushes out of
     /// view slide out rather than vanish).
     private(set) var layoutPad: CGFloat = 0
@@ -116,6 +143,9 @@ final class CollectionFold {
     func animate(_ plan: Plan, _ snap: NSDiffableDataSourceSnapshot<Int, String>, done: @escaping () -> Void) -> Bool {
         guard !plan.notesOnly else { return false }
         let cv = owner.cv!, layout = owner.layout!, ds = owner.dataSource!
+        #if DEBUG || PERF_PROBE
+        probe.watch(cv)
+        #endif
         let collapse = plan.collapse
         // Every row's top before, and the heading's foot (it doesn't move).
         var before: [String: CGFloat] = [:]
@@ -163,10 +193,16 @@ final class CollectionFold {
                 }
             }
         }
+        folds += 1
+        let n = folds
+        running = (n, ghost, appearing.map(\.cell))
+        // Only this fold's own end, if no update has ended it first (`end`).
         let finish: () -> Void = { [weak self] in
+            guard let self, self.running?.count == n else { return }
+            self.running = nil
             ghost?.removeFromSuperview()
             for a in appearing { a.cell.mask = nil }
-            self?.layoutPad = 0
+            self.layoutPad = 0
             done()
         }
         UIView.animate(withDuration: collapse ? 0.15 : 0.22, delay: 0,
@@ -287,3 +323,65 @@ extension TaskCell {
         }
     }
 }
+
+#if DEBUG || PERF_PROBE
+/// Debug builds and the phone's measuring build only (`-dragProbe YES`, FlowTests). From each fold's start to 0.4 s
+/// after the latest, every frame: the most that two things drawn in the list overlap, in points: the rows (their drawn
+/// frames, cut by their masks; a row drawn clear doesn't count) and a collapse's pictures (cut by their clip). The
+/// drag probe publishes it as `fo` (the worst since launch). A fold drawn right moves rows rigidly, so it's 0.
+@MainActor
+final class FoldProbe {
+    private static let on = UserDefaults.standard.bool(forKey: "dragProbe")
+    private weak var cv: UICollectionView?
+    private var link: CADisplayLink?
+    private var until: CFTimeInterval = 0
+
+    func watch(_ cv: UICollectionView) {
+        guard Self.on else { return }
+        self.cv = cv
+        until = CACurrentMediaTime() + 0.4
+        guard link == nil else { return }
+        let l = CADisplayLink(target: Tick { [weak self] in self?.frame() }, selector: #selector(Tick.fire))
+        l.add(to: .main, forMode: .common)
+        link = l
+    }
+
+    private func frame() {
+        guard let cv, CACurrentMediaTime() < until else {
+            link?.invalidate()
+            link = nil
+            return
+        }
+        var spans: [(top: CGFloat, bottom: CGFloat)] = []
+        func add(_ top: CGFloat, _ bottom: CGFloat) { if bottom - top > 1 { spans.append((top, bottom)) } }
+        for v in cv.subviews where !v.isHidden {
+            let p = v.layer.presentation() ?? v.layer
+            guard p.opacity > 0.05 else { continue }
+            if let c = v as? TaskCell {
+                guard (c.contentView.layer.presentation() ?? c.contentView.layer).opacity > 0.05 else { continue }
+                var top = p.frame.minY, bottom = p.frame.maxY
+                if let m = c.mask {
+                    let mf = (m.layer.presentation() ?? m.layer).frame
+                    top = max(top, p.frame.minY + mf.minY)
+                    bottom = min(bottom, p.frame.minY + mf.maxY)
+                }
+                add(top, bottom)
+            } else if v.clipsToBounds, v.accessibilityElementsHidden {
+                // A collapse's pictures, in their clip at the heading's foot.
+                for pic in v.subviews {
+                    let q = pic.layer.presentation() ?? pic.layer
+                    guard q.opacity > 0.05 else { continue }
+                    add(max(p.frame.minY, p.frame.minY + q.frame.minY), min(p.frame.maxY, p.frame.minY + q.frame.maxY))
+                }
+            }
+        }
+        spans.sort { $0.top < $1.top }
+        var worst: CGFloat = 0, reach = -CGFloat.infinity
+        for s in spans {
+            worst = max(worst, reach - s.top)
+            reach = max(reach, s.bottom)
+        }
+        if worst > DragProbe.shared.foldOverlap { DragProbe.shared.foldOverlap = worst }
+    }
+}
+#endif

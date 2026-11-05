@@ -1893,6 +1893,42 @@ final class FlowTests: XCTestCase {
         XCTAssertLessThan(y(redo), y(heading("Exam prep")))
     }
 
+    /// A fold over a fold still under way draws no row over another, and leaves no gap: the chevron tapped twice
+    /// fast (collapse, then expand inside its 0.15 s), and a heading flicked and let go right after its drag began
+    /// (its section folds as the drag begins, and opens again as it drops). The probe's `fo` is the most two rows (or
+    /// a collapse's pictures) overlapped on screen in any frame of a fold since launch: 0 when the rows move rigidly.
+    /// (Before T30 the first fold's end took the second's masks and pad mid-way: 30-80 pt overlaps, a heading gone
+    /// for 200 ms, filmed.)
+    func testAFoldOverAFoldLeavesNoOverlap() {
+        app.launchArguments += ["-dragProbe", "YES"]
+        openPhys()
+        let origin = app.coordinate(withNormalizedOffset: .zero)
+        func at(_ e: XCUIElement) -> XCUICoordinate { origin.withOffset(CGVector(dx: e.frame.midX, dy: e.frame.midY)) }
+        let sheet = app.staticTexts["Make the midterm formula sheet"].firstMatch
+        // One fold alone first: the probe reads 0 for a fold drawn right.
+        app.buttons["Collapse Labs"].tap()
+        sleep(1)
+        app.buttons["Expand Labs"].tap()
+        sleep(1)
+        XCTAssertLessThan(Double(probe()["fo"] ?? "") ?? .infinity, 1.5, "a single fold overlaps nothing: \(probe())")
+        app.buttons["Collapse Exam prep"].doubleTap()
+        sleep(2)
+        XCTAssertTrue(sheet.exists, "collapsed and open again")
+        XCTAssertLessThan(Double(probe()["fo"] ?? "") ?? .infinity, 1.5, "the chevron twice: no row over another: \(probe())")
+        let labs = heading("Labs"), lectures = heading("Lectures")
+        for (to, below) in [(app.staticTexts["Ask about problem 7 at office hours"].firstMatch, true),
+                            (app.staticTexts["Read chapter 15 · oscillations"].firstMatch, false)] {
+            at(labs).press(forDuration: 0.4, thenDragTo: at(to), withVelocity: XCUIGestureVelocity(rawValue: 3000), thenHoldForDuration: 0)
+            sleep(2)
+            let p = probe(), ev = p["ev"] ?? ""
+            XCTAssertTrue(ev.contains("begin") && ev.contains("drop"), "the flick dragged and dropped: \(p)")
+            XCTAssertLessThan(Double(p["fo"] ?? "") ?? .infinity, 1.5, "a heading flicked: no row over another: \(p)")
+            assertLandedExactly()
+            if below { XCTAssertGreaterThan(y(labs), y(heading("Exam prep")), "Labs at the end") } else { XCTAssertLessThan(y(labs), y(lectures), "Labs first") }
+            XCTAssertTrue(app.staticTexts["Lab 3 report · pendulum"].firstMatch.exists, "its section open again")
+        }
+    }
+
     /// Delete Heading takes the heading only: its tasks stay, under the heading above. The notice's Undo brings it back.
     func testDeleteAHeading() {
         openPhys()
