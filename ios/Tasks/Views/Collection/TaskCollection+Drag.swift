@@ -727,6 +727,18 @@ final class PressDrag: UIGestureRecognizer, UIGestureRecognizerDelegate {
         timer = nil
         guard state == .possible, let v = view else { return }
         state = canLift(location(in: v)) ? .began : .failed
+        if state == .began { Self.lifting = self }
+    }
+
+    /// The press that has lifted a row, while its finger is down.
+    private static weak var lifting: PressDrag?
+
+    /// A new touch on a list while a row is lifted (a second finger): it reaches none of the list's rows, so it taps no
+    /// row's button mid-drag (the press ignores it, and no pan runs once the press has begun). The task lists' and
+    /// Home's collection views ask this in `hitTest`.
+    static func blocks(_ event: UIEvent?, in v: UIView) -> Bool {
+        guard event?.type == .touches, let p = lifting, p.view === v else { return false }
+        return p.state == .began || p.state == .changed
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent) {

@@ -154,6 +154,11 @@ final class TaskCollectionView: UICollectionView {
     var eases: () -> Bool = { false }
     private var pending: CGRect?
 
+    /// A second finger while a row is lifted touches nothing here (`PressDrag.blocks`).
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        PressDrag.blocks(event, in: self) ? nil : super.hitTest(point, with: event)
+    }
+
     override func scrollRectToVisible(_ rect: CGRect, animated: Bool) {
         guard !animated, eases(), !UIAccessibility.isReduceMotionEnabled else {
             super.scrollRectToVisible(rect, animated: animated)

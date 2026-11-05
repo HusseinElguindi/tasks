@@ -126,7 +126,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         // No swipe actions on Home.
         let layout = HomeLayout { _, env in NSCollectionLayoutSection.list(using: config, layoutEnvironment: env) }
         self.layout = layout
-        let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        let cv = HomeCollectionView(frame: .zero, collectionViewLayout: layout)
         cv.backgroundColor = .clear
         cv.allowsSelection = false
         cv.delegate = self
@@ -676,6 +676,13 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         landing = nil
         moveGap(animated: false)
         settle()
+    }
+}
+
+/// Home's list: a second finger while a list is lifted touches nothing here (`PressDrag.blocks`).
+final class HomeCollectionView: UICollectionView {
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        PressDrag.blocks(event, in: self) ? nil : super.hitTest(point, with: event)
     }
 }
 
