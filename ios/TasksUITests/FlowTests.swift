@@ -2727,6 +2727,62 @@ final class FlowTests: XCTestCase {
         assertNotesWithHeading(notes, "Labs", "still in the heading's row")
     }
 
+    /// A heading's notes, and a list's, held 1.2 s: nothing. No copy lifts, and no menu, nor UIKit's preview of them as
+    /// a row of their own (the user, T31: they lifted with the heading's menu). A tap on them still edits them.
+    func testHoldingNotesOpensNothing() {
+        app.launchArguments += ["-dragProbe", "YES"]
+        openPhys()
+        menuOpen {
+            heading("Labs").press(forDuration: 1.0)
+            app.buttons["Add Notes"].tap()
+        }
+        XCTAssertTrue(app.textViews["headingNotes"].waitForExistence(timeout: 3))
+        app.typeText("Bring the goggles")
+        app.buttons["Done"].tap()
+        sleep(1)
+        let notes = app.staticTexts["Bring the goggles"].firstMatch
+        XCTAssertTrue(notes.waitForExistence(timeout: 3))
+        func assertNothing(_ what: String, editor: XCUIElement) {
+            sleep(1)
+            let ev = probe()["ev"] ?? ""
+            print("HOLD \(what) ev=\(ev) editor=\(editor.exists)")
+            XCTAssertTrue(ev.hasPrefix("press"), "\(what): the press was probed (\(ev))")
+            XCTAssertFalse(ev.contains("lift"), "\(what): nothing lifted (\(ev))")
+            XCTAssertFalse(ev.lowercased().contains("menu"), "\(what): no menu (\(ev))")
+            XCTAssertFalse(app.descendants(matching: .any)["dragCopy"].exists, "\(what): no copy")
+            for b in ["Rename", "Add Notes", "Edit Notes", "Delete Heading", "New Heading"] {
+                XCTAssertFalse(app.buttons[b].exists, "\(what): no menu (\(b))")
+            }
+            XCTAssertEqual(probe()["uk"], "0", "\(what): no UIKit drag or drop session: \(probe())")
+            XCTAssertFalse(editor.exists, "\(what): a hold doesn't edit them")
+        }
+        menuOpen { notes.press(forDuration: 1.2) }
+        assertNothing("a heading's notes", editor: app.textViews["headingNotes"])
+        notes.tap()
+        XCTAssertTrue(app.textViews["headingNotes"].waitForExistence(timeout: 3), "a tap on them still edits them")
+        app.buttons["Done"].tap()
+        sleep(1)
+
+        // A list's, under its title.
+        app.terminate()
+        app = XCUIApplication()
+        app.launchArguments = ["-sampleData", "YES", "-appearance", "dark", "-style", "classic", "-screen", "list:home", "-dragProbe", "YES"]
+        app.launch()
+        XCTAssertTrue(app.buttons["List actions"].waitForExistence(timeout: 10), "Home")
+        app.buttons["List actions"].tap()
+        app.buttons["Add Notes"].tap()
+        XCTAssertTrue(app.textViews["listNotes"].waitForExistence(timeout: 3))
+        app.typeText("Measure the hallway")
+        app.buttons["Done"].tap()
+        sleep(1)
+        let header = app.descendants(matching: .any)["listHeader"].firstMatch
+        let on = header.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.85))
+        menuOpen { on.press(forDuration: 1.2) }
+        assertNothing("a list's notes", editor: app.textViews["listNotes"])
+        on.tap()
+        XCTAssertTrue(app.textViews["listNotes"].waitForExistence(timeout: 3), "a tap on them still edits them")
+    }
+
     /// A heading with no tasks takes a drop over its row or the air above the next heading: the top of its section.
     func testADropIntoAnEmptyHeading() {
         openPhys()
