@@ -28,6 +28,9 @@ final class CollectionEditing {
 
     func install() {
         (owner.cv as? TaskCollectionView)?.eases = { [weak self] in self?.item != nil }
+        #if DEBUG || PERF_PROBE
+        EditProbe.shared.install(owner.cv) { [weak self] in self?.item }
+        #endif
     }
 
     /// The item being typed into on this screen: the new row, a heading's name or notes, or the header (the list's
@@ -51,6 +54,9 @@ final class CollectionEditing {
         let shown = Set(ds.snapshot().itemIdentifiers)
         let keys = keys.filter(shown.contains)
         guard !keys.isEmpty else { return }
+        #if DEBUG || PERF_PROBE
+        EditProbe.shared.mark("resize \(keys.joined(separator: ","))")
+        #endif
         if let key = item, keys.contains(key), from[key]?.hasPrefix(TaskCollection.editingMark) == false,
            let y = reveal(key) {
             scrolling = true
@@ -93,6 +99,9 @@ final class CollectionEditing {
         let keys = keys.filter(shown.contains)
         guard !keys.isEmpty else { return }
         snap.reconfigureItems(keys)
+        #if DEBUG || PERF_PROBE
+        EditProbe.shared.mark("reconfigure \(keys.joined(separator: ",")) " + EditProbe.shared.sizes())
+        #endif
         guard !UIAccessibility.isReduceMotionEnabled else {
             ds.apply(snap, animatingDifferences: false)
             return
@@ -109,6 +118,10 @@ final class CollectionEditing {
             (self.owner.cv as? TaskCollectionView)?.scrollPending()
         }
         CATransaction.commit()
+        #if DEBUG || PERF_PROBE
+        EditProbe.shared.mark("reconfigured " + EditProbe.shared.sizes())
+        DispatchQueue.main.async { EditProbe.shared.mark("reconfigured+0 " + EditProbe.shared.sizes()) }
+        #endif
     }
 }
 
@@ -167,6 +180,9 @@ final class TaskCollectionView: UICollectionView {
         // The latest ask, made with the row's resize (in its animation), or a moment later if the row doesn't resize.
         let first = pending == nil
         pending = rect
+        #if DEBUG || PERF_PROBE
+        EditProbe.shared.mark("ask \(Int(rect.minY)),\(Int(rect.height)) off=\(contentOffset.y)")
+        #endif
         guard first else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
             guard let self, self.pending != nil else { return }
@@ -183,5 +199,8 @@ final class TaskCollectionView: UICollectionView {
         pending = nil
         layoutIfNeeded()
         super.scrollRectToVisible(rect, animated: false)
+        #if DEBUG || PERF_PROBE
+        EditProbe.shared.mark("scroll \(Int(rect.minY)),\(Int(rect.height)) off=\(contentOffset.y)")
+        #endif
     }
 }

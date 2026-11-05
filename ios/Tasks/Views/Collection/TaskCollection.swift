@@ -473,6 +473,9 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
         let curve = n.userInfo?[UIResponder.keyboardAnimationCurveUserInfoKey] as? Int ?? 7
         UIView.animate(withDuration: duration, delay: 0, options: UIView.AnimationOptions(rawValue: UInt(curve) << 16)) {
             self.keyboardInset = under > 0 ? under + 24 : 0
+            #if DEBUG || PERF_PROBE
+            EditProbe.shared.mark("keyboard under=\(under)")
+            #endif
             self.updateBottomInset()
             cv.verticalScrollIndicatorInsets.bottom = under
         }
