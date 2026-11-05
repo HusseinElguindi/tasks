@@ -73,6 +73,12 @@ schemes:
     test:
       targets:
         - TasksUITests
+      # Full: every UI test (the default, as before). Smoke: a ~6 min set across the app's main paths, for before a phone
+      # install (`-testPlan Smoke`; README.md). Its list is in Smoke.xctestplan.
+      testPlans:
+        - path: Full.xctestplan
+          defaultPlan: true
+        - path: Smoke.xctestplan
   # TasksCore's own tests and the theme's (TasksThemeTests), run on iOS. Through this project rather than the
   # package's scheme, which also builds the Mac-only CLI (and would write .swiftpm/ into app/TasksCore). A scheme of
   # their own because their copied Resources folder fails ad hoc signing on the simulator, so they run with

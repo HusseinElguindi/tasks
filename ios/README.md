@@ -60,6 +60,11 @@ Tests:
 # runner only TEST_RUNNER_-prefixed variables, minus the prefix.
 TEST_RUNNER_SHOTS=$PWD/Screenshots/flow xcodebuild test -project Tasks.xcodeproj -scheme Tasks -destination 'id=<sim>' \
   -derivedDataPath build -only-testing:TasksUITests
+# The smoke set (Smoke.xctestplan, ~6 min): add, check, swipe, details, dates, Trash, Settings, headings, notes, drags,
+# the press, select, undo and sync, for before a phone install. The full suite (Full.xctestplan, the default) runs once
+# per batch, before a push or merge.
+xcodebuild test -project Tasks.xcodeproj -scheme Tasks -testPlan Smoke -destination 'id=<sim>' -derivedDataPath build \
+  -parallel-testing-enabled NO
 # TasksCore's own tests and the theme's (TasksThemeTests), on iOS. CODE_SIGNING_ALLOWED=NO because the test bundle's
 # copied Resources folder fails ad hoc signing on the simulator; that's why they have a scheme of their own.
 xcodebuild test -project Tasks.xcodeproj -scheme TasksCoreTests -destination 'id=<sim>' -derivedDataPath build \
