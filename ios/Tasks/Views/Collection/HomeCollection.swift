@@ -284,12 +284,12 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         var height: CGFloat
         /// The finger's offset from the row's top-left corner at lift (the copy keeps it, in x and y).
         var grab: CGPoint
-        /// The slot among the other items (nil: no gap, the finger is off the list).
+        /// The slot among the other items (nil: none to take).
         var slot: Int?
         /// The last slot the gap was open at: a new one ticks.
         var ticked: Int?
-        /// A drop session has reached the list (before that, the gap follows the finger over the list, as in the task
-        /// lists' CollectionDrag: a fast flick let go before UIKit's first hit test is dropped by us).
+        /// A drop session has reached the list (before that, UIKit asking for its set-down means a fast flick was let go
+        /// before its first hit test: the drop is ours, as in the task lists' CollectionDrag).
         var entered = false
     }
 
@@ -348,7 +348,8 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         if let v = copyView, landing == nil {
             UIView.performWithoutAnimation { v.frame.origin = CGPoint(x: finger.x - d.grab.x + Metric.rowInset, y: copyTop) }
         }
-        guard dropSession != nil || (!d.entered && DragCopy.over(finger, cv)) else { return }
+        // Wherever the finger is (over the floating bar, or off the list), the gap stays at the slot nearest the copy:
+        // letting go drops at the last slot shown, as the task lists' (CollectionDrag.follow).
         let s = tops.min { abs($0.y - copyTop) < abs($1.y - copyTop) }?.slot
         if let s, s != d.ticked {
             d.ticked = s
@@ -380,7 +381,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
 
     func collectionView(_ cv: UICollectionView, itemsForBeginning session: UIDragSession, at ip: IndexPath) -> [UIDragItem] {
         #if DEBUG
-        DragProbe.shared.pressed()
+        DragProbe.shared.pressed(cv)
         #endif
         guard !holds, let id = dataSource.itemIdentifier(for: ip), id.hasPrefix("l:"), let f = layout.modelFrame(ip.item) else {
             probe("items0")
@@ -491,7 +492,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         return p
     }
 
-    /// The drag ended with no drop (refused at the row's own place, or the finger off the list): the copy flies home,
+    /// The drag ended with no drop (refused: let go at the row's own place): the copy flies home,
     /// the gap there closes, and the row shows under it. At the finger's lift, not after UIKit's set-down of the
     /// refused drop (about a second, memory: uicollectionview-spike-findings).
     private func goHome() {
@@ -523,12 +524,10 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         return UICollectionViewDropProposal(operation: move ? .move : .cancel, intent: .unspecified)
     }
 
+    /// The finger left the list's drop area: the gap stays at the last slot shown, and follows the copy still.
     func collectionView(_ cv: UICollectionView, dropSessionDidExit session: UIDropSession) {
         probe("exit")
         dropSession = nil
-        guard drag?.slot != nil else { return }
-        drag?.slot = nil
-        moveGap(animated: true)
     }
 
     func collectionView(_ cv: UICollectionView, performDropWith c: UICollectionViewDropCoordinator) {
@@ -594,7 +593,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         probe("dropEnd")
         dropSession = nil
         // The finger lifted with no drop performed. Over a new slot, UIKit didn't get to it (a flick let go as its drop
-        // session began): the drop is ours. Otherwise it was refused, or the finger was off the list: home.
+        // session began): the drop is ours. Otherwise it was refused (let go at its own slot): home.
         if let d = drag, moves(d) { drop(d) } else { goHome() }
     }
 

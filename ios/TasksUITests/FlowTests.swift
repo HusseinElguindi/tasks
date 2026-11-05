@@ -891,6 +891,63 @@ final class FlowTests: XCTestCase {
         XCTAssertGreaterThan(began, 0, "UIKit began at least one of the flicks")
     }
 
+    /// After the hold, a fast flick down to the bottom of the screen, over the floating bar, let go there: the drop
+    /// session leaves the list as the finger reaches the bar (or never reached it), and the row used to go home. It
+    /// drops at the last slot shown (§14: "as in a Mac list"), the end of the list. (A flick UIKit never began: the row
+    /// stays, UIKit's limit, T18.)
+    func testAFastFlickDownOntoTheBarDrops() {
+        app.launchArguments += ["-screen", "list:phys", "-dragProbe", "YES"]
+        var began = 0
+        for speed in [1500.0, 3000, 6000] {
+            app.launch()
+            let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
+            XCTAssertTrue(redo.waitForExistence(timeout: 10))
+            sleep(1)
+            let y0 = y(redo), bottom = app.windows.firstMatch.frame.maxY
+            let start = redo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            start.press(forDuration: 0.6, thenDragTo: start.withOffset(CGVector(dx: 0, dy: bottom - 30 - y0)),
+                        withVelocity: XCUIGestureVelocity(rawValue: speed), thenHoldForDuration: 0)
+            sleep(2)
+            let ev = probe()["ev"] ?? ""
+            print("DOWNFLICK speed=\(Int(speed)) y0=\(Int(y0)) y=\(Int(y(redo))) ev=\(ev)")
+            guard ev.contains("begin") else {
+                XCTAssertEqual(y(redo), y0, accuracy: 1, "UIKit never began the drag: the row stays (\(ev))")
+                continue
+            }
+            began += 1
+            XCTAssertGreaterThan(y(redo), y(app.staticTexts["Book a make-up lab bench"].firstMatch),
+                                 "flicked down at \(Int(speed)) pt/s onto the bar: dropped low in the list (\(probe()))")
+            XCTAssertEqual(probe()["drops"], "1", "one impact, at the drop")
+            assertLandedExactly()
+        }
+        XCTAssertGreaterThan(began, 0, "UIKit began at least one of the flicks")
+    }
+
+    /// Home: a list flicked down onto the bar after the hold drops at the end of the lists.
+    func testAFastFlickDownOntoTheBarDropsOnHome() {
+        app.launchArguments += ["-dragProbe", "YES"]
+        var began = 0
+        for speed in [1500.0, 3000, 6000] {
+            app.launch()
+            let phys = app.buttons["PHYS 122"].firstMatch, errands = app.buttons["Errands"].firstMatch
+            XCTAssertTrue(phys.waitForExistence(timeout: 10))
+            sleep(1)
+            let y0 = y(phys), bottom = app.windows.firstMatch.frame.maxY
+            let start = phys.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            start.press(forDuration: 0.6, thenDragTo: start.withOffset(CGVector(dx: 0, dy: bottom - 30 - y0)),
+                        withVelocity: XCUIGestureVelocity(rawValue: speed), thenHoldForDuration: 0)
+            sleep(2)
+            let ev = probe()["ev"] ?? ""
+            print("DOWNFLICK home speed=\(Int(speed)) y0=\(Int(y0)) y=\(Int(y(phys))) ev=\(ev)")
+            guard ev.contains("begin") else { continue }
+            began += 1
+            XCTAssertGreaterThan(y(phys), y(errands), "flicked down at \(Int(speed)) pt/s: the last list (\(probe()))")
+            XCTAssertEqual(probe()["drops"], "1")
+            assertLandedExactly()
+        }
+        XCTAssertGreaterThan(began, 0, "UIKit began at least one of the flicks")
+    }
+
     /// A list's long-press menu used (Rename, then Cancel) leaves no drag behind: the next drag moves the list, and
     /// the menu opens again after it.
     func testAListMenuThenADragOnHome() {
