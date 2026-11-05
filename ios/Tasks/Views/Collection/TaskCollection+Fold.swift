@@ -128,6 +128,10 @@ final class CollectionFold {
         layoutPad = 0
     }
 
+    /// A collapse's pictures move with the row after its heading (a drag's gap moving it, as a heading's section folds
+    /// into its drag: drawn still, the rows the gap moved up went over them).
+    func movePictures(_ dy: CGFloat) { running?.ghost?.transform = CGAffineTransform(translationX: 0, y: dy) }
+
     /// How far past the visible rows the layout makes cells while a fold moves them (rows an opening pushes out of
     /// view slide out rather than vanish).
     private(set) var layoutPad: CGFloat = 0
@@ -352,11 +356,12 @@ final class FoldProbe {
             link = nil
             return
         }
-        var spans: [(top: CGFloat, bottom: CGFloat)] = []
-        func add(_ top: CGFloat, _ bottom: CGFloat) { if bottom - top > 1 { spans.append((top, bottom)) } }
+        var spans: [(top: CGFloat, bottom: CGFloat, what: String)] = []
+        func add(_ top: CGFloat, _ bottom: CGFloat, _ what: String) { if bottom - top > 1 { spans.append((top, bottom, what)) } }
+        // Only what's been drawn: a cell made this frame has no presentation yet (its model is its end, not where it
+        // will be drawn).
         for v in cv.subviews where !v.isHidden {
-            let p = v.layer.presentation() ?? v.layer
-            guard p.opacity > 0.05 else { continue }
+            guard let p = v.layer.presentation(), p.opacity > 0.05 else { continue }
             if let c = v as? TaskCell {
                 guard (c.contentView.layer.presentation() ?? c.contentView.layer).opacity > 0.05 else { continue }
                 var top = p.frame.minY, bottom = p.frame.maxY
@@ -365,13 +370,12 @@ final class FoldProbe {
                     top = max(top, p.frame.minY + mf.minY)
                     bottom = min(bottom, p.frame.minY + mf.maxY)
                 }
-                add(top, bottom)
+                add(top, bottom, c.itemID ?? "?")
             } else if v.clipsToBounds, v.accessibilityElementsHidden {
                 // A collapse's pictures, in their clip at the heading's foot.
                 for pic in v.subviews {
-                    let q = pic.layer.presentation() ?? pic.layer
-                    guard q.opacity > 0.05 else { continue }
-                    add(max(p.frame.minY, p.frame.minY + q.frame.minY), min(p.frame.maxY, p.frame.minY + q.frame.maxY))
+                    guard let q = pic.layer.presentation(), q.opacity > 0.05 else { continue }
+                    add(max(p.frame.minY, p.frame.minY + q.frame.minY), min(p.frame.maxY, p.frame.minY + q.frame.maxY), "picture")
                 }
             }
         }
@@ -380,6 +384,10 @@ final class FoldProbe {
         for s in spans {
             worst = max(worst, reach - s.top)
             reach = max(reach, s.bottom)
+        }
+        if worst > 1.5 {
+            // With -dragTrace: what overlapped (each row, or picture, and where it's drawn).
+            DragProbe.shared.mark("fold overlap \(Int(worst)): " + spans.map { "\($0.what)@\(Int($0.top))-\(Int($0.bottom))" }.joined(separator: " "), in: cv)
         }
         if worst > DragProbe.shared.foldOverlap { DragProbe.shared.foldOverlap = worst }
     }

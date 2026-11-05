@@ -178,6 +178,10 @@ final class CollectionDrag {
                 guard let id = c.itemID, self.owner.current.contains(id) else { continue }
                 self.place(c)
             }
+            // A heading's section still folding into it (its pictures, at its foot): with the row after it.
+            if let h = self.lifted, let i = self.owner.current.firstIndex(of: h), i + 1 < self.owner.current.count {
+                self.owner.fold.movePictures(self.shift(self.owner.current[i + 1])?.dy ?? 0)
+            }
         }
         CATransaction.begin()
         if animated, !UIAccessibility.isReduceMotionEnabled {

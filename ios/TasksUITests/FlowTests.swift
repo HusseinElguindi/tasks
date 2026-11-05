@@ -1903,7 +1903,7 @@ final class FlowTests: XCTestCase {
     /// (Before T30 the first fold's end took the second's masks and pad mid-way: 30-80 pt overlaps, a heading gone
     /// for 200 ms, filmed.)
     func testAFoldOverAFoldLeavesNoOverlap() {
-        app.launchArguments += ["-dragProbe", "YES"]
+        app.launchArguments += ["-dragProbe", "YES", "-dragTrace", "YES"]
         openPhys()
         let origin = app.coordinate(withNormalizedOffset: .zero)
         func at(_ e: XCUIElement) -> XCUICoordinate { origin.withOffset(CGVector(dx: e.frame.midX, dy: e.frame.midY)) }
