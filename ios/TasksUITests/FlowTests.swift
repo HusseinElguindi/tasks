@@ -1010,6 +1010,28 @@ final class FlowTests: XCTestCase {
         assertOnlyOurCopyLifted()
     }
 
+    /// The first drag after launch doesn't stall as it starts across the first lists (T21): UIKit's drag turned the
+    /// keyboard off, and the first time that made the keyboard's window and loaded TextInputUI, a 200-295 ms frame on the
+    /// simulator at the gap's first new slot. KeyboardWarmUp makes them after launch. The app's frame probe
+    /// (`-frameProbe YES`, FrameProbe.swift) gives the longest frame in the 1.2 s after the drag began.
+    func testTheFirstDragOnHomeDoesntStall() {
+        app.launchArguments += ["-frameProbe", "YES"]
+        app.launch()
+        let inbox = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Inbox'")).firstMatch
+        let home = app.buttons["Home"].firstMatch
+        XCTAssertTrue(inbox.waitForExistence(timeout: 10))
+        // The warm-up's 1.5 s, and the launch settled.
+        sleep(3)
+        inbox.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 0.6, thenDragTo: home.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)),
+                   withVelocity: XCUIGestureVelocity(rawValue: 400), thenHoldForDuration: 0.3)
+        sleep(2)
+        let v = app.descendants(matching: .any)["frameProbe"].firstMatch.value as? String ?? ""
+        let worst = Double(v.replacingOccurrences(of: "dragWorst=", with: "")) ?? .infinity
+        XCTAssertLessThan(worst, 150, "the drag's longest frame in its first 1.2 s, ms (\(v)); 200-295 before the fix")
+        XCTAssertGreaterThan(y(inbox), y(home), "and the drag dropped: Inbox under Home")
+    }
+
     // MARK: The tapped row (§5; Mail and Settings)
 
     /// Screenshots taken on another thread while `gesture` runs (XCTest blocks for the length of a gesture), to see

@@ -23,6 +23,8 @@ struct TasksApp: App {
                 let opened = await Launch.open()
                 app = opened
                 opened.startSync()
+                // The first drag's keyboard work, done while nothing moves (KeyboardWarmUp.swift).
+                KeyboardWarmUp.schedule()
             }
             .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in app?.store.refreshDay() }
             .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in app?.store.refreshDay() }
@@ -97,6 +99,7 @@ enum LaunchArguments {
         if d.bool(forKey: "hold") { app.holdTransient = true }
         #if DEBUG
         RemoteEdit.install(app)
+        FrameProbe.install()
         #endif
         guard let screen = d.string(forKey: "screen") else { return }
 
