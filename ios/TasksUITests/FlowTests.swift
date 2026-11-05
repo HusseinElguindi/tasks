@@ -1186,6 +1186,64 @@ final class FlowTests: XCTestCase {
         }
     }
 
+    /// A drag that begins at once, the finger moving as the row lifts (a press of 0.36 s, 0.35 s for the lift), before
+    /// the row's menu reaches its first stage (about 0.41 s): letting go opens nothing, in a task list (the row's details)
+    /// and on Home (the list), and the set-down has no stall. The menu's stage used to be what kept the row's own button
+    /// from firing, and a drag begun before it cut the menu, so the button fired on the finger's lift (T29: the details
+    /// opened, Home opened the list, a 550-880 ms set-down on the simulator; likely the phone's 67-115 ms pass at the lift).
+    func testADragThatBeginsAtOnceOpensNothing() {
+        app.launchArguments += ["-screen", "list:phys", "-dragProbe", "YES", "-frameProbe", "YES"]
+        app.launch()
+        let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
+        XCTAssertTrue(redo.waitForExistence(timeout: 10))
+        sleep(1)
+        let before = y(redo)
+        earlyDrag(redo)
+        XCTAssertFalse(app.descendants(matching: .any)["detailList"].exists, "a task list: the row's details didn't open")
+        XCTAssertEqual(y(redo), before, accuracy: 1, "20 pt takes no new slot: it went home")
+        assertLandedExactly()
+        assertNoStall()
+        redo.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["detailList"].firstMatch.waitForExistence(timeout: 5), "and a tap still opens them")
+
+        app.launchArguments = ["-sampleData", "YES", "-appearance", "dark", "-style", "classic", "-dragProbe", "YES", "-frameProbe", "YES"]
+        app.launch()
+        let inbox = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Inbox'")).firstMatch
+        XCTAssertTrue(inbox.waitForExistence(timeout: 10))
+        sleep(1)
+        earlyDrag(inbox)
+        XCTAssertTrue(inbox.exists && inbox.isHittable, "on Home: the list didn't open")
+        assertLandedExactly()
+        assertNoStall()
+        inbox.tap()
+        sleep(1)
+        XCTAssertFalse(inbox.exists && inbox.isHittable, "and a tap still opens it")
+    }
+
+    /// A 20 pt drag (no new slot) whose move starts as the row lifts, so it begins before the menu's first stage; tried
+    /// again (up to three times) when XCTest's press came late enough that the stage came first, or so early that the
+    /// list's pan took the touch.
+    private func earlyDrag(_ e: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
+        let c = e.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        for _ in 0..<3 {
+            c.press(forDuration: 0.36, thenDragTo: c.withOffset(CGVector(dx: 0, dy: 20)), withVelocity: XCUIGestureVelocity(rawValue: 900),
+                    thenHoldForDuration: 0.3)
+            sleep(2)
+            let ev = probe()["ev"] ?? ""
+            guard let b = ev.range(of: "begin") else { continue }
+            if let s = ev.range(of: "gr-_UIRelationship-ended"), s.lowerBound < b.lowerBound { continue }
+            return
+        }
+        XCTFail("no drag began before the menu's first stage in three tries: \(probe())", file: file, line: line)
+    }
+
+    /// The longest frame in the 1.2 s from the drag's begin (FrameProbe's `dragWorst`), which takes in the release.
+    private func assertNoStall(file: StaticString = #filePath, line: UInt = #line) {
+        let v = app.descendants(matching: .any)["frameProbe"].firstMatch.value as? String ?? ""
+        let worst = Double(v.replacingOccurrences(of: "dragWorst=", with: "")) ?? .infinity
+        XCTAssertLessThan(worst, 150, "the drag's longest frame, release included, ms (\(v))", file: file, line: line)
+    }
+
     /// A press that moves before the lift (0.2 s in, inside the 0.35 s hold) scrolls the list as before, and a row's swipe
     /// that starts 0.25 s in still swipes: neither lifts anything.
     func testAMoveBeforeTheLiftScrollsOrSwipes() {

@@ -14,8 +14,9 @@ import UIKit
 //   clock: it opens about 0.8 s into a still hold. The lift (0.35 s) comes first, our copy on the row's exact frame, a
 //   haptic of ours. Still until 0.8 s, and the menu opens: the copy fades under its preview (`menuOpened`). Moved more
 //   than 10 pt from where it lifted, it's a drag (`begin`): the gap opens, and the menu is cut for this touch
-//   (`DragMenu.cut`). The row's own button lets the touch go at the lift (`DragMenu.release`), so no release opens it,
-//   and a lifted row's buttons ask `PressGate` first: let go right after the lift, the row still took a tap (T28).
+//   (`DragMenu.cut`). The row's own button waits for the press to fail (`PressDrag.shouldBeRequiredToFail`), its
+//   other recognizers let the touch go at the lift (`DragMenu.release`), and a lifted row's buttons also ask `PressGate`
+//   first, so no release opens it (T28, T29).
 // - Scrolls and swipes: before the lift, a move past 10 pt fails the press, and the list's pan or a row's swipe (pans
 //   both) takes the touch as before. Once lifted, no pan begins: the list scrolls only by our edge autoscroll
 //   (`EdgeScroll`), near its top and bottom.
@@ -717,8 +718,9 @@ final class CollectionDrag {
 /// recognizer waits 0.325 s within 10 pt): ours lifts a little sooner, never later, and fails the same way, so a scroll
 /// or a row's swipe that moves 10 pt before the lift wins as before. Its delegate is itself: it runs alongside UIKit's
 /// own on the list (the row's long-press menu, which opens about 0.8 s into a still hold; the scroll indicator's), never
-/// a pan's (the list's scroll, a row's swipe), which it stops once it has begun; it isn't simultaneous with anything in
-/// the rows (their buttons' taps fail as it begins, so letting go opens nothing). Only a pan can prevent it.
+/// a pan's (the list's scroll, a row's swipe), which it stops once it has begun. The rows' own recognizers (their
+/// SwiftUI buttons') wait for it to fail (`shouldBeRequiredToFail`): once it has lifted, letting go opens nothing. Only a
+/// pan can prevent it.
 @MainActor
 final class PressDrag: UIGestureRecognizer, UIGestureRecognizerDelegate {
     static let hold: TimeInterval = 0.35
@@ -806,6 +808,17 @@ final class PressDrag: UIGestureRecognizer, UIGestureRecognizerDelegate {
 
     override func canBePrevented(by p: UIGestureRecognizer) -> Bool { p is UIPanGestureRecognizer }
 
+    /// A recognizer in a row (the row's SwiftUI button) waits for the press to fail, and fails once it lifts: a tap still
+    /// opens the row (the press fails as the finger lifts), a lift never does. The row's menu kept the button from
+    /// firing only once its own first stage had come, about 0.41 s in; a drag begun before that (a move within about
+    /// 55 ms of the lift) cut the menu, its relationship recognizers failed, and the button fired on the finger's lift
+    /// (T29: the row's details or the list opened; likely also the phone's 70-115 ms pass at the lift). Not the list's own
+    /// (the menu's, the scroll's, a row's swipe) or a pan.
+    override func shouldBeRequiredToFail(by other: UIGestureRecognizer) -> Bool {
+        guard let v = view, let ov = other.view, ov !== v, ov.isDescendant(of: v) else { return false }
+        return !(other is UIPanGestureRecognizer)
+    }
+
     func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
         other.view === view && !(other is UIPanGestureRecognizer)
     }
@@ -817,7 +830,8 @@ final class PressDrag: UIGestureRecognizer, UIGestureRecognizerDelegate {
 /// `isUserInteractionEnabled` stops that: SwiftUI's button follows the touch on its own. So the buttons of the rows
 /// that lift (a list on Home; a task, its box and a heading's chevron) ask here first: a press that lifted ends their
 /// tap for a moment (the button's action runs in the same touch-up, after our press ends), and the next touch-down
-/// clears it. With no touch (VoiceOver's double-tap) nothing is held.
+/// clears it. With no touch (VoiceOver's double-tap) nothing is held. Since T29 the button also waits for the press to
+/// fail (`PressDrag.shouldBeRequiredToFail`), so it fails at the lift itself; this stays as a second guard.
 @MainActor
 enum PressGate {
     private static var until: CFTimeInterval = 0
@@ -885,9 +899,9 @@ enum DragMenu {
         #endif
     }
 
-    /// The lifted row's own recognizers (its SwiftUI button's) let the touch go as it lifts, so letting go opens
-    /// nothing: they run alongside UIKit's in a hosting view, and only the row's menu, when it has one, used to take the
-    /// touch from them.
+    /// The lifted row's own recognizers let the touch go as it lifts: they run alongside UIKit's in a hosting view, and
+    /// only the row's menu, when it has one, used to take the touch from them. (SwiftUI's button isn't among a view's
+    /// recognizers: it waits for our press to fail instead, `PressDrag.shouldBeRequiredToFail`.)
     static func release(_ cell: UIView) {
         var views = [cell]
         while let v = views.popLast() {
