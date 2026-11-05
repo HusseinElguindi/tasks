@@ -16,7 +16,8 @@ import UIKit
 // finger in x and y (its y held 6 pt past the first and last slot; the slot is chosen by y). The slots are the lists'
 // run only, from just under "Lists" to the end of the lists, so Today and the views never move. The drop is
 // `AppModel.dropList`, given the run as `.onMove` gives it (edges included, as nil). A drop at the row's own place is
-// refused, so the copy flies home and nothing is written. The haptics (`DragFeel`), the set-down (`DragCopy.setDown`),
+// performed with nothing written, and the copy flies home (refused, UIKit's set-down kept the drag session on for a
+// second, and a drag begun meanwhile did nothing). The haptics (`DragFeel`), the set-down (`DragCopy.setDown`),
 // UIKit's invisible lift and drop, our copy lifted at the hold (`lift`) and a fast flick's drop (`letGo`) are the
 // task lists' (TaskCollection+Drag.swift). The lift
 // waits as `pending` until the drag begins: a long press that only opens the row's menu has no drag session, and a
@@ -554,10 +555,12 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         dropSession = session
         drag?.entered = true
         follow()
-        // At its own place the drop is refused, so it goes back as a cancel and writes nothing.
+        // Always a move, even at its own place, where `performDropWith` writes nothing and the copy goes home: a refused
+        // drop (`.cancel`) ran UIKit's set-down for about a second before its drag session ended, and a drag begun
+        // meanwhile did nothing at all (T22, as the task lists' CollectionDrag.didUpdate).
         let move = drag.map(moves) == true
-        probe(move ? "upd-move" : "upd-cancel")
-        return UICollectionViewDropProposal(operation: move ? .move : .cancel, intent: .unspecified)
+        probe(move ? "upd-move" : "upd-home")
+        return UICollectionViewDropProposal(operation: .move, intent: .unspecified)
     }
 
     /// The finger left the list's drop area: the gap stays at the last slot shown, and follows the copy still.
@@ -569,6 +572,14 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
     func collectionView(_ cv: UICollectionView, performDropWith c: UICollectionViewDropCoordinator) {
         probe("perform")
         guard let item = c.items.first, let d = drag, current.contains(d.id) else { return }
+        guard moves(d) else {
+            // At its own place: nothing written, UIKit's drop ends at once, and the copy flies home.
+            let home = current.firstIndex(of: d.id).flatMap { layout.modelFrame($0) }
+            _ = c.drop(item.dragItem, to: DragCopy.invisibleDrop(at: home.map { CGPoint(x: $0.midX, y: $0.midY) } ?? copyView?.center ?? .zero, in: cv))
+            dropSession = nil
+            goHome()
+            return
+        }
         let f = write(d)
         // UIKit's drop goes nowhere to be seen: our copy sets down instead.
         _ = c.drop(item.dragItem, to: DragCopy.invisibleDrop(at: f.map { CGPoint(x: $0.midX, y: $0.midY) } ?? copyView?.center ?? .zero, in: cv))

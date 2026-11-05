@@ -230,12 +230,14 @@ enum FrameProbe {
         }
         override func touchesBegan(_ t: Set<UITouch>, with e: UIEvent) {
             FrameProbe.touches += t.count
-            seen(t)
+            seen(t, e)
         }
-        override func touchesMoved(_ t: Set<UITouch>, with e: UIEvent) { seen(t) }
+        override func touchesMoved(_ t: Set<UITouch>, with e: UIEvent) { seen(t, e) }
         override func touchesEnded(_ t: Set<UITouch>, with e: UIEvent) { lifted(t.count) }
-        private func seen(_ t: Set<UITouch>) {
+        private func seen(_ t: Set<UITouch>, _ e: UIEvent) {
             if let u = t.first, let w = view as? UIWindow { FrameProbe.touch = (u.location(in: w), w) }
+            // The event's own count of fingers down (one cancelled elsewhere left the count stuck at 1).
+            if let all = e.allTouches { FrameProbe.touches = all.filter { $0.phase != .ended && $0.phase != .cancelled }.count }
         }
         override func touchesCancelled(_ t: Set<UITouch>, with e: UIEvent) {
             FrameProbe.cancelled = CACurrentMediaTime()

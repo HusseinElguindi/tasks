@@ -32,8 +32,9 @@ import UIKit
 //   (160 ms, `Motion.flight`'s curve), the row shows under it in that frame, and the copy fades out over it (150 ms
 //   ease-out). UIKit's own drop animation is made invisible (`DragCopy.invisibleDrop`): `drop(_:toItemAt:)` grew a
 //   picture of the destination cell (the hidden row: only the preview's fill) from the finger out to the row, over our
-//   copy, which read as a fade outwards from the centre. One that's refused (let go at its own slot) flies home the same
-//   way as the finger lifts (`dropSessionDidEnd`); let go anywhere else (over the floating bar, or off the list), it
+//   copy, which read as a fade outwards from the centre. One let go at its own slot is performed too, writing nothing,
+//   and flies home the same way (`perform`): refused, UIKit's set-down kept its drag session on for about a second, and
+//   a drag begun meanwhile did nothing (T22); let go anywhere else (over the floating bar, or off the list), it
 //   drops at the last slot shown, as on the Mac (§14: "as in a Mac list"): UIKit's own set-down of a refused drop runs about a second after
 //   that (its cancel preview is invisible too), and the drag session ends only then.
 // - A fast flick: UIKit's lift starts a drag session only 0.2-0.4 s later, and a finger let go in between ends
@@ -593,9 +594,11 @@ final class CollectionDrag {
         dropSession = session
         state?.entered = true
         follow()
-        // At its own place (where it started, or a day it can't take) the drop is refused, so it goes back as a
-        // cancel (a heading's performed no-move drop would still write an order).
-        return UICollectionViewDropProposal(operation: state.map(moves) == true ? .move : .cancel, intent: .unspecified)
+        // Always a move, even at its own place (where it started, or a day it can't take): `perform` writes nothing
+        // there and the copy goes home. A refused drop (`.cancel`) ran UIKit's set-down for about a second before its
+        // drag session ended, and no new drag could begin meanwhile: a drag started then did nothing at all (T22, on the
+        // phone: the drag that "didn't register" began 0.4 s after one let go at its own place).
+        return UICollectionViewDropProposal(operation: .move, intent: .unspecified)
     }
 
     /// The finger left the list's drop area (over the floating bar, or off the list): the gap stays at the last slot
@@ -606,6 +609,15 @@ final class CollectionDrag {
 
     func perform(_ c: UICollectionViewDropCoordinator) {
         guard let item = c.items.first, let d = state, owner.current.contains(d.id) else { return }
+        guard moves(d) else {
+            // At its own place: nothing written (a heading's no-move drop would still write an order), and UIKit's
+            // drop ends at once (`didUpdate`). The copy flies home as the gap there closes.
+            let home = owner.current.firstIndex(of: d.id).flatMap { owner.layout.modelFrame($0) }
+            _ = c.drop(item.dragItem, to: DragCopy.invisibleDrop(at: home.map { CGPoint(x: $0.midX, y: $0.midY) } ?? copy?.center ?? .zero, in: owner.cv))
+            dropSession = nil
+            goHome()
+            return
+        }
         let f = write(d)
         // UIKit's drop goes nowhere to be seen: our copy sets down instead.
         _ = c.drop(item.dragItem, to: DragCopy.invisibleDrop(at: f.map { CGPoint(x: $0.midX, y: $0.midY) } ?? copy?.center ?? .zero, in: owner.cv))
@@ -917,6 +929,15 @@ final class DragProbe {
     /// A drop session update reached the list.
     func updated() { updates += 1 }
 
+    private init() {
+        // Written out as the app leaves the foreground (the phone's logs are copied then: T22's last lift was lost).
+        for n in [UIApplication.willResignActiveNotification, UIApplication.didEnterBackgroundNotification] {
+            NotificationCenter.default.addObserver(forName: n, object: nil, queue: .main) { _ in
+                MainActor.assumeIsolated { DragProbe.shared.flush() }
+            }
+        }
+    }
+
     /// The gap moved to a new slot.
     func slot(_ s: Int?, was: Int?, copyTop: CGFloat) {
         mark("slot \(s.map(String.init) ?? "-") was \(was.map(String.init) ?? "-") at \(f(copyTop))")
@@ -993,8 +1014,16 @@ final class DragProbe {
     /// The drag and drop delegate calls since the last lift's `items`, in order (a repeated one once): "ev=items>begin>
     /// can1>upd>perform>dropEnd>dragEnd" ("can" with its answer, "upd" with the proposal's operation when it changes).
     private var calls: [String] = []
+    /// From the copy's release to UIKit's drag session ending, ms ("end="): a refused drop kept it on for about a second,
+    /// and no drag could begin meanwhile (T22).
+    private var releasedAt: CFTimeInterval?
+    private var ended: Double?
     func call(_ s: String, in v: UIView) {
         if s == "items", calls.contains("items") { calls = [] }
+        if s == "dragEnd", let r = releasedAt {
+            ended = (CACurrentMediaTime() - r) * 1000
+            releasedAt = nil
+        }
         view = v
         if calls.last != s { calls.append(s) }
         mark("call " + s)
@@ -1003,6 +1032,8 @@ final class DragProbe {
 
     func released(_ copy: UIView, home: CGPoint?) {
         following = false
+        releasedAt = CACurrentMediaTime()
+        ended = nil
         if let home { dx = copy.frame.minX - home.x }
         mark("release copy=\(f(copy.frame.minX)),\(f(copy.frame.minY)) home=\(home.map { "\(f($0.x)),\(f($0.y))" } ?? "-")")
         publish()
@@ -1024,7 +1055,7 @@ final class DragProbe {
     private func publish() {
         guard probing, let view else { return }
         view.accessibilityIdentifier = "dragProbe"
-        view.accessibilityValue = "step=\(f(step)) still=\(still) ticks=\(ticks) drops=\(drops) dx=\(dx.map(f) ?? "-") land=\(land.map { "\(f($0.x)),\(f($0.y))" } ?? "-") lp=\(liftShape ?? "-") held=\(held ?? "-") scroll=\(scrolled) ev=\(calls.joined(separator: ">"))"
+        view.accessibilityValue = "end=\(ended.map { String(format: "%.0f", $0) } ?? "-") step=\(f(step)) still=\(still) ticks=\(ticks) drops=\(drops) dx=\(dx.map(f) ?? "-") land=\(land.map { "\(f($0.x)),\(f($0.y))" } ?? "-") lp=\(liftShape ?? "-") held=\(held ?? "-") scroll=\(scrolled) ev=\(calls.joined(separator: ">"))"
     }
 
     // MARK: The copy against the finger (with -dragTrace YES, published with -dragProbe YES)
@@ -1099,6 +1130,8 @@ final class DragProbe {
     private func mark(_ s: String) {
         guard tracing else { return }
         lines.append(String(format: "M %.4f ", CACurrentMediaTime() + epoch) + s)
+        // Between drags (no trace running), at once.
+        if link == nil { flush() }
     }
 
     private func frame() {
