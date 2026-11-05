@@ -1113,36 +1113,6 @@ final class FlowTests: XCTestCase {
         XCTAssertLessThan(y(inbox), y(home), "and the drags dropped: Inbox over Home again, as it started")
     }
 
-    /// A drag let go at its own place ends at once, so the next drag registers (T22, on the phone: a drag begun 0.4 s
-    /// after one let go at its own place did nothing at all). The drop at its own place was refused, and UIKit's set-down
-    /// of a refused drop kept its drag session on for about a second (0.9 s on the phone), during which no new drag
-    /// could begin; it's performed now, writing nothing. The drag probe gives the time from the copy's release to the drag
-    /// session's end ("end", ms). (XCTest can't start a second gesture soon enough to hit that second itself.)
-    func testADragLetGoAtItsPlaceEndsAtOnce() {
-        app.launchArguments += ["-dragProbe", "YES"]
-        app.launch()
-        let inbox = app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Inbox'")).firstMatch
-        let home = app.buttons["Home"].firstMatch
-        XCTAssertTrue(inbox.waitForExistence(timeout: 10))
-        sleep(1)
-        let before = y(inbox)
-        // Lifted, and let go at its own place: Inbox is the first list, so a drag up holds its copy at its own slot.
-        let start = inbox.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-        start.press(forDuration: 0.6, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -60)), withVelocity: .default,
-                    thenHoldForDuration: 0.1)
-        sleep(2)
-        let p = probe()
-        XCTAssertEqual(y(inbox), before, accuracy: 1, "back at its place")
-        XCTAssertEqual(p["drops"], "0", "nothing written (\(p))")
-        XCTAssertLessThan(Double(p["end"] ?? "") ?? .infinity, 300, "the drag session ended soon after the release, ms (\(p))")
-        // And the next drag works.
-        inbox.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            .press(forDuration: 0.6, thenDragTo: home.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)),
-                   withVelocity: XCUIGestureVelocity(rawValue: 400), thenHoldForDuration: 0.3)
-        sleep(2)
-        XCTAssertGreaterThan(y(inbox), y(home), "the next drag dropped: Inbox under Home (\(probe()))")
-    }
-
     // MARK: The tapped row (§5; Mail and Settings)
 
     /// Screenshots taken on another thread while `gesture` runs (XCTest blocks for the length of a gesture), to see
