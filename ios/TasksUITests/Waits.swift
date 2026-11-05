@@ -19,3 +19,18 @@ func eventually(_ timeout: TimeInterval, _ condition: () -> Bool) -> Bool {
         usleep(100_000)
     }
 }
+
+extension XCUIApplication {
+    /// Until the app is idle: its event loop quiet and, unless `idleAnimationWaitEnabled` is off (FlowTests.menuOpen),
+    /// its animations finished. This is the wait XCTest makes before and after each tap or press ("Wait for … to
+    /// idle"); here on its own, in place of a fixed `sleep(1)` after a step whose motion should be over before the
+    /// next look. Not for something the app does on a timer (a notice's life, a delayed settle): wait on that itself.
+    /// `_waitForQuiescenceAsPreEvent:` is XCUIApplication's own (private); if an Xcode drops it, this sleeps 1 s, as
+    /// the tests did before.
+    func settle() {
+        let sel = NSSelectorFromString("_waitForQuiescenceAsPreEvent:")
+        guard responds(to: sel) else { sleep(1); return }
+        typealias Wait = @convention(c) (AnyObject, Selector, Bool) -> Void
+        unsafeBitCast(method(for: sel), to: Wait.self)(self, sel, false)
+    }
+}
