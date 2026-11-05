@@ -1880,6 +1880,7 @@ final class FlowTests: XCTestCase {
     /// A task dropped right under a collapsed heading joins the end of its section, stays folded, and the count goes
     /// up (the Mac's rule).
     func testDropUnderACollapsedHeading() {
+        app.launchArguments += ["-dragProbe", "YES"]
         openPhys()
         app.buttons["Collapse Labs"].tap()
         sleep(1)
@@ -1887,6 +1888,8 @@ final class FlowTests: XCTestCase {
         drag(redo, onto: heading("Labs"))
         XCTAssertFalse(redo.exists, "folded into Labs")
         XCTAssertEqual(heading("Labs").value as? String, "Collapsed, 4 open")
+        // The copy falls into the heading's row (its fill, under the air), as on the Mac, and fades there.
+        assertLandedExactly()
         app.buttons["Expand Labs"].tap()
         sleep(1)
         XCTAssertGreaterThan(y(redo), y(app.staticTexts["Book a make-up lab bench"].firstMatch), "at the end of Labs")

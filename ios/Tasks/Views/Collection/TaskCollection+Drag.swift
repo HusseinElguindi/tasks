@@ -605,21 +605,23 @@ final class CollectionDrag {
         UIView.animate(withDuration: 0.15, delay: 0, options: [.curveEaseOut, .allowUserInteraction]) { b.alpha = 1 }
     }
 
-    /// The copy sets down on the row's `frame` (`DragCopy.setDown`), and the row `id` shows under it.
-    private func land(at frame: CGRect?, id: String) {
+    /// The copy sets down on the row's `frame` (`DragCopy.setDown`), and the row `id` shows under it; `onto`: the row
+    /// it sets down onto instead (a collapsed heading the dropped row folded into: `drop`).
+    private func land(at frame: CGRect?, id: String, onto: String? = nil) {
         guard let v = copy else { landed(); return }
         copy = nil
         landings += 1
         let n = landings
         landingCopy = v
-        let origin = frame.map { CGPoint(x: $0.minX + Metric.rowInset, y: $0.minY + Self.lead(id)) }
+        let target = onto ?? id
+        let origin = frame.map { CGPoint(x: $0.minX + Metric.rowInset, y: $0.minY + Self.lead(target)) }
         #if DEBUG || PERF_PROBE
         DragProbe.shared.released(v, home: origin)
         #endif
         DragCopy.setDown(v, at: origin, gap: gap.left) { [weak self] in
             guard let self, self.landings == n else { return }
             #if DEBUG || PERF_PROBE
-            if let ip = self.owner.dataSource.indexPath(for: id) { DragProbe.shared.landed(v, on: self.owner.cv.cellForItem(at: ip), lead: Self.lead(id)) }
+            if let ip = self.owner.dataSource.indexPath(for: target) { DragProbe.shared.landed(v, on: self.owner.cv.cellForItem(at: ip), lead: Self.lead(target)) }
             #endif
             self.landingCopy = nil
             self.landed()
@@ -651,7 +653,22 @@ final class CollectionDrag {
         DragProbe.shared.call("drop", in: owner.cv)
         #endif
         let f = write(d)
-        land(at: f, id: d.id)
+        // Dropped right under a collapsed heading, the row folds into its section and isn't shown: the copy falls into
+        // the heading's row (its fill) and fades there, as the Mac's flies into its slot (it faded where the finger let
+        // go).
+        if f == nil, let h = foldedInto(d.id) {
+            land(at: owner.modelFrame(h), id: d.id, onto: h)
+        } else {
+            land(at: f, id: d.id)
+        }
+    }
+
+    /// The collapsed heading, shown, whose section has the task `id`.
+    private func foldedInto(_ id: String) -> String? {
+        let app = owner.app
+        guard id.hasPrefix("t:"), let h = app.projection.heading(of: String(id.dropFirst(2))), app.collapsed.contains(h),
+              owner.current.contains("h:" + h) else { return nil }
+        return "h:" + h
     }
 
     /// The drop at the gap: written (AppModel.drop: dropOnDay in Upcoming), and the new order applied at once, the
