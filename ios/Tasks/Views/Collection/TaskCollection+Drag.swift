@@ -95,6 +95,7 @@ final class CollectionDrag {
     private var press: PressDrag?
     private let feel = DragFeel()
     private var edge = EdgeScroll()
+    private var gap = DragGap()
     /// Ticks from the lift to the release: the copy and the slot follow the finger, and the list's edge autoscroll.
     private var link: CADisplayLink?
     /// Items whose cells the gap has moved or hidden, put back when it closes.
@@ -174,7 +175,8 @@ final class CollectionDrag {
         }
         CATransaction.begin()
         if animated, !UIAccessibility.isReduceMotionEnabled {
-            UIView.animate(springDuration: 0.25, bounce: 0, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction], animations: body)
+            gap.moved()
+            UIView.animate(springDuration: DragGap.spring, bounce: 0, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction], animations: body)
         } else {
             UIView.performWithoutAnimation(body)
         }
@@ -587,7 +589,7 @@ final class CollectionDrag {
         #if DEBUG || PERF_PROBE
         DragProbe.shared.released(v, home: origin)
         #endif
-        DragCopy.setDown(v, at: origin) { [weak self] in
+        DragCopy.setDown(v, at: origin, gap: gap.left) { [weak self] in
             guard let self, self.landings == n else { return }
             #if DEBUG || PERF_PROBE
             if let ip = self.owner.dataSource.indexPath(for: id) { DragProbe.shared.landed(v, on: self.owner.cv.cellForItem(at: ip)) }
@@ -840,7 +842,11 @@ enum DragCopy {
     /// cubic-bezier(0.2, 0.8, 0.2, 1)). There `landed` shows the row under it, in the same transaction, and the copy
     /// fades out over it (150 ms ease-out), so the lift dissolves into the row: the row's pixels never move or fade.
     /// With no origin (the row has gone), or with Reduce Motion, it doesn't fly: it fades where it is (at the origin).
-    static func setDown(_ v: UIView, at origin: CGPoint?, landed: @escaping () -> Void) {
+    ///
+    /// `gap` is how long the gap's last move still runs (its 0.25 s spring, `DragGap`): a drop let go as the gap moved
+    /// (a flick, a quick drag) wrote the new order while the rows were still on their way, so a neighbour slid over the
+    /// dropped row as the copy faded (T28). The copy holds over the row's place till the rows are there, then settles.
+    static func setDown(_ v: UIView, at origin: CGPoint?, gap: TimeInterval = 0, landed: @escaping () -> Void) {
         let settle = {
             CATransaction.begin()
             landed()
@@ -857,7 +863,13 @@ enum DragCopy {
         let fly = UIViewPropertyAnimator(duration: 0.16, controlPoint1: CGPoint(x: 0.2, y: 0.8), controlPoint2: CGPoint(x: 0.2, y: 1)) {
             v.frame.origin = origin
         }
-        fly.addCompletion { _ in settle() }
+        // (A copy already in its place ends its flight at once.)
+        let due = CACurrentMediaTime() + gap
+        fly.addCompletion { _ in
+            let wait = due - CACurrentMediaTime()
+            guard wait > 0.01 else { settle(); return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + wait) { settle() }
+        }
         fly.startAnimation()
     }
 
@@ -871,6 +883,16 @@ enum DragCopy {
         l.cornerRadius = Metric.rowRadius
         l.cornerCurve = .continuous
     }
+}
+
+/// When the gap's last animated move ends (the task lists' and Home's `moveGap`, on Motion.layout's 0.25 s spring).
+struct DragGap {
+    static let spring: TimeInterval = 0.25
+    private var ends: CFTimeInterval = 0
+    /// The gap moved on its spring now.
+    mutating func moved() { ends = CACurrentMediaTime() + Self.spring }
+    /// How long it still runs.
+    var left: TimeInterval { max(0, ends - CACurrentMediaTime()) }
 }
 
 /// A drag's haptics (SwiftUI List's reorder and the Mac's feel): an impact at the lift; a selection tick each time the
@@ -995,6 +1017,7 @@ final class DragProbe {
     var drops = 0 { didSet { publish() } }
     private var dx: CGFloat?
     private var land: CGPoint?
+    private var gapLeft: CGFloat?
     private weak var view: UIView?
 
     func begin(_ v: UIView) {
@@ -1002,6 +1025,7 @@ final class DragProbe {
         drops = 0
         dx = nil
         land = nil
+        gapLeft = nil
         following = true
         lastCopy = nil
         step = 0
@@ -1085,6 +1109,12 @@ final class DragProbe {
     /// The copy at its set-down's end against the row's cell, which then shows under it.
     func landed(_ copy: UIView, on cell: UIView?) {
         if let cell { land = CGPoint(x: copy.frame.minX - (cell.frame.minX + Metric.rowInset), y: copy.frame.minY - cell.frame.minY) }
+        // How far any shown row is still drawn from its place as the copy settles (T28: the gap's spring outran a fast
+        // drop, and a neighbour slid over the dropped row).
+        if let cv = view as? UICollectionView {
+            gapLeft = cv.subviews.compactMap { $0 as? UICollectionViewCell }.filter { !$0.isHidden }
+                .map { abs(($0.layer.presentation() ?? $0.layer).affineTransform().ty - $0.transform.ty) }.max() ?? 0
+        }
         mark("landed copy=\(f(copy.frame.minX)),\(f(copy.frame.minY)) cell=\(cell.map { "\(f($0.frame.minX)),\(f($0.frame.minY))" } ?? "-")")
         publish()
         until = CACurrentMediaTime() + 0.5 + 0.15
@@ -1098,7 +1128,7 @@ final class DragProbe {
     private func publish() {
         guard probing, let view else { return }
         view.accessibilityIdentifier = "dragProbe"
-        view.accessibilityValue = "pd=\(sinceRelease.map { String(format: "%.0f", $0) } ?? "-") step=\(f(step)) still=\(still) ticks=\(ticks) drops=\(drops) dx=\(dx.map(f) ?? "-") land=\(land.map { "\(f($0.x)),\(f($0.y))" } ?? "-") uk=\(uikit ? 1 : 0) held=\(held ?? "-") scroll=\(scrolled) ev=\(calls.joined(separator: ">"))"
+        view.accessibilityValue = "pd=\(sinceRelease.map { String(format: "%.0f", $0) } ?? "-") step=\(f(step)) still=\(still) ticks=\(ticks) drops=\(drops) dx=\(dx.map(f) ?? "-") land=\(land.map { "\(f($0.x)),\(f($0.y))" } ?? "-") uk=\(uikit ? 1 : 0) held=\(held ?? "-") scroll=\(scrolled) gapLeft=\(gapLeft.map(f) ?? "-") ev=\(calls.joined(separator: ">"))"
     }
 
     // MARK: The copy against the finger (with -dragTrace YES, published with -dragProbe YES)

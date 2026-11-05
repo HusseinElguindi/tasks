@@ -319,6 +319,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
     private var press: PressDrag?
     private let feel = DragFeel()
     private var edge = EdgeScroll()
+    private var gap = DragGap()
     /// Ticks from the lift to the release, so the copy follows the finger every frame, and the edge autoscroll.
     private var link: CADisplayLink?
 
@@ -410,7 +411,8 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         }
         CATransaction.begin()
         if animated, !UIAccessibility.isReduceMotionEnabled {
-            UIView.animate(springDuration: 0.25, bounce: 0, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction],
+            gap.moved()
+            UIView.animate(springDuration: DragGap.spring, bounce: 0, delay: 0, options: [.beginFromCurrentState, .allowUserInteraction],
                            animations: body)
         } else {
             UIView.performWithoutAnimation(body)
@@ -656,7 +658,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         #if DEBUG || PERF_PROBE
         DragProbe.shared.released(v, home: origin)
         #endif
-        DragCopy.setDown(v, at: origin) { [weak self] in
+        DragCopy.setDown(v, at: origin, gap: gap.left) { [weak self] in
             guard let self, self.landings == n else { return }
             #if DEBUG || PERF_PROBE
             if let ip = self.dataSource.indexPath(for: id) { DragProbe.shared.landed(v, on: self.cv.cellForItem(at: ip)) }
