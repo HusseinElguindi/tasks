@@ -308,12 +308,38 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
         sizes = before.merging(new.filter { !current.contains($0.key) }) { _, n in n }
         wanted = made.ids
         let fold = fold.plan(from: current, to: made.ids)
-        if !drag.holdsUpdates { apply(made.ids, fold: fold, animation: animation) }
+        let holding = drag.holdsUpdates
+        if !holding { apply(made.ids, fold: fold, animation: animation) } else if let fold { heldFold = fold }
         let changed = new.keys.filter { new[$0] != before[$0] && before[$0] != nil && current.contains($0) && !justInserted.contains($0) }
         sizes = new
-        if !drag.holdsUpdates, !changed.isEmpty { editor.resize(changed.sorted(), from: before) }
+        if holding {
+            // Resized once the drag lets updates through (`applyHeld`), from the signature it was drawn with.
+            for k in changed where heldSizes[k] == nil { heldSizes[k] = before[k] }
+        } else if !changed.isEmpty {
+            editor.resize(changed.sorted(), from: before)
+        }
         // Rows inserted by this update were configured with their new signatures; from the next one on, they resize.
         justInserted = []
+    }
+
+    /// What `update` held back while the drag held updates: the rows whose height changed meanwhile (with the
+    /// signature each was drawn with), and the fold planned meanwhile (a heading collapsed or expanded).
+    private var heldSizes: [String: String] = [:]
+    private var heldFold: CollectionFold.Plan?
+
+    /// Once the drag holds updates no more (its `settle`): the latest items, at once, or folding on the fold's curves
+    /// when a fold was planned meanwhile and is still to be drawn; then the rows whose height changed meanwhile are
+    /// resized (they kept the height they were drawn with: T27).
+    func applyHeld(_ items: [String]) {
+        let plan = heldFold.flatMap { p -> CollectionFold.Plan? in
+            let was = !p.items.isDisjoint(with: current), now = !p.items.isDisjoint(with: items)
+            return (p.collapse ? was && !now : !was && now) && current.contains(p.heading) && items.contains(p.heading) ? p : nil
+        }
+        heldFold = nil
+        if items != current { apply(items, fold: plan, animation: plan == nil ? nil : .default) }
+        let held = heldSizes
+        heldSizes = [:]
+        if !held.isEmpty { editor.resize(held.keys.sorted(), from: held) }
     }
 
     /// The items, at once (`animation` nil, or Reduce Motion), or animated: a fold on its own curves

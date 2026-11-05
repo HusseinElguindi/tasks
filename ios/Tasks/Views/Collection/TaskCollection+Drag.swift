@@ -537,11 +537,11 @@ final class CollectionDrag {
                     animation: .easeIn(duration: 0.22))
     }
 
-    /// Once nothing's held any more: what the app changed meanwhile, at once (the rows drawn are where they'll be).
+    /// Once nothing's held any more: what the app changed meanwhile, at once (the rows drawn are where they'll be), but
+    /// a fold planned meanwhile on its curves, and the rows whose height changed resized (`applyHeld`).
     private func settle() {
         guard !holdsUpdates else { return }
-        let items = latest()
-        if items != owner.current { owner.apply(items, animation: nil) }
+        owner.applyHeld(latest())
     }
 
     /// The drag ended with no drop (refused: let go at the row's own place; or the touch was taken): the copy flies home

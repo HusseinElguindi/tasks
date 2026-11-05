@@ -1949,6 +1949,51 @@ final class FlowTests: XCTestCase {
         XCTAssertGreaterThan(y(lectures), y(heading("Labs")), "Lectures after Labs")
     }
 
+    /// Notes changed on another device while a drag is on take their new height once it's over: the update waits for
+    /// the drag's end, and the row is resized then (before T30 it kept its old height until something configured it
+    /// again; a drop's new order measured it, a refused drop's didn't).
+    func testNotesSyncedDuringADragTakeTheirHeight() {
+        app.launchArguments += ["-screen", "list:phys", "-dragProbe", "YES"]
+        launch(remote: "h-lab", notes: "Goggles, a lab coat and the lab manual, every session; pre-labs are due at the start of the lab.")
+        XCTAssertTrue(heading("Labs").waitForExistence(timeout: 10), "PHYS 122")
+        sleep(1)
+        menuOpen {
+            heading("Labs").press(forDuration: 1.0)
+            app.buttons["Add Notes"].tap()
+        }
+        XCTAssertTrue(app.textViews["headingNotes"].waitForExistence(timeout: 3))
+        app.typeText("Goggles")
+        app.buttons["Done"].tap()
+        sleep(1)
+        let short = app.staticTexts["Goggles"].firstMatch
+        XCTAssertTrue(short.waitForExistence(timeout: 3))
+        let oneLine = cell(short).height
+        // The other device's longer notes land mid-drag.
+        let poster = Thread {
+            usleep(1_300_000)
+            CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),
+                                                 CFNotificationName("com.elguindi.Tasks.test.remote-edit" as CFString), nil, nil, true)
+        }
+        poster.start()
+        // Pulled up past its own slot (the first) and let go: refused, so no new order is applied after it (an apply
+        // measures the rows again; the refused drop's own update is the only one).
+        let start = app.staticTexts["Buy safety glasses for the lab"].firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        start.press(forDuration: 0.5, thenDragTo: start.withOffset(CGVector(dx: 0, dy: -60)), withVelocity: .default, thenHoldForDuration: 1.8)
+        sleep(2)
+        XCTAssertTrue((probe()["ev"] ?? "").contains("home"), "dragged and refused: \(probe())")
+        let notes = app.staticTexts.containing(NSPredicate(format: "label BEGINSWITH 'Goggles, a lab coat'")).firstMatch
+        XCTAssertTrue(notes.waitForExistence(timeout: 3), "the synced notes")
+        let after = cell(notes).height
+        XCTAssertGreaterThan(after, oneLine + 10, "the row grew for the longer notes")
+        // Their height as a fresh row measures it: folded and opened again.
+        app.buttons["Collapse Labs"].tap()
+        sleep(1)
+        app.buttons["Expand Labs"].tap()
+        sleep(1)
+        XCTAssertEqual(after, cell(notes).height, accuracy: 1, "the height a fresh row has")
+        XCTAssertLessThanOrEqual(cell(notes).maxY, cell(app.staticTexts["Lab 3 report · pendulum"].firstMatch).minY + 1, "nothing overlaps")
+    }
+
     /// Delete Heading takes the heading only: its tasks stay, under the heading above. The notice's Undo brings it back.
     func testDeleteAHeading() {
         openPhys()
