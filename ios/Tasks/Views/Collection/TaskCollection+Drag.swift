@@ -14,9 +14,10 @@ import UIKit
 //   clock: it opens about 0.8 s into a still hold. The lift (0.35 s) comes first, our copy on the row's exact frame, a
 //   haptic of ours. Still until 0.8 s, and the menu opens: the copy fades under its preview (`menuOpened`). Moved more
 //   than 10 pt from where it lifted, it's a drag (`begin`): the gap opens, and the menu is cut for this touch
-//   (`DragMenu.cut`). The row's own button is cancelled as the press lifts (`PressDrag.releaseRow`), its other
-//   recognizers let the touch go at the lift (`DragMenu.release`), and a lifted row's buttons also ask `PressGate`
-//   first, so no release opens it (T28, T29).
+//   (`DragMenu.cut`), and UIKit's highlight of the row, under the copy till then, goes at once (`DragHighlight`). The
+//   row's own button is cancelled as the press lifts (`PressDrag.releaseRow`), its other recognizers let the touch go
+//   at the lift (`DragMenu.release`), and a lifted row's buttons also ask `PressGate` first, so no release opens it
+//   (T28, T29).
 // - Scrolls and swipes: before the lift, a move past 10 pt fails the press, and the list's pan or a row's swipe (pans
 //   both) takes the touch as before. Once lifted, no pan begins: the list scrolls only by our edge autoscroll
 //   (`EdgeScroll`), near its top and bottom.
@@ -415,6 +416,7 @@ final class CollectionDrag {
         d.ticked = at
         state = d
         DragMenu.cut(owner.cv, keeping: press)
+        DragHighlight.clear(owner.cv)
         #if DEBUG || PERF_PROBE
         DragProbe.shared.call("begin", in: owner.cv)
         FrameProbe.dragBegan()
@@ -933,6 +935,38 @@ enum DragMenu {
     }
 }
 
+/// UIKit's click highlight of the lifted row, gone as its drag begins (the task lists' and Home's). From about 0.15 s
+/// into a hold, the row's menu shows its first stage: a picture of the row, in a platter on its exact place
+/// (`_UIContentPlatterView`, from the menu's highlight preview, the row's fill), under our copy once it lifts. Cut by
+/// `DragMenu.cut`, the menu scales it back, then leaves it there, opaque, for about 430 ms before taking it away: with
+/// the row hidden for the gap and the copy gone with the finger, the row's old place showed the platter, a lighter
+/// rounded fill, for that long (the phone, d7d4b22: every drag). There's no call that ends a highlight at once, so the
+/// drag hides the platter itself: UIKit makes a new one for each highlight (the next hold's shows), and drops it after. The menu's own, once it opens, is in its
+/// container (`_UIContextMenuContainerView`), never one of these.
+@MainActor
+enum DragHighlight {
+    /// The highlight platters shown in `cv`'s window now (none inside an open menu).
+    static func platters(over cv: UIView) -> [UIView] {
+        guard let w = cv.window else { return [] }
+        var out: [UIView] = []
+        var views: [UIView] = [w]
+        while let v = views.popLast() {
+            // A row's own views (a hosted row is hundreds), and an open menu, have none.
+            guard !v.isHidden, v.alpha > 0.01, !(v is UICollectionViewCell) else { continue }
+            let name = NSStringFromClass(type(of: v))
+            if name.hasSuffix("ContextMenuContainerView") { continue }
+            if name == "_UIContentPlatterView" { out.append(v); continue }
+            views += v.subviews
+        }
+        return out
+    }
+
+    /// The drag began: the lifted row's highlight goes now.
+    static func clear(_ cv: UIView) {
+        for v in platters(over: cv) { v.isHidden = true }
+    }
+}
+
 /// A drag's lifted copy, set down (the task lists' and Home's).
 @MainActor
 enum DragCopy {
@@ -1134,11 +1168,12 @@ extension TaskCollectionController {
 /// Debug builds and the phone's measuring build (`PERF_PROBE`, ios/Tools/perf/README.md) only.
 /// `-dragProbe YES` (FlowTests): what the last press did, as the collection view's accessibility value (identifier
 /// "dragProbe"), read once it's over: "pd=180 step=12.0 still=0 ticks=3 drops=1 dx=80.0 land=0.0,0.0 uk=0
-/// held=0.0,0.0 scroll=0.0 ev=press>lift>begin>menuCut>drop" (ms from the last copy's release to this press's touch;
+/// held=0.0,0.0 scroll=0.0 hl=0 ev=press>lift>begin>menuCut>drop" (ms from the last copy's release to this press's touch;
 /// the copy's largest step and still run (with -dragTrace); the haptic ticks and drops; the copy's sideways offset
 /// from the row's place as the finger lifted; the copy's last frame against the row cell's; whether a UIKit drag or
 /// drop session was ever seen on the list (`hasActiveDrag`/`hasActiveDrop`); the copy at the hold against the row's
-/// cell; how far the list scrolled since the press; the press's calls in order: press, lift, begin, menuCut, drop,
+/// cell; how far the list scrolled since the press; UIKit's highlight platters still up 100 ms into the drag
+/// (`DragHighlight`); the press's calls in order: press, lift, begin, menuCut, drop,
 /// home, holdDown (let go where it lifted), holdMenu (the row's menu opened), menu, and the list's gesture recognizers
 /// that began or ended, "gr-…").
 /// `-dragTrace YES` (DragFilmTests, the phone): from each lift to 0.5 s after its set-down, every frame, to
@@ -1206,6 +1241,7 @@ final class DragProbe {
     /// A finger landed on the list: a new press.
     func pressed(_ list: UIView) {
         held = nil
+        highlight = nil
         uikit = false
         calls = []
         sinceRelease = releasedAt.map { (CACurrentMediaTime() - $0) * 1000 }
@@ -1253,7 +1289,22 @@ final class DragProbe {
         if calls.last != s { calls.append(s) }
         mark("call " + s)
         publish()
+        if s == "begin" {
+            // UIKit's highlight of the row, 100 ms into the drag (it stayed for 430 ms: `DragHighlight`).
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak v] in
+                MainActor.assumeIsolated {
+                    guard let v else { return }
+                    let p = DragHighlight.platters(over: v)
+                    self.highlight = p.count
+                    for x in p { self.mark("highlight left \(type(of: x)) \(f(x.frame.width))x\(f(x.frame.height))") }
+                    self.publish()
+                }
+            }
+        }
     }
+
+    /// UIKit's highlight platters still shown 100 ms after the drag began (none: the row's place is clean).
+    private var highlight: Int?
 
     /// Whether UIKit has a drag or drop session on the list now.
     private func sampleUIKit() {
@@ -1290,7 +1341,7 @@ final class DragProbe {
     private func publish() {
         guard probing, let view else { return }
         view.accessibilityIdentifier = "dragProbe"
-        view.accessibilityValue = "pd=\(sinceRelease.map { String(format: "%.0f", $0) } ?? "-") step=\(f(step)) still=\(still) ticks=\(ticks) drops=\(drops) dx=\(dx.map(f) ?? "-") land=\(land.map { "\(f($0.x)),\(f($0.y))" } ?? "-") uk=\(uikit ? 1 : 0) held=\(held ?? "-") scroll=\(scrolled) gapLeft=\(gapLeft.map(f) ?? "-") fo=\(f(foldOverlap)) ev=\(calls.joined(separator: ">"))"
+        view.accessibilityValue = "pd=\(sinceRelease.map { String(format: "%.0f", $0) } ?? "-") step=\(f(step)) still=\(still) ticks=\(ticks) drops=\(drops) dx=\(dx.map(f) ?? "-") land=\(land.map { "\(f($0.x)),\(f($0.y))" } ?? "-") uk=\(uikit ? 1 : 0) held=\(held ?? "-") scroll=\(scrolled) gapLeft=\(gapLeft.map(f) ?? "-") fo=\(f(foldOverlap)) hl=\(highlight.map(String.init) ?? "-") ev=\(calls.joined(separator: ">"))"
     }
 
     // MARK: The copy against the finger (with -dragTrace YES, published with -dragProbe YES)

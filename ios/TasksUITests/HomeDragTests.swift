@@ -163,6 +163,35 @@ final class HomeDragTests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["detailList"].waitForExistence(timeout: 3), "a tap opens its details")
     }
 
+    /// A row dragged away leaves its place clean as the drag begins: UIKit's click highlight of it (the menu's first
+    /// stage, a picture of the row over its place) is gone at once, on Home and in a list, for a task and a heading. Cut
+    /// with the menu, it stayed for about 430 ms over the row's old place (the phone, d7d4b22).
+    func testADraggedRowLeavesNoHighlightBehind() {
+        func drag(_ e: XCUIElement, _ name: String) {
+            let a = at(e)
+            quick {
+                a.press(forDuration: 0.5, thenDragTo: a.withOffset(CGVector(dx: 0, dy: 110)),
+                        withVelocity: XCUIGestureVelocity(rawValue: 150), thenHoldForDuration: 0.4)
+                sleep(2)
+            }
+            let p = probe()
+            XCTAssertTrue((p["ev"] ?? "").contains("begin"), "\(name): the drag began (\(p))")
+            XCTAssertEqual(p["hl"], "0", "\(name): UIKit's highlight of the row was still up 100 ms into the drag (\(p))")
+        }
+        launchHome()
+        drag(row("Tasks app"), "a list on Home")
+        app.terminate()
+        app.launchArguments += ["-screen", "list:phys"]
+        app.launch()
+        let task = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
+        XCTAssertTrue(task.waitForExistence(timeout: 10))
+        sleep(1)
+        drag(task, "a task")
+        let labs = app.descendants(matching: .any).matching(identifier: "heading").matching(NSPredicate(format: "label == %@", "Labs")).firstMatch
+        XCTAssertTrue(labs.exists)
+        drag(labs, "a heading")
+    }
+
     /// Seven drags back to back, fast, with no wait: every drop lands with the rows at their places, and afterwards
     /// every list shows, in one column, no row hidden or moved.
     func testBackToBackFastDragsOnHome() {

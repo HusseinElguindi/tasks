@@ -499,6 +499,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         b.ticked = at
         drag = b
         DragMenu.cut(cv, keeping: press)
+        DragHighlight.clear(cv)
         #if DEBUG || PERF_PROBE
         probe("begin")
         FrameProbe.dragBegan()
