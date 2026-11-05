@@ -96,6 +96,8 @@ final class CollectionDrag {
     private let feel = DragFeel()
     private var edge = EdgeScroll()
     private var gap = DragGap()
+    /// The layout's reach past the shown rect (`layoutPad`) the collection view last asked it with.
+    private var reach: CGFloat = 0
     /// Ticks from the lift to the release: the copy and the slot follow the finger, and the list's edge autoscroll.
     private var link: CADisplayLink?
     /// Items whose cells the gap has moved or hidden, put back when it closes.
@@ -168,6 +170,8 @@ final class CollectionDrag {
     private func moveGap(animated: Bool) {
         let t0 = Perf.begin(.moveGap)
         defer { Perf.end(.moveGap, t0) }
+        if layoutPad > reach { DragGap.reach(owner.cv) }
+        reach = layoutPad
         let body = {
             for case let c as TaskCell in self.owner.cv.subviews where !c.isHidden {
                 guard let id = c.itemID, self.owner.current.contains(id) else { continue }
@@ -903,6 +907,15 @@ struct DragGap {
     mutating func moved() { ends = CACurrentMediaTime() + Self.spring }
     /// How long it still runs.
     var left: TimeInterval { max(0, ends - CACurrentMediaTime()) }
+
+    /// The layout reaches further past the shown rect now (the gap opened: its `pad`): the collection view asks it
+    /// again, as a scroll would, so a row the gap moves into view is there to move (it was drawn only once the list
+    /// next scrolled: T28). The layout's own bounds-change invalidation: no row is measured again.
+    @MainActor static func reach(_ cv: UICollectionView) {
+        let l = cv.collectionViewLayout
+        l.invalidateLayout(with: l.invalidationContext(forBoundsChange: cv.bounds))
+        cv.layoutIfNeeded()
+    }
 }
 
 /// A drag's haptics (SwiftUI List's reorder and the Mac's feel): an impact at the lift; a selection tick each time the

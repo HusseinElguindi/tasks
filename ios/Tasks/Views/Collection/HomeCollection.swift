@@ -406,7 +406,10 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
     private func moveGap(animated: Bool) {
         let t0 = Perf.begin(.moveGap)
         defer { Perf.end(.moveGap, t0) }
-        layout.pad = drag?.height ?? 0
+        let pad = drag?.height ?? 0
+        let grew = pad > layout.pad
+        layout.pad = pad
+        if grew { DragGap.reach(cv) }
         let body = {
             for case let c as HomeCell in self.cv.subviews where !c.isHidden { c.placeForGap() }
         }
