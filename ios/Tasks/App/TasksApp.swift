@@ -99,6 +99,9 @@ enum LaunchArguments {
         if d.bool(forKey: "hold") { app.holdTransient = true }
         #if DEBUG
         RemoteEdit.install(app)
+        #endif
+        #if DEBUG || PERF_PROBE
+        // -frameProbe YES (and the drag's -dragTrace YES): the frame and drag logs, ios/Tools/perf/README.md.
         FrameProbe.install()
         #endif
         guard let screen = d.string(forKey: "screen") else { return }

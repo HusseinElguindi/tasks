@@ -20,7 +20,7 @@ enum KeyboardWarmUp {
     /// After launch: 1.5 s on, in the run loop's default mode (not while scrolling or tracking).
     static func schedule(after delay: TimeInterval = 1.5) {
         guard !done else { return }
-        #if DEBUG
+        #if DEBUG || PERF_PROBE
         if UserDefaults.standard.bool(forKey: "noKeyboardWarmUp") { return }
         #endif
         let t = Timer(timeInterval: delay, repeats: false) { _ in MainActor.assumeIsolated { run() } }
@@ -36,6 +36,10 @@ enum KeyboardWarmUp {
             return
         }
         done = true
+        #if DEBUG || PERF_PROBE
+        let t0 = CACurrentMediaTime()
+        defer { FrameProbe.mark(String(format: "keyboardWarmUp %.1f ms", (CACurrentMediaTime() - t0) * 1000)) }
+        #endif
         let f = UITextField(frame: CGRect(x: -10_000, y: 0, width: 10, height: 10))
         f.inputView = UIView(frame: .zero)
         f.inputAssistantItem.leadingBarButtonGroups = []

@@ -165,6 +165,8 @@ final class CollectionDrag {
 
     /// Each shown cell's transform, set directly (a cell that comes into view takes its own in `cellDidApply`).
     private func moveGap(animated: Bool) {
+        let t0 = Perf.begin(.moveGap)
+        defer { Perf.end(.moveGap, t0) }
         let body = {
             for case let c as TaskCell in self.owner.cv.subviews where !c.isHidden {
                 guard let id = c.itemID, self.owner.current.contains(id) else { continue }
@@ -254,9 +256,11 @@ final class CollectionDrag {
     /// day, ticks.
     private func follow() {
         guard state != nil, let session = dragSession else { return }
+        let t0 = Perf.begin(.follow)
+        defer { Perf.end(.follow, t0) }
         let cv = owner.cv!
         // Sizing that rows scrolled into view still owe is settled first, so the slots' tops have no holes.
-        cv.layoutIfNeeded()
+        Perf.measure(.layout) { cv.layoutIfNeeded() }
         guard var d = state else { return }
         let tops = slotTops(d)
         let finger = session.location(in: cv)
@@ -286,6 +290,9 @@ final class CollectionDrag {
             feel.moved()
         }
         guard s != d.slot else { return }
+        #if DEBUG || PERF_PROBE
+        DragProbe.shared.slot(s, was: d.slot, copyTop: copyTop)
+        #endif
         d.slot = s
         state = d
         moveGap(animated: true)
@@ -334,7 +341,7 @@ final class CollectionDrag {
         dropHeld(fade: false)
         makeCopy(d)
         if copy != nil { heldCopy = d.id }
-        #if DEBUG
+        #if DEBUG || PERF_PROBE
         if let v = copy, let ip = owner.dataSource.indexPath(for: d.id), let cell = owner.cv.cellForItem(at: ip) {
             DragProbe.shared.held(v, on: cell)
         }
@@ -353,7 +360,7 @@ final class CollectionDrag {
         guard heldCopy != nil, let v = copy else { heldCopy = nil; return }
         heldCopy = nil
         copy = nil
-        #if DEBUG
+        #if DEBUG || PERF_PROBE
         DragProbe.shared.call(menu ? "holdMenu" : fade ? "holdDown" : "holdDrop", in: owner.cv)
         #endif
         if fade { DragCopy.setDown(v, at: nil) {} } else { v.removeFromSuperview() }
@@ -362,7 +369,7 @@ final class CollectionDrag {
     /// UIKit's drag state of a row's cell (`TaskCell.dragStateDidChange`): back to none with no drag begun, the hold is
     /// over.
     func cellDragState(_ cell: TaskCell, _ s: UICollectionViewCell.DragState) {
-        #if DEBUG
+        #if DEBUG || PERF_PROBE
         DragProbe.shared.call("cell-\(s == .none ? "none" : s == .lifting ? "lifting" : "dragging")", in: owner.cv)
         #endif
         if s == .none, cell.itemID == heldCopy { holdEnded(menu: false) }
@@ -391,7 +398,8 @@ final class CollectionDrag {
         dragSession = session
         // The lift's haptic is UIKit's; the ticks and the drop's are ours, ready from here.
         feel.begin(in: owner.cv)
-        #if DEBUG
+        #if DEBUG || PERF_PROBE
+        DragProbe.shared.session = session
         DragProbe.shared.mark("willBegin start", in: owner.cv)
         #endif
         // The copy lifted at the hold, or (a drag from the row's open menu) a new one.
@@ -413,7 +421,7 @@ final class CollectionDrag {
         let link = CADisplayLink(target: Tick { [weak self] in self?.follow() }, selector: #selector(Tick.fire))
         link.add(to: .main, forMode: .common)
         self.link = link
-        #if DEBUG
+        #if DEBUG || PERF_PROBE
         DragProbe.shared.mark("willBegin end", in: owner.cv)
         #endif
     }
@@ -530,7 +538,7 @@ final class CollectionDrag {
         v.accessibilityIdentifier = "dragCopy"
         cv.addSubview(v)
         copy = v
-        #if DEBUG
+        #if DEBUG || PERF_PROBE
         let id = d.id
         DragProbe.shared.trace(copy: v) { [weak self] in
             guard let self, let ip = self.owner.dataSource.indexPath(for: id) else { return nil }
@@ -544,11 +552,11 @@ final class CollectionDrag {
         guard let v = copy else { landed(); return }
         copy = nil
         let origin = frame.map { CGPoint(x: $0.minX + Metric.rowInset, y: $0.minY) }
-        #if DEBUG
+        #if DEBUG || PERF_PROBE
         DragProbe.shared.released(v, home: origin)
         #endif
         DragCopy.setDown(v, at: origin) { [weak self] in
-            #if DEBUG
+            #if DEBUG || PERF_PROBE
             if let self, let id = self.landing, let ip = self.owner.dataSource.indexPath(for: id) {
                 DragProbe.shared.landed(v, on: self.owner.cv.cellForItem(at: ip))
             }
@@ -570,6 +578,11 @@ final class CollectionDrag {
 
     func didUpdate(_ session: UIDropSession) -> UICollectionViewDropProposal {
         guard state != nil, session.localDragSession != nil else { return UICollectionViewDropProposal(operation: .forbidden) }
+        let t0 = Perf.begin(.update)
+        defer { Perf.end(.update, t0) }
+        #if DEBUG || PERF_PROBE
+        DragProbe.shared.updated()
+        #endif
         dropSession = session
         state?.entered = true
         follow()
@@ -594,7 +607,7 @@ final class CollectionDrag {
 
     /// A drop UIKit didn't perform, though the finger lifted over a new slot: ours, set down the same way.
     private func drop(_ d: State) {
-        #if DEBUG
+        #if DEBUG || PERF_PROBE
         DragProbe.shared.call("ourDrop", in: owner.cv)
         #endif
         let f = write(d)
@@ -716,7 +729,7 @@ final class DragFeel {
         tick?.prepare()
         thud = UIImpactFeedbackGenerator(style: .light, view: view)
         thud?.prepare()
-        #if DEBUG
+        #if DEBUG || PERF_PROBE
         DragProbe.shared.begin(view)
         #endif
     }
@@ -724,14 +737,14 @@ final class DragFeel {
     func moved() {
         tick?.selectionChanged()
         tick?.prepare()
-        #if DEBUG
+        #if DEBUG || PERF_PROBE
         DragProbe.shared.ticks += 1
         #endif
     }
 
     func dropped() {
         thud?.impactOccurred()
-        #if DEBUG
+        #if DEBUG || PERF_PROBE
         DragProbe.shared.drops += 1
         #endif
     }
@@ -754,12 +767,12 @@ private final class Tick: NSObject {
 
 extension TaskCollectionController: UICollectionViewDragDelegate, UICollectionViewDropDelegate {
     func collectionView(_ cv: UICollectionView, itemsForBeginning session: UIDragSession, at ip: IndexPath) -> [UIDragItem] {
-        #if DEBUG
+        #if DEBUG || PERF_PROBE
         DragProbe.shared.pressed(cv)
         #endif
         let items = drag.itemsForBeginning(session, at: ip)
         probe(items.isEmpty ? "items0" : "items")
-        #if DEBUG
+        #if DEBUG || PERF_PROBE
         if !items.isEmpty, let id = dataSource.itemIdentifier(for: ip) {
             DragProbe.shared.lift(cv) { [weak self] in self?.dataSource.indexPath(for: id).flatMap { self?.cv.cellForItem(at: $0) } }
         }
@@ -770,7 +783,7 @@ extension TaskCollectionController: UICollectionViewDragDelegate, UICollectionVi
     func collectionView(_ cv: UICollectionView, dragPreviewParametersForItemAt ip: IndexPath) -> UIDragPreviewParameters? {
         probe("params")
         let p = drag.previewParameters(at: ip)
-        #if DEBUG
+        #if DEBUG || PERF_PROBE
         if let p { DragProbe.shared.liftPreview(p) }
         #endif
         return p
@@ -818,33 +831,51 @@ extension TaskCollectionController: UICollectionViewDragDelegate, UICollectionVi
     }
 
     func mark(_ s: String) {
-        #if DEBUG
+        #if DEBUG || PERF_PROBE
         DragProbe.shared.mark(s, in: cv)
         #endif
     }
 
     /// Debug only: the call, in DragProbe's log (`-dragProbe`).
     func probe(_ s: String) {
-        #if DEBUG
+        #if DEBUG || PERF_PROBE
         DragProbe.shared.call(s, in: cv)
         #endif
     }
 }
 
-#if DEBUG
-/// Debug only. `-dragProbe YES` (FlowTests): what the last drag did, as the collection view's accessibility value
+#if DEBUG || PERF_PROBE
+/// Debug builds and the phone's measuring build (`PERF_PROBE`, ios/Tools/perf/README.md) only.
+/// `-dragProbe YES` (FlowTests): what the last drag did, as the collection view's accessibility value
 /// (identifier "dragProbe"), read once it's over: "ticks=3 drops=1 dx=80.0 land=0.0,0.0 ev=items>…" (the haptic ticks
 /// and drops; the copy's sideways offset from the row's place as the finger lifted; the copy's last frame against the
 /// row cell's; the drag and drop delegate calls since the lift, "ourDrop" a flick's drop of ours).
-/// `-dragTrace YES` (DragFilmTests): from each lift to 0.5 s after its set-down, every frame of the copy (presentation
-/// origin and size, opacity, shadow opacity, scale) and of the row under it (its cell's origin, its content's opacity),
-/// and any view UIKit shows outside the app's root view (its drag and drop previews), to tmp/drag-trace.log in the
-/// app's container.
+/// `-dragTrace YES` (DragFilmTests, the phone): from each lift to 0.5 s after its set-down, every frame, to
+/// tmp/drag-trace.log in the app's container: "F <epoch s> copy=x,y,w,h a= sh= sc= cm=<model y> row=x,y ra= fg=<the
+/// drag session's finger x,y in the list> u=<drop updates since the last frame> tc=<the app's own touch x,y in the
+/// list, until the drag begins> g=<item>:<model ty>:<shown ty>[h],…"
+/// (each shown cell the gap moves or hides: its transform as set, and as drawn now; h: hidden). Marks: "M <epoch s>
+/// …" (delegate calls, "slot <new> was <old> at <copy top>", the copy's release and landing). With `-dragTraceUIKit
+/// YES` (DragFilmTests) also any view UIKit shows outside the app's root view (its drag and drop previews): a walk of
+/// every window's views, each frame, too slow to measure frame times with.
 @MainActor
 final class DragProbe {
     static let shared = DragProbe()
     private let probing = UserDefaults.standard.bool(forKey: "dragProbe")
     private let tracing = UserDefaults.standard.bool(forKey: "dragTrace")
+    private let tracingUIKit = UserDefaults.standard.bool(forKey: "dragTraceUIKit")
+    /// The drag session under way (its finger, each frame).
+    weak var session: (any UIDragSession)?
+    /// Drop session updates since the last frame.
+    private var updates = 0
+
+    /// A drop session update reached the list.
+    func updated() { updates += 1 }
+
+    /// The gap moved to a new slot.
+    func slot(_ s: Int?, was: Int?, copyTop: CGFloat) {
+        mark("slot \(s.map(String.init) ?? "-") was \(was.map(String.init) ?? "-") at \(f(copyTop))")
+    }
 
     var ticks = 0 { didSet { publish() } }
     var drops = 0 { didSet { publish() } }
@@ -953,14 +984,10 @@ final class DragProbe {
     private var until = CFTimeInterval.infinity
     private var lines: [String] = []
     private var lastUI = ""
-    private lazy var file: FileHandle? = {
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("drag-trace.log")
-        if !FileManager.default.fileExists(atPath: url.path) { FileManager.default.createFile(atPath: url.path, contents: nil) }
-        let h = try? FileHandle(forWritingTo: url)
-        _ = try? h?.seekToEnd()
-        return h
-    }()
-    private let epoch = Date().timeIntervalSince1970 - CACurrentMediaTime()
+    private lazy var file: FileHandle? = Trace.open("drag-trace.log")
+    private let disk = DispatchQueue(label: "dragProbe.disk", qos: .utility)
+    /// FrameProbe's, so the two logs line up.
+    private let epoch = FrameProbe.epoch
 
     func trace(copy v: UIView?, row: @escaping () -> UIView?) {
         guard tracing else { return }
@@ -987,7 +1014,8 @@ final class DragProbe {
             }
             for i in list.interactions { mark("interaction \(type(of: i))") }
         }
-        trace(copy: nil, row: row)
+        // The copy lifted already (CollectionDrag.lift, before this) stays traced.
+        trace(copy: copy, row: row)
     }
 
     func mark(_ s: String, in v: UIView) {
@@ -997,25 +1025,50 @@ final class DragProbe {
 
     private func mark(_ s: String) {
         guard tracing else { return }
-        lines.append(String(format: "M %.4f ", Date().timeIntervalSince1970) + s)
+        lines.append(String(format: "M %.4f ", CACurrentMediaTime() + epoch) + s)
     }
 
     private func frame() {
+        let t0 = Perf.begin(.probe)
+        defer { Perf.end(.probe, t0) }
         let now = CACurrentMediaTime()
         var out = String(format: "F %.4f", now + epoch)
         if let c = copy, c.superview != nil {
             let p = c.layer.presentation() ?? c.layer
             let sc = sqrt(p.transform.m11 * p.transform.m11 + p.transform.m12 * p.transform.m12)
-            out += " copy=\(f(p.frame.minX)),\(f(p.frame.minY)),\(f(p.frame.width)),\(f(p.frame.height)) a=\(f2(p.opacity)) sh=\(f2(p.shadowOpacity)) sc=\(f2(Float(sc)))"
+            out += " copy=\(f(p.frame.minX)),\(f(p.frame.minY)),\(f(p.frame.width)),\(f(p.frame.height)) a=\(f2(p.opacity)) sh=\(f2(p.shadowOpacity)) sc=\(f2(Float(sc))) cm=\(f(c.frame.minY))"
         }
         if let cell = row() {
             let p = cell.layer.presentation() ?? cell.layer
             let ca = (cell as? UICollectionViewCell).map { $0.contentView.layer.presentation()?.opacity ?? $0.contentView.layer.opacity } ?? 1
             out += " row=\(f(p.frame.minX)),\(f(p.frame.minY)) ra=\(f2(ca))"
         }
+        if let cv = view as? UICollectionView {
+            if let s = session {
+                let p = s.location(in: cv)
+                out += " fg=\(f(p.x)),\(f(p.y))"
+            }
+            out += " u=\(updates)"
+            // The finger as the app's own touch, until UIKit hands it to the system as the drag begins.
+            if let t = FrameProbe.touch {
+                let q = t.window.convert(t.point, to: cv)
+                out += " tc=\(f(q.x)),\(f(q.y))"
+            }
+            // The gap: each shown cell moved or hidden, its transform as set and as drawn.
+            var g: [String] = []
+            for case let c as UICollectionViewCell in cv.subviews where !c.isHidden {
+                let model = c.transform.ty
+                let shown = (c.layer.presentation() ?? c.layer).affineTransform().ty
+                let hidden = c.contentView.alpha < 0.01
+                guard model != 0 || shown != 0 || hidden, let ip = cv.indexPath(for: c) else { continue }
+                g.append("\(ip.item):\(f(model)):\(f(shown))\(hidden ? "h" : "")")
+            }
+            if !g.isEmpty { out += " g=" + g.joined(separator: ",") }
+        }
+        updates = 0
         // UIKit's previews: whatever is shown in the scene's windows outside the app's root view, and any preview,
         // platter or portal view anywhere in them (its frame in the window, opacity, scale).
-        if let scene = copy?.window?.windowScene ?? view?.window?.windowScene {
+        if tracingUIKit, let scene = copy?.window?.windowScene ?? view?.window?.windowScene {
             var ui: [String] = []
             for w in scene.windows where !w.isHidden {
                 let root = w.rootViewController?.view
@@ -1060,9 +1113,11 @@ final class DragProbe {
     }
 
     private func flush() {
-        guard !lines.isEmpty else { return }
-        file?.write(Data((lines.joined(separator: "\n") + "\n").utf8))
-        lines.removeAll()
+        guard !lines.isEmpty, let file else { return }
+        let data = Data((lines.joined(separator: "\n") + "\n").utf8)
+        lines.removeAll(keepingCapacity: true)
+        let h = Trace.Handle(file)
+        disk.async { h.write(data) }
     }
 }
 

@@ -261,6 +261,8 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
     // MARK: Cells
 
     private func configure(_ cell: TaskCell, _ id: String) {
+        let t0 = Perf.begin(.configure)
+        defer { Perf.end(.configure, t0) }
         cell.itemID = id
         cell.owner = self
         cell.backgroundConfiguration = .clear()
@@ -318,6 +320,8 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
     /// (`CollectionFold.animate`), anything else on Motion.layout's spring. `done` runs once the update has ended.
     func apply(_ items: [String], fold: CollectionFold.Plan? = nil, animation: Animation?, done: (() -> Void)? = nil) {
         guard items != current else { done?(); return }
+        let t0 = Perf.begin(.apply)
+        defer { Perf.end(.apply, t0) }
         let old = current
         current = items
         justInserted = Set(items).subtracting(old)
@@ -493,6 +497,8 @@ final class TaskCell: UICollectionViewListCell {
     weak var owner: TaskCollectionController?
 
     override func apply(_ a: UICollectionViewLayoutAttributes) {
+        let t0 = MainActor.assumeIsolated { Perf.begin(.cellApply) }
+        defer { MainActor.assumeIsolated { Perf.end(.cellApply, t0) } }
         super.apply(a)
         MainActor.assumeIsolated { owner?.cellDidApply(self, a) }
     }
@@ -500,6 +506,18 @@ final class TaskCell: UICollectionViewListCell {
     override func prepareForReuse() {
         super.prepareForReuse()
         MainActor.assumeIsolated { owner?.cellWillReuse(self) }
+    }
+
+    override func layoutSubviews() {
+        let t0 = MainActor.assumeIsolated { Perf.begin(.cellLayout) }
+        defer { MainActor.assumeIsolated { Perf.end(.cellLayout, t0) } }
+        super.layoutSubviews()
+    }
+
+    override func preferredLayoutAttributesFitting(_ a: UICollectionViewLayoutAttributes) -> UICollectionViewLayoutAttributes {
+        let t0 = MainActor.assumeIsolated { Perf.begin(.cellSize) }
+        defer { MainActor.assumeIsolated { Perf.end(.cellSize, t0) } }
+        return super.preferredLayoutAttributesFitting(a)
     }
 
     /// While UIKit has this cell in a drag (lifting, dragging, a refused drop's ~1 s set-down) it draws it at half

@@ -16,7 +16,7 @@ final class DragFilmTests: XCTestCase {
         app = XCUIApplication()
         // -dragTrace: the app's own frame log of the copy and the row under it (CollectionDrag's DragProbe).
         app.launchArguments = ["-sampleData", "YES", "-appearance", "dark", "-style", "classic", "-screen", "list:phys",
-                               "-dragTrace", "YES"]
+                               "-dragTrace", "YES", "-dragTraceUIKit", "YES"]
     }
 
     func mark(_ s: String) { print(String(format: "FILM %@ %.3f", s, Date().timeIntervalSince1970)) }

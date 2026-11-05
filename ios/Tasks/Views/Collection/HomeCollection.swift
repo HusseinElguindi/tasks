@@ -157,6 +157,8 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
     // MARK: Cells
 
     private func configure(_ cell: HomeCell, _ id: String) {
+        let t0 = Perf.begin(.configure)
+        defer { Perf.end(.configure, t0) }
         cell.itemID = id
         cell.owner = self
         cell.backgroundConfiguration = .clear()
@@ -192,6 +194,8 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
     /// The items, at once, or on Motion.layout's spring (a list added, deleted or restored, the sync line).
     private func apply(_ items: [String], animated: Bool) {
         guard items != current else { return }
+        let t0 = Perf.begin(.apply)
+        defer { Perf.end(.apply, t0) }
         let old = current
         current = items
         var snap = NSDiffableDataSourceSnapshot<Int, String>()
@@ -340,7 +344,9 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
     /// slot; over the list, the gap follows the copy's y, at the slot whose top is nearest the copy's. A new slot ticks.
     private func follow() {
         guard var d = drag, let session = dragSession else { return }
-        cv.layoutIfNeeded()
+        let t0 = Perf.begin(.follow)
+        defer { Perf.end(.follow, t0) }
+        Perf.measure(.layout) { cv.layoutIfNeeded() }
         let tops = slotTops(d)
         let finger = session.location(in: cv)
         var copyTop = finger.y - d.grab.y
@@ -357,6 +363,9 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
             feel.moved()
         }
         guard s != d.slot else { return }
+        #if DEBUG || PERF_PROBE
+        DragProbe.shared.slot(s, was: d.slot, copyTop: copyTop)
+        #endif
         d.slot = s
         drag = d
         moveGap(animated: true)
@@ -365,6 +374,8 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
     /// Each shown cell's transform for the gap, set directly (an invalidated layout would measure every hosting cell
     /// again), on Motion.layout's spring. A cell that comes into view takes its place in `HomeCell.apply`.
     private func moveGap(animated: Bool) {
+        let t0 = Perf.begin(.moveGap)
+        defer { Perf.end(.moveGap, t0) }
         layout.pad = drag?.height ?? 0
         let body = {
             for case let c as HomeCell in self.cv.subviews where !c.isHidden { c.placeForGap() }
@@ -380,7 +391,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
     }
 
     func collectionView(_ cv: UICollectionView, itemsForBeginning session: UIDragSession, at ip: IndexPath) -> [UIDragItem] {
-        #if DEBUG
+        #if DEBUG || PERF_PROBE
         DragProbe.shared.pressed(cv)
         #endif
         guard !holds, let id = dataSource.itemIdentifier(for: ip), id.hasPrefix("l:"), let f = layout.modelFrame(ip.item) else {
@@ -411,7 +422,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         dropHeld(fade: false)
         makeCopy(d)
         if copyView != nil { heldCopy = d.id }
-        #if DEBUG
+        #if DEBUG || PERF_PROBE
         if let v = copyView, let ip = dataSource.indexPath(for: d.id), let cell = cv.cellForItem(at: ip) {
             DragProbe.shared.held(v, on: cell)
         }
@@ -455,6 +466,9 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         d.ticked = at
         drag = d
         dragSession = session
+        #if DEBUG || PERF_PROBE
+        DragProbe.shared.session = session
+        #endif
         // The lift's haptic is UIKit's; the ticks and the drop's are ours, ready from here.
         feel.begin(in: cv)
         // The copy lifted at the hold, or (a drag from the list's open menu) a new one.
@@ -486,7 +500,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
             DispatchQueue.main.async { [weak self] in self?.letGo() }
         }
         let p = DragCopy.invisibleParameters
-        #if DEBUG
+        #if DEBUG || PERF_PROBE
         DragProbe.shared.liftPreview(p)
         #endif
         return p
@@ -515,6 +529,11 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
     func collectionView(_ cv: UICollectionView, dropSessionDidUpdate session: UIDropSession,
                         withDestinationIndexPath dest: IndexPath?) -> UICollectionViewDropProposal {
         guard session.localDragSession != nil, drag != nil else { return UICollectionViewDropProposal(operation: .forbidden) }
+        let t0 = Perf.begin(.update)
+        defer { Perf.end(.update, t0) }
+        #if DEBUG || PERF_PROBE
+        DragProbe.shared.updated()
+        #endif
         dropSession = session
         drag?.entered = true
         follow()
@@ -599,7 +618,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
 
     /// Debug only: the call, in DragProbe's log (`-dragProbe`).
     private func probe(_ s: String) {
-        #if DEBUG
+        #if DEBUG || PERF_PROBE
         DragProbe.shared.call(s, in: cv)
         #endif
     }
@@ -629,7 +648,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         v.accessibilityElementsHidden = true
         cv.addSubview(v)
         copyView = v
-        #if DEBUG
+        #if DEBUG || PERF_PROBE
         let id = d.id
         DragProbe.shared.trace(copy: v) { [weak self] in
             guard let self, let ip = self.dataSource.indexPath(for: id) else { return nil }
@@ -649,11 +668,11 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         guard let v = copyView else { done(); return }
         copyView = nil
         let origin = frame.map { CGPoint(x: $0.minX + Metric.rowInset, y: $0.minY) }
-        #if DEBUG
+        #if DEBUG || PERF_PROBE
         DragProbe.shared.released(v, home: origin)
         #endif
         DragCopy.setDown(v, at: origin) { [weak self] in
-            #if DEBUG
+            #if DEBUG || PERF_PROBE
             if let self, let id = self.landing, let ip = self.dataSource.indexPath(for: id) {
                 DragProbe.shared.landed(v, on: self.cv.cellForItem(at: ip))
             }
@@ -708,6 +727,8 @@ final class HomeCell: UICollectionViewListCell {
     }
 
     override func apply(_ a: UICollectionViewLayoutAttributes) {
+        let t0 = MainActor.assumeIsolated { Perf.begin(.cellApply) }
+        defer { MainActor.assumeIsolated { Perf.end(.cellApply, t0) } }
         super.apply(a)
         // Laid out again (or into view) mid-drag, it takes its place in the gap again.
         let gap = MainActor.assumeIsolated { owner?.gapOn ?? false }
@@ -718,5 +739,17 @@ final class HomeCell: UICollectionViewListCell {
         super.prepareForReuse()
         transform = .identity
         contentView.alpha = 1
+    }
+
+    override func layoutSubviews() {
+        let t0 = MainActor.assumeIsolated { Perf.begin(.cellLayout) }
+        defer { MainActor.assumeIsolated { Perf.end(.cellLayout, t0) } }
+        super.layoutSubviews()
+    }
+
+    override func preferredLayoutAttributesFitting(_ a: UICollectionViewLayoutAttributes) -> UICollectionViewLayoutAttributes {
+        let t0 = MainActor.assumeIsolated { Perf.begin(.cellSize) }
+        defer { MainActor.assumeIsolated { Perf.end(.cellSize, t0) } }
+        return super.preferredLayoutAttributesFitting(a)
     }
 }
