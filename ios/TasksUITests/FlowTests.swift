@@ -2783,6 +2783,56 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(app.textViews["listNotes"].waitForExistence(timeout: 3), "a tap on them still edits them")
     }
 
+    /// A heading with notes dragged off its place and let go there again (refused: it goes home) leaves its notes as
+    /// they were: a tap on them edits them, the field shown and the keyboard up (the phone, 02d4100: Done showed, but
+    /// no field and no keyboard).
+    func testNotesOfAHeadingDraggedHomeStillEdit() {
+        app.launchArguments += ["-dragProbe", "YES", "-dragTrace", "YES"]
+        openPhys()
+        for (h, text) in [("Labs", "Bring the goggles"), ("Exam prep", "Formula sheet first")] {
+            menuOpen {
+                heading(h).press(forDuration: 1.0)
+                app.buttons["Add Notes"].tap()
+            }
+            XCTAssertTrue(app.textViews["headingNotes"].waitForExistence(timeout: 3))
+            app.typeText(text)
+            app.buttons["Done"].tap()
+            sleep(1)
+        }
+        let notes = app.staticTexts["Formula sheet first"].firstMatch
+        XCTAssertTrue(notes.waitForExistence(timeout: 3))
+        // Let go at its own place twice (refused: home), then dropped above Labs (written): each time its notes edit.
+        let origin = app.coordinate(withNormalizedOffset: .zero)
+        let cases: [(String, String?, Bool)] = [("up 25 pt and let go", nil, true), ("up 25 pt, held, let go", nil, true),
+                                                ("dropped above Labs", "Labs", false)]
+        for (what, to, home) in cases {
+            let exam = heading("Exam prep")
+            let a = origin.withOffset(CGVector(dx: exam.frame.midX, dy: exam.frame.midY))
+            let b = to.map { origin.withOffset(CGVector(dx: exam.frame.midX, dy: heading($0).frame.minY)) } ?? a.withOffset(CGVector(dx: 0, dy: -25))
+            menuOpen {
+                a.press(forDuration: 0.5, thenDragTo: b, withVelocity: XCUIGestureVelocity(rawValue: 150), thenHoldForDuration: what.contains("held") ? 1.0 : 0.3)
+                sleep(2)
+            }
+            let ev = probe()["ev"] ?? ""
+            print("DRAG \(what) probe=\(probe())")
+            XCTAssertTrue(ev.contains(home ? ">home" : ">drop"), "\(what): \(home ? "refused, home" : "dropped") (\(ev))")
+            let n = app.staticTexts["Formula sheet first"].firstMatch
+            XCTAssertTrue(n.waitForExistence(timeout: 3), "\(what): the notes show")
+            print("NOTES \(what) frame=\(n.frame) hittable=\(n.isHittable)")
+            n.tap()
+            let field = app.textViews["headingNotes"]
+            let shown = field.waitForExistence(timeout: 3)
+            sleep(1)
+            print("EDIT \(what) field=\(shown) frame=\(shown ? field.frame : .zero) keyboard=\(app.keyboards.count) done=\(app.buttons["Done"].exists)")
+            XCTAssertTrue(shown, "\(what): a tap on the notes edits them")
+            if shown { XCTAssertTrue(field.frame.height > 20 && field.isHittable, "\(what): the field shows (\(field.frame))") }
+            XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3), "\(what): the keyboard is up")
+            if app.buttons["Done"].exists { app.buttons["Done"].tap() }
+            // Unfixed, Done leaves it as it was: the notes as they are, so the next case still runs.
+            sleep(1)
+        }
+    }
+
     /// A heading with no tasks takes a drop over its row or the air above the next heading: the top of its section.
     func testADropIntoAnEmptyHeading() {
         openPhys()

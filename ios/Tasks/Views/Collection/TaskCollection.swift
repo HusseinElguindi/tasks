@@ -171,7 +171,7 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
     /// The items applied, and the latest asked for (applied unless an area holds updates back, as a drag does).
     private(set) var current: [String] = []
     private(set) var wanted: [String] = []
-    /// Items the last apply inserted.
+    /// Items the current `update`'s apply inserted (configured with their new signatures, so not resized by it).
     private(set) var justInserted: Set<String> = []
     /// Each resizable row's height signature as last configured (`CollectionEditing`).
     var sizes: [String: String] = [:]
@@ -309,6 +309,10 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
         wanted = made.ids
         let fold = fold.plan(from: current, to: made.ids)
         let holding = drag.holdsUpdates
+        // Only this update's inserts are new here: an apply of the drag's own (its unfold after a refused heading
+        // drop, its write) left its inserts in `justInserted`, and the heading's notes, tapped next, were never
+        // resized into their editor (Done showed, no field, no keyboard: the phone, 02d4100).
+        justInserted = []
         if !holding { apply(made.ids, fold: fold, animation: animation) } else if let fold { heldFold = fold }
         let changed = new.keys.filter { new[$0] != before[$0] && before[$0] != nil && current.contains($0) && !justInserted.contains($0) }
         sizes = new
