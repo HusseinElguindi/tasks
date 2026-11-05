@@ -2814,13 +2814,13 @@ final class FlowTests: XCTestCase {
                 heading(h).press(forDuration: 1.0)
                 app.buttons["Add Notes"].tap()
             }
-            XCTAssertTrue(app.textViews["headingNotes"].waitForExistence(timeout: 3))
+            XCTAssertTrue(app.textViews["headingNotes"].appears(timeout: 3))
             app.typeText(text)
             app.buttons["Done"].tap()
-            sleep(1)
+            app.settle()
         }
         let notes = app.staticTexts["Formula sheet first"].firstMatch
-        XCTAssertTrue(notes.waitForExistence(timeout: 3))
+        XCTAssertTrue(notes.appears(timeout: 3))
         // Let go at its own place twice (refused: home), then dropped above Labs (written): each time its notes edit.
         let origin = app.coordinate(withNormalizedOffset: .zero)
         let cases: [(String, String?, Bool)] = [("up 25 pt and let go", nil, true), ("up 25 pt, held, let go", nil, true),
@@ -2837,16 +2837,16 @@ final class FlowTests: XCTestCase {
             print("DRAG \(what) probe=\(probe())")
             XCTAssertTrue(ev.contains(home ? ">home" : ">drop"), "\(what): \(home ? "refused, home" : "dropped") (\(ev))")
             let n = app.staticTexts["Formula sheet first"].firstMatch
-            XCTAssertTrue(n.waitForExistence(timeout: 3), "\(what): the notes show")
+            XCTAssertTrue(n.appears(timeout: 3), "\(what): the notes show")
             print("NOTES \(what) frame=\(n.frame) hittable=\(n.isHittable)")
             n.tap()
             let field = app.textViews["headingNotes"]
-            let shown = field.waitForExistence(timeout: 3)
-            sleep(1)
+            let shown = field.appears(timeout: 3)
+            app.settle()
             print("EDIT \(what) field=\(shown) frame=\(shown ? field.frame : .zero) keyboard=\(app.keyboards.count) done=\(app.buttons["Done"].exists)")
             XCTAssertTrue(shown, "\(what): a tap on the notes edits them")
             if shown { XCTAssertTrue(field.frame.height > 20 && field.isHittable, "\(what): the field shows (\(field.frame))") }
-            XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3), "\(what): the keyboard is up")
+            XCTAssertTrue(app.keyboards.firstMatch.appears(timeout: 3), "\(what): the keyboard is up")
             if app.buttons["Done"].exists { app.buttons["Done"].tap() }
             // Unfixed, Done leaves it as it was: the notes as they are, so the next case still runs.
             sleep(1)
