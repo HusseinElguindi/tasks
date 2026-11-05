@@ -82,7 +82,7 @@ struct SourceRow: View {
 
     var body: some View {
         let current = sidebar && app.selection == source
-        Button { app.open(source) } label: {
+        Button { if PressGate.allows { app.open(source) } } label: {
             let counted = (count ?? 0) > 0
             HStack(spacing: 0) {
                 app.tile(for: source, palette: p)

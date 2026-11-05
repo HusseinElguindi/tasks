@@ -30,7 +30,7 @@ struct TaskRow: View {
     private var selecting: Bool { app.isSelecting(source) }
 
     var body: some View {
-        Button { if selecting { app.toggleSelected(task.id) } else { open() } } label: {
+        Button { guard PressGate.allows else { return }; if selecting { app.toggleSelected(task.id) } else { open() } } label: {
             // The flash (COLOR.md §4, the Mac's `sparkFlashT`): 700 ms ease-out, only for a check made here; none under
             // Reduce Motion, where the title takes ink-tertiary at once.
             KeyframeAnimator(initialValue: 0.0, trigger: flashes) { heat in
@@ -52,7 +52,7 @@ struct TaskRow: View {
         HStack(spacing: 0) {
             Checkbox(checked: done, title: title, cue: app.cue(task, in: source), readOnly: trashed, sparks: sparks,
                      quiet: app.quietChecks.contains(task.id)) {
-                app.toggle(task.id)
+                if PressGate.allows { app.toggle(task.id) }
             }
             // In select mode it keeps its ring and cue, and takes no tap of its own: one gesture, one meaning (IX §2.1).
             .allowsHitTesting(!selecting)
@@ -231,7 +231,7 @@ struct HeadingRow: View {
 
     /// Down when open, right when collapsed, turning in 200 ms ease-out.
     private var chevron: some View {
-        Button { app.toggleCollapse(heading.id) } label: {
+        Button { if PressGate.allows { app.toggleCollapse(heading.id) } } label: {
             Image(systemName: "chevron.right")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(p.inkTertiary)

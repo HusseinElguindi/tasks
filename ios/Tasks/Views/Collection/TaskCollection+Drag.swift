@@ -14,7 +14,8 @@ import UIKit
 //   clock: it opens about 0.8 s into a still hold. The lift (0.35 s) comes first, our copy on the row's exact frame, a
 //   haptic of ours. Still until 0.8 s, and the menu opens: the copy fades under its preview (`menuOpened`). Moved more
 //   than 10 pt from where it lifted, it's a drag (`begin`): the gap opens, and the menu is cut for this touch
-//   (`DragMenu.cut`). The row's own button lets the touch go at the lift (`DragMenu.release`), so no release opens it.
+//   (`DragMenu.cut`). The row's own button lets the touch go at the lift (`DragMenu.release`), so no release opens it,
+//   and a lifted row's buttons ask `PressGate` first: let go right after the lift, the row still took a tap (T28).
 // - Scrolls and swipes: before the lift, a move past 10 pt fails the press, and the list's pan or a row's swipe (pans
 //   both) takes the touch as before. Once lifted, no pan begins: the list scrolls only by our edge autoscroll
 //   (`EdgeScroll`), near its top and bottom.
@@ -696,6 +697,7 @@ final class PressDrag: UIGestureRecognizer, UIGestureRecognizerDelegate {
         guard touches.count == 1, let t = touches.first else { state = .failed; return }
         finger = t
         start = t.location(in: nil)
+        PressGate.touched()
         touched()
         let timer = Timer(timeInterval: Self.hold, repeats: false) { [weak self] _ in
             MainActor.assumeIsolated { self?.held() }
@@ -723,11 +725,13 @@ final class PressDrag: UIGestureRecognizer, UIGestureRecognizerDelegate {
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent) {
         guard let t = finger, touches.contains(t) else { return }
+        if state != .possible { PressGate.ended() }
         state = state == .possible ? .failed : .ended
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent) {
         guard let t = finger, touches.contains(t) else { return }
+        if state != .possible { PressGate.ended() }
         state = state == .possible ? .failed : .cancelled
     }
 
@@ -743,6 +747,25 @@ final class PressDrag: UIGestureRecognizer, UIGestureRecognizerDelegate {
     func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
         other.view === view && !(other is UIPanGestureRecognizer)
     }
+}
+
+/// A lifted row's own taps, held off for the touch that lifted it. Let go right after the lift (before the row's menu,
+/// about 0.41 s in), the row's SwiftUI button still took the touch's end as its tap, and the row opened (its list on
+/// Home, its details in a list: T28). Neither turning its recognizers off and on (`DragMenu.release`) nor its content's
+/// `isUserInteractionEnabled` stops that: SwiftUI's button follows the touch on its own. So the buttons of the rows
+/// that lift (a list on Home; a task, its box and a heading's chevron) ask here first: a press that lifted ends their
+/// tap for a moment (the button's action runs in the same touch-up, after our press ends), and the next touch-down
+/// clears it. With no touch (VoiceOver's double-tap) nothing is held.
+@MainActor
+enum PressGate {
+    private static var until: CFTimeInterval = 0
+
+    /// Our press lifted a row, and its finger has just lifted or been taken.
+    static func ended() { until = CACurrentMediaTime() + 0.3 }
+    /// A finger landed: a new touch, whose taps are its own.
+    static func touched() { until = 0 }
+    /// May a row's button act now? Not in the touch-up of a press that lifted.
+    static var allows: Bool { CACurrentMediaTime() >= until }
 }
 
 /// A drag's edge autoscroll (the task lists' and Home's), in place of UIKit's: with the finger near the list's top (its
