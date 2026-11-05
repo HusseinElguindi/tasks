@@ -352,7 +352,7 @@ final class CollectionDrag {
 
     /// A finger is down: the haptics are made ready, so the lift's isn't late.
     private func touched() {
-        feel.prepare(in: owner.cv)
+        feel.touched(in: owner.cv)
         #if DEBUG || PERF_PROBE
         DragProbe.shared.pressed(owner.cv)
         #endif
@@ -1036,6 +1036,24 @@ final class DragFeel {
         tick?.prepare()
         thud?.prepare()
     }
+
+    /// A finger landed on the list (any touch: a tap, a scroll, a press): the haptics are made ready for a lift.
+    func touched(in view: UIView) {
+        #if DEBUG || PERF_PROBE
+        // `-noFeelPrepare YES` (the phone's A/B for T26 #4, a 30-45 ms pass 0.4-0.6 s after touch-ups): nothing is
+        // prepared at touch-down; the lift still prepares its own (`lifted`), just before its impact.
+        if Self.noTouchPrepare { return }
+        #endif
+        prepare(in: view)
+    }
+
+    #if DEBUG || PERF_PROBE
+    private static let noTouchPrepare: Bool = {
+        let on = UserDefaults.standard.bool(forKey: "noFeelPrepare")
+        if on { FrameProbe.mark("noFeelPrepare") }
+        return on
+    }()
+    #endif
 
     func lifted(in view: UIView) {
         prepare(in: view)

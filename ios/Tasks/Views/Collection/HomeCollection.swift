@@ -334,7 +334,7 @@ final class HomeCollectionController: UIViewController, UICollectionViewDelegate
         p.canLift = { [weak self] at in self?.list(at: at) != nil }
         p.touched = { [weak self] in
             guard let self else { return }
-            self.feel.prepare(in: self.cv)
+            self.feel.touched(in: self.cv)
             #if DEBUG || PERF_PROBE
             DragProbe.shared.pressed(self.cv)
             #endif
