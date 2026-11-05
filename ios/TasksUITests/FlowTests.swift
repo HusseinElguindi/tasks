@@ -1929,6 +1929,26 @@ final class FlowTests: XCTestCase {
         }
     }
 
+    /// A heading's lifted copy is its row's fill, without the air above its rule (as the Mac's and as its menu's
+    /// preview are), on its exact place, and it stays with a still finger through the hold: the held copy isn't held
+    /// to the heading's slots (the first heading's own place isn't one while its section is open; on the phone its copy
+    /// jumped 25-73 pt off the finger at the lift, T26). Dragged slowly, no step between two frames is a jump.
+    func testAHeadingLiftsAsItsFillAndStaysWithTheFinger() {
+        app.launchArguments += ["-dragProbe", "YES", "-dragTrace", "YES"]
+        openPhys()
+        let lectures = heading("Lectures"), exam = heading("Exam prep")
+        let start = lectures.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        start.press(forDuration: 0.6, thenDragTo: exam.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)),
+                    withVelocity: XCUIGestureVelocity(rawValue: 150), thenHoldForDuration: 0.5)
+        sleep(2)
+        let p = probe()
+        XCTAssertTrue((p["ev"] ?? "").contains("drop"), "dragged and dropped: \(p)")
+        XCTAssertEqual(p["held"], "0.0,0.0", "the copy lifted on the heading's fill: \(p)")
+        XCTAssertLessThan(Double(p["step"] ?? "") ?? .infinity, 15, "no jump off the finger: \(p)")
+        assertLandedExactly()
+        XCTAssertGreaterThan(y(lectures), y(heading("Labs")), "Lectures after Labs")
+    }
+
     /// Delete Heading takes the heading only: its tasks stay, under the heading above. The notice's Undo brings it back.
     func testDeleteAHeading() {
         openPhys()

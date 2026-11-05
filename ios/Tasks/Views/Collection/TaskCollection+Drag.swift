@@ -27,10 +27,11 @@ import UIKit
 // - Slots (`slotTops`): never above the header, never between a heading and its notes, never past the Completed row; a
 //   heading only before another heading or at the end. In Today and Undated, only in the dragged row's run
 //   (`AppModel.dragRuns`: its list's group), so the gap and the copy stay in its group.
-// - Our own lifted copy (`fill-lift`, the row's radius 12 with continuous corners, `shadow-lift`, the row's snapshot)
-//   follows the finger in x and y, keeping the grab offset, as the Mac's does, every frame (a display link, so it
-//   follows the list's autoscroll under a still finger too); only its y is held, 6 pt past the first and last slot (the
-//   Mac's rule inside a group), and the slot is chosen by y alone. A heading's section folds into the copy as the drag
+// - Our own lifted copy (`fill-lift`, the row's radius 12 with continuous corners, `shadow-lift`, the row's snapshot; a
+//   heading's without the air above its rule, as the Mac's and its menu's preview) follows the finger in x and y,
+//   keeping the grab offset, as the Mac's does, every frame (a display link, so it follows the list's autoscroll under
+//   a still finger too); once the drag has begun its y is held, 6 pt past the first and last slot (the Mac's rule
+//   inside a group), and the slot is chosen by y alone. A heading's section folds into the copy as the drag
 //   begins (CollectionFold's collapse), and its copy shows the open count in an accent badge.
 // - Haptics (`DragFeel`): an impact at the lift, a selection tick each time the gap moves to a new slot (in Upcoming
 //   also when another day lights), the light impact of a drop that writes.
@@ -272,9 +273,11 @@ final class CollectionDrag {
         let tops = slotTops(d)
         let finger = g.location(in: cv)
         var copyTop = finger.y - d.grab.y
-        if let lo = tops.map(\.y).min(), let hi = tops.map(\.y).max() { copyTop = min(max(copyTop, lo - 6), hi + 6) }
+        // Held to the slots only once the drag has begun: a heading's own place isn't one of its slots while its
+        // section is open, so a held heading's copy jumped off the finger at the lift (25-73 pt, T26).
+        if state != nil, let lo = tops.map(\.y).min(), let hi = tops.map(\.y).max() { copyTop = min(max(copyTop, lo - 6), hi + 6) }
         if let v = copy {
-            UIView.performWithoutAnimation { v.frame.origin = CGPoint(x: finger.x - d.grab.x + Metric.rowInset, y: copyTop) }
+            UIView.performWithoutAnimation { v.frame.origin = CGPoint(x: finger.x - d.grab.x + Metric.rowInset, y: copyTop + Self.lead(d.id)) }
         }
         guard state != nil else { return }
         // Wherever the finger is (over the floating bar at the bottom, or off the list), the gap stays at the slot
@@ -381,7 +384,7 @@ final class CollectionDrag {
             return g.location(in: cv)
         }
         if let cell = cv.cellForItem(at: ip) {
-            DragProbe.shared.held(v, on: cell)
+            DragProbe.shared.held(v, on: cell, lead: Self.lead(id))
             DragProbe.shared.lift(cv) { [weak self] in self?.owner.dataSource.indexPath(for: id).flatMap { self?.owner.cv.cellForItem(at: $0) } }
         }
         #endif
@@ -559,11 +562,14 @@ final class CollectionDrag {
 
     // MARK: The copy
 
+    /// How far the row's fill starts below its cell's top: a heading's air, above its rule (none for a task).
+    static func lead(_ id: String) -> CGFloat { id.hasPrefix("h:") ? HeadingRow.air : 0 }
+
     private func makeCopy(_ d: State) {
         let cv = owner.cv!
         let p = owner.palette
         guard let i = owner.current.firstIndex(of: d.id), let cell = cv.cellForItem(at: IndexPath(item: i, section: 0)),
-              let v = DragCopy.make(of: cell, palette: p) else { return }
+              let v = DragCopy.make(of: cell, palette: p, lead: Self.lead(d.id)) else { return }
         if d.id.hasPrefix("h:") {
             // A heading's open count, in an accent badge 7 pt past the copy's top-right corner.
             let app = owner.app
@@ -599,14 +605,14 @@ final class CollectionDrag {
         landings += 1
         let n = landings
         landingCopy = v
-        let origin = frame.map { CGPoint(x: $0.minX + Metric.rowInset, y: $0.minY) }
+        let origin = frame.map { CGPoint(x: $0.minX + Metric.rowInset, y: $0.minY + Self.lead(id)) }
         #if DEBUG || PERF_PROBE
         DragProbe.shared.released(v, home: origin)
         #endif
         DragCopy.setDown(v, at: origin, gap: gap.left) { [weak self] in
             guard let self, self.landings == n else { return }
             #if DEBUG || PERF_PROBE
-            if let ip = self.owner.dataSource.indexPath(for: id) { DragProbe.shared.landed(v, on: self.owner.cv.cellForItem(at: ip)) }
+            if let ip = self.owner.dataSource.indexPath(for: id) { DragProbe.shared.landed(v, on: self.owner.cv.cellForItem(at: ip), lead: Self.lead(id)) }
             #endif
             self.landingCopy = nil
             self.landed()
@@ -908,10 +914,15 @@ enum DragCopy {
     /// A row's lifted copy (the task lists' and Home's): `fill-lift`, the row's radius (12, continuous corners),
     /// `shadow-lift` (a 0.5 pt ring, and 0 8 24: INTERACTIONS-v2, Shadows) cast by the copy's own shape, and the row's
     /// snapshot, on the cell's frame inside the row's inset. Home's had a plain black shadow and no ring (T28).
-    static func make(of cell: UIView, palette p: Palette) -> UIView? {
+    /// `lead`: how far the row's fill starts below the cell's top (a heading's air above its rule: the copy is the fill,
+    /// as the Mac's and the menu's preview, `CollectionSwipes.fill`).
+    static func make(of cell: UIView, palette p: Palette, lead: CGFloat = 0) -> UIView? {
         guard let snap = cell.snapshotView(afterScreenUpdates: false) else { return nil }
         let inset = Metric.rowInset
-        let v = UIView(frame: cell.frame.insetBy(dx: inset, dy: 0))
+        var r = cell.frame.insetBy(dx: inset, dy: 0)
+        r.origin.y += lead
+        r.size.height -= lead
+        let v = UIView(frame: r)
         v.isUserInteractionEnabled = false
         v.backgroundColor = UIColor(p.lift)
         round(v.layer)
@@ -925,7 +936,7 @@ enum DragCopy {
         let clip = UIView(frame: v.bounds)
         clip.clipsToBounds = true
         round(clip.layer)
-        snap.frame.origin = CGPoint(x: -inset, y: 0)
+        snap.frame.origin = CGPoint(x: -inset, y: -lead)
         clip.addSubview(snap)
         v.addSubview(clip)
         v.layer.zPosition = 1000
@@ -1148,8 +1159,9 @@ final class DragProbe {
         let n = String(describing: type(of: g)).replacingOccurrences(of: "GestureRecognizer", with: "")
         call("gr-\(n)-\(st)", in: v)
     }
-    func held(_ copy: UIView, on cell: UIView) {
-        held = "\(f(copy.frame.minX - (cell.frame.minX + Metric.rowInset))),\(f(copy.frame.minY - cell.frame.minY))"
+    /// `lead`: how far the row's fill starts below the cell's top (a heading's air).
+    func held(_ copy: UIView, on cell: UIView, lead: CGFloat = 0) {
+        held = "\(f(copy.frame.minX - (cell.frame.minX + Metric.rowInset))),\(f(copy.frame.minY - (cell.frame.minY + lead)))"
         publish()
     }
 
@@ -1178,8 +1190,8 @@ final class DragProbe {
     }
 
     /// The copy at its set-down's end against the row's cell, which then shows under it.
-    func landed(_ copy: UIView, on cell: UIView?) {
-        if let cell { land = CGPoint(x: copy.frame.minX - (cell.frame.minX + Metric.rowInset), y: copy.frame.minY - cell.frame.minY) }
+    func landed(_ copy: UIView, on cell: UIView?, lead: CGFloat = 0) {
+        if let cell { land = CGPoint(x: copy.frame.minX - (cell.frame.minX + Metric.rowInset), y: copy.frame.minY - (cell.frame.minY + lead)) }
         // How far any shown row is still drawn from its place as the copy settles (T28: the gap's spring outran a fast
         // drop, and a neighbour slid over the dropped row).
         if let cv = view as? UICollectionView {
