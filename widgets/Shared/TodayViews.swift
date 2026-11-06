@@ -3,27 +3,32 @@ import WidgetKit
 import TasksCore
 import TasksTheme
 
-// The Today widget's sizes, after the mock-ups (https://claude.ai/artifact/D1JxGqB9hBm5cH1EeLiYRi: TodaySmall,
-// TodayMedium, TodayLarge), at the iPhone's sizes. Every cue carries words as well as colour, and the tiles and the
-// sun are the accented group, so the widget stays legible on tinted and clear home screens (WIDGETS.md §3.6).
+// The widgets' views, after the approved mock-ups (https://claude.ai/artifact/D1JxGqB9hBm5cH1EeLiYRi: TodaySmall,
+// TodayMedium, TodayLarge, ListMedium, ListLarge), at the iPhone's sizes. Read-only (the user, 2026-11-06): a tap opens
+// the app on Today or the list, and the + opens a new task. No counts, and no completed tasks: the room goes to the
+// open ones. Every cue carries words or shape as well as colour, and the tiles and the sun are the accented group, so
+// the widgets stay legible on tinted and clear home screens (WIDGETS.md §3.6).
 
-/// The widget's metrics: the mock-ups' margins, with rows a little tighter than theirs, since the room the counts took
-/// (the user: no counts) goes to more tasks.
+/// The widgets' metrics, by the mock-ups' numbers.
 enum WM {
     static let top: CGFloat = 14, side: CGFloat = 16, bottom: CGFloat = 12
-    static let header: CGFloat = 20
-    static let row: CGFloat = 22
-    static let groupLabel: CGFloat = 18
-    static let groupGap: CGFloat = 6
-    static let box: CGFloat = 18
-    static let allDoneLine: CGFloat = 20
-    /// The small size's rows: a ring and a title.
-    static let smallRow: CGFloat = 16, smallGap: CGFloat = 3
+    /// Medium and large: the header, and the gap under it.
+    static let header: CGFloat = 24, headerGap: CGFloat = 2, largeHeaderGap: CGFloat = 4
+    static let ring: CGFloat = 16
+    static let mediumRow: CGFloat = 21
+    static let largeRow: CGFloat = 24
+    /// A group's or a heading's label in large.
+    static let label: CGFloat = 22
+    static let more: CGFloat = 18
+    /// Small: a 20 pt header, 8 under it, then 18 pt rows 3 apart with a 10 pt ring.
+    static let smallTop: CGFloat = 14
+    static let smallHeader: CGFloat = 20, smallHeaderGap: CGFloat = 8
+    static let smallRow: CGFloat = 18, smallGap: CGFloat = 3, smallRing: CGFloat = 10
 }
 
-// MARK: - Small
+// MARK: - Today
 
-/// "☀ Today", then as many of Today's open tasks as fit, each with its ring cue. No count (the user, 2026-11-06).
+/// "☀ Today", then as many of Today's open tasks as fit (five at the iPhone's size), each with its ring cue.
 struct TodaySmallView: View {
     let s: TodaySnapshot
     @Environment(\.widgetPalette) private var p
@@ -33,19 +38,19 @@ struct TodaySmallView: View {
 
     var body: some View {
         if s.openCount == 0 { AllDoneView(s: s, compact: true) } else {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: WM.smallHeaderGap) {
                 HStack(spacing: 6) {
-                    Sun(size: 13)
+                    Sun(size: 14)
                     Text("Today").font(.system(size: 14, weight: .semibold)).foregroundStyle(p.ink)
                 }
-                .frame(height: WM.header)
+                .frame(height: WM.smallHeader)
                 .accessibilityAddTraits(.isHeader)
                 GeometryReader { g in
                     VStack(alignment: .leading, spacing: WM.smallGap) {
                         ForEach(s.open.prefix(Self.fit(g.size.height))) { r in
                             HStack(spacing: 7) {
-                                Ring(cue: r.cue, size: 10, line: 1.5)
-                                Text(r.title).font(.system(size: 13)).foregroundStyle(p.ink).lineLimit(1)
+                                Ring(cue: r.cue, size: WM.smallRing, line: 1.5)
+                                Text(r.title).font(.system(size: 12.5)).foregroundStyle(p.ink).lineLimit(1)
                             }
                             .frame(height: WM.smallRow)
                             .accessibilityElement(children: .ignore)
@@ -54,75 +59,67 @@ struct TodaySmallView: View {
                     }
                 }
             }
-            .padding(.vertical, 15)
-            .padding(.horizontal, 16)
+            .padding(.vertical, WM.smallTop)
+            .padding(.horizontal, WM.side)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
     }
 }
 
-// MARK: - Medium
-
-/// The header, then as many open rows as fit in Today's order (five at the iPhone's size); checked rows drop out to
-/// make room (WIDGETS.md Q4).
+/// The header (sun, Today, +), then as many open rows as fit in Today's order (five at the iPhone's size), each with
+/// its capsule and its list's tile.
 struct TodayMediumView: View {
     let s: TodaySnapshot
 
-    /// How many rows fit in `height`.
-    static func fit(_ height: CGFloat) -> Int { max(0, Int(height / WM.row)) }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            TodayHeader(s: s, showsDate: false)
+        WidgetFrame(gap: WM.headerGap) {
+            WidgetHeader(title: "Today", newTask: .new(list: nil), newTaskLabel: "New task in Today") { Sun(size: 14) }
+        } content: {
             if s.openCount == 0 {
                 AllDoneView(s: s, compact: false)
             } else {
-                GeometryReader { g in
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(s.open.prefix(Self.fit(g.size.height))) { r in TaskRowView(r: r, trailing: .tile) }
-                    }
-                }
+                MediumRows(rows: s.open, trailing: .tile)
             }
         }
-        .padding(.top, WM.top)
-        .padding(.horizontal, WM.side)
-        .padding(.bottom, WM.bottom)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 
-// MARK: - Large
-
-/// Today grouped by list, as the app's Today, with today's completed tasks at the end, checked and struck.
+/// The header with the date, then Today grouped by list, as the app's Today, as many as fit, and a quiet "N more"
+/// when they don't (the user: "n more is good").
 struct TodayLargeView: View {
     let s: TodaySnapshot
 
+    /// Today's rows under their lists' labels.
+    static func items(_ s: TodaySnapshot) -> [WidgetItem] {
+        s.groups.flatMap { g in [.label(id: g.list.id, name: g.list.name, tile: g.list)] + g.rows.map(WidgetItem.task) }
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: WM.groupGap) {
-            TodayHeader(s: s, showsDate: true)
-            if s.openCount == 0 && s.done.isEmpty {
+        WidgetFrame(gap: WM.largeHeaderGap) {
+            WidgetHeader(title: "Today", date: DateLabel.long(s.date, today: s.date), newTask: .new(list: nil),
+                         newTaskLabel: "New task in Today") { Sun(size: 14) }
+        } content: {
+            if s.openCount == 0 {
                 AllDoneView(s: s, compact: false)
             } else {
-                GeometryReader { g in
-                    let fit = LargeFit(s, height: g.size.height)
-                    VStack(alignment: .leading, spacing: WM.groupGap) {
-                        if s.openCount == 0 { AllDoneLine() }
-                        ForEach(fit.groups, id: \.id) { group in
-                            VStack(alignment: .leading, spacing: 0) {
-                                GroupLabel(list: group.list)
-                                ForEach(group.rows) { r in TaskRowView(r: r, trailing: .none) }
-                            }
-                        }
-                        if !fit.done.isEmpty {
-                            VStack(alignment: .leading, spacing: 0) {
-                                GroupLabel(list: nil)
-                                ForEach(fit.done) { r in TaskRowView(r: r, trailing: .listName) }
-                            }
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                }
+                LargeItems(items: Self.items(s), more: { "\($0) more" })
             }
+        }
+    }
+}
+
+// MARK: - Shared layout
+
+/// A medium or large widget's frame: the margins, the header, then the content below it.
+struct WidgetFrame<Header: View, Content: View>: View {
+    let gap: CGFloat
+    @ViewBuilder let header: Header
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: gap) {
+            header
+            content
         }
         .padding(.top, WM.top)
         .padding(.horizontal, WM.side)
@@ -131,129 +128,150 @@ struct TodayLargeView: View {
     }
 }
 
-/// What fits in the large widget's height: whole groups and rows from the top, then the Completed group once every
-/// open row is in. What doesn't fit is left out without a "N more" line, which would be a count (the user: none).
-struct LargeFit {
-    var groups: [TodaySnapshot.Group] = []
-    var done: [TodaySnapshot.Row] = []
-    /// Open rows that didn't fit.
-    var hidden = 0
-
-    init(_ s: TodaySnapshot, height: CGFloat) {
-        var left = height
-        if s.openCount == 0 { left -= WM.allDoneLine + WM.groupGap }
-        var shown = 0
-        for g in s.groups {
-            // Room for the label and at least one row.
-            let n = min(g.rows.count, max(0, Int((left - WM.groupLabel) / WM.row)))
-            guard n > 0 else { break }
-            groups.append(.init(list: g.list, rows: Array(g.rows.prefix(n))))
-            shown += n
-            left -= WM.groupLabel + CGFloat(n) * WM.row + WM.groupGap
-            if n < g.rows.count { break }
-        }
-        hidden = s.openCount - shown
-        if hidden == 0, !s.done.isEmpty {
-            let n = max(0, Int((left - WM.groupLabel) / WM.row))
-            done = Array(s.done.prefix(n))
-        }
-    }
-
-    /// The height the fit takes, for the tests.
-    var height: CGFloat {
-        let label = WM.groupLabel + WM.groupGap
-        return groups.reduce(0) { $0 + label + CGFloat($1.rows.count) * WM.row }
-            + (done.isEmpty ? 0 : label + CGFloat(done.count) * WM.row)
-    }
-}
-
-// MARK: - Pieces
-
-/// "☀ Today", then the date (large) and the + that opens a new task in Today. No count (the user, 2026-11-06).
-struct TodayHeader: View {
-    let s: TodaySnapshot
-    let showsDate: Bool
+/// "☀ Today" or a list's tile and name, then the date (Today large) and the + that opens a new task there.
+struct WidgetHeader<Icon: View>: View {
+    let title: String
+    var date: String? = nil
+    let newTask: DeepLink
+    let newTaskLabel: String
+    @ViewBuilder let icon: Icon
     @Environment(\.widgetPalette) private var p
 
     var body: some View {
         HStack(spacing: 7) {
-            Sun(size: 13)
-            Text("Today").font(.system(size: 15, weight: .semibold)).foregroundStyle(p.ink)
+            icon
+            Text(title).font(.system(size: 15, weight: .semibold)).foregroundStyle(p.ink).lineLimit(1)
                 .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 4)
-            if showsDate {
-                Text(DateLabel.long(s.date, today: s.date))
-                    .font(.system(size: 12)).foregroundStyle(p.inkTertiary).lineLimit(1)
+            if let date {
+                Text(date).font(.system(size: 12)).foregroundStyle(p.inkTertiary).lineLimit(1)
             }
-            Link(destination: DeepLink.new(list: nil).url) {
+            Link(destination: newTask.url) {
                 Image(systemName: "plus")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(p.inkSecondary)
-                    .frame(width: WM.header, height: WM.header)
+                    .frame(width: 24, height: 24)
                     .background(p.fillControl, in: Circle())
             }
-            .padding(.leading, showsDate ? 6 : 0)
-            .accessibilityLabel("New task in Today")
+            .padding(.leading, date == nil ? 0 : 6)
+            .accessibilityLabel(newTaskLabel)
         }
         .frame(height: WM.header)
     }
 }
 
-/// A task's row: its box, its title, its deadline capsule, and its list's tile (medium) or name (Completed).
-struct TaskRowView: View {
-    enum Trailing { case none, tile, listName }
-    let r: TodaySnapshot.Row
-    let trailing: Trailing
-    @Environment(\.widgetPalette) private var p
+/// As many rows as fit, 21 pt each.
+struct MediumRows: View {
+    let rows: [TodaySnapshot.Row]
+    let trailing: TaskRowView.Trailing
+
+    /// How many rows fit in `height`.
+    static func fit(_ height: CGFloat) -> Int { max(0, Int(height / WM.mediumRow)) }
 
     var body: some View {
-        Link(destination: DeepLink.task(r.id).url) {
-            HStack(spacing: 10) {
-                Box(cue: r.cue, done: r.done)
-                Text(r.title)
-                    .font(.system(size: 14))
-                    .foregroundStyle(r.done ? p.inkSecondary : p.ink)
-                    .strikethrough(r.done, color: p.inkSecondary)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                if let c = r.chip { DeadlineCapsule(chip: c) }
-                switch trailing {
-                case .none: EmptyView()
-                case .tile: Tile(list: r.list, width: 16, height: 13)
-                case .listName:
-                    // Its name first, up to a third of the row; the title takes what's left.
-                    Text(r.list.name).font(.system(size: 12)).foregroundStyle(p.inkTertiary).lineLimit(1)
-                        .frame(maxWidth: 96, alignment: .trailing)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .layoutPriority(1)
+        GeometryReader { g in
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(rows.prefix(Self.fit(g.size.height))) { r in
+                    TaskRowView(r: r, trailing: trailing, height: WM.mediumRow)
                 }
             }
-            .frame(height: WM.row)
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(label)
     }
-
-    private var label: String { r.spoken + ", " + r.list.name }
 }
 
-/// The checkbox: a ring in its cue's colour, or the accent's filled box with a check.
-struct Box: View {
-    let cue: TodaySnapshot.Cue
-    let done: Bool
+/// One line of a large widget: a label (a list's tile and name in Today, a heading's name in a list), or a task.
+enum WidgetItem: Hashable, Sendable, Identifiable {
+    case label(id: EntityID, name: String, tile: TodaySnapshot.ListInfo?)
+    case task(TodaySnapshot.Row)
+
+    var id: String {
+        switch self {
+        case let .label(id, _, _): "label:" + id
+        case let .task(r): "task:" + r.id
+        }
+    }
+
+    var isTask: Bool { if case .task = self { true } else { false } }
+    var height: CGFloat { isTask ? WM.largeRow : WM.label }
+}
+
+/// What fits in a large widget's height, as the mock-ups fit it: whole lines from the top, never a label with no row
+/// under it; when some tasks are left out, room for "N more" at the bottom.
+struct ItemFit {
+    let shown: [WidgetItem]
+    /// Tasks left out.
+    let hidden: Int
+
+    init(_ items: [WidgetItem], height: CGFloat) {
+        let total = items.filter(\.isTask).count
+        func fit(_ budget: CGFloat) -> [WidgetItem] {
+            var out: [WidgetItem] = []
+            var used: CGFloat = 0
+            for it in items {
+                guard used + it.height <= budget else { break }
+                used += it.height
+                out.append(it)
+            }
+            while let last = out.last, !last.isTask { out.removeLast() }
+            return out
+        }
+        var out = fit(height)
+        if out.filter(\.isTask).count < total { out = fit(height - WM.more) }
+        shown = out
+        hidden = total - out.filter(\.isTask).count
+    }
+
+    var height: CGFloat { shown.reduce(0) { $0 + $1.height } + (hidden > 0 ? WM.more : 0) }
+}
+
+/// A large widget's lines, as many as fit, and "N more" at the bottom when some don't.
+struct LargeItems: View {
+    let items: [WidgetItem]
+    /// The words for the tasks left out ("3 more").
+    let more: (Int) -> String
+
+    var body: some View {
+        GeometryReader { g in
+            let fit = ItemFit(items, height: g.size.height)
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(fit.shown) { it in
+                    switch it {
+                    case let .label(_, name, tile): ItemLabel(name: name, tile: tile)
+                    case let .task(r): TaskRowView(r: r, trailing: .none, height: WM.largeRow)
+                    }
+                }
+                Spacer(minLength: 0)
+                if fit.hidden > 0 { MoreLine(text: more(fit.hidden)) }
+            }
+        }
+    }
+}
+
+// MARK: - Pieces
+
+/// A task's row: its ring, its title, its When in words (a list), its deadline capsule, and its list's tile (Today
+/// medium). Not a link: the whole widget opens the app.
+struct TaskRowView: View {
+    enum Trailing { case none, tile }
+    let r: TodaySnapshot.Row
+    let trailing: Trailing
+    let height: CGFloat
     @Environment(\.widgetPalette) private var p
 
     var body: some View {
-        if done {
-            Circle().fill(p.accent)
-                .overlay {
-                    Image(systemName: "checkmark").font(.system(size: 9, weight: .heavy)).foregroundStyle(p.onAccent)
-                }
-                .frame(width: WM.box, height: WM.box)
-                .widgetAccentable()
-        } else {
-            Ring(cue: cue, size: WM.box, line: 1.5)
+        HStack(spacing: 10) {
+            Ring(cue: r.cue, size: WM.ring, line: 1.5)
+            Text(r.title).font(.system(size: 14)).foregroundStyle(p.ink).lineLimit(1)
+            if let w = r.when {
+                Text(w).font(.system(size: 12)).foregroundStyle(p.inkTertiary).lineLimit(1).fixedSize()
+            }
+            Spacer(minLength: 0)
+            if let c = r.chip { DeadlineCapsule(chip: c) }
+            if trailing == .tile { Tile(list: r.list, width: 16, height: 13) }
         }
+        .frame(height: height)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(trailing == .tile ? r.spoken + ", " + r.list.name : r.spoken)
     }
 }
 
@@ -325,21 +343,37 @@ struct Tile: View {
     }
 }
 
-/// A group's label: the list's tile and name, or "Completed".
-struct GroupLabel: View {
-    let list: TodaySnapshot.ListInfo?
+/// A label in a large widget, at the foot of its 22 pt: a list's tile and name (Today), or a heading's name (a list).
+struct ItemLabel: View {
+    let name: String
+    let tile: TodaySnapshot.ListInfo?
     @Environment(\.widgetPalette) private var p
 
     var body: some View {
         HStack(spacing: 6) {
-            if let list { Tile(list: list, width: 16, height: 13) }
-            Text(list?.name ?? "Completed")
+            if let tile { Tile(list: tile, width: 16, height: 13) }
+            Text(name)
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(p.inkTertiary)
                 .lineLimit(1)
         }
-        .frame(height: WM.groupLabel)
+        .padding(.bottom, 3)
+        .frame(height: WM.label, alignment: .bottom)
         .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// "3 more", quiet, under the rows' titles.
+struct MoreLine: View {
+    let text: String
+    @Environment(\.widgetPalette) private var p
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 12))
+            .foregroundStyle(p.inkTertiary)
+            .frame(height: WM.more)
+            .padding(.leading, WM.ring + 10)
     }
 }
 
@@ -360,37 +394,36 @@ struct Sun: View {
 
 // MARK: - Empty states
 
-/// Nothing open today: the lit sun and "All done" when something was done today (COLOR.md §4's moment, drawn still),
-/// else the plain sun and "Nothing today". No count of what was done (the user: no counts).
+/// Nothing open today: the lit sun and "All done" when today's tasks were all completed (COLOR.md §4's moment, drawn
+/// still), else the plain sun and "Nothing today".
 struct AllDoneView: View {
     let s: TodaySnapshot
+    let compact: Bool
+
+    var body: some View {
+        EmptyStateView(text: Self.words(s), sun: !s.done.isEmpty, compact: compact)
+    }
+
+    nonisolated static func words(_ s: TodaySnapshot) -> String { s.done.isEmpty ? "Nothing today" : "All done" }
+}
+
+/// A widget's one line when it has no rows, under the sun (Today: lit or plain) or alone (a list: `sun` nil).
+struct EmptyStateView: View {
+    let text: String
+    var sun: Bool? = false
     let compact: Bool
     @Environment(\.widgetPalette) private var p
 
     var body: some View {
         VStack(spacing: compact ? 6 : 4) {
             Spacer(minLength: 0)
-            Sun(size: compact ? 30 : 24, filled: !s.done.isEmpty)
-            Text(Self.words(s)).font(.system(size: compact ? 15 : 14, weight: .semibold)).foregroundStyle(p.ink)
+            if let sun { Sun(size: compact ? 30 : 24, filled: sun) }
+            Text(text).font(.system(size: compact ? 15 : 14, weight: .semibold)).foregroundStyle(p.ink)
+                .multilineTextAlignment(.center)
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .combine)
-    }
-
-    static func words(_ s: TodaySnapshot) -> String { s.done.isEmpty ? "Nothing today" : "All done" }
-}
-
-/// The large widget's "All done" over today's Completed group.
-struct AllDoneLine: View {
-    @Environment(\.widgetPalette) private var p
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Sun(size: 12, filled: true)
-            Text("All done").font(.system(size: 13, weight: .semibold)).foregroundStyle(p.ink)
-        }
-        .frame(height: WM.allDoneLine)
     }
 }
 

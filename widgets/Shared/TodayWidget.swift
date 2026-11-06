@@ -1,8 +1,8 @@
 import SwiftUI
 import WidgetKit
 
-/// The Today widget (WIDGETS.md §1.1, MVP 1): small, medium and large, read-only for now. Its rows open the task, its
-/// + a new task in Today, and the rest of it Today.
+/// The Today widget (WIDGETS.md §1.1, MVP 1): small, medium and large, read-only. Its + opens a new task in Today,
+/// and the rest of it Today.
 struct TodayWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: WidgetGroup.Kind.today, provider: TodayProvider()) { entry in
