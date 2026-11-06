@@ -1617,9 +1617,81 @@ final class FlowTests: XCTestCase {
         }
     }
 
+    /// Renaming a heading from its menu, at the XXL text size: the row doesn't grow, and the box's top edge is as thick
+    /// as its bottom edge in every frame, also while the menu closes. The user's film (T37, "rename section top border
+    /// getting clipped"): from the XL size up a text field's line is ~2 pt taller than the name's, the row grew as Rename
+    /// began, and the closing menu's platter (made for the shorter row) showed it 1 pt up within its cut, so for the
+    /// ~0.6 s the menu took to close the box's top stroke was a hairline. The row's height (the distance between the
+    /// rows either side) is the same renaming as at rest, as Rename starts and as it ends: the cause, caught whatever
+    /// the screenshots' timing. Screenshots are taken on another thread from the tap on Rename (XCTest's idle wait off,
+    /// so the tap returns at once); in each that shows the box, a column through its straight part has two stroke runs,
+    /// the top one no thinner than the bottom one (less a pixel for rounding). Three renames a look. Dark and Light.
+    func testARenamedHeadingsTopEdgeIsWholeAsTheMenuCloses() {
+        final class Film: @unchecked Sendable {
+            let lock = NSLock()
+            var frames: [CGImage] = []
+            func add(_ f: CGImage) { lock.lock(); frames.append(f); lock.unlock() }
+        }
+        for look in ["dark", "light"] {
+            app = XCUIApplication()
+            app.launchArguments = ["-sampleData", "YES", "-appearance", look, "-style", "classic", "-screen", "list:phys",
+                                   "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryXXL"]
+            app.launch()
+            let labs = heading("Labs")
+            XCTAssertTrue(labs.appears(timeout: 10), "PHYS 122")
+            app.settle()
+            let field = app.textFields["headingName"]
+            // The rows either side of Labs: their distance is its row's height, wherever the list has scrolled to.
+            let above = app.staticTexts["Watch the recording on standing waves"].firstMatch
+            let below = app.staticTexts["Lab 3 report · pendulum"].firstMatch
+            func span() -> CGFloat { below.frame.minY - above.frame.minY }
+            var seen = 0
+            for attempt in 1...3 {
+                let what = "\(look), rename \(attempt)"
+                let rest = span()
+                let film = Film()
+                menuOpen {
+                    labs.press(forDuration: 1.0)
+                    XCTAssertTrue(app.buttons["Rename"].appears(timeout: 3), "\(what): its menu")
+                    let thread = Thread { for _ in 0..<8 { if let cg = XCUIScreen.main.screenshot().image.cgImage { film.add(cg) } } }
+                    thread.start()
+                    app.buttons["Rename"].tap()
+                    while !thread.isFinished { usleep(20_000) }
+                }
+                XCTAssertTrue(field.appears(timeout: 3), "\(what): renaming in place")
+                sleep(1)
+                XCTAssertEqual(span(), rest, accuracy: 0.5, "\(what): the row as tall renaming as at rest")
+                // Through the box's straight part: clear of its rounded corners, the caret and the chevron.
+                let x = field.frame.maxX - 60, from = field.frame.minY - 16, to = field.frame.maxY + 14
+                let settled = strokeRuns(XCUIScreen.main.screenshot().image.cgImage!, x: x, from: from, to: to)
+                XCTAssertEqual(settled.count, 2, "\(what): settled, the box's top and bottom edges (\(settled))")
+                for (i, cg) in film.frames.enumerated() {
+                    let runs = strokeRuns(cg, x: x, from: from, to: to)
+                    guard !runs.isEmpty else { continue }
+                    seen += 1
+                    XCTAssertEqual(runs.count, 2, "\(what), frame \(i): the box's top and bottom edges (\(runs))")
+                    guard runs.count == 2 else { continue }
+                    XCTAssertGreaterThanOrEqual(runs[0].height, runs[1].height - 1,
+                                                "\(what), frame \(i): its top edge as thick as its bottom (\(runs), px)")
+                }
+                app.buttons["Cancel"].tap()
+                app.settle()
+                XCTAssertEqual(span(), rest, accuracy: 0.5, "\(what): and as it ends")
+            }
+            XCTAssertGreaterThan(seen, 0, "\(look): the box was filmed as the menu closed")
+            app.terminate()
+        }
+    }
+
     /// The tops (in points) of the coloured runs, a box's stroke, in a column of a screenshot between two heights:
     /// pixels far more saturated than the greys and inks around them.
     private func strokes(_ cg: CGImage, x: CGFloat, from y0: CGFloat, to y1: CGFloat) -> [CGFloat] {
+        strokeRuns(cg, x: x, from: y0, to: y1).map(\.top)
+    }
+
+    /// The coloured runs in a column of a screenshot between two heights: each one's top in points and its height in
+    /// pixels.
+    private func strokeRuns(_ cg: CGImage, x: CGFloat, from y0: CGFloat, to y1: CGFloat) -> [(top: CGFloat, height: Int)] {
         let scale = CGFloat(cg.width) / app.frame.width
         let h = cg.height
         var px = [UInt8](repeating: 0, count: h * 4)
@@ -1627,15 +1699,16 @@ final class FlowTests: XCTestCase {
                                   space: CGColorSpaceCreateDeviceRGB(),
                                   bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return [] }
         ctx.draw(cg, in: CGRect(x: -Int(x * scale), y: 0, width: cg.width, height: h))
-        var tops: [CGFloat] = []
+        var runs: [(top: CGFloat, height: Int)] = []
         var inRun = false
         for row in max(0, Int(y0 * scale))..<min(h, Int(y1 * scale)) {
             let r = Int(px[row * 4]), g = Int(px[row * 4 + 1]), b = Int(px[row * 4 + 2])
             let colored = max(r, g, b) - min(r, g, b) > 80
-            if colored, !inRun { tops.append(CGFloat(row) / scale) }
+            if colored, !inRun { runs.append((CGFloat(row) / scale, 0)) }
+            if colored { runs[runs.count - 1].height += 1 }
             inRun = colored
         }
-        return tops
+        return runs
     }
 
     /// Add Notes opens the notes editor under the heading; Done writes them, and they show under it.
