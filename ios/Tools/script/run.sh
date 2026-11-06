@@ -51,7 +51,8 @@ if [[ -z $phone ]]; then
   done
   cp -R "$data/tmp/script/." "$out/"
 else
-  dc() { xcrun devicectl device "$@" --device "$phone" -q; }
+  # --device goes right after the subcommand: after `--` it would be one of the app's own arguments.
+  dc() { local a=$1 b=$2; shift 2; xcrun devicectl device $a $b --device "$phone" -q "$@"; }
   cf() { dc copy from --domain-type appDataContainer --domain-identifier $BUNDLE --source "$1" --destination "$2"; }
   [[ -n $app ]] && { dc install app "$app" || exit 2; }
   [[ -n $file ]] && { dc copy to --domain-type appDataContainer --domain-identifier $BUNDLE --source "$file" --destination tmp/script-in.txt || exit 2; }
