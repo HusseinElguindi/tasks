@@ -233,8 +233,11 @@ struct TaskRowView: View {
                 case .none: EmptyView()
                 case .tile: Tile(list: r.list, width: 16, height: 13)
                 case .listName:
+                    // Its name first, up to a third of the row; the title takes what's left.
                     Text(r.list.name).font(.system(size: 12)).foregroundStyle(p.inkTertiary).lineLimit(1)
-                        .layoutPriority(-1)
+                        .frame(maxWidth: 96, alignment: .trailing)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .layoutPriority(1)
                 }
             }
             .frame(height: WM.row)
