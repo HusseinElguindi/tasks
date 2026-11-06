@@ -1810,6 +1810,10 @@ final class TaskListView: NSView {
             DispatchQueue.main.asyncAfter(deadline: .now() + TK.Timer.fly) { [weak self] in
                 guard let self else { return }
                 a.setDate(d.ids, .when, day)
+                // The row lands in a layout that already has its new day, as a list's drop lands in its new order:
+                // read on the old dates, it would show on the day it left (where the landing cuts its move short) and
+                // then slide back to the gap (the user, 2026-11-06).
+                self.state.viewDates.invalidate()
                 self.state.drag?.phase = .done
                 self.land(on: grabbed, overlay)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) { [weak self] in self?.state.drag = nil }

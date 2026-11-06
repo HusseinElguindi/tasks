@@ -166,6 +166,10 @@ final class ViewDates {
         entries = out
         return true
     }
+
+    /// The next read reads the tasks again, now: for a render in the same turn as a change it must show (a drop's
+    /// landing), which the revision, bumped a turn later, would leave on the old dates.
+    func invalidate() { armed = false }
 }
 
 extension TaskLayout {
