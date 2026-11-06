@@ -243,8 +243,10 @@ the extension, a network call in a widget tap, and the feed carrying `cursor` an
 - **Without the app (iPhone):** nothing refreshes the feed while the app is closed, so a change made on the Mac shows
   on the phone's widget at the next phone-app open. That follows from SPEC §8 ("nothing in the background"). A
   background refresh (`BGAppRefreshTask`) could sync and rewrite the feed a few times a day. It's listed in §4 Q3.
-- **Mac:** the app runs most of the time, syncs every 30 s while a window is open and on the CLI's nudge, and rewrites
-  the feed each time. So Mac widgets stay current, and an agent's `tasks` CLI change reaches the desktop widget in about
+- **Mac:** the app runs most of the time, syncs every 30 s while a window is open, every 60 s with none (Settings ▸ Sync
+  with no window open, on by default; 2026-11-06), and on the CLI's nudge, and rewrites the feed when it changed (at most
+  every 2 minutes with no window, for WidgetKit's reload budget). Settings ▸ Open at login keeps it running after a
+  restart. So Mac widgets stay current, and an agent's `tasks` CLI change reaches the desktop widget in about
   a second.
 
 ### 3.5 Signing

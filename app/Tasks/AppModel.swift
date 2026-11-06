@@ -1,5 +1,6 @@
 import AppKit
 import Observation
+import ServiceManagement
 import SwiftUI
 import TasksCore
 
@@ -99,6 +100,19 @@ final class AppModel {
         didSet { UserDefaults.standard.set(paneHighlight.rawValue, forKey: Keys.paneHighlight) }
     }
 
+    /// Settings ▸ Sync with no window open (the user, 2026-11-06: "allow me to disable 1 in the settings"; on by
+    /// default): keep syncing every minute while the app runs with no window on screen, so the widgets keep up with
+    /// other devices (`SyncSchedule`). Off: the periodic sync runs only while a window is open, as before.
+    var syncWithoutWindow: Bool {
+        didSet { UserDefaults.standard.set(syncWithoutWindow, forKey: Keys.syncWithoutWindow) }
+    }
+
+    /// Settings ▸ Open at login: whether the app is registered to open at login (`SMAppService.mainApp`). macOS keeps
+    /// it, not the app; read again when Settings opens, since System Settings ▸ Login Items can change it.
+    private(set) var loginItem: SMAppService.Status = SMAppService.mainApp.status
+    /// Why the last change to Open at login failed, shown under the switch.
+    private(set) var loginItemError: String?
+
     var taskEditing: TaskEditing {
         didSet { UserDefaults.standard.set(taskEditing.rawValue, forKey: Keys.taskEditing) }
     }
@@ -117,6 +131,7 @@ final class AppModel {
         static let interfaceStyle = "interfaceStyle"
         static let taskEditing = "taskEditing"
         static let paneHighlight = "paneHighlight"
+        static let syncWithoutWindow = "syncWithoutWindow"
         /// Testing only: data directory and token from launch arguments (spec §10 end-to-end check).
         static let dataDirectory = "dataDirectory"
         static let syncToken = "syncToken"
@@ -140,6 +155,8 @@ final class AppModel {
         interfaceStyle = defaults.string(forKey: Keys.interfaceStyle) == "glass" ? .glass : .classic
         taskEditing = TaskEditing.current
         paneHighlight = PaneHighlight.current
+        // On unless turned off (a `-syncWithoutWindow NO` launch argument is a string, which `bool(forKey:)` reads).
+        syncWithoutWindow = defaults.object(forKey: Keys.syncWithoutWindow) == nil || defaults.bool(forKey: Keys.syncWithoutWindow)
         hasToken = defaults.string(forKey: Keys.syncToken) != nil || Keychain.token() != nil
         appearanceObservation = NSApplication.shared.observe(\.effectiveAppearance) { [weak self] app, _ in
             MainActor.assumeIsolated {
@@ -164,7 +181,7 @@ final class AppModel {
         nudges = SyncNudgeListener(store: store)
         applyConfig()
         startTriggers(store)
-        widgetFeed = WidgetFeedWriter(store: store)
+        widgetFeed = WidgetFeedWriter(store: store, windowVisible: { AppModel.hasVisibleWindow })
         widgetFeed?.start()
     }
 
@@ -198,15 +215,44 @@ final class AppModel {
         nudges?.listen(server: config?.url)
     }
 
+    // MARK: Open at login
+
+    /// Registers or unregisters the app as a login item. macOS may ask the user to allow it in System Settings ▸
+    /// General ▸ Login Items (`.requiresApproval`).
+    func setOpenAtLogin(_ on: Bool) {
+        do {
+            if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+            loginItemError = nil
+        } catch {
+            loginItemError = error.localizedDescription
+        }
+        loginItem = SMAppService.mainApp.status
+    }
+
+    func refreshLoginItem() {
+        let s = SMAppService.mainApp.status
+        if s != loginItem { loginItem = s }
+    }
+
     // MARK: Triggers
+
+    /// One of the main windows is on screen (not closed, hidden with the app, or minimized).
+    static var hasVisibleWindow: Bool { NSApp.windows.contains { $0.isVisible && $0.canBecomeMain } }
 
     private func startTriggers(_ store: Store) {
         store.requestSync(force: true) // launch
-        periodic = Task { [weak store] in
+        // Every 30 s while a window is open; every 60 s with none unless Settings turns it off (spec §5, SyncSchedule).
+        periodic = Task { [weak self, weak store] in
+            var lastTick: TimeInterval?
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(30))
-                // Every 30 s while a window is open (spec §5).
-                if NSApp.windows.contains(where: { $0.isVisible && $0.canBecomeMain }) { store?.requestSync() }
+                try? await Task.sleep(for: .seconds(SyncSchedule.tick))
+                guard let self, let store else { return }
+                let now = ProcessInfo.processInfo.systemUptime
+                if SyncSchedule.tickSyncs(windowVisible: Self.hasVisibleWindow, syncWithoutWindow: self.syncWithoutWindow,
+                                          now: now, lastTick: lastTick) {
+                    lastTick = now
+                    store.requestSync()
+                }
             }
         }
         let center = NotificationCenter.default
@@ -216,10 +262,12 @@ final class AppModel {
         observers.append(center.addObserver(forName: .NSCalendarDayChanged, object: nil, queue: .main, using: refreshDay))
         observers.append(center.addObserver(forName: .NSSystemTimeZoneDidChange, object: nil, queue: .main, using: refreshDay))
         observers.append(center.addObserver(forName: .NSSystemClockDidChange, object: nil, queue: .main, using: refreshDay))
-        observers.append(center.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak store] _ in
+        observers.append(center.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self, weak store] _ in
             MainActor.assumeIsolated {
                 store?.refreshDay()
                 store?.requestSync(force: true)
+                // A feed write held back while no window was open goes out now.
+                self?.widgetFeed?.flush()
             }
         })
         observers.append(center.addObserver(forName: NSApplication.didResignActiveNotification, object: nil, queue: .main) { [weak store] _ in

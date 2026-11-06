@@ -612,6 +612,11 @@ Sync triggers:
 - App launch and when the app becomes active.
 - ~1s after any local change.
 - Every 30s while a window is open.
+- **Every 60s while the app runs with no window open** (⌘W, or the app hidden), so another device's change still reaches
+  the desktop widgets (design/WIDGETS.md §3.4). Settings ▸ Sync with no window open turns it off (on by default; the
+  user, 2026-11-06); off, the periodic sync runs only while a window is open. While no window is open, the widgets'
+  feed is written at most once every 2 minutes, because WidgetKit budgets reloads asked for in the background; a
+  window coming back writes a held-back feed at once (`SyncSchedule`).
 - ⌘R.
 - **The CLI's nudge.** After a `tasks` command (or a `tasks run` script, or an MCP call) pushed ops the server took,
   the CLI posts a Darwin notification (`notify_post`). The app listens for it (`notify_register_dispatch` on the main
@@ -625,7 +630,7 @@ Sync triggers:
     (`scheme://host:port`), so a test run against a `wrangler dev` reaches only Debug apps syncing with that server
     and never the installed app (`SyncNudge` in TasksCore).
 
-**Pushback:** a WebSocket (DO hibernation API) would cut sync latency from up to 30s to near-instant. For one person's Macs, 30s is fine. If it's ever wanted, the socket only needs to send "head is now N" and clients keep using `/v1/sync`, so the protocol doesn't change.
+**Pushback:** a WebSocket (DO hibernation API) would cut sync latency from up to 30s (60s with no window) to near-instant. For one person's Macs, 30s is fine. If it's ever wanted, the socket only needs to send "head is now N" and clients keep using `/v1/sync`, so the protocol doesn't change.
 
 ### Compaction and server snapshots: not yet
 
@@ -797,6 +802,19 @@ If more users ever matter, the token maps to a user id, the DO is named by that 
 ### Platform
 
 One macOS app target, **macOS 14+**, the minimum `design/PaneTheme.swift` already sets. It uses a `NavigationSplitView` with a sidebar (Today, then the lists). Sync keeps several Macs in step. The model, persistence and sync are the `TasksCore` package, which the iOS app (below) runs on as well.
+
+### Settings (⌘,)
+
+Per Mac, in UserDefaults (the token in the Keychain), never synced:
+
+- **Sync:** Server URL, Token, **Sync with no window open** (on: every 60s while the app runs with no window, §5
+  Realtime; off: only while a window is open, and on the CLI's nudge), Status and Sync Now.
+- **Appearance:** Theme, Interface style, Highlight focused pane (design/INTERACTIONS-v2.md).
+- **Behavior:** Edit tasks, and **Open at login** (off by default; `SMAppService.mainApp`, so macOS keeps it and System
+  Settings ▸ General ▸ Login Items shows it; if macOS needs it approved there, the row says so and links to it). With
+  it, Tasks is running after a restart and the widgets stay current. A login launch opens the window as any launch
+  does.
+- **Data:** the folder, with Show in Finder.
 
 ### Local store: the log, plus a snapshot cache
 

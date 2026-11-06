@@ -131,6 +131,7 @@ targets:
       - path: Tasks/Window/EditSession.swift
       # The widgets: the app's feed writer, and the extension's views and providers (drawn to images).
       - path: Tasks/Widgets/WidgetFeedWriter.swift
+      - path: Tasks/Support/SyncSchedule.swift
       - path: ../widgets/Shared
     dependencies:
       - package: TasksCore

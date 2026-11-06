@@ -87,6 +87,38 @@ final class WidgetFeedWriterTests: XCTestCase {
         XCTAssertFalse(snap.open.contains { $0.id == id }, "the widgets show open tasks only (the user)")
     }
 
+    func testWithNoWindowABurstOfChangesIsOneWriteThenWaits() async throws {
+        let store = await openStore()
+        var visible = false
+        var now: TimeInterval = 1000
+        let w = WidgetFeedWriter(store: store, url: feedURL, reload: { [weak self] in self?.reloads += 1 },
+                                 windowVisible: { visible }, clock: { now })
+        w.start() // the launch write, which doesn't count toward the 2 minutes
+        let today = store.projection.day.date
+        let a = try XCTUnwrap(store.createTask(title: "From the phone", when: today))
+        let first = await waitForFeed { $0.tasks.contains { $0.id == a } }
+        XCTAssertNotNil(first, "the first change after launch goes out after its second, window or not")
+        XCTAssertEqual(w.writes, 2)
+        now += 10
+        let b = try XCTUnwrap(store.createTask(title: "An agent's edit", when: today))
+        try await Task.sleep(for: .milliseconds(1500))
+        XCTAssertFalse(WidgetFeed.read(at: feedURL)?.tasks.contains { $0.id == b } ?? true,
+                       "with no window, not within two minutes of the last write")
+        XCTAssertEqual(w.writes, 2)
+        // A window comes back (the app is activated): what was held back goes out at once.
+        visible = true
+        w.flush()
+        XCTAssertTrue(WidgetFeed.read(at: feedURL)?.tasks.contains { $0.id == b } ?? false)
+        XCTAssertEqual(w.writes, 3)
+        // Two minutes on, with no window again: the next change waits only its second.
+        visible = false
+        now += SyncSchedule.windowlessFeedGap
+        let c = try XCTUnwrap(store.createTask(title: "Later", when: today))
+        let feed = await waitForFeed { $0.tasks.contains { $0.id == c } }
+        XCTAssertNotNil(feed)
+        XCTAssertEqual(reloads, 4)
+    }
+
     func testAFeedThatSaysTheSameIsntWrittenAgain() async throws {
         let store = await openStore()
         let w = writer(store)

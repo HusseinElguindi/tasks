@@ -1,8 +1,10 @@
 import AppKit
+import ServiceManagement
 import SwiftUI
 import TasksCore
 
-/// Settings (⌘,): the sync server and token (Keychain), appearance, how tasks are edited, and the data folder.
+/// Settings (⌘,): the sync server and token (Keychain), syncing with no window open, appearance, how tasks are edited,
+/// opening at login, and the data folder.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.tk) private var tk
@@ -26,6 +28,16 @@ struct SettingsView: View {
                     Button("Save", action: saveToken)
                         .buttonStyle(.pane(.tinted))
                         .disabled(token.isEmpty)
+                }
+                PaneRowDivider()
+                // The user, 2026-11-06 (spec §5 Realtime): keep the widgets current after ⌘W, and a way to turn it off.
+                PaneRow("Sync with no window open", description: model.syncWithoutWindow
+                        ? "Every minute while Tasks is open, so widgets stay current."
+                        : "Only while a window is open, and after a tasks CLI change.") {
+                    Toggle("Sync with no window open", isOn: $model.syncWithoutWindow)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
                 }
                 PaneRowDivider()
                 PaneRow("Status", description: status) {
@@ -81,6 +93,20 @@ struct SettingsView: View {
                     .pickerStyle(.menu)
                     .fixedSize()
                 }
+                PaneRowDivider()
+                // The user, 2026-11-06: Tasks running after a restart keeps the widgets current (macOS keeps the setting).
+                PaneRow("Open at login", description: loginDescription) {
+                    if model.loginItem == .requiresApproval {
+                        Button("Login Items…") { SMAppService.openSystemSettingsLoginItems() }
+                            .buttonStyle(.pane())
+                    }
+                    Toggle("Open at login", isOn: Binding(
+                        get: { model.loginItem == .enabled || model.loginItem == .requiresApproval },
+                        set: { model.setOpenAtLogin($0) }))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                }
             }
             PaneSection("Data") {
                 PaneRow("Folder", description: model.dataDirectory.path) {
@@ -94,6 +120,19 @@ struct SettingsView: View {
         .padding(20)
         .frame(width: 600)
         .background(tk.ground.swiftUI)
+        .onAppear { model.refreshLoginItem() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            model.refreshLoginItem()
+        }
+    }
+
+    private var loginDescription: String {
+        if let e = model.loginItemError { return "Couldn't change it: \(e)" }
+        switch model.loginItem {
+        case .enabled: return "Tasks opens when you log in, so widgets stay current."
+        case .requiresApproval: return "Allow Tasks in System Settings ▸ Login Items."
+        default: return "Off. Widgets update only while Tasks is open."
+        }
     }
 
     private var highlightDescription: String {
