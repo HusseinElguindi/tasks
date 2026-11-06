@@ -27,16 +27,17 @@ struct TasksApp: App {
             }
             .task {
                 guard app == nil else { return }
+                #if DEBUG
+                // The handler first, before the launch's own sync, as in a background launch.
+                if UserDefaults.standard.bool(forKey: "runBackgroundRefresh") {
+                    await BackgroundRefresh.shared.handle(LaunchArgumentRefreshTask())
+                }
+                #endif
                 // The same AppModel a background refresh opens, if one came first.
                 let opened = await SharedApp.open()
                 app = opened
                 opened.startSync()
                 opened.startWidgetFeed()
-                #if DEBUG
-                if UserDefaults.standard.bool(forKey: "runBackgroundRefresh") {
-                    await BackgroundRefresh.shared.handle(LaunchArgumentRefreshTask())
-                }
-                #endif
                 if let link = pendingLink {
                     pendingLink = nil
                     await opened.follow(link)
