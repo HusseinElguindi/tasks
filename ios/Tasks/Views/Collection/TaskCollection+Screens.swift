@@ -28,7 +28,7 @@ struct CollectionLine: View {
     }
 
     var body: some View {
-        content.endsAddingOnTap(!edited)
+        CellTop { content.endsAddingOnTap(!edited) }
     }
 
     @ViewBuilder private var content: some View {
@@ -85,6 +85,30 @@ struct CollectionLine: View {
         case .edge:
             EmptyView()
         }
+    }
+}
+
+/// A cell's row, its top at the cell's top. A row being typed into grows (or shrinks) as soon as its text changes, while
+/// its cell keeps the height it was configured with until it's resized on the spring (`CollectionEditing.resize`). The
+/// hosting view centres a row that isn't its height, so a Return that added a line put the text half a line (11 pt)
+/// higher at once, and the spring brought it back down: "the text jumping when pressing return" (T35, the user's film:
+/// 12 pt up and back at each Return). Placed here, the row stays put and the line it gained or lost is at its bottom,
+/// where the spring opens or closes it (the cell being typed into clips it meanwhile: TaskCollectionController's
+/// `configure`).
+///
+/// Measuring is unchanged: the cells ask for a row's size with no height (`sizeThatFits`) and get its own. Placed in a
+/// cell of a given height, it says it's that height (so the hosting view centres nothing) and puts the row, at its
+/// own height, at the top.
+struct CellTop: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        guard let row = subviews.first else { return .zero }
+        let own = row.sizeThatFits(ProposedViewSize(width: proposal.width, height: nil))
+        guard let h = proposal.height, h.isFinite else { return own }
+        return CGSize(width: own.width, height: h)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews.first?.place(at: bounds.origin, anchor: .topLeading, proposal: ProposedViewSize(width: bounds.width, height: nil))
     }
 }
 

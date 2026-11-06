@@ -268,6 +268,9 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
         cell.backgroundConfiguration = .clear()
         // Nothing here holds the controller: the cells are its view's.
         let app = app, source = source, rows = rows, state = sizes[id]
+        // A row being typed into is cut at its cell as drawn: a line it gains is under the row's top (`CellTop`) before
+        // the cell grows on the spring, and shows as the cell opens, not over the next row.
+        cell.clipsToBounds = state?.hasPrefix(TaskCollection.editingMark) == true
         weak let owner = self
         cell.contentConfiguration = UIHostingConfiguration {
             CollectionLine(id: id, source: source, rows: rows, state: state, owner: owner).modifier(CellTheme(app: app))
