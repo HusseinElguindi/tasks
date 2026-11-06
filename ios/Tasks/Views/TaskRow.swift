@@ -213,15 +213,27 @@ struct HeadingRow: View {
         .accessibilityIdentifier("heading")
     }
 
-    /// Renaming: the field in place, in the heading's font, with the new-task row's look.
+    /// Renaming: the field in place, in the heading's font, with the new-task row's look. It's in the name's own line
+    /// box (a hidden name), so the row is as tall renaming as at rest. From the XL text size up a text field's line is
+    /// 1.7–2 pt taller than a Text's, and the row grew as Rename began, under the closing menu: its platter, made for the
+    /// row as it was, showed the taller row 1 pt up within its cut (the row's fill, from `air` down), so the box's top
+    /// edge was cut to a hairline for the ~0.6 s the menu took to close (T37, the user's film: "rename section top
+    /// border getting clipped"). The rows below no longer move 2 pt as it starts and ends either.
     private var nameField: some View {
-        TextField("New Heading", text: text, prompt: Text("New Heading").foregroundStyle(p.inkTertiary))
+        Text(heading.title.isEmpty ? " " : heading.title)
             .font(Typo.heading)
-            .foregroundStyle(p.ink)
-            .focused($focus, equals: .title)
-            .submitLabel(.done)
-            .onSubmit { app.submitDraft() }
-            .accessibilityIdentifier("headingName")
+            .lineLimit(1)
+            .hidden()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .overlay(alignment: .leading) {
+                TextField("New Heading", text: text, prompt: Text("New Heading").foregroundStyle(p.inkTertiary))
+                    .font(Typo.heading)
+                    .foregroundStyle(p.ink)
+                    .focused($focus, equals: .title)
+                    .submitLabel(.done)
+                    .onSubmit { app.submitDraft() }
+                    .accessibilityIdentifier("headingName")
+            }
             .padding(.leading, Metric.rowPad)
             .padding(.vertical, 9)
             .background(p.base, in: RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous))
