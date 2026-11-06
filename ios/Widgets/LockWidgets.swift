@@ -2,13 +2,13 @@ import SwiftUI
 import WidgetKit
 import TasksCore
 
-// The lock screen's widgets (WIDGETS.md §1.1, MVP 4), read-only, as the user asked: Today's open tasks first, no counts
-// ("I want to prioritize showing the list items"), and a New Task button. The lock screen draws them vibrant (the
-// wallpaper's tint, one ink), so every cue is in words or shape, never in colour alone. Mock-ups: Lock-Dark,
-// Lock-Light (https://claude.ai/artifact/D1JxGqB9hBm5cH1EeLiYRi), with the counts and the gauge taken out.
+// The lock screen's widgets (WIDGETS.md §1.1, MVP 4), read-only, after the approved mock-ups (Lock-Dark, Lock-Light,
+// LockStates; https://claude.ai/artifact/D1JxGqB9hBm5cH1EeLiYRi): Today's open tasks first and no counts ("I want to
+// prioritize showing the list items"), and two round ones, New Task and Today. The lock screen draws them vibrant (the
+// wallpaper's tint, one ink), so every cue is in words or shape, never in colour alone.
 
-/// Today on the lock screen: the first open task in the date line (inline), or as many as fit (rectangular). Both open
-/// Today. The same provider as the home screen's Today: the feed, at now and at the next midnights.
+/// Today on the lock screen: the first open task in the date line (inline), or the first three (rectangular). Both
+/// open Today. The same provider as the home screen's Today: the feed, at now and at the next midnights.
 struct TodayLockWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: WidgetGroup.Kind.todayLock, provider: TodayProvider()) { entry in
@@ -26,12 +26,12 @@ struct TodayLockView: View {
 
     var body: some View {
         Group {
-            if family == .accessoryInline { LockInlineView(content: entry.content) } else {
-                LockRectangularView(content: entry.content)
+            if family == .accessoryInline { LockInlineView(t: LockToday(entry.content)) } else {
+                LockRectangularView(t: LockToday(entry.content))
             }
         }
         .widgetURL(DeepLink.today.url)
-        .containerBackground(for: .widget) { Color.clear }
+        .containerBackground(for: .widget) { AccessoryWidgetBackground() }
     }
 }
 
@@ -43,11 +43,19 @@ struct LockToday: Hashable {
         let title: String
         /// "2d ago" for a deadline past, "Due" for one today; nil otherwise (the ring alone).
         let word: String?
+        /// The word as VoiceOver says it: "2 days overdue", "due today".
+        let spoken: String?
     }
 
+    /// The rectangular widget's rows.
+    static let rectangularRows = 3
+
     let rows: [Row]
-    /// When there are no rows: "All done" (something was completed today), "Nothing today", or the set-up line.
+    /// When there are no rows: "All done" (today's tasks were all completed), "Nothing today" (nothing planned), or
+    /// the set-up line.
     let empty: String?
+    /// Whether the sun is lit: everything for today is done.
+    var allDone: Bool { empty == "All done" }
 
     init(_ content: TodayEntry.Content) {
         switch content {
@@ -56,74 +64,68 @@ struct LockToday: Hashable {
             empty = "Open Tasks to set up"
         case let .today(s):
             rows = s.open.map { r in
-                let word: String? = switch r.cue {
-                case .late: r.chip?.text
-                case .due: "Due"
-                case .planned, .none: nil
+                switch r.cue {
+                case .late:
+                    return Row(id: r.id, title: r.title, word: r.chip?.text, spoken: r.chip?.words ?? "overdue")
+                case .due:
+                    return Row(id: r.id, title: r.title, word: "Due", spoken: "due today")
+                case .planned, .none:
+                    return Row(id: r.id, title: r.title, word: nil, spoken: nil)
                 }
-                return Row(id: r.id, title: r.title, word: word)
             }
-            empty = rows.isEmpty ? (s.done.isEmpty ? "Nothing today" : "All done") : nil
+            empty = rows.isEmpty ? AllDoneView.words(s) : nil
         }
     }
 
-    /// How many rows fit in `height`.
-    static func fit(_ height: CGFloat) -> Int { max(1, Int((height + LM.gap) / (LM.row + LM.gap))) }
-
-    /// The rows as VoiceOver reads them: "Email Prof. Lin, 2d ago. Problem set 6, Due."
+    /// The rows as VoiceOver reads them: "Today: Email Prof. Lin, 2 days overdue. Problem set 6, due today."
     func spoken(_ rows: [Row]) -> String {
-        rows.map { [$0.title, $0.word].compactMap { $0 }.joined(separator: ", ") }.joined(separator: ". ")
+        "Today: " + rows.map { [$0.title, $0.spoken].compactMap { $0 }.joined(separator: ", ") }.joined(separator: ". ")
     }
 }
 
-/// The lock screen's metrics.
-enum LM {
-    static let row: CGFloat = 18
-    static let gap: CGFloat = 1
-    static let ring: CGFloat = 9
-}
-
-/// The date line: "☀ Email Prof. Lin" (the system cuts it to fit).
+/// The date line: "Thu 5 ☀ Email Prof. Lin about the lab" (the system puts the date first and cuts the title to fit).
 struct LockInlineView: View {
-    let content: TodayEntry.Content
+    let t: LockToday
 
     var body: some View {
-        let t = LockToday(content)
-        let first = t.rows.first
         Label {
-            if let first { Text(first.title) } else { Text(t.empty ?? "") }
+            Text(t.rows.first?.title ?? t.empty ?? "")
         } icon: {
-            Image(systemName: first == nil && t.empty == "All done" ? "sun.max.fill" : "sun.max")
+            Image(systemName: t.allDone ? "sun.max.fill" : "sun.max")
         }
-        .accessibilityLabel(first.map { "Today: " + t.spoken([$0]) } ?? (t.empty ?? ""))
+        .accessibilityLabel(t.rows.first.map { t.spoken([$0]) } ?? "Today: " + (t.empty ?? ""))
     }
 }
 
-/// As many of Today's open tasks as fit, each with its ring and the word for an urgent one; no header and no count.
+/// Today's first three open tasks, each with its ring and the word for an urgent one; or the empty state, "☀ Today"
+/// over "All done" or "Nothing today".
 struct LockRectangularView: View {
-    let content: TodayEntry.Content
+    let t: LockToday
 
     var body: some View {
-        let t = LockToday(content)
-        if let empty = t.empty {
-            HStack(spacing: 6) {
-                Image(systemName: empty == "All done" ? "sun.max.fill" : "sun.max")
-                    .font(.system(size: 15, weight: .semibold))
-                Text(empty).font(.system(size: 15, weight: .semibold)).lineLimit(2)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-            .accessibilityElement(children: .combine)
-        } else {
-            GeometryReader { g in
-                let shown = Array(t.rows.prefix(LockToday.fit(g.size.height)))
-                VStack(alignment: .leading, spacing: LM.gap) {
+        Group {
+            if let empty = t.empty {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 5) {
+                        Image(systemName: t.allDone ? "sun.max.fill" : "sun.max").font(.system(size: 12, weight: .semibold))
+                        Text("Today").font(.system(size: 13, weight: .semibold))
+                    }
+                    .foregroundStyle(.secondary)
+                    .frame(height: 18)
+                    Text(empty).font(.system(size: 17, weight: .semibold)).lineLimit(2)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Today: " + empty)
+            } else {
+                let shown = Array(t.rows.prefix(LockToday.rectangularRows))
+                VStack(alignment: .leading, spacing: 2) {
                     ForEach(shown) { r in LockRow(r: r) }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Today: " + t.spoken(shown))
+                .accessibilityLabel(t.spoken(shown))
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 }
 
@@ -132,24 +134,25 @@ struct LockRow: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Circle().strokeBorder(lineWidth: 1.5).frame(width: LM.ring, height: LM.ring)
+            Circle().strokeBorder(lineWidth: 2).frame(width: 10, height: 10)
             Text(r.title).font(.system(size: 14)).lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
             if let w = r.word {
                 Text(w).font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary).fixedSize()
             }
         }
-        .frame(height: LM.row)
+        .frame(height: 20)
     }
 }
 
-// MARK: - New Task
+// MARK: - The round ones
 
-/// The lock screen's circular New Task: a + that opens the app on a new task in Today.
+/// The lock screen's round New Task: a circled + that opens the app on a new task in Today.
 struct NewTaskLockWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: WidgetGroup.Kind.newTask, provider: StillProvider()) { _ in
-            NewTaskLockView()
+            LockGlyphView(symbol: "plus.circle", size: 30, weight: .regular, label: "New task")
+                .widgetURL(DeepLink.new(list: nil).url)
         }
         .configurationDisplayName("New Task")
         .description("Opens Tasks on a new task.")
@@ -157,14 +160,31 @@ struct NewTaskLockWidget: Widget {
     }
 }
 
-struct NewTaskLockView: View {
+/// The lock screen's round Today: the sun, which opens Today.
+struct TodayCircleWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: WidgetGroup.Kind.todayCircle, provider: StillProvider()) { _ in
+            LockGlyphView(symbol: "sun.max", size: 32, weight: .light, label: "Open Today")
+                .widgetURL(DeepLink.today.url)
+        }
+        .configurationDisplayName("Today")
+        .description("Opens Today.")
+        .supportedFamilies([.accessoryCircular])
+    }
+}
+
+struct LockGlyphView: View {
+    let symbol: String
+    let size: CGFloat
+    let weight: Font.Weight
+    let label: String
+
     var body: some View {
-        Image(systemName: "plus")
-            .font(.system(size: 26, weight: .semibold))
+        Image(systemName: symbol)
+            .font(.system(size: size, weight: weight))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .widgetURL(DeepLink.new(list: nil).url)
             .containerBackground(for: .widget) { AccessoryWidgetBackground() }
-            .accessibilityLabel("New task")
+            .accessibilityLabel(label)
     }
 }
 
