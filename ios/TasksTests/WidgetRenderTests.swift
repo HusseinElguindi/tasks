@@ -79,9 +79,20 @@ final class WidgetRenderTests: XCTestCase {
         XCTAssertEqual(roomy.groups.flatMap(\.rows).count, 6)
         XCTAssertEqual(roomy.done.count, 1)
         let tight = LargeFit(s, height: 140)
-        XCTAssertGreaterThan(tight.hidden, 0, "a count of what's left out")
+        XCTAssertGreaterThan(tight.hidden, 0, "what doesn't fit is left out")
         XCTAssertTrue(tight.done.isEmpty, "Completed only after every open row")
-        let shown = tight.groups.reduce(CGFloat(0)) { $0 + WM.groupLabel + CGFloat($1.rows.count) * WM.row + WM.groupGap }
-        XCTAssertLessThanOrEqual(shown + WM.moreLine, 140)
+        XCTAssertLessThanOrEqual(tight.height, 140 + WM.groupGap)
+        XCTAssertEqual(tight.groups.flatMap(\.rows).count, 4, "School's three and one of Home's")
+
+        // The iPhone's large size: 354 high, less the margins, the header and its gap.
+        let phone = LargeFit(s, height: 354 - WM.top - WM.bottom - WM.header - WM.groupGap)
+        XCTAssertEqual(phone.hidden, 0)
+        XCTAssertEqual(phone.done.count, 1)
+    }
+
+    func testMoreRowsFitWithoutTheCounts() {
+        // The iPhone's small and medium sizes, less their margins and headers.
+        XCTAssertEqual(TodaySmallView.fit(158 - 30 - WM.header - 6), 5)
+        XCTAssertEqual(TodayMediumView.fit(158 - WM.top - WM.bottom - WM.header - 2), 5)
     }
 }

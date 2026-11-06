@@ -7,48 +7,50 @@ import TasksTheme
 // TodayMedium, TodayLarge), at the iPhone's sizes. Every cue carries words as well as colour, and the tiles and the
 // sun are the accented group, so the widget stays legible on tinted and clear home screens (WIDGETS.md §3.6).
 
-/// The widget's metrics, by the mock-ups' numbers.
+/// The widget's metrics: the mock-ups' margins, with rows a little tighter than theirs, since the room the counts took
+/// (the user: no counts) goes to more tasks.
 enum WM {
     static let top: CGFloat = 14, side: CGFloat = 16, bottom: CGFloat = 12
-    static let header: CGFloat = 24
-    static let row: CGFloat = 25
+    static let header: CGFloat = 20
+    static let row: CGFloat = 22
     static let groupLabel: CGFloat = 18
     static let groupGap: CGFloat = 6
     static let box: CGFloat = 18
     static let allDoneLine: CGFloat = 20
-    static let moreLine: CGFloat = 16
+    /// The small size's rows: a ring and a title.
+    static let smallRow: CGFloat = 16, smallGap: CGFloat = 3
 }
 
 // MARK: - Small
 
+/// "☀ Today", then as many of Today's open tasks as fit, each with its ring cue. No count (the user, 2026-11-06).
 struct TodaySmallView: View {
     let s: TodaySnapshot
     @Environment(\.widgetPalette) private var p
 
+    /// How many rows fit in `height`.
+    static func fit(_ height: CGFloat) -> Int { max(0, Int((height + WM.smallGap) / (WM.smallRow + WM.smallGap))) }
+
     var body: some View {
         if s.openCount == 0 { AllDoneView(s: s, compact: true) } else {
-            VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
                     Sun(size: 13)
                     Text("Today").font(.system(size: 14, weight: .semibold)).foregroundStyle(p.ink)
                 }
-                .frame(height: 20)
-                Text(s.openCount, format: .number)
-                    .font(.system(size: 36, weight: .semibold))
-                    .monospacedDigit()
-                    .foregroundStyle(p.ink)
-                    .frame(height: 40, alignment: .leading)
-                    .padding(.top, 4)
-                    .accessibilityLabel(s.openCount == 1 ? "1 task" : "\(s.openCount) tasks")
-                Urgency(s: s).font(.system(size: 12)).lineLimit(1)
-                Spacer(minLength: 4)
-                VStack(alignment: .leading, spacing: 3) {
-                    ForEach(s.open.prefix(2)) { r in
-                        HStack(spacing: 7) {
-                            Ring(cue: r.cue, size: 10, line: 1.5)
-                            Text(r.title).font(.system(size: 12.5)).foregroundStyle(p.ink).lineLimit(1)
+                .frame(height: WM.header)
+                .accessibilityAddTraits(.isHeader)
+                GeometryReader { g in
+                    VStack(alignment: .leading, spacing: WM.smallGap) {
+                        ForEach(s.open.prefix(Self.fit(g.size.height))) { r in
+                            HStack(spacing: 7) {
+                                Ring(cue: r.cue, size: 10, line: 1.5)
+                                Text(r.title).font(.system(size: 13)).foregroundStyle(p.ink).lineLimit(1)
+                            }
+                            .frame(height: WM.smallRow)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(r.spoken)
                         }
-                        .frame(height: 16)
                     }
                 }
             }
@@ -59,27 +61,15 @@ struct TodaySmallView: View {
     }
 }
 
-/// "1 overdue · 1 due", each in its colour; nothing when neither.
-struct Urgency: View {
-    let s: TodaySnapshot
-    @Environment(\.widgetPalette) private var p
-
-    var body: some View {
-        let late = s.overdueCount, due = s.dueCount
-        HStack(spacing: 0) {
-            if late > 0 { Text("\(late) overdue").foregroundStyle(p.danger) }
-            if late > 0 && due > 0 { Text(" · ").foregroundStyle(p.inkSecondary) }
-            if due > 0 { Text("\(due) due").foregroundStyle(p.attention) }
-        }
-    }
-}
-
 // MARK: - Medium
 
-/// The header, the first four open rows in Today's order; checked rows drop out to make room (WIDGETS.md Q4).
+/// The header, then as many open rows as fit in Today's order (five at the iPhone's size); checked rows drop out to
+/// make room (WIDGETS.md Q4).
 struct TodayMediumView: View {
     let s: TodaySnapshot
-    static let rows = 4
+
+    /// How many rows fit in `height`.
+    static func fit(_ height: CGFloat) -> Int { max(0, Int(height / WM.row)) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -87,8 +77,11 @@ struct TodayMediumView: View {
             if s.openCount == 0 {
                 AllDoneView(s: s, compact: false)
             } else {
-                ForEach(s.open.prefix(Self.rows)) { r in TaskRowView(r: r, trailing: .tile) }
-                Spacer(minLength: 0)
+                GeometryReader { g in
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(s.open.prefix(Self.fit(g.size.height))) { r in TaskRowView(r: r, trailing: .tile) }
+                    }
+                }
             }
         }
         .padding(.top, WM.top)
@@ -113,7 +106,7 @@ struct TodayLargeView: View {
                 GeometryReader { g in
                     let fit = LargeFit(s, height: g.size.height)
                     VStack(alignment: .leading, spacing: WM.groupGap) {
-                        if s.openCount == 0 { AllDoneLine(s: s) }
+                        if s.openCount == 0 { AllDoneLine() }
                         ForEach(fit.groups, id: \.id) { group in
                             VStack(alignment: .leading, spacing: 0) {
                                 GroupLabel(list: group.list)
@@ -126,7 +119,6 @@ struct TodayLargeView: View {
                                 ForEach(fit.done) { r in TaskRowView(r: r, trailing: .listName) }
                             }
                         }
-                        if fit.hidden > 0 { MoreLine(count: fit.hidden) }
                     }
                     .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
@@ -139,8 +131,8 @@ struct TodayLargeView: View {
     }
 }
 
-/// What fits in the large widget's height: whole groups and rows from the top, the Completed group after them, and
-/// a count of the open rows left out.
+/// What fits in the large widget's height: whole groups and rows from the top, then the Completed group once every
+/// open row is in. What doesn't fit is left out without a "N more" line, which would be a count (the user: none).
 struct LargeFit {
     var groups: [TodaySnapshot.Group] = []
     var done: [TodaySnapshot.Row] = []
@@ -151,16 +143,9 @@ struct LargeFit {
         var left = height
         if s.openCount == 0 { left -= WM.allDoneLine + WM.groupGap }
         var shown = 0
-        for (i, g) in s.groups.enumerated() {
-            let remainingAfter = s.groups[(i + 1)...].reduce(0) { $0 + $1.rows.count }
-            // Room for the label and at least one row; a "N more" line once anything is left out.
-            let reserve = remainingAfter > 0 ? WM.moreLine + WM.groupGap : 0
-            let room = left - WM.groupLabel - reserve
-            var n = min(g.rows.count, max(0, Int(room / WM.row)))
-            if n < g.rows.count {
-                // This group is cut: keep room for the "more" line.
-                n = min(g.rows.count, max(0, Int((left - WM.groupLabel - WM.moreLine - WM.groupGap) / WM.row)))
-            }
+        for g in s.groups {
+            // Room for the label and at least one row.
+            let n = min(g.rows.count, max(0, Int((left - WM.groupLabel) / WM.row)))
             guard n > 0 else { break }
             groups.append(.init(list: g.list, rows: Array(g.rows.prefix(n))))
             shown += n
@@ -173,11 +158,18 @@ struct LargeFit {
             done = Array(s.done.prefix(n))
         }
     }
+
+    /// The height the fit takes, for the tests.
+    var height: CGFloat {
+        let label = WM.groupLabel + WM.groupGap
+        return groups.reduce(0) { $0 + label + CGFloat($1.rows.count) * WM.row }
+            + (done.isEmpty ? 0 : label + CGFloat(done.count) * WM.row)
+    }
 }
 
 // MARK: - Pieces
 
-/// "☀ Today 6", then the date (large) and the + that opens a new task in Today.
+/// "☀ Today", then the date (large) and the + that opens a new task in Today. No count (the user, 2026-11-06).
 struct TodayHeader: View {
     let s: TodaySnapshot
     let showsDate: Bool
@@ -187,11 +179,7 @@ struct TodayHeader: View {
         HStack(spacing: 7) {
             Sun(size: 13)
             Text("Today").font(.system(size: 15, weight: .semibold)).foregroundStyle(p.ink)
-            if s.openCount > 0 {
-                Text(s.openCount, format: .number)
-                    .font(.system(size: 15)).monospacedDigit().foregroundStyle(p.inkSecondary)
-                    .accessibilityLabel(s.openCount == 1 ? "1 task" : "\(s.openCount) tasks")
-            }
+                .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 4)
             if showsDate {
                 Text(DateLabel.long(s.date, today: s.date))
@@ -199,9 +187,9 @@ struct TodayHeader: View {
             }
             Link(destination: DeepLink.new(list: nil).url) {
                 Image(systemName: "plus")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(p.inkSecondary)
-                    .frame(width: 24, height: 24)
+                    .frame(width: WM.header, height: WM.header)
                     .background(p.fillControl, in: Circle())
             }
             .padding(.leading, showsDate ? 6 : 0)
@@ -246,13 +234,7 @@ struct TaskRowView: View {
         .accessibilityLabel(label)
     }
 
-    private var label: String {
-        var parts = [r.title]
-        if r.done { parts.append("completed") }
-        if let c = r.chip { parts.append(c.text) }
-        parts.append(r.list.name)
-        return parts.joined(separator: ", ")
-    }
+    private var label: String { r.spoken + ", " + r.list.name }
 }
 
 /// The checkbox: a ring in its cue's colour, or the accent's filled box with a check.
@@ -361,19 +343,6 @@ struct GroupLabel: View {
     }
 }
 
-struct MoreLine: View {
-    let count: Int
-    @Environment(\.widgetPalette) private var p
-
-    var body: some View {
-        Text("\(count) more")
-            .font(.system(size: 12))
-            .foregroundStyle(p.inkTertiary)
-            .frame(height: WM.moreLine)
-            .padding(.leading, WM.box + 10)
-    }
-}
-
 /// The sun: Today's mark, in the accent.
 struct Sun: View {
     let size: CGFloat
@@ -391,7 +360,8 @@ struct Sun: View {
 
 // MARK: - Empty states
 
-/// Nothing open today: the lit sun and "All done" (COLOR.md §4's moment, drawn still), with what was done.
+/// Nothing open today: the lit sun and "All done" when something was done today (COLOR.md §4's moment, drawn still),
+/// else the plain sun and "Nothing today". No count of what was done (the user: no counts).
 struct AllDoneView: View {
     let s: TodaySnapshot
     let compact: Bool
@@ -400,20 +370,19 @@ struct AllDoneView: View {
     var body: some View {
         VStack(spacing: compact ? 6 : 4) {
             Spacer(minLength: 0)
-            Sun(size: compact ? 30 : 24, filled: true)
-            Text("All done").font(.system(size: compact ? 15 : 14, weight: .semibold)).foregroundStyle(p.ink)
-            Text(AllDoneLine.words(s))
-                .font(.system(size: 12)).foregroundStyle(p.inkSecondary).lineLimit(1)
+            Sun(size: compact ? 30 : 24, filled: !s.done.isEmpty)
+            Text(Self.words(s)).font(.system(size: compact ? 15 : 14, weight: .semibold)).foregroundStyle(p.ink)
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .combine)
     }
+
+    static func words(_ s: TodaySnapshot) -> String { s.done.isEmpty ? "Nothing today" : "All done" }
 }
 
 /// The large widget's "All done" over today's Completed group.
 struct AllDoneLine: View {
-    let s: TodaySnapshot
     @Environment(\.widgetPalette) private var p
 
     var body: some View {
@@ -422,14 +391,6 @@ struct AllDoneLine: View {
             Text("All done").font(.system(size: 13, weight: .semibold)).foregroundStyle(p.ink)
         }
         .frame(height: WM.allDoneLine)
-    }
-
-    static func words(_ s: TodaySnapshot) -> String {
-        switch s.done.count {
-        case 0: "Nothing planned for today"
-        case 1: "1 done today"
-        case let n: "\(n) done today"
-        }
     }
 }
 

@@ -16,6 +16,11 @@ struct TodaySnapshot: Hashable, Sendable {
         /// The deadline capsule's words ("2d ago", "Due today", "4d left") and tone; nil without a deadline.
         let chip: Chip?
         let done: Bool
+
+        /// As VoiceOver reads it: "Problem set 6, Due today", "Pay the phone bill, completed".
+        var spoken: String {
+            ([title] + (done ? ["completed"] : []) + (chip.map { [$0.text] } ?? [])).joined(separator: ", ")
+        }
     }
 
     struct Chip: Hashable, Sendable {
