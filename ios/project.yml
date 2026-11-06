@@ -107,21 +107,17 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Widgets/TasksWidgets.entitlements
         TARGETED_DEVICE_FAMILY: "1,2"
         SKIP_INSTALL: YES
-  # Unit tests in the app's process (so they have its App Group): the widgets' feed, the links, Today as the widget
-  # computes it, and the widget's views drawn to images (widgets/Shared's files, compiled in). Simulator only, like the
-  # UI tests.
+  # Unit tests in the app's process (so they have its App Group): the widgets' feed, the links, Today and the List as
+  # the widgets compute them, and the widgets' views drawn to images. Simulator only, like the UI tests.
   TasksTests:
     type: bundle.unit-test
     platform: iOS
     sources:
       - path: TasksTests
-      - path: ../widgets/Shared/TodaySnapshot.swift
-      - path: ../widgets/Shared/TodayProvider.swift
-      - path: ../widgets/Shared/WidgetGroup.swift
-      - path: ../widgets/Shared/WidgetPalette.swift
-      - path: ../widgets/Shared/TodayViews.swift
-      - path: ../widgets/Shared/TodayWidget.swift
-      - path: ../widgets/Shared/DeepLink.swift
+      # The widgets' code, compiled in: all of widgets/Shared, and the lock screen's views (not the extension's @main
+      # bundle or its controls).
+      - path: ../widgets/Shared
+      - path: Widgets/LockWidgets.swift
     dependencies:
       - target: Tasks
       - package: TasksCore
