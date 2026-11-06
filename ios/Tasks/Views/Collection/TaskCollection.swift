@@ -572,3 +572,22 @@ struct CellTheme: ViewModifier {
     }
 }
 
+
+#if DEBUG || PERF_PROBE
+/// DebugScript's view of a list (ios/Tasks/App/DebugScript.swift): its items, and our press (`CollectionDrag.script`).
+extension TaskCollectionController: ScriptScreen {
+    var scriptList: UICollectionView { cv }
+    var scriptItems: [String] { dataSource.snapshot().itemIdentifiers }
+    func scriptIndexPath(_ id: String) -> IndexPath? { dataSource.indexPath(for: id) }
+
+    /// An item by its id ("h:…", "header"), a task's or heading's id, or its title.
+    func scriptItem(_ row: String) -> String? {
+        let items = scriptItems
+        for id in [row, "t:" + row, "h:" + row] where items.contains(id) { return id }
+        return items.first { ($0.hasPrefix("t:") || $0.hasPrefix("h:")) && app.task(String($0.dropFirst(2)))?.title == row }
+    }
+
+    func scriptPress(_ phase: UIGestureRecognizer.State, at p: CGPoint?) { drag.script(phase, at: p) }
+    var scriptState: String { drag.scriptState }
+}
+#endif

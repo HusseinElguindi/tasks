@@ -101,6 +101,8 @@ enum LaunchArguments {
         #if DEBUG || PERF_PROBE
         // -frameProbe YES (and the drag's -dragTrace YES): the frame and drag logs, ios/Tools/perf/README.md.
         FrameProbe.install()
+        // -debugScript "<steps>" (or -debugScriptFile <path>): App/DebugScript.swift, ios/Tools/script/README.md.
+        DebugScript.runIfRequested(app)
         #endif
         guard let screen = d.string(forKey: "screen") else { return }
 

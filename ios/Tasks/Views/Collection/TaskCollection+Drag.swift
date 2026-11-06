@@ -843,6 +843,20 @@ final class PressDrag: UIGestureRecognizer, UIGestureRecognizerDelegate {
     func gestureRecognizer(_ g: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
         other.view === view && !(other is UIPanGestureRecognizer)
     }
+
+    #if DEBUG || PERF_PROBE
+    /// DebugScript's finger (ios/Tasks/App/DebugScript.swift), in the window: while set, the press reports it as its
+    /// location and one touch, and the script drives the owner's phases itself (`script` on CollectionDrag and Home's
+    /// controller). No UITouch is made: UIKit's own recognizers never see it.
+    var scripted: CGPoint?
+
+    override func location(in view: UIView?) -> CGPoint {
+        guard let p = scripted else { return super.location(in: view) }
+        return view.map { $0.convert(p, from: nil) } ?? p
+    }
+
+    override var numberOfTouches: Int { scripted != nil ? 1 : super.numberOfTouches }
+    #endif
 }
 
 /// A lifted row's own taps, held off for the touch that lifted it. Let go right after the lift (before the row's menu,
@@ -1165,6 +1179,33 @@ extension TaskCollectionController {
 }
 
 #if DEBUG || PERF_PROBE
+/// DebugScript's press (ios/Tasks/App/DebugScript.swift): a phase of our press at the script's finger, through the same
+/// calls the recognizer's action makes (`pressed`). `.possible` is the touch-down.
+extension CollectionDrag {
+    func script(_ phase: UIGestureRecognizer.State, at p: CGPoint?) {
+        guard let g = press else { return }
+        if let p { g.scripted = p }
+        switch phase {
+        case .possible: touched()
+        case .began: lift(g)
+        case .changed: moved(g)
+        case .ended: release(drop: true)
+        case .cancelled: release(drop: false)
+        default: break
+        }
+        if phase == .ended || phase == .cancelled { g.scripted = nil }
+    }
+
+    /// The drag's state, for a script's log.
+    var scriptState: String {
+        let d = state ?? held
+        return "drag=\(state != nil ? "on" : held != nil ? "held" : "off") id=\(d?.id ?? "-") slot=\(d?.slot.map(String.init) ?? "-")"
+            + " landing=\(landing ?? "-") copy=\(copy.map { ScriptFormat.rect($0.frame) } ?? "-")"
+    }
+}
+#endif
+
+#if DEBUG || PERF_PROBE
 /// Debug builds and the phone's measuring build (`PERF_PROBE`, ios/Tools/perf/README.md) only.
 /// `-dragProbe YES` (FlowTests): what the last press did, as the collection view's accessibility value (identifier
 /// "dragProbe"), read once it's over: "pd=180 step=12.0 still=0 ticks=3 drops=1 dx=80.0 land=0.0,0.0 uk=0
@@ -1341,7 +1382,12 @@ final class DragProbe {
     private func publish() {
         guard probing, let view else { return }
         view.accessibilityIdentifier = "dragProbe"
-        view.accessibilityValue = "pd=\(sinceRelease.map { String(format: "%.0f", $0) } ?? "-") step=\(f(step)) still=\(still) ticks=\(ticks) drops=\(drops) dx=\(dx.map(f) ?? "-") land=\(land.map { "\(f($0.x)),\(f($0.y))" } ?? "-") uk=\(uikit ? 1 : 0) held=\(held ?? "-") scroll=\(scrolled) gapLeft=\(gapLeft.map(f) ?? "-") fo=\(f(foldOverlap)) hl=\(highlight.map(String.init) ?? "-") ev=\(calls.joined(separator: ">"))"
+        view.accessibilityValue = summary
+    }
+
+    /// The probe's fields, as `-dragProbe YES` publishes them (DebugScript's `log` reads them with or without it).
+    var summary: String {
+        "pd=\(sinceRelease.map { String(format: "%.0f", $0) } ?? "-") step=\(f(step)) still=\(still) ticks=\(ticks) drops=\(drops) dx=\(dx.map(f) ?? "-") land=\(land.map { "\(f($0.x)),\(f($0.y))" } ?? "-") uk=\(uikit ? 1 : 0) held=\(held ?? "-") scroll=\(scrolled) gapLeft=\(gapLeft.map(f) ?? "-") fo=\(f(foldOverlap)) hl=\(highlight.map(String.init) ?? "-") ev=\(calls.joined(separator: ">"))"
     }
 
     // MARK: The copy against the finger (with -dragTrace YES, published with -dragProbe YES)

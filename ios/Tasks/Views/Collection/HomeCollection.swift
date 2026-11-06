@@ -743,3 +743,42 @@ final class HomeCell: UICollectionViewListCell {
         return super.preferredLayoutAttributesFitting(a)
     }
 }
+
+#if DEBUG || PERF_PROBE
+/// DebugScript's view of Home (ios/Tasks/App/DebugScript.swift): its list and items, and our press driven at the
+/// script's finger through the same calls the recognizer's action makes (`pressed`).
+extension HomeCollectionController: ScriptScreen {
+    var scriptList: UICollectionView { cv }
+    var scriptItems: [String] { dataSource.snapshot().itemIdentifiers }
+    func scriptIndexPath(_ id: String) -> IndexPath? { dataSource.indexPath(for: id) }
+
+    /// A list by its id, its name or its sample short name.
+    func scriptItem(_ row: String) -> String? {
+        let items = scriptItems
+        if items.contains(row) { return row }
+        let id = SampleData.listID(row, in: app.projection)
+        if items.contains("l:" + id) { return "l:" + id }
+        return items.first { $0.hasPrefix("l:") && app.list(String($0.dropFirst(2)))?.name == row }
+    }
+
+    func scriptPress(_ phase: UIGestureRecognizer.State, at p: CGPoint?) {
+        guard let g = press else { return }
+        if let p { g.scripted = p }
+        switch phase {
+        case .possible: g.touched()
+        case .began: lift(g)
+        case .changed: moved(g)
+        case .ended: release(drop: true)
+        case .cancelled: release(drop: false)
+        default: break
+        }
+        if phase == .ended || phase == .cancelled { g.scripted = nil }
+    }
+
+    var scriptState: String {
+        let d = drag ?? held
+        return "drag=\(drag != nil ? "on" : held != nil ? "held" : "off") id=\(d?.id ?? "-") slot=\(d?.slot.map(String.init) ?? "-")"
+            + " landing=\(landing ?? "-") copy=\(copyView.map { ScriptFormat.rect($0.frame) } ?? "-")"
+    }
+}
+#endif
