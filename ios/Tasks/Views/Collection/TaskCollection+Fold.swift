@@ -2,22 +2,27 @@ import SwiftUI
 import TasksCore
 import UIKit
 
-// A heading folding or opening (§23): its notes and tasks slide up under its foot as they fade (150 ms ease-out), or
-// back down from it (220 ms ease-in), the rows below closing up on the same curve, rigidly with them. Measured exact in
-// the spike (ios-spike 25fabe4; memory uicollectionview-spike-findings), because:
-// - the curves are UIKit's own: the collection view doesn't take SwiftUI's. They're critically damped springs of the
-//   fold's durations (`UIView.animate(springDuration:bounce: 0)`): for a diffable apply UIKit makes springs whatever
-//   curve the block asks for, and with `withDuration:` it cut its 0.5 s springs off at our duration, 82% of the way
-//   (a 26–35 pt snap at a collapse's end, filmed; the cells' layer animations logged);
+// A heading folding or opening (§23): its notes and tasks slide up under its foot as they fade out (150 ms ease-out),
+// or back down from it as they fade in (220 ms ease-in). They move, and the rows below close up or open with them,
+// rigidly, on the Mac's `layout` spring (critically damped, response 0.25 s, the core's other moves); only the opacity
+// is on the fade's curve, as on the Mac. Measured exact in the spike (ios-spike 25fabe4; memory
+// uicollectionview-spike-findings), because:
+// - the curves are UIKit's own: the collection view doesn't take SwiftUI's. The rows are moved by plain view
+//   animations, not the diffable apply: for an apply UIKit makes springs whatever curve the block asks for, and with
+//   `withDuration:` it cut its 0.5 s springs off at our duration, 82% of the way (a 26–35 pt snap at a collapse's end,
+//   filmed; the cells' layer animations logged);
 // - an appearing row's offset is a transform: the collection view puts a self-sizing cell's first frame back at its
 //   final place;
 // - the update is one CATransaction (the core's `apply`);
 // - a mask at the heading's foot keeps the sliding rows from drawing above it, and headings draw over the rows;
 // - a collapse near the end has slack under it, so the scroll offset isn't clamped mid-fold (it snapped 43 pt);
 // - one fold at a time: an update that comes while a fold is still under way (the chevron tapped twice, a heading let
-//   go right after its drag began and folded its section) ends that fold at its end state first (`end`), and only
-//   the latest fold's completion cleans up. (Two at once, the first's end took the second's masks and pad mid-way:
-//   rows drawn over the heading and each other, a heading gone for 200 ms, T27, filmed.)
+//   go right after its drag began and folded its section) ends that fold first (`end`), and only the latest fold's
+//   completion cleans up. A fold that comes next starts from where the ended one had drawn its rows (`handover`: the
+//   chevron tapped twice 100 ms apart, the rows jumped 53 pt to the first fold's end and back, measured; the spring's
+//   longer tail made that window ~0.4 s); any other update starts from the end. (Two at once, the first's end took
+//   the second's masks and pad mid-way: rows drawn over the heading and each other, a heading gone for 200 ms, T27,
+//   filmed.)
 // Notes that come or go alone (Add Notes, notes emptied) fold from or into their heading the same way, on the draft's
 // curve (Motion.layout's spring, the core's).
 //
@@ -47,8 +52,21 @@ final class CollectionFold {
     /// scrolls up).
     private(set) var slack: CGFloat = 0
     /// The fold under way (`animate`): its number, its collapse's pictures and the opening rows it masks.
-    private var running: (count: Int, ghost: UIView?, masked: [TaskCell])?
+    private var running: (count: Int, heading: String, ghost: UIView?, masked: [TaskCell])?
     private var folds = 0
+    /// Where a fold that another update ended (`end`) had drawn its rows. The next fold starts from there.
+    private struct Handover {
+        /// The fold's heading.
+        var heading = ""
+        /// Each row's offset from its place, and an opening row's opacity, by item.
+        var offsets: [String: CGFloat] = [:]
+        var alphas: [String: CGFloat] = [:]
+        /// A collapse's pictures: how far above them the section still reached (how far open it was drawn), and their
+        /// opacity.
+        var open: CGFloat?
+        var pictureAlpha: CGFloat?
+    }
+    private var handover: Handover?
 
     init(owner: TaskCollectionController) { self.owner = owner }
 
@@ -86,7 +104,9 @@ final class CollectionFold {
     func prepare(_ plan: Plan?, old: [String], animated: Bool) {
         end()
         active = nil
-        guard let plan, animated else { return }
+        // Only a fold's own animation starts from where an ended fold had drawn its rows (`animate`).
+        guard let plan, animated else { handover = nil; return }
+        if plan.notesOnly { handover = nil }
         oldIDs = old
         oldFrames = [:]
         distance = 0
@@ -113,12 +133,26 @@ final class CollectionFold {
         }
     }
 
-    /// A fold still under way ends now, at its end state (another update has come): its pictures go, its rows stop
-    /// where they're going (their animations removed: their model values are the end's), its masks and pad go. Its
-    /// own completion, when it comes, does nothing (`animate`).
+    /// A fold still under way ends now (another update has come): its pictures go, its rows stop where they're going
+    /// (their animations removed: their model values are the end's), its masks and pad go. Where it had drawn them is
+    /// kept (`handover`): a fold that comes next starts from there (the chevron tapped twice: the rows turn back
+    /// where they are, rather than jumping to the first fold's end); any other update starts from the end. Its own
+    /// completion, when it comes, does nothing (`animate`).
     private func end() {
         guard let r = running else { return }
         running = nil
+        var h = Handover(heading: r.heading)
+        for case let c as TaskCell in owner.cv.subviews {
+            guard let id = c.itemID, let p = c.layer.presentation() else { continue }
+            let dy = p.transform.m42 - c.layer.transform.m42
+            if abs(dy) > 0.25 { h.offsets[id] = dy }
+            if let q = c.contentView.layer.presentation(), q.opacity < 0.999 { h.alphas[id] = CGFloat(q.opacity) }
+        }
+        if let pic = r.ghost?.subviews.first, let p = pic.layer.presentation() {
+            h.open = p.frame.minY - pic.frame.minY
+            h.pictureAlpha = CGFloat(p.opacity)
+        }
+        handover = h
         r.ghost?.removeFromSuperview()
         for case let c as TaskCell in owner.cv.subviews {
             c.layer.removeAllAnimations()
@@ -136,35 +170,43 @@ final class CollectionFold {
     /// view slide out rather than vanish).
     private(set) var layoutPad: CGFloat = 0
 
-    /// Applies `snap` and runs the fold on §23's curves; false leaves notes alone to the core's spring.
+    /// Applies `snap` and runs the fold on §23's curves (the motion on `layout`'s spring, the fade on its own curve);
+    /// false leaves notes alone to the core's spring.
     ///
-    /// The collection view's own update can't take these curves (for a diffable apply UIKit makes springs whatever the
-    /// block asks for; cut off at our duration they snapped 26–35 pt at a collapse's end, run to their end they
-    /// lingered and opened 55 ms early, filmed). So the snapshot is applied at once, and the rows are moved by plain
-    /// view animations, which keep their curves, as the drag gap's are: each row that stays starts where it was
-    /// (a transform) and goes to its place; an opening's rows start under the heading's foot, masked there, clear;
-    /// a collapse's rows go up under it as pictures, in a clip at the foot, behind the rows.
+    /// The collection view's own update can't run a fold right (for a diffable apply UIKit makes springs whatever the
+    /// block asks for, with the cells' own timing: cut off at our duration they snapped 26–35 pt at a collapse's end,
+    /// run to their end they lingered and opened 55 ms early, filmed). So the snapshot is applied at once, and the rows
+    /// are moved by plain view animations, which keep their curves, as the drag gap's are: each row that stays starts
+    /// where it was (a transform) and goes to its place; an opening's rows start under the heading's foot, masked there,
+    /// clear; a collapse's rows go up under it as pictures, in a clip at the foot, behind the rows.
     func animate(_ plan: Plan, _ snap: NSDiffableDataSourceSnapshot<Int, String>, done: @escaping () -> Void) -> Bool {
+        let hand = handover ?? Handover()
+        handover = nil
         guard !plan.notesOnly else { return false }
         let cv = owner.cv!, layout = owner.layout!, ds = owner.dataSource!
         #if DEBUG || PERF_PROBE
         probe.watch(cv)
         #endif
         let collapse = plan.collapse
-        // Every row's top before, and the heading's foot (it doesn't move).
+        // Every row's top before, as drawn (an ended fold's offset), and the heading's foot (it doesn't move).
         var before: [String: CGFloat] = [:]
-        for (i, id) in oldIDs.enumerated() { if let f = layout.modelFrame(i) { before[id] = f.minY } }
+        for (i, id) in oldIDs.enumerated() { if let f = layout.modelFrame(i) { before[id] = f.minY + (hand.offsets[id] ?? 0) } }
         guard let h = oldIDs.firstIndex(of: plan.heading).flatMap({ layout.modelFrame($0) }) else { return false }
         let foot = h.maxY
         var ghost: UIView?
+        var targets: [(picture: UIView, y: CGFloat)] = []
         if collapse {
             let clip = UIView(frame: CGRect(x: 0, y: foot, width: cv.bounds.width, height: max(1, cv.contentSize.height + cv.bounds.height)))
             clip.clipsToBounds = true
             clip.isUserInteractionEnabled = false
             clip.accessibilityElementsHidden = true
             for case let c as TaskCell in cv.subviews where plan.items.contains(c.itemID ?? "") && !c.isHidden {
-                guard let pic = c.snapshotView(afterScreenUpdates: false) else { continue }
-                pic.frame = c.frame.offsetBy(dx: 0, dy: -foot)
+                guard let id = c.itemID, let pic = c.snapshotView(afterScreenUpdates: false) else { continue }
+                // Where it's drawn (an opening that turned back: part way down, part faded in); it goes to its place
+                // moved up by the section's height.
+                pic.frame = c.frame.offsetBy(dx: 0, dy: -foot + (hand.offsets[id] ?? 0))
+                pic.alpha = hand.alphas[id] ?? 1
+                targets.append((pic, c.frame.minY - foot - distance))
                 clip.addSubview(pic)
             }
             cv.insertSubview(clip, at: 0)
@@ -183,14 +225,19 @@ final class CollectionFold {
             layoutPad = height
             cv.layoutIfNeeded()
         }
+        // An opening that turns back a collapse still under way starts where the collapse had drawn its rows: as far
+        // open as the rows below still were (rigidly with them), as faint as its pictures.
+        let turning = !collapse && hand.heading == plan.heading
+        let open = turning ? max(0, min(height, hand.offsets.values.max() ?? hand.open ?? 0)) : 0
+        let fadeFrom = turning ? (hand.pictureAlpha ?? 0) : 0
         var appearing: [(cell: TaskCell, top: CGFloat)] = []
         UIView.performWithoutAnimation {
             for case let c as TaskCell in cv.subviews {
                 guard let id = c.itemID, let ip = ds.indexPath(for: id), let f = layout.modelFrame(ip.item) else { continue }
                 if !collapse, plan.items.contains(id) {
-                    c.transform = CGAffineTransform(translationX: 0, y: -height)
-                    c.contentView.alpha = 0
-                    c.installMask(foot, top: f.minY - height)
+                    c.transform = CGAffineTransform(translationX: 0, y: open - height)
+                    c.contentView.alpha = fadeFrom
+                    c.installMask(foot, top: f.minY - height + open)
                     appearing.append((c, f.minY))
                 } else if let y0 = before[id], y0 != f.minY {
                     c.transform = CGAffineTransform(translationX: 0, y: y0 - f.minY)
@@ -199,7 +246,7 @@ final class CollectionFold {
         }
         folds += 1
         let n = folds
-        running = (n, ghost, appearing.map(\.cell))
+        running = (n, plan.heading, ghost, appearing.map(\.cell))
         // Only this fold's own end, if no update has ended it first (`end`).
         let finish: () -> Void = { [weak self] in
             guard let self, self.running?.count == n else { return }
@@ -209,15 +256,22 @@ final class CollectionFold {
             self.layoutPad = 0
             done()
         }
+        // The motion on the Mac's `layout` (critically damped, response 0.25 s), as the core's other moves: the rows, the
+        // opening rows' masks (on the same curve, so the clip at the foot stays put) and the collapse's pictures. Its
+        // completion, once it has settled, ends the fold.
+        UIView.animate(springDuration: 0.25, bounce: 0, initialSpringVelocity: 0, delay: 0,
+                       options: [.allowUserInteraction, .overrideInheritedCurve, .overrideInheritedDuration]) {
+            for case let c as TaskCell in cv.subviews { c.transform = .identity }
+            for a in appearing { a.cell.mask?.frame.origin.y = foot - a.top }
+            for t in targets { t.picture.frame.origin.y = t.y }
+        } completion: { _ in finish() }
+        // The fade on its own curve, committed with it: out over 150 ms ease-out, in over 220 ms ease-in (faint while
+        // the rows still overlap the heading).
         UIView.animate(withDuration: collapse ? 0.15 : 0.22, delay: 0,
                        options: [collapse ? .curveEaseOut : .curveEaseIn, .allowUserInteraction, .overrideInheritedCurve, .overrideInheritedDuration]) {
-            for case let c as TaskCell in cv.subviews { c.transform = .identity }
-            for a in appearing {
-                a.cell.contentView.alpha = 1
-                a.cell.mask?.frame.origin.y = foot - a.top
-            }
-            ghost?.subviews.forEach { $0.frame.origin.y -= self.distance; $0.alpha = 0 }
-        } completion: { _ in finish() }
+            for a in appearing { a.cell.contentView.alpha = 1 }
+            for t in targets { t.picture.alpha = 0 }
+        }
         return true
     }
 
@@ -329,7 +383,7 @@ extension TaskCell {
 }
 
 #if DEBUG || PERF_PROBE
-/// Debug builds and the phone's measuring build only (`-dragProbe YES`, FlowTests). From each fold's start to 0.4 s
+/// Debug builds and the phone's measuring build only (`-dragProbe YES`, FlowTests). From each fold's start to 0.6 s
 /// after the latest, every frame: the most that two things drawn in the list overlap, in points: the rows (their drawn
 /// frames, cut by their masks; a row drawn clear doesn't count) and a collapse's pictures (cut by their clip). The
 /// drag probe publishes it as `fo` (the worst since launch). A fold drawn right moves rows rigidly, so it's 0.
@@ -343,7 +397,7 @@ final class FoldProbe {
     func watch(_ cv: UICollectionView) {
         guard Self.on else { return }
         self.cv = cv
-        until = CACurrentMediaTime() + 0.4
+        until = CACurrentMediaTime() + 0.6
         guard link == nil else { return }
         let l = CADisplayLink(target: Tick { [weak self] in self?.frame() }, selector: #selector(Tick.fire))
         l.add(to: .main, forMode: .common)
