@@ -63,6 +63,9 @@ clean run, 1 for one with errors, or 2 for a timeout or a failed launch. A scrip
 
 On the shared simulator, hold the sim lease while it runs (coord's `lease.sh sim acquire`).
 
+From a UI test, check for the element `debugScript` instead: its value is the done marker and its label is the output
+folder's path. `TasksUITests/DebugScriptTests.swift` runs a scripted heading drag that way and reads its log.
+
 ## Examples
 
 ### (a) Drag the last heading up and back home, then edit its notes
