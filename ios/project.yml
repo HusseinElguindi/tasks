@@ -107,8 +107,9 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Widgets/TasksWidgets.entitlements
         TARGETED_DEVICE_FAMILY: "1,2"
         SKIP_INSTALL: YES
-  # Unit tests in the app's process (so they have its App Group): the widgets' feed, the links, and Today as the
-  # widget computes it, from three of widgets/Shared's files. Simulator only, like the UI tests.
+  # Unit tests in the app's process (so they have its App Group): the widgets' feed, the links, Today as the widget
+  # computes it, and the widget's views drawn to images (widgets/Shared's files, compiled in). Simulator only, like the
+  # UI tests.
   TasksTests:
     type: bundle.unit-test
     platform: iOS
@@ -117,9 +118,15 @@ targets:
       - path: ../widgets/Shared/TodaySnapshot.swift
       - path: ../widgets/Shared/TodayProvider.swift
       - path: ../widgets/Shared/WidgetGroup.swift
+      - path: ../widgets/Shared/WidgetPalette.swift
+      - path: ../widgets/Shared/TodayViews.swift
+      - path: ../widgets/Shared/TodayWidget.swift
+      - path: ../widgets/Shared/DeepLink.swift
     dependencies:
       - target: Tasks
       - package: TasksCore
+      - package: TasksCore
+        product: TasksTheme
     configFiles:
       Debug: Signing.xcconfig
       Release: Signing.xcconfig

@@ -4,7 +4,7 @@ import TasksCore
 @testable import Tasks
 
 /// The widgets' feed as the app writes it, the links the widgets open the app with, and Today as the widget computes
-/// it from a feed (widgets/Shared/TodaySnapshot.swift and TodayProvider.swift are compiled into this bundle).
+/// it from a feed (widgets/Shared's files are compiled into this bundle).
 @MainActor
 final class WidgetTests: XCTestCase {
     private var dir: URL!
@@ -117,28 +117,31 @@ final class WidgetTests: XCTestCase {
         XCTAssertEqual(DeepLink(URL(string: "TASKS://Today")!), .today)
     }
 
+    /// The app's own `DeepLink` (this bundle compiles the widgets' copy too, for their views).
+    typealias AppLink = Tasks.DeepLink
+
     func testFollowingALinkOpensThere() async throws {
         let store = await openStore()
         let app = AppModel(store: store)
         let inbox = try XCTUnwrap(store.projection.activeLists.ids.first)
         let id = try XCTUnwrap(store.createTask(title: "Buy milk", in: inbox))
 
-        await app.follow(.upcoming)
+        await app.follow(AppLink.upcoming)
         XCTAssertEqual(app.path, [.upcoming])
-        await app.follow(.list(inbox))
+        await app.follow(AppLink.list(inbox))
         XCTAssertEqual(app.path, [.list(inbox)])
-        await app.follow(.list("gone"))
+        await app.follow(AppLink.list("gone"))
         XCTAssertEqual(app.path, [.today], "a list that isn't there opens Today")
-        await app.follow(.task(id))
+        await app.follow(AppLink.task(id))
         XCTAssertEqual(app.path, [.list(inbox)])
         XCTAssertEqual(app.detailTask, id)
-        await app.follow(.today)
+        await app.follow(AppLink.today)
         XCTAssertNil(app.detailTask, "the sheet closes")
         XCTAssertEqual(app.path, [.today])
-        await app.follow(.new(list: inbox))
+        await app.follow(AppLink.new(list: inbox))
         XCTAssertEqual(app.path, [.list(inbox)])
         XCTAssertEqual(app.draft?.source, .list(inbox))
-        await app.follow(.new(list: nil))
+        await app.follow(AppLink.new(list: nil))
         XCTAssertEqual(app.draft?.source, .today)
     }
 
