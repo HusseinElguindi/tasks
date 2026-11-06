@@ -8,6 +8,11 @@ struct TasksApp: App {
     @State private var pendingLink: DeepLink?
     @Environment(\.scenePhase) private var phase
 
+    init() {
+        // Before the launch ends, so a background launch finds its handler (BackgroundRefresh.swift).
+        BackgroundRefresh.shared.register()
+    }
+
     var body: some Scene {
         WindowGroup {
             Group {
@@ -22,10 +27,16 @@ struct TasksApp: App {
             }
             .task {
                 guard app == nil else { return }
-                let opened = await Launch.open()
+                // The same AppModel a background refresh opens, if one came first.
+                let opened = await SharedApp.open()
                 app = opened
                 opened.startSync()
                 opened.startWidgetFeed()
+                #if DEBUG
+                if UserDefaults.standard.bool(forKey: "runBackgroundRefresh") {
+                    await BackgroundRefresh.shared.handle(LaunchArgumentRefreshTask())
+                }
+                #endif
                 if let link = pendingLink {
                     pendingLink = nil
                     await opened.follow(link)
@@ -50,6 +61,7 @@ struct TasksApp: App {
                 app.inFront = false
                 app.store.persistNow()
                 app.widgetFeed?.flush()
+                BackgroundRefresh.shared.schedule(for: app)
             default: app.inFront = false
             }
         }
@@ -90,6 +102,7 @@ enum Launch {
 
 /// Deep links for screenshots and demos:
 ///   -sampleData YES (the sample lists and tasks, in a scratch store of their own; never synced)
+///   Debug only: -runBackgroundRefresh YES (the background refresh's handler, once, after launch: BackgroundRefresh.swift)
 ///   -serverURL <url> (overrides Settings without saving); Debug only: -syncToken <a local server's throwaway token>
 ///   -screen home | today | upcoming | undated | completed | trash | list:<id> | detail:<taskID> | when:<taskID>
 ///           | deadline:<taskID> | settings | newtask | notice

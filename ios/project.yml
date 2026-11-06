@@ -39,7 +39,8 @@ targets:
     configFiles:
       Debug: Signing.xcconfig
       Release: Signing.xcconfig
-    # The tasks:// scheme the widgets open the app with (DeepLink.swift). Merged with the generated Info.plist.
+    # The tasks:// scheme the widgets open the app with (DeepLink.swift), and background refresh. Merged with the
+    # generated Info.plist.
     info:
       path: Tasks/Info.plist
       properties:
@@ -48,6 +49,9 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLName: com.elguindi.Tasks
             CFBundleURLSchemes: [tasks]
+        # Background refresh (BackgroundRefresh.swift): Info.plist only, no entitlement or new profile.
+        UIBackgroundModes: [fetch]
+        BGTaskSchedulerPermittedIdentifiers: [com.elguindi.Tasks.refresh]
     # The App Group the app writes the widgets' feed into (WIDGETS.md §3.2); the extension has the same one.
     entitlements:
       path: Tasks/Tasks.entitlements
