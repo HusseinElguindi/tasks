@@ -256,24 +256,28 @@ struct HeadingNotesRow: View {
     var editingOverride: Bool? = nil
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
-    @FocusState private var focus: DetailField?
 
     private var editing: Bool {
         if let editingOverride { return editingOverride }
+        return draftsThem
+    }
+    /// The draft is these notes.
+    private var draftsThem: Bool {
         if case let .notes(h, _)? = app.draft?.kind { return h == heading.id } else { return false }
     }
-    /// The draft's text; its notes for the moment the editor outlives the draft (until it's reconfigured).
-    private var text: Binding<String> { Binding(get: { app.draft?.title ?? heading.notes }, set: { app.draft?.title = $0 }) }
 
     var body: some View {
         Group {
             if editing {
-                NotesEditor(text: text, live: editingOverride != nil, focus: $focus, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5, minHeight: 60) { _, _ in }
-                    .accessibilityIdentifier("headingNotes")
-                    .onAppear { DispatchQueue.main.async { focus = .notes } }
+                // Typed into in place, in the rest view's line box (InPlaceNotes.swift). The draft's text; its notes for
+                // the moment the editor outlives the draft (until it's reconfigured). The caret leaving them (a tap
+                // elsewhere, the keyboard put away) writes them, once.
+                InPlaceNotesEditor(text: app.draft?.title ?? heading.notes, identifier: "headingNotes") { app.draft?.title = $0 }
+                    onEnd: { if draftsThem { app.endDraft() } }
             } else {
-                // In a deleted list they only read (§28).
-                MarkdownText(text: heading.notes, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5,
+                // In a deleted list they only read (§28). Each line in the editor's line box, so nothing moves as
+                // editing starts or ends.
+                MarkdownText(text: heading.notes, font: Typo.notes, ink: p.inkSecondary, lineBox: true,
                              onToggle: app.isTrashed(heading) ? nil : { new, checking in
                                  app.setNotes(heading.id, new, name: checking ? "Check Item" : "Uncheck Item")
                              })
@@ -285,10 +289,6 @@ struct HeadingNotesRow: View {
         .padding(.horizontal, Metric.rowPad)
         .padding(.top, 3)
         .padding(.bottom, 8)
-        .onChange(of: focus) { old, new in
-            // The caret left the notes (a tap elsewhere, the keyboard put away): they're written, once.
-            if old != nil, new == nil, editing { app.endDraft() }
-        }
     }
 }
 

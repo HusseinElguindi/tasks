@@ -147,23 +147,14 @@ struct ListScreen: View {
     }
 }
 
-/// A list's notes being typed, under its title: the notes editor, written once as it ends ("Edit List Notes").
+/// A list's notes being typed, under its title: in place, in the rest view's line box (InPlaceNotes.swift), written
+/// once as they end ("Edit List Notes"): the caret leaving them (a tap elsewhere, the keyboard put away) ends them.
 struct ListNotesEditor: View {
-    /// Typed into as it appears (`NotesEditor.live`), on the collection view.
-    var live = false
     @Environment(AppModel.self) private var app
-    @Environment(\.palette) private var p
-    @FocusState private var focus: DetailField?
-    private var text: Binding<String> { Binding(get: { app.draft?.title ?? "" }, set: { app.draft?.title = $0 }) }
 
     var body: some View {
-        NotesEditor(text: text, live: live, focus: $focus, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5, minHeight: 60) { _, _ in }
-            .accessibilityIdentifier("listNotes")
-            .onAppear { DispatchQueue.main.async { focus = .notes } }
-            // The caret left the notes (a tap elsewhere, the keyboard put away): they're written, once.
-            .onChange(of: focus) { old, new in
-                if old != nil, new == nil, app.draft?.editsListNotes == true { app.endDraft() }
-            }
+        InPlaceNotesEditor(text: app.draft?.title ?? "", identifier: "listNotes") { app.draft?.title = $0 }
+            onEnd: { if app.draft?.editsListNotes == true { app.endDraft() } }
     }
 }
 

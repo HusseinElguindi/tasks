@@ -1743,6 +1743,233 @@ final class FlowTests: XCTestCase {
         XCTAssertEqual(header.label, "Home, Measure the hallway first", "written")
     }
 
+    /// The edited notes' caret, from the app's `-editProbe` (EditProbe.swift): the drawn caret's top in the window, the
+    /// text view's top, and whether the caret shows inside the editor and its row.
+    private func editProbe() -> [String: String] {
+        let v = app.descendants(matching: .any)["editProbe"].firstMatch.value as? String ?? ""
+        var out: [String: String] = [:]
+        for kv in v.split(separator: " ") {
+            let p = kv.split(separator: "=", maxSplits: 1)
+            if p.count == 2 { out[String(p[0])] = String(p[1]) }
+        }
+        return out
+    }
+
+    /// The drawn caret's foot and the text view's top (window points), once they've stopped moving. (The foot: an empty
+    /// line's caret is 27 pt tall, a line of text's 22, with the same foot.)
+    private func caretAtRest() -> (caret: Double, editor: Double, probe: [String: String]) {
+        func read() -> (Double, Double, [String: String]) {
+            let p = editProbe()
+            let c = p["caret"].map { $0.split(separator: ",").compactMap { Double($0) } }.flatMap { $0.count == 2 ? $0[0] + $0[1] : nil } ?? .nan
+            let e = p["tv"].flatMap { Double($0.split(separator: ",").first ?? "") } ?? .nan
+            return (c, e, p)
+        }
+        var last = read()
+        for _ in 0..<20 {
+            usleep(100_000)
+            let now = read()
+            if abs(now.0 - last.0) < 0.5, abs(now.1 - last.1) < 0.5 { return now }
+            last = now
+        }
+        return last
+    }
+
+    /// A Return in notes being typed always takes the caret down a line, at once (T33, the user: "sometimes when
+    /// editing a heading note, pressing enter/return doesn't do anything until you type another character"). The
+    /// text view wasn't grown for the new empty last line, so its caret stayed on the line above until the next
+    /// character grew it (filmed: 2 of 5 Returns at the end of a heading's notes, 4 of 5 in a list's; InPlaceNotes.swift
+    /// has the cause). A heading's
+    /// notes and a list's, each from a fresh launch: Returns at the end after lines of different lengths, on an empty
+    /// last line, and in the middle; each must put the caret one line lower, inside the editor and its row. (Before
+    /// the fix, 10 of these 24 failed in one run and none in the next: it came and went.)
+    func testAReturnInNotesAlwaysMovesTheCaretDown() {
+        var failures: [String] = []
+        var returns = 0
+        for target in ["heading", "list"] {
+            app = XCUIApplication()
+            app.launchArguments = ["-sampleData", "YES", "-appearance", "dark", "-style", "classic", "-screen", "list:phys",
+                                   "-editProbe", "YES"]
+            app.launch()
+            XCTAssertTrue(heading("Labs").appears(timeout: 10), "PHYS 122")
+            app.settle()
+            if target == "heading" {
+                menuOpen {
+                    heading("Labs").press(forDuration: 1.0)
+                    app.buttons["Add Notes"].tap()
+                }
+            } else {
+                app.buttons["List actions"].tap()
+                app.buttons[app.buttons["Edit Notes"].exists ? "Edit Notes" : "Add Notes"].tap()
+            }
+            let editor = app.textViews[target == "heading" ? "headingNotes" : "listNotes"]
+            XCTAssertTrue(editor.appears(timeout: 3), "\(target): the notes editor")
+            XCTAssertTrue(app.keyboards.firstMatch.appears(timeout: 3), "\(target): the keyboard")
+            app.settle()
+            let key = ["return", "Return"].map { app.keyboards.buttons[$0] }.first { $0.exists }
+            XCTAssertNotNil(key, "the keyboard's Return key")
+            func press(_ what: String) {
+                let before = caretAtRest()
+                key?.tap()
+                let after = caretAtRest()
+                returns += 1
+                let down = after.caret - before.caret - (after.editor - before.editor)
+                print("RETURN \(target) \(what): caret \(before.caret) -> \(after.caret), editor \(before.editor) -> \(after.editor), down \(down) | \(after.probe)")
+                // A line is 22 pt (InPlaceNotes: an 18 pt line box and 4 under it; TextEditor's were 25).
+                if !(abs(down - 22) < 2.5) || after.probe["shown"] != "1" {
+                    failures.append("\(target) \(what): the caret went down \(down) pt in the text (a line is 22), shown=\(after.probe["shown"] ?? "-")")
+                }
+            }
+            for (i, word) in ["Goggles", "Lab coat and the manual", "A", "Pre-lab sheet, printed", "Calculator", "Ruler",
+                              "Two pens"].enumerated() {
+                app.typeText(word)
+                press("end \(i + 1)")
+            }
+            press("empty last line 1")
+            press("empty last line 2")
+            app.typeText("Pencil")
+            press("end 8")
+            press("empty last line 3")
+            // In the middle: the caret after the first line's word.
+            let f = editor.frame
+            app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: f.maxX - 12, dy: f.minY + 12)).tap()
+            app.settle()
+            press("middle")
+            app.terminate()
+        }
+        XCTAssertGreaterThanOrEqual(returns, 20, "20 Returns or more")
+        XCTAssertTrue(failures.isEmpty, "every Return took the caret one line down:\n" + failures.joined(separator: "\n"))
+    }
+
+    /// The text lines (their tops, in points) in a band of a screenshot: runs of rows with ink brighter than the ground
+    /// (Dark) somewhere between `x0` and `x1`.
+    private func inkLines(_ cg: CGImage, x0: CGFloat, x1: CGFloat, from y0: CGFloat, to y1: CGFloat) -> [CGFloat] {
+        let scale = CGFloat(cg.width) / app.frame.width
+        let w = cg.width, h = cg.height
+        var px = [UInt8](repeating: 0, count: w * h * 4)
+        guard let ctx = CGContext(data: &px, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                                  space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return [] }
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+        func luma(_ x: Int, _ row: Int) -> Int { let i = (row * w + x) * 4; return (Int(px[i]) + Int(px[i + 1]) + Int(px[i + 2])) / 3 }
+        var tops: [CGFloat] = []
+        var inRun = false, gapRows = 0
+        for row in max(0, Int(y0 * scale))..<min(h, Int(y1 * scale)) {
+            let ground = luma(2, row)
+            var ink = false
+            for x in stride(from: Int(x0 * scale), to: min(w, Int(x1 * scale)), by: 1) where luma(x, row) - ground > 60 { ink = true; break }
+            if ink {
+                if !inRun { tops.append((CGFloat(row) / scale * 10).rounded() / 10) }
+                inRun = true
+                gapRows = 0
+            } else if inRun {
+                gapRows += 1
+                if gapRows > Int(scale) { inRun = false }
+            }
+        }
+        return tops
+    }
+
+    /// A heading's notes stay where they are as editing starts and as it ends, and so do the rows below (T33, the user:
+    /// "there are some jumps of the text and the surrounding screen"). The editor laid its lines 25 pt apart against
+    /// the rest view's 22, a blank line a whole line against 10 pt, and it was at least 60 pt tall: each line below the
+    /// first moved down as the notes were tapped (3 pt each, 15 more past a blank line), the rows below with them, and
+    /// all of it back up at Done. Measured on screenshots at rest, typed into, and after Done, from the heading's rule.
+    func testHeadingNotesDontMoveAsEditingStartsAndEnds() {
+        openPhys()
+        menuOpen {
+            heading("Labs").press(forDuration: 1.0)
+            app.buttons["Add Notes"].tap()
+        }
+        XCTAssertTrue(app.textViews["headingNotes"].appears(timeout: 3), "the notes editor")
+        let key = ["return", "Return"].map { app.keyboards.buttons[$0] }.first { $0.exists }
+        XCTAssertNotNil(key, "the keyboard's Return key")
+        app.typeText("Goggles and a lab coat")
+        key?.tap()
+        key?.tap()
+        app.typeText("Manual")
+        key?.tap()
+        // The last line long, so the caret at its end is right of the band measured.
+        app.typeText("Pre-lab sheet, printed in colour")
+        app.buttons["Done"].tap()
+        app.settle()
+        let below = app.staticTexts["Lab 3 report · pendulum"].firstMatch
+        func measure(_ when: String) -> (lines: [CGFloat], below: CGFloat) {
+            app.settle()
+            let top = heading("Labs").frame.maxY, foot = below.frame.minY
+            let cg = XCUIScreen.main.screenshot().image.cgImage!
+            let lines = inkLines(cg, x0: 0, x1: app.frame.width * 0.4, from: top + 2, to: foot - 6).map { $0 - top }
+            print("NOTES \(when): lines \(lines), the row below at \(foot - top)")
+            return (lines, foot - top)
+        }
+        let rest = measure("at rest")
+        XCTAssertEqual(rest.lines.count, 3, "three lines of ink (the blank line has none): \(rest.lines)")
+        app.staticTexts["Manual"].firstMatch.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.appears(timeout: 3), "editing them, with the keyboard")
+        XCTAssertTrue(app.textViews["headingNotes"].appears(timeout: 3))
+        let typing = measure("typed into")
+        app.buttons["Done"].tap()
+        XCTAssertTrue(app.keyboards.firstMatch.vanishes(timeout: 3))
+        let after = measure("after Done")
+        for (name, m) in [("typed into", typing), ("after Done", after)] {
+            XCTAssertEqual(m.lines.count, rest.lines.count, "\(name): the same lines: \(m.lines) against \(rest.lines)")
+            for (a, b) in zip(m.lines, rest.lines) {
+                XCTAssertEqual(a, b, accuracy: 1, "\(name): each line where it was at rest: \(m.lines) against \(rest.lines)")
+            }
+            XCTAssertEqual(m.below, rest.below, accuracy: 1, "\(name): the row below where it was at rest")
+        }
+    }
+
+    /// A list's notes, under its title, stay where they are as editing starts and ends, and so does the row below: the
+    /// same as a heading's (testHeadingNotesDontMoveAsEditingStartsAndEnds), with PHYS 122's own notes, whose first
+    /// line wraps; and the title stays through Done. Measured from the header's top: the title, the notes' lines, the
+    /// first row.
+    func testListNotesDontMoveAsEditingStartsAndEnds() {
+        openPhys()
+        let header = app.descendants(matching: .any)["listHeader"].firstMatch
+        let below = app.staticTexts["Buy safety glasses for the lab"].firstMatch
+        func measure(_ when: String) -> (lines: [CGFloat], below: CGFloat) {
+            app.settle()
+            let top = header.frame.minY, foot = below.frame.minY
+            let cg = XCUIScreen.main.screenshot().image.cgImage!
+            let lines = inkLines(cg, x0: 0, x1: app.frame.width * 0.4, from: top, to: foot - 6).map { $0 - top }
+            print("LISTNOTES \(when): lines \(lines), the row below at \(foot - top)")
+            return (lines, foot - top)
+        }
+        let rest = measure("at rest")
+        XCTAssertGreaterThanOrEqual(rest.lines.count, 4, "the title and the notes' lines: \(rest.lines)")
+        header.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.85)).tap()
+        XCTAssertTrue(app.textViews["listNotes"].appears(timeout: 3), "editing them")
+        XCTAssertTrue(app.keyboards.firstMatch.appears(timeout: 3), "with the keyboard")
+        let typing = measure("typed into")
+        // Through Done, the title never leaves its place: in Done's animation it went 55 pt up out of sight for 0.37 s
+        // and slid back (filmed; CollectionHeader). Done without XCTest's wait for the app's animations, then a
+        // screenshot as often as they come, for 2 s.
+        let top = header.frame.minY
+        var titles: [CGFloat?] = []
+        menuOpen {
+            app.buttons["Done"].tap()
+            let end = Date().addingTimeInterval(2)
+            while Date() < end {
+                let cg = XCUIScreen.main.screenshot().image.cgImage!
+                titles.append(inkLines(cg, x0: 0, x1: app.frame.width * 0.4, from: top, to: top + 40).first.map { $0 - top })
+            }
+        }
+        print("LISTNOTES the title through Done: \(titles)")
+        XCTAssertGreaterThan(titles.count, 4, "screenshots through Done")
+        for t in titles {
+            XCTAssertEqual(t ?? -99, rest.lines.first ?? 0, accuracy: 1, "through Done, the title where it was: \(titles)")
+        }
+        XCTAssertTrue(app.keyboards.firstMatch.vanishes(timeout: 3))
+        let after = measure("after Done")
+        for (name, m) in [("typed into", typing), ("after Done", after)] {
+            XCTAssertEqual(m.lines.count, rest.lines.count, "\(name): the same lines: \(m.lines) against \(rest.lines)")
+            for (a, b) in zip(m.lines, rest.lines) {
+                XCTAssertEqual(a, b, accuracy: 1, "\(name): each line where it was at rest: \(m.lines) against \(rest.lines)")
+            }
+            XCTAssertEqual(m.below, rest.below, accuracy: 1, "\(name): the row below where it was at rest")
+        }
+    }
+
     /// The calendar's weeks start on the locale's first weekday (the Mac's DatePopover.swift:327): Monday in the UK,
     /// Sunday in the US.
     func testTheCalendarStartsOnTheLocalesFirstDay() {
@@ -2845,7 +3072,8 @@ final class FlowTests: XCTestCase {
             app.settle()
             print("EDIT \(what) field=\(shown) frame=\(shown ? field.frame : .zero) keyboard=\(app.keyboards.count) done=\(app.buttons["Done"].exists)")
             XCTAssertTrue(shown, "\(what): a tap on the notes edits them")
-            if shown { XCTAssertTrue(field.frame.height > 20 && field.isHittable, "\(what): the field shows (\(field.frame))") }
+            // Whole: a one-line note's field is one line, 18 pt (InPlaceNotes; it was at least 60 pt before T33).
+            if shown { XCTAssertTrue(field.frame.height > 17 && field.isHittable, "\(what): the field shows (\(field.frame))") }
             XCTAssertTrue(app.keyboards.firstMatch.appears(timeout: 3), "\(what): the keyboard is up")
             if app.buttons["Done"].exists { app.buttons["Done"].tap() }
             // Unfixed, Done leaves it as it was: the notes as they are, so the next case still runs.

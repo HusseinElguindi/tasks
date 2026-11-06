@@ -179,7 +179,8 @@ struct CollectionHeader: View {
                     // A list's notes are a step quieter (§23). A tap on them edits them; a checklist box toggles in one
                     // op (IX:1540–1543). A deleted list's only read.
                     let live = app.deletedList(source) == nil
-                    MarkdownText(text: notes, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5,
+                    // Each line in the editor's line box, so nothing moves as editing starts or ends.
+                    MarkdownText(text: notes, font: Typo.notes, ink: p.inkSecondary, lineBox: true,
                                  onToggle: live ? { new, checking in
                                      app.setNotes(list: id, new, name: checking ? "Check Item" : "Uncheck Item")
                                  } : nil)
@@ -193,7 +194,7 @@ struct CollectionHeader: View {
             .accessibilityAddTraits(.isHeader)
             .accessibilityIdentifier("listHeader")
             if editingNotes {
-                ListNotesEditor(live: true).padding(.top, 2)
+ListNotesEditor().padding(.top, 2)
             }
         }
         .padding(.leading, Metric.rowPad)
@@ -201,5 +202,10 @@ struct CollectionHeader: View {
         .padding(.top, app.isSplit ? 14 : 4)
         .padding(.bottom, 10)
         .frame(maxWidth: .infinity, alignment: .leading)
+        // Nothing in the header animates on SwiftUI's side: a change of it (the notes' editor swapped for the notes) is
+        // drawn at once, and the row's height eases on the collection view's spring (CollectionEditing). In Done's
+        // animation (`endDraft`) the title and its tile went 55 pt up out of sight for 0.37 s, while the keyboard went
+        // down, and slid back (filmed, T33).
+        .transaction { $0.animation = nil; $0.disablesAnimations = true }
     }
 }

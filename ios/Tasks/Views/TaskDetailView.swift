@@ -432,9 +432,6 @@ struct NothingSelected: View {
 struct NotesEditor: View {
     @Binding var text: String
     var readOnly = false
-    /// Typed into as it appears (a heading's or a list's notes, in place, on the collection view): the editor from the
-    /// start, so its height doesn't change as the caret lands.
-    var live = false
     var focus: FocusState<DetailField?>.Binding
     /// A task's, in the details; a heading's are a step quieter and shorter (§23).
     var font: Font = Typo.detailNotes
@@ -446,7 +443,7 @@ struct NotesEditor: View {
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
 
-    private var editing: Bool { live || focus.wrappedValue == .notes }
+    private var editing: Bool { focus.wrappedValue == .notes }
 
     var body: some View {
         ZStack(alignment: .topLeading) {

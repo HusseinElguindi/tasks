@@ -9,6 +9,11 @@ struct MarkdownText: View {
     var font: Font = Typo.detailNotes
     var ink: Color? = nil
     var lineSpacing: CGFloat = 6
+    /// Notes typed into in place (a heading's, a list's): every line in the editor's line box (InPlaceNotes.swift), so
+    /// plain lines and blank ones stand where the editor puts them, and nothing moves as editing starts or ends: the
+    /// lines and wrapped lines `InPlaceNotes.gap` apart, a blank line a whole line. (A Markdown line's marks show while
+    /// it's typed into, so a heading, a bullet or a box still changes there.)
+    var lineBox = false
     /// A box was clicked: the notes with it flipped, and whether that checked it. Nil: boxes are read-only.
     var onToggle: ((String, Bool) -> Void)? = nil
     @Environment(\.palette) private var p
@@ -29,7 +34,7 @@ struct MarkdownText: View {
         let u = Array(text.utf16)
         let doc = u.withUnsafeBufferPointer { Markdown.parse($0) }
         let numbers = doc.shownNumbers
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: lineBox ? InPlaceNotes.gap : 4) {
             ForEach(items(doc, u)) { item in
                 switch item {
                 case let .line(l): line(l, u, number: numbers[l.index] ?? l.number)
@@ -44,7 +49,7 @@ struct MarkdownText: View {
             }
         }
         .font(font)
-        .lineSpacing(lineSpacing)
+        .lineSpacing(lineBox ? InPlaceNotes.gap : lineSpacing)
         .foregroundStyle(ink ?? p.ink)
         .tint(p.accentText)
     }
@@ -75,7 +80,7 @@ struct MarkdownText: View {
         let indent = CGFloat(l.level) * 26
         switch l.kind {
         case .blank:
-            Color.clear.frame(height: 6)
+            Color.clear.frame(height: lineBox ? InPlaceNotes.line : 6)
         case .heading1:
             rich(u, l.textStart, l.end).font(Typo.detailNotes.weight(.semibold)).padding(.top, 6)
         case .heading2:
