@@ -37,6 +37,7 @@ Separated by `;` or new lines. In a step's text, `\;` is a semicolon, `\n` a Ret
 | `snap:NAME` | the window, `NAME.png` (drawHierarchy, afterScreenUpdates false: what's drawn, no keyboard) |
 | `log:NAME` | appends to `NAME.txt`: the drag probe's fields and the drag's state, the field being typed into (text, selection, caret rect), the shown rows' frames |
 | `frames:MS[:NAME]` | for MS ms, every display frame's caret and rows as drawn (presentation layers), and the field and its views up to its cell as drawn (after `\|\|`, with its offset `tvoff=drawn/model`), to `NAME.txt` (`frames.txt`) |
+| `film:MS[:NAME]` | the same as `frames`, in the background: the next steps run while it records, to `NAME.txt` (`film.txt`); wait it out before `quit` |
 | `quit` | the app exits once the done marker is written |
 
 All points are window points. Output goes to the container's `tmp/script/`, emptied at each launch: `run.txt` (each
