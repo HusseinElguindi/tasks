@@ -38,7 +38,8 @@ import UIKit
 ///
 /// Output, in the app container's tmp/script/ (emptied at launch): run.txt (each step, ms from the first, and any
 /// error), the snaps and logs, and `done` once the script has run: "<token> ok" or "<token> errors=N", the token from
-/// `-debugScriptToken` (the host's, so it never reads a marker from an earlier run). Window points throughout.
+/// `-debugScriptToken` (the host's, so it never reads a marker from an earlier run); also an element "debugScript" with
+/// the marker as its value and the folder's path as its label, for a UI test. Window points throughout.
 @MainActor
 enum DebugScript {
     static var directory: URL { FileManager.default.temporaryDirectory.appendingPathComponent("script", isDirectory: true) }
@@ -200,7 +201,18 @@ final class ScriptRunner {
         }
         if finger != nil { up(.cancelled) }
         note("end errors=\(errors)")
-        try? Data("\(token) \(errors == 0 ? "ok" : "errors=\(errors)")\n".utf8).write(to: dir.appendingPathComponent("done"))
+        let marker = "\(token) \(errors == 0 ? "ok" : "errors=\(errors)")"
+        try? Data((marker + "\n").utf8).write(to: dir.appendingPathComponent("done"))
+        // For a UI test (DebugScriptTests): the marker as an element's value, and the output's folder as its label.
+        if let w = window {
+            let v = UIView(frame: CGRect(x: 0, y: 0, width: 1, height: 1))
+            v.isUserInteractionEnabled = false
+            v.isAccessibilityElement = true
+            v.accessibilityIdentifier = "debugScript"
+            v.accessibilityLabel = dir.path
+            v.accessibilityValue = marker
+            w.addSubview(v)
+        }
         if quit {
             // The probes write their logs as the app leaves the foreground.
             NotificationCenter.default.post(name: UIApplication.willResignActiveNotification, object: nil)
