@@ -90,7 +90,8 @@ extension AppModel {
     // MARK: Collapsing (local to this device, never synced)
 
     /// The chevron, or Collapse or Expand in its menu. Collapsing folds its notes and tasks up into its row as they
-    /// fade (150 ms); expanding plays it backwards (220 ms ease-in): the collection view's fold (TaskCollection+Fold).
+    /// fade out (150 ms ease-out); expanding plays it backwards as they fade in (220 ms ease-in). The rows move on
+    /// `layout`'s spring: the collection view's fold (TaskCollection+Fold).
     /// Reduce Motion turns both off (`animate`).
     func toggleCollapse(_ id: EntityID) {
         guard let h = task(id), h.isHeading else { return }

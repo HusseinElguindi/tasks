@@ -431,7 +431,7 @@ final class CollectionDrag {
             state?.slot = slot
             state?.ticked = slot
             owner.apply(items, fold: CollectionFold.Plan(heading: d.id, items: Set(CollectionFold.section(of: d.id, in: all)), collapse: true),
-                        animation: .easeOut(duration: 0.15))
+                        animation: .default)
         }
         moveGap(animated: false)
     }
@@ -542,7 +542,7 @@ final class CollectionDrag {
         lifted = nil
         let items = latest()
         owner.apply(items, fold: CollectionFold.Plan(heading: h, items: Set(CollectionFold.section(of: h, in: items)), collapse: false),
-                    animation: .easeIn(duration: 0.22))
+                    animation: .default)
     }
 
     /// Once nothing's held any more: what the app changed meanwhile, at once (the rows drawn are where they'll be), but

@@ -2275,7 +2275,7 @@ final class FlowTests: XCTestCase {
     }
 
     /// A fold over a fold still under way draws no row over another, and leaves no gap: the chevron tapped twice
-    /// fast (collapse, then expand inside its 0.15 s), and a heading flicked and let go right after its drag began
+    /// fast (collapse, then expand while it still moves), and a heading flicked and let go right after its drag began
     /// (its section folds as the drag begins, and opens again as it drops). The probe's `fo` is the most two rows (or
     /// a collapse's pictures) overlapped on screen in any frame of a fold since launch: 0 when the rows move rigidly.
     /// (Before T30 the first fold's end took the second's masks and pad mid-way: 30-80 pt overlaps, a heading gone

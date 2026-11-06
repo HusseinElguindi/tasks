@@ -19,6 +19,8 @@ final class WidgetFeedWriter {
     private var scheduled: Task<Void, Never>?
     /// The last feed written (or read at start), to skip writes that change nothing but the time.
     private var last: WidgetFeed?
+    /// Reloads every widget's timeline after a write (tests watch it).
+    private let reload: @MainActor () -> Void
 
     /// The App Group's feed; nil for the sample data, or when the group's container isn't there.
     convenience init?(store: Store, isSample: Bool) {
@@ -27,9 +29,10 @@ final class WidgetFeedWriter {
     }
 
     /// A feed at `url` (tests).
-    init(store: Store, url: URL) {
+    init(store: Store, url: URL, reload: @escaping @MainActor () -> Void = { WidgetCenter.shared.reloadAllTimelines() }) {
         self.store = store
         self.url = url
+        self.reload = reload
         last = WidgetFeed.read(at: url)
     }
 
@@ -72,20 +75,31 @@ final class WidgetFeedWriter {
         write()
     }
 
-    private func write() {
+    /// Writes at once, whatever is waiting (the background refresh). Returns whether the feed changed (and the widgets
+    /// reloaded); false when it says what the last one said, or couldn't be written.
+    @discardableResult
+    func writeNow() -> Bool {
+        scheduled?.cancel()
+        return write()
+    }
+
+    @discardableResult
+    private func write() -> Bool {
         scheduled = nil
         let p = store.projection
         let feed = WidgetFeed.make(from: p, day: p.day)
         if let last, last.lists == feed.lists, last.tasks == feed.tasks, last.listTops == feed.listTops,
            last.schema == feed.schema {
-            return
+            return false
         }
         do {
             try feed.write(at: url)
             last = feed
-            WidgetCenter.shared.reloadAllTimelines()
+            reload()
+            return true
         } catch {
             // The widgets keep the last feed; the next change tries again.
+            return false
         }
     }
 }

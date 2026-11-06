@@ -36,6 +36,8 @@ import UIKit
 ///     frames:MS[:NAME]         for MS ms, each display frame's rows (as drawn: presentation layers), caret, and the field
 ///                              and its views up to its cell (as drawn, after "||"), to NAME.txt
 ///                              (frames)
+///     film:MS[:NAME]           the same, in the background: the next steps run while it records (wait it out before
+///                              quit) (film)
 ///     quit                     the app exits (after the done marker is written)
 ///
 /// Output, in the app container's tmp/script/ (emptied at launch): run.txt (each step, ms from the first, and any
@@ -195,6 +197,9 @@ final class ScriptRunner {
             case "frames":
                 let a = arg.split(separator: ":", maxSplits: 1).map(String.init)
                 await frames(Int(a.first ?? "") ?? 500, to: a.count > 1 ? a[1] : "frames")
+            case "film":
+                let a = arg.split(separator: ":", maxSplits: 1).map(String.init)
+                Task { await frames(Int(a.first ?? "") ?? 500, to: a.count > 1 ? a[1] : "film") }
             case "quit": quit = true
             default: fail("unknown step")
             }
