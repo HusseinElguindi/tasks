@@ -7,5 +7,7 @@ import WidgetKit
 struct TasksWidgetsBundle: WidgetBundle {
     var body: some Widget {
         TodayWidget()
+        TodayLockWidget()
+        NewTaskLockWidget()
     }
 }

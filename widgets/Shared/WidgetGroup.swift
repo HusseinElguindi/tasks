@@ -26,5 +26,9 @@ enum WidgetGroup {
     /// The widgets' kinds.
     enum Kind {
         static let today = "com.elguindi.Tasks.today"
+        /// The lock screen's Today (inline and rectangular; iPhone).
+        static let todayLock = "com.elguindi.Tasks.today-lock"
+        /// The lock screen's circular New Task (iPhone).
+        static let newTask = "com.elguindi.Tasks.new-task"
     }
 }
