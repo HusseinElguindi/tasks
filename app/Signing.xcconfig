@@ -1,6 +1,17 @@
-// Code signing for both configurations (v2 feedback 11). Ad hoc ("Sign to Run Locally"), unless
-// Scripts/make-signing-identity.sh has made the "Tasks Local Signing" identity on this Mac and written
-// Signing.local.xcconfig (not checked in), which signs with it instead. A stable identity keeps the same designated
-// requirement from build to build, so Keychain access granted to one build carries over to the next.
-CODE_SIGN_IDENTITY = -
-#include? "Signing.local.xcconfig"
+// Code signing for both configurations: the free Apple ID's "Apple Development" certificate, team F4AMC8FYKT
+// (design/WIDGETS.md §3.5; the spike, coord widgets T4). A Team ID lets the app and its widget extension share the
+// team-prefixed group container `F4AMC8FYKT.com.elguindi.Tasks` with no prompt and no provisioning profile, and the
+// designated requirement stays the same from build to build, so the Keychain's "Always Allow" for the sync token
+// carries over (as "Tasks Local Signing" did before; v2 feedback 11).
+//
+// Automatic signing with no profile-backed entitlement needs no profile ("None Required"), so building needs only the
+// certificate in the login keychain, not Xcode's account or -allowProvisioningUpdates.
+//
+// Signing.local.xcconfig (Scripts/make-signing-identity.sh) is no longer read for the app; that identity still signs
+// the `tasks` CLI (Scripts/install-cli.sh).
+CODE_SIGN_STYLE = Automatic
+CODE_SIGN_IDENTITY = Apple Development
+DEVELOPMENT_TEAM = F4AMC8FYKT
+
+// Automatic signing adds get-task-allow (debugger attach) to every build; keep it out of Release.
+CODE_SIGN_INJECT_BASE_ENTITLEMENTS[config=Release] = NO
