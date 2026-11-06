@@ -9,8 +9,12 @@ import UIKit
 ///   (model) next=<the next row's top, as drawn> tv=<the text view's top in the window>,<height> bo=<its own bounds y>
 ///   cs=<its content height> caret=<the drawn caret's top in the window>,<height> (model caret's top) len=<text length>
 ///   nl=<new lines>
+/// Then the row's own layers: "layers=<n>new/<n>gone" when its layers were replaced, "lchg=" each layer whose place in
+/// the row or opacity changed since the last frame (as drawn), "anims=" each with a Core Animation animation running.
 /// All y in the window's points. Marks: "M <epoch s> …": each change of the text ("text"), the rows resized
-/// ("resize"/"reconfigure"), a caret scroll asked for and made ("ask"/"scroll"), the keyboard's inset ("keyboard").
+/// ("resize"/"reconfigure"), a caret scroll asked for and made ("ask"/"scroll"), the keyboard's inset ("keyboard"); with
+/// the text view's and the row's sizes at each change, a run-loop turn later and 300 ms later (`sizes`). The row is
+/// traced on for 1.5 s after it stops being typed into.
 ///
 /// `-editProbe YES` (FlowTests): the same, as the accessibility value of an element "editProbe", for the frame now:
 /// "caret=<y>,<h> mcaret=<y> tv=<y>,<h> bo=<y> cs=<h> nl=<n> shown=<1 if the drawn caret is inside
@@ -77,6 +81,9 @@ final class EditProbe {
 
     private var editing = false
     private var marked: String?
+    private var layers: Set<ObjectIdentifier> = []
+    private var look: [ObjectIdentifier: String] = [:]
+    private var hosting = ""
     /// The row last typed into, traced on for a while after it ends (the editor's going, the keyboard's).
     private var last: (id: String, until: CFTimeInterval)?
 
@@ -156,6 +163,41 @@ final class EditProbe {
                 && foot <= shown(cp.frame.minY) + cp.frame.height + 1
             // (Not `layoutManager`: asking for it moves a TextKit 2 text view back to TextKit 1.)
             value = "caret=\(f(caretY)),\(f(caretH)) mcaret=\(f(model)) tv=\(f(tvTop)),\(f(tv.bounds.height)) bo=\(f(tv.bounds.minY)) cs=\(f(tv.contentSize.height)) nl=\(nl) shown=\(inside ? 1 : 0) cell=\(f(cell.frame.height))"
+        }
+        if tracing {
+            // The row's own layers: any with an animation running (its keys), and when they're new ones.
+            var anims: [String] = []
+            var ids: [ObjectIdentifier] = []
+            var looks: [ObjectIdentifier: String] = [:]
+            let root = cell.contentView.layer
+            func walk(_ l: CALayer, _ depth: Int) {
+                guard depth < 12 else { return }
+                ids.append(ObjectIdentifier(l))
+                let p = l.presentation() ?? l
+                let r = root.convert(p.bounds, from: l)
+                looks[ObjectIdentifier(l)] = "\(type(of: l))@\(f(r.minY)),\(f(r.height)) a\(String(format: "%.2f", p.opacity))\(p.isHidden ? "h" : "")"
+                if let keys = l.animationKeys(), !keys.isEmpty {
+                    let p = l.presentation() ?? l
+                    anims.append("\(type(of: l))@\(f(l.frame.minY))/\(f(p.frame.minY)) a\(String(format: "%.2f", p.opacity)) [\(keys.joined(separator: ","))]")
+                }
+                l.sublayers?.forEach { walk($0, depth + 1) }
+            }
+            walk(cell.contentView.layer, 0)
+            // The cell's content views (the hosting view): place, safe area, what SwiftUI would fit in its width.
+            let hv = cell.contentView.subviews.map { v -> String in
+                let fit = v.sizeThatFits(CGSize(width: v.bounds.width, height: 0)).height
+                return "\(type(of: v))@\(f(v.frame.minY)),\(f(v.frame.height)) sa=\(f(v.safeAreaInsets.top)),\(f(v.safeAreaInsets.bottom)) fit=\(f(fit))"
+            }.joined(separator: ";")
+            if hv != hosting { out += " hv=" + hv; hosting = hv }
+            let changed = looks.compactMap { k, v in look[k].flatMap { $0 != v ? "\($0)→\(v)" : nil } }
+            if !changed.isEmpty { out += " lchg=" + changed.prefix(8).joined(separator: ";") }
+            look = looks
+            let set = Set(ids)
+            if set != layers {
+                if !layers.isEmpty { out += " layers=\(set.subtracting(layers).count)new/\(layers.subtracting(set).count)gone" }
+                layers = set
+            }
+            if !anims.isEmpty { out += " anims=" + anims.joined(separator: ";") }
         }
         if probing { marker.accessibilityValue = value }
         if tracing {
