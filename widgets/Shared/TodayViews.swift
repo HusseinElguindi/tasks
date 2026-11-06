@@ -4,10 +4,11 @@ import TasksCore
 import TasksTheme
 
 // The widgets' views, after the approved mock-ups (https://claude.ai/artifact/D1JxGqB9hBm5cH1EeLiYRi: TodaySmall,
-// TodayMedium, TodayLarge, ListMedium, ListLarge), at the iPhone's sizes. Read-only (the user, 2026-11-06): a tap opens
-// the app on Today or the list, and the + opens a new task. No counts, and no completed tasks: the room goes to the
-// open ones. Every cue carries words or shape as well as colour, and the tiles and the sun are the accented group, so
-// the widgets stay legible on tinted and clear home screens (WIDGETS.md §3.6).
+// TodayMedium, TodayLarge, ListMedium, ListLarge), at the iPhone's sizes. Read-only (the user, 2026-11-06): a row
+// opens the app at that task, highlighted in its list; the rest opens Today or the list; the + opens a new task. No
+// counts, and no completed tasks: the room goes to the open ones. Every cue carries words or shape as well as colour,
+// and the tiles and the sun are the accented group, so the widgets stay legible on tinted and clear home screens
+// (WIDGETS.md §3.6).
 
 /// The widgets' metrics, by the mock-ups' numbers.
 enum WM {
@@ -250,7 +251,8 @@ struct LargeItems: View {
 // MARK: - Pieces
 
 /// A task's row: its ring, its title, its When in words (a list), its deadline capsule, and its list's tile (Today
-/// medium). Not a link: the whole widget opens the app.
+/// medium). A link to the task in the app: its list, scrolled to it, the row highlighted (`tasks://task/<id>`); the
+/// rest of the widget opens Today or the list.
 struct TaskRowView: View {
     enum Trailing { case none, tile }
     let r: TodaySnapshot.Row
@@ -259,6 +261,12 @@ struct TaskRowView: View {
     @Environment(\.widgetPalette) private var p
 
     var body: some View {
+        Link(destination: DeepLink.task(r.id).url) { content }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(trailing == .tile ? r.spoken + ", " + r.list.name : r.spoken)
+    }
+
+    private var content: some View {
         HStack(spacing: 10) {
             Ring(cue: r.cue, size: WM.ring, line: 1.5)
             Text(r.title).font(.system(size: 14)).foregroundStyle(p.ink).lineLimit(1)
@@ -270,8 +278,7 @@ struct TaskRowView: View {
             if trailing == .tile { Tile(list: r.list, width: 16, height: 13) }
         }
         .frame(height: height)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(trailing == .tile ? r.spoken + ", " + r.list.name : r.spoken)
+        .contentShape(Rectangle())
     }
 }
 

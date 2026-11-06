@@ -6,7 +6,7 @@ import TasksCore
 // The List widget (WIDGETS.md §1.1, MVP 3; mock-ups ListMedium, ListLarge): one list's open tasks in its order, read-only.
 // Medium shows five rows; large shows as many as fit, with its headings as small labels and "N more". The list is
 // the widget's configuration (Edit Widget), chosen from the feed's live lists; that's configuration, not an action, so
-// it needs no entitlement. A tap opens the list; the + a new task in it.
+// it needs no entitlement. A row opens its task in the list; the rest the list; the + a new task in it.
 
 // MARK: - The list, as the widget draws it
 

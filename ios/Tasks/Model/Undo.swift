@@ -91,21 +91,27 @@ extension AppModel {
         if let target {
             let shown = Set(lines(target).compactMap { if case let .task(t, _, _, _) = $0 { t.id } else { nil } })
             let rows = ids.filter(shown.contains)
-            flashed = Set(rows)
             if let first = lines(target).lazy.compactMap({ line -> EntityID? in
                 if case let .task(t, _, _, _) = line, rows.contains(t.id) { t.id } else { nil }
             }).first {
                 undoReveal = UndoReveal(id: first)
             }
-            let token = UUID()
-            flashToken = token
-            Task { @MainActor [weak self] in
-                try? await Task.sleep(for: .milliseconds(600))
-                guard let self, self.flashToken == token else { return }
-                self.flashed = []
-            }
+            flash(Set(rows), for: .milliseconds(600))
         }
         show(Notice(text: text, undo: nil))
+    }
+
+    /// Rows that show the selected fill for `hold`, then fade (an undo's touched rows; a widget's tapped task). A later
+    /// flash replaces this one.
+    func flash(_ rows: Set<EntityID>, for hold: Duration) {
+        flashed = rows
+        let token = UUID()
+        flashToken = token
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: hold)
+            guard let self, self.flashToken == token else { return }
+            self.flashed = []
+        }
     }
 
     /// The menu's Undo, the notice's Undo, ⌘Z: what's being typed ends first, as on the Mac (`performUndo`); select mode

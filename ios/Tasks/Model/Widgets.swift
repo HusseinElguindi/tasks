@@ -98,7 +98,10 @@ extension AppModel {
         w.start()
     }
 
-    /// Opens where a widget's link points: Today, Upcoming, a list, a task's details, or a new task. Whatever was
+    /// How long a task tapped in a widget keeps the selected fill once its list is up, before it fades.
+    static let widgetTaskHold: Duration = .seconds(1.5)
+
+    /// Opens where a widget's link points: Today, Upcoming, a list, a task in its list, or a new task. Whatever was
     /// open closes first, as a tap elsewhere would close it (a titled draft is written). A list or task that's gone
     /// or in the Trash opens Today.
     func follow(_ link: DeepLink) async {
@@ -116,12 +119,14 @@ extension AppModel {
         case let .task(id):
             guard let t = task(id), !t.isHeading, !isTrashed(t) else { open(.today); return }
             if t.isDone { showCompleted.insert(t.list) } else if let h = projection.heading(of: id) { expand(h) }
+            // Its list, scrolled to it, and the row highlighted with the selected fill (the undo's flash), not its
+            // details (the user: "maybe dont open the details, but highlight it as before"). iPad selects it.
             open(.list(t.list))
             revealTask = id
             if isSplit { selectedTask = id; return }
-            // The list's push first, then its sheet (as `-screen detail`).
+            // The list's push and the scroll first (ListScreen's reveal waits 0.35 s), then the fill.
             try? await Task.sleep(for: .seconds(0.6))
-            if task(id) != nil, shown == .list(t.list) { detailTask = id }
+            if task(id) != nil, shown == .list(t.list) { flash([id], for: Self.widgetTaskHold) }
         case let .new(list):
             let source: Source = list.map { projection.isActive(list: $0) ? .list($0) : .today } ?? .today
             open(source)
