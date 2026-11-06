@@ -114,3 +114,18 @@ With `-sampleData`, lists go by short names: `inbox` `school` `phys` `tasks` `ho
 - `Tools/shot.sh`, `Tools/screenshots.sh`: screenshots on a simulator from the launch arguments above.
 - `Tools/tailscale-bridge.py`: installs on the phone over Tailscale when it isn't on the Mac's network, by bridging
   Xcode's wireless connection (setup and usage in its header).
+
+## Known issues
+
+- **A row's highlight lingers after a hold, a menu, a drag or a tap** (headings and tasks; open, 2026-11-06). The row
+  shows a lighter fill for about 0.4 s after a hold is let go, and about 0.5 s after its menu closes, after the dim has
+  faded. Cause: UIKit's context-menu highlight platter (`_UIContentPlatterView`), drawn from our highlight preview with
+  its `palette.base` background, is left on the row until UIKit's dismiss animator completes. `DragHighlight.clear`
+  (02d4100) hides it only when a drag begins.
+  - **Tried and rolled back:** branch `ios-highlight` (01697ad, merged to ios-next as fe5a647, then dropped). It faded
+    the platters at `willEndContextMenuInteraction` (`DragHighlight.fade`) and gave the dismissal preview a clear
+    background, on the lists and on Home.
+  - On the phone it didn't fix the highlight, and rows disappeared (the user: "it didn't fix the highlight and things
+    dissapear now"). Fading UIKit's own platter views is the likely cause of the disappearing; that's unconfirmed.
+  - Its probe (`-highlightProbe YES`) and HighlightTests are on that branch.
+  - Left as is, at the user's call: "i'll live without the highlight fix."
