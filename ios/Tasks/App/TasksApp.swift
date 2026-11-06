@@ -4,6 +4,8 @@ import TasksCore
 @main
 struct TasksApp: App {
     @State private var app: AppModel?
+    /// A widget's link that came before the store had opened.
+    @State private var pendingLink: DeepLink?
     @Environment(\.scenePhase) private var phase
 
     var body: some Scene {
@@ -23,6 +25,16 @@ struct TasksApp: App {
                 let opened = await Launch.open()
                 app = opened
                 opened.startSync()
+                opened.startWidgetFeed()
+                if let link = pendingLink {
+                    pendingLink = nil
+                    await opened.follow(link)
+                }
+            }
+            .onOpenURL { url in
+                guard let link = DeepLink(url) else { return }
+                guard let app else { pendingLink = link; return }
+                Task { await app.follow(link) }
             }
             .onReceive(NotificationCenter.default.publisher(for: .NSCalendarDayChanged)) { _ in app?.store.refreshDay() }
             .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in app?.store.refreshDay() }
@@ -37,6 +49,7 @@ struct TasksApp: App {
                 app.endDraft()
                 app.inFront = false
                 app.store.persistNow()
+                app.widgetFeed?.flush()
             default: app.inFront = false
             }
         }

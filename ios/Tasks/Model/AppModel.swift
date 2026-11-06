@@ -232,6 +232,8 @@ final class AppModel {
     let isSample: Bool
     /// In front (scenePhase active): the 30 s syncs run only then.
     @ObservationIgnored var inFront = true
+    /// Writes the widgets' feed (Widgets.swift); nil for the sample data.
+    @ObservationIgnored var widgetFeed: WidgetFeedWriter?
 
     static let todayDone = "today"
 
