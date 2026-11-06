@@ -70,3 +70,27 @@ public enum SyncNudge {
         public mutating func fired() { burstStart = nil }
     }
 }
+
+/// The widget's nudge to the app (design/WIDGETS.md §2.1): after a widget's intent appended to `WidgetInbox`, it posts
+/// this Darwin notification and a running app drains the inbox at once. It carries no data. Debug builds add `.dev`, as
+/// their files live in `WidgetFolder`'s `Tasks Dev`, so the scratch app never drains for the installed one's widget.
+public enum WidgetNudge {
+    /// Release builds of the app and its widgets.
+    public static let base = "com.elguindi.Tasks.widget"
+
+    /// The name for this build: `base`, or `base + ".dev"` when TasksCore is built with `DEBUG`.
+    public static var name: String {
+        #if DEBUG
+        name(debug: true)
+        #else
+        name(debug: false)
+        #endif
+    }
+
+    public static func name(debug: Bool) -> String { debug ? base + ".dev" : base }
+
+    /// Posts the nudge (the widget's intent, after its append).
+    public static func post() {
+        notify_post(name)
+    }
+}

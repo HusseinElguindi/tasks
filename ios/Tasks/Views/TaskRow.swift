@@ -11,54 +11,89 @@ struct TaskRow: View {
     /// In a month group of Completed or Trash: the day, after the list's name.
     var day: CalendarDate? = nil
     var selected = false
+    /// In select mode (§3): selected, and joined to the selected row above or below.
+    var picked = false
+    var joinTop = false
+    var joinBottom = false
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Counts the checks made here, each of which flashes the row once.
+    @State private var flashes = 0
 
     private var trashed: Bool { app.isTrashed(task) }
     private var done: Bool { task.isDone }
     private var settled: Bool { done && !app.completing.contains(task.id) }
+    /// Checked here a moment ago (the box, a swipe, the menu): it sparks, and the row and its title flash warm.
+    private var sparks: Bool { done && app.completing.contains(task.id) }
+    /// In select mode a tap anywhere on the row, its box too, selects it: no sheet, no haptic (§3).
+    private var selecting: Bool { app.isSelecting(source) }
 
     var body: some View {
-        Button { open() } label: {
-            HStack(spacing: 0) {
-                Checkbox(checked: done, title: title, cue: app.cue(task, in: source), readOnly: trashed) {
-                    app.toggle(task.id)
+        Button { guard PressGate.allows else { return }; if selecting { app.toggleSelected(task.id) } else { open() } } label: {
+            // The flash (COLOR.md §4, the Mac's `sparkFlashT`): 700 ms ease-out, only for a check made here; none under
+            // Reduce Motion, where the title takes ink-tertiary at once.
+            KeyframeAnimator(initialValue: 0.0, trigger: flashes) { heat in
+                label(heat: heat)
+            } keyframes: { _ in
+                KeyframeTrack {
+                    MoveKeyframe(1.0)
+                    LinearKeyframe(0, duration: 0.7, timingCurve: .easeOut)
                 }
-                .padding(.leading, Metric.rowPad - 11)   // the 44pt hit area centres the 22pt ring
-                .padding(.trailing, Metric.titleGap - 11)
-
-                TitleThenName(after: task.deadline != nil && showsDates ? 8 : 0) {
-                    TitleSlot {
-                        HStack(spacing: 8) {
-                            // Cut off, its last 31pt fade out (§24); the notes hint after it stays whole.
-                            Text(title)
-                                .font(Typo.row)
-                                .foregroundStyle(titleColor)
-                                // Struck at once, as on the Mac; the row moves when the checks settle (§8).
-                                .strikethrough(done, color: p.inkQuiet)
-                                .animation(reduceMotion ? nil : .easeOut(duration: done ? 0.7 : 0.2), value: done)
-                                .fadeTruncation(Metric.titleFade, text: title)
-                            if !settled { NotesHint(summary: task.notesSummary).fixedSize() }
-                        }
-                        if let w = task.when, shows(when: w) { QuietWhen(date: w) }
-                    }
-                    if let name = whereName {
-                        Text(name)
-                            .font(Typo.quiet)
-                            .foregroundStyle(p.inkTertiary)
-                            .fadeTruncation(Metric.titleFade, text: name)
-                    }
-                }
-                if let d = task.deadline, showsDates { DeadlineChip(date: d, groupDay: groupDay) }
             }
-            .padding(.trailing, 12)
-            .padding(.leading, indent ? 30 : 0)
-            .frame(minHeight: Metric.rowHeight)
         }
-        .buttonStyle(RowStyle(selected: selected, fadesOut: !app.isSplit))
+        .onChange(of: done) { _, now in if now, sparks, !reduceMotion { flashes += 1 } }
+        .buttonStyle(RowStyle(selected: selected, fadesOut: !app.isSplit, picked: picked, joinTop: joinTop, joinBottom: joinBottom))
         .accessibilityElement(children: .contain)
-        .accessibilityAddTraits(selected ? .isSelected : [])
+        .accessibilityAddTraits(selected || picked ? .isSelected : [])
+    }
+
+    private func label(heat: Double) -> some View {
+        HStack(spacing: 0) {
+            Checkbox(checked: done, title: title, cue: app.cue(task, in: source), readOnly: trashed, sparks: sparks,
+                     quiet: app.quietChecks.contains(task.id)) {
+                if PressGate.allows { app.toggle(task.id) }
+            }
+            // In select mode it keeps its ring and cue, and takes no tap of its own: one gesture, one meaning (IX §2.1).
+            .allowsHitTesting(!selecting)
+            .accessibilityHidden(selecting)
+            .padding(.leading, Metric.rowPad - 11)   // the 44pt hit area centres the 22pt ring
+            .padding(.trailing, Metric.titleGap - 11)
+
+            TitleThenName(after: task.deadline != nil && showsDates ? 8 : 0) {
+                TitleSlot {
+                    HStack(spacing: 8) {
+                        // Cut off, its last 31pt fade out (§24); the notes hint after it stays whole.
+                        Text(title)
+                            .font(Typo.row)
+                            // Checked here, it goes from the spark to ink-tertiary (700 ms ease-out); unchecked,
+                            // back in 200 ms. Struck at once, as on the Mac; the row moves when the checks settle (§8).
+                            .foregroundStyle(heat > 0 ? p.spark.mix(with: titleColor, by: 1 - heat) : titleColor)
+                            .strikethrough(done, color: p.inkQuiet)
+                            .motion(done ? nil : .easeOut(duration: 0.2), value: done)
+                            .fadeTruncation(Metric.titleFade, text: title)
+                        if !settled { NotesHint(summary: task.notesSummary).fixedSize() }
+                    }
+                    if let w = task.when, shows(when: w) { QuietWhen(date: w) }
+                }
+                if let name = whereName {
+                    Text(name)
+                        .font(Typo.quiet)
+                        .foregroundStyle(p.inkTertiary)
+                        .fadeTruncation(Metric.titleFade, text: name)
+                }
+            }
+            if let d = task.deadline, showsDates { DeadlineChip(date: d, groupDay: groupDay) }
+        }
+        .padding(.trailing, 12)
+        .padding(.leading, indent ? 30 : 0)
+        .frame(minHeight: Metric.rowHeight)
+        .background {
+            // The row's warm flash as it's checked: its rounded fill, the spark at 14% settling to clear.
+            if heat > 0 {
+                RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous).fill(p.spark.opacity(0.14 * heat))
+            }
+        }
     }
 
     private var title: String { task.title.isEmpty ? "New Task" : task.title }
@@ -121,18 +156,26 @@ struct NotesHint: View {
 struct HeadingRow: View {
     let heading: TaskModel
     let count: Int
+    /// The air above its hairline: in a list it's an edge row of its own (`Line.edge`), so the row starts at the rule.
+    var top: CGFloat = HeadingRow.air
+    static let air: CGFloat = 11
+    /// On the collection view: the renaming state the cell was configured with, so the field shows only once the
+    /// collection view reconfigures the row, after easing it whole into view (TaskCollection+Editing.swift). Nil: the
+    /// draft's.
+    var editingOverride: Bool? = nil
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var focus: DetailField?
 
     private var collapsed: Bool { app.collapsed.contains(heading.id) }
     private var renaming: Bool {
-        if case let .rename(h, _)? = app.draft?.kind { h == heading.id } else { false }
+        if let editingOverride { return editingOverride }
+        if case let .rename(h, _)? = app.draft?.kind { return h == heading.id } else { return false }
     }
-    /// Its name is one line: pasted line breaks become spaces.
+    /// Its name is one line: pasted line breaks become spaces. Its name for the moment the field outlives the draft
+    /// (until it's reconfigured).
     private var text: Binding<String> {
-        Binding(get: { app.draft?.title ?? "" }, set: { new in
+        Binding(get: { app.draft?.title ?? heading.title }, set: { new in
             let text = TitleText.oneLine(new)
             app.draft?.title = text
         })
@@ -144,7 +187,7 @@ struct HeadingRow: View {
             chevron
         }
         .hairline(renaming ? .clear : p.lineSeparator, leading: Metric.rowPad, trailing: Metric.rowPad)
-        .padding(.top, 11)
+        .padding(.top, top)
         .padding(.bottom, 4)
         .onChange(of: focus) { old, new in
             // The caret left the field (a tap elsewhere, the keyboard put away): it's written, once.
@@ -170,15 +213,27 @@ struct HeadingRow: View {
         .accessibilityIdentifier("heading")
     }
 
-    /// Renaming: the field in place, in the heading's font, with the new-task row's look.
+    /// Renaming: the field in place, in the heading's font, with the new-task row's look. It's in the name's own line
+    /// box (a hidden name), so the row is as tall renaming as at rest. From the XL text size up a text field's line is
+    /// 1.7–2 pt taller than a Text's, and the row grew as Rename began, under the closing menu: its platter, made for the
+    /// row as it was, showed the taller row 1 pt up within its cut (the row's fill, from `air` down), so the box's top
+    /// edge was cut to a hairline for the ~0.6 s the menu took to close (T37, the user's film: "rename section top
+    /// border getting clipped"). The rows below no longer move 2 pt as it starts and ends either.
     private var nameField: some View {
-        TextField("New Heading", text: text, prompt: Text("New Heading").foregroundStyle(p.inkTertiary))
+        Text(heading.title.isEmpty ? " " : heading.title)
             .font(Typo.heading)
-            .foregroundStyle(p.ink)
-            .focused($focus, equals: .title)
-            .submitLabel(.done)
-            .onSubmit { app.submitDraft() }
-            .accessibilityIdentifier("headingName")
+            .lineLimit(1)
+            .hidden()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .overlay(alignment: .leading) {
+                TextField("New Heading", text: text, prompt: Text("New Heading").foregroundStyle(p.inkTertiary))
+                    .font(Typo.heading)
+                    .foregroundStyle(p.ink)
+                    .focused($focus, equals: .title)
+                    .submitLabel(.done)
+                    .onSubmit { app.submitDraft() }
+                    .accessibilityIdentifier("headingName")
+            }
             .padding(.leading, Metric.rowPad)
             .padding(.vertical, 9)
             .background(p.base, in: RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous))
@@ -188,12 +243,12 @@ struct HeadingRow: View {
 
     /// Down when open, right when collapsed, turning in 200 ms ease-out.
     private var chevron: some View {
-        Button { app.toggleCollapse(heading.id) } label: {
+        Button { if PressGate.allows { app.toggleCollapse(heading.id) } } label: {
             Image(systemName: "chevron.right")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(p.inkTertiary)
                 .rotationEffect(.degrees(collapsed ? 0 : 90))
-                .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: collapsed)
+                .motion(.easeOut(duration: 0.2), value: collapsed)
                 .frame(width: 44, height: 38)
                 .contentShape(Rectangle())
         }
@@ -208,25 +263,36 @@ struct HeadingRow: View {
 /// heading with its tasks, and the rows below close up on the same curve (§23).
 struct HeadingNotesRow: View {
     let heading: TaskModel
+    /// On the collection view: the editing state the cell was configured with, so its height changes only when the
+    /// collection view reconfigures it, inside an animation (TaskCollection+Editing.swift). Nil: the draft's.
+    var editingOverride: Bool? = nil
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
-    @FocusState private var focus: DetailField?
 
     private var editing: Bool {
-        if case let .notes(h, _)? = app.draft?.kind { h == heading.id } else { false }
+        if let editingOverride { return editingOverride }
+        return draftsThem
     }
-    private var text: Binding<String> { Binding(get: { app.draft?.title ?? "" }, set: { app.draft?.title = $0 }) }
+    /// The draft is these notes.
+    private var draftsThem: Bool {
+        if case let .notes(h, _)? = app.draft?.kind { return h == heading.id } else { return false }
+    }
 
     var body: some View {
         Group {
             if editing {
-                NotesEditor(text: text, focus: $focus, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5, minHeight: 60) { _, _ in }
-                    .accessibilityIdentifier("headingNotes")
-                    .onAppear { DispatchQueue.main.async { focus = .notes } }
+                // Typed into in place, in the rest view's line box (InPlaceNotes.swift). The draft's text; its notes for
+                // the moment the editor outlives the draft (until it's reconfigured). The caret leaving them (a tap
+                // elsewhere, the keyboard put away) writes them, once.
+                InPlaceNotesEditor(text: app.draft?.title ?? heading.notes, identifier: "headingNotes") { app.draft?.title = $0 }
+                    onEnd: { if draftsThem { app.endDraft() } }
             } else {
-                MarkdownText(text: heading.notes, font: Typo.notes, ink: p.inkSecondary, lineSpacing: 5) { new, checking in
-                    app.setNotes(heading.id, new, name: checking ? "Check Item" : "Uncheck Item")
-                }
+                // In a deleted list they only read (§28). Each line in the editor's line box, so nothing moves as
+                // editing starts or ends.
+                MarkdownText(text: heading.notes, font: Typo.notes, ink: p.inkSecondary, lineBox: true,
+                             onToggle: app.isTrashed(heading) ? nil : { new, checking in
+                                 app.setNotes(heading.id, new, name: checking ? "Check Item" : "Uncheck Item")
+                             })
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture { app.editHeadingNotes(heading.id) }
@@ -235,10 +301,6 @@ struct HeadingNotesRow: View {
         .padding(.horizontal, Metric.rowPad)
         .padding(.top, 3)
         .padding(.bottom, 8)
-        .onChange(of: focus) { old, new in
-            // The caret left the notes (a tap elsewhere, the keyboard put away): they're written, once.
-            if old != nil, new == nil, editing { app.endDraft() }
-        }
     }
 }
 
@@ -248,6 +310,9 @@ struct CompletedToggleRow: View {
     let key: String
     let count: Int
     let open: Bool
+    /// The air above it: in a list or Today it's an edge row of its own (`Line.edge`).
+    var top: CGFloat = CompletedToggleRow.air
+    static let air: CGFloat = 8
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     var body: some View {
@@ -270,13 +335,14 @@ struct CompletedToggleRow: View {
             .frame(minHeight: Metric.rowHeight)
         }
         .buttonStyle(RowStyle())
-        .padding(.top, 8)
+        .padding(.top, top)
         .accessibilityLabel(open ? "Hide completed tasks" : "Show \(count) completed tasks")
     }
 }
 
 /// A deleted list in Trash: one row on the day it was deleted, its tile on the checkbox's column, "11 tasks", and a
-/// chevron that shows what it holds.
+/// chevron that shows what it holds. A tap opens the list, read-only; the chevron, its own 44×44 at the right, expands
+/// it in place (§28: the Mac's click shows the list, its chevron or Space expands it).
 struct DeletedListRow: View {
     let list: ListModel
     let open: Bool
@@ -285,7 +351,7 @@ struct DeletedListRow: View {
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     var body: some View {
-        Button { toggle() } label: {
+        Button { app.openDeletedList(list.id) } label: {
             HStack(spacing: 0) {
                 ListTile(content: .mono(list.monogram), hue: p.tile(slot: list.colorSlot))
                     .frame(width: 44)
@@ -297,23 +363,61 @@ struct DeletedListRow: View {
                 Text(app.deletedListCount(list.id) + (day.map { " · " + DateLabel.monthDay($0) } ?? ""))
                     .font(Typo.quiet).foregroundStyle(p.inkTertiary).fixedSize().padding(.leading, 8)
                 Spacer(minLength: 8)
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(p.inkTertiary)
-                    .rotationEffect(.degrees(open ? 90 : 0))
-                    .frame(width: 30, height: 30)
+                Button { toggle() } label: {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(p.inkTertiary)
+                        .rotationEffect(.degrees(open ? 90 : 0))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
             }
-            .padding(.trailing, 8)
+            .padding(.trailing, 1)
             .frame(minHeight: Metric.rowHeight)
         }
         .buttonStyle(RowStyle())
+        // One element: a tap opens it, and the rotor has the rest (§28).
+        .accessibilityElement(children: .ignore)
+        .accessibilityAddTraits(.isButton)
         .accessibilityLabel("\(list.name), deleted list, \(app.deletedListCount(list.id))")
-        .accessibilityHint(open ? "Hides its tasks" : "Shows its tasks")
+        .accessibilityHint("Opens the list")
+        .accessibilityAction { app.openDeletedList(list.id) }
+        .accessibilityAction(named: "Open") { app.openDeletedList(list.id) }
+        .accessibilityAction(named: open ? "Collapse" : "Expand") { toggle() }
+        .accessibilityAction(named: "Restore List") { app.restoreList(list.id) }
     }
     private func toggle() {
         animate(Motion.layout) {
             if open { app.expandedTrash.remove(list.id) } else { app.expandedTrash.insert(list.id) }
         }
+    }
+}
+
+/// A deleted list's banner, above its large title (§28; the sheet's trash banner): when it was deleted, why it's
+/// read-only, and Restore. Two lines, as the Mac's is in a narrow pane.
+struct DeletedListBanner: View {
+    let list: ListModel
+    /// When it was deleted, if not the list's own: kept while the banner fades out after a restore (TaskCollection+Screens).
+    var deletedAt: Int? = nil
+    @Environment(AppModel.self) private var app
+    @Environment(\.palette) private var p
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "trash").foregroundStyle(p.inkSecondary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Deleted " + ((deletedAt ?? list.archivedAt).map { DateLabel.monthDay(app.localDay($0)) } ?? ""))
+                    .font(Typo.body).foregroundStyle(p.ink)
+                Text("Read-only until you restore it.").font(Typo.meta).foregroundStyle(p.inkSecondary)
+            }
+            Spacer(minLength: 8)
+            Button("Restore") { app.restoreList(list.id) }
+                .buttonStyle(CapsuleButtonStyle(kind: .tinted, height: 30))
+        }
+        .padding(12)
+        .background(p.fillControl, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("deletedListBanner")
     }
 }
 

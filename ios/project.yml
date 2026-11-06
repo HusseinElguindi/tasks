@@ -25,16 +25,38 @@ targets:
     platform: iOS
     sources:
       - path: Tasks
+      # The few widget files the app compiles too: the URL scheme and the feed's place in the App Group.
+      - path: ../widgets/Shared/DeepLink.swift
+      - path: ../widgets/Shared/WidgetGroup.swift
     dependencies:
       - package: TasksCore
       - package: TasksCore
         product: TasksTheme
+      # The widgets (WIDGETS.md §3.1), embedded in the app.
+      - target: TasksWidgets
+        embed: true
+        codeSign: true
     configFiles:
       Debug: Signing.xcconfig
       Release: Signing.xcconfig
+    # The tasks:// scheme the widgets open the app with (DeepLink.swift). Merged with the generated Info.plist.
+    info:
+      path: Tasks/Info.plist
+      properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleURLTypes:
+          - CFBundleURLName: com.elguindi.Tasks
+            CFBundleURLSchemes: [tasks]
+    # The App Group the app writes the widgets' feed into (WIDGETS.md §3.2); the extension has the same one.
+    entitlements:
+      path: Tasks/Tasks.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.elguindi.Tasks]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.elguindi.Tasks
+        CODE_SIGN_ENTITLEMENTS: Tasks/Tasks.entitlements
         PRODUCT_NAME: Tasks
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Tasks
@@ -49,6 +71,67 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         TARGETED_DEVICE_FAMILY: "1,2"
         ENABLE_PREVIEWS: YES
+  # The widget extension (WIDGETS.md §3.1): the views, the provider and the URL builder are in ../widgets/Shared, shared
+  # with the Mac's extension later; what only the iPhone has is in Widgets/. It reads the feed the app writes into the
+  # App Group and never opens the store.
+  TasksWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ../widgets/Shared
+      - path: Widgets
+    dependencies:
+      - package: TasksCore
+      - package: TasksCore
+        product: TasksTheme
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
+    info:
+      path: Widgets/Info.plist
+      properties:
+        CFBundleDisplayName: Tasks
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Widgets/TasksWidgets.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.elguindi.Tasks]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.elguindi.Tasks.Widgets
+        PRODUCT_NAME: TasksWidgets
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_ENTITLEMENTS: Widgets/TasksWidgets.entitlements
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SKIP_INSTALL: YES
+  # Unit tests in the app's process (so they have its App Group): the widgets' feed, the links, Today and the List as
+  # the widgets compute them, and the widgets' views drawn to images. Simulator only, like the UI tests.
+  TasksTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: TasksTests
+      # The widgets' code, compiled in: all of widgets/Shared, and the lock screen's views (not the extension's @main
+      # bundle or its controls).
+      - path: ../widgets/Shared
+      - path: Widgets/LockWidgets.swift
+    dependencies:
+      - target: Tasks
+      - package: TasksCore
+      - package: TasksCore
+        product: TasksTheme
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.elguindi.TasksTests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Tasks.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Tasks
+        BUNDLE_LOADER: $(TEST_HOST)
   TasksUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -69,10 +152,18 @@ schemes:
     build:
       targets:
         Tasks: all
+        TasksTests: [test]
         TasksUITests: [test]
     test:
       targets:
+        - TasksTests
         - TasksUITests
+      # Full: every UI test (the default, as before). Smoke: a ~6 min set across the app's main paths, for before a phone
+      # install (`-testPlan Smoke`; README.md). Its list is in Smoke.xctestplan.
+      testPlans:
+        - path: Full.xctestplan
+          defaultPlan: true
+        - path: Smoke.xctestplan
   # TasksCore's own tests and the theme's (TasksThemeTests), run on iOS. Through this project rather than the
   # package's scheme, which also builds the Mac-only CLI (and would write .swiftpm/ into app/TasksCore). A scheme of
   # their own because their copied Resources folder fails ad hoc signing on the simulator, so they run with

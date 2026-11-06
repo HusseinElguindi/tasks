@@ -60,6 +60,11 @@ Tests:
 # runner only TEST_RUNNER_-prefixed variables, minus the prefix.
 TEST_RUNNER_SHOTS=$PWD/Screenshots/flow xcodebuild test -project Tasks.xcodeproj -scheme Tasks -destination 'id=<sim>' \
   -derivedDataPath build -only-testing:TasksUITests
+# The smoke set (Smoke.xctestplan, ~6 min): add, check, swipe, details, dates, Trash, Settings, headings, notes, drags,
+# the press, select, undo and sync, for before a phone install. The full suite (Full.xctestplan, the default) runs once
+# per batch, before a push or merge.
+xcodebuild test -project Tasks.xcodeproj -scheme Tasks -testPlan Smoke -destination 'id=<sim>' -derivedDataPath build \
+  -parallel-testing-enabled NO
 # TasksCore's own tests and the theme's (TasksThemeTests), on iOS. CODE_SIGNING_ALLOWED=NO because the test bundle's
 # copied Resources folder fails ad hoc signing on the simulator; that's why they have a scheme of their own.
 xcodebuild test -project Tasks.xcodeproj -scheme TasksCoreTests -destination 'id=<sim>' -derivedDataPath build \
@@ -107,3 +112,20 @@ With `-sampleData`, lists go by short names: `inbox` `school` `phys` `tasks` `ho
 - `TasksUITests/FlowTests.swift`: adds tasks, completes and undoes, swipes, edits a date, deletes a list, changes the appearance.
 - `Tools/MakeIcon.swift`: renders the app icon from the 04 · Log mark.
 - `Tools/shot.sh`, `Tools/screenshots.sh`: screenshots on a simulator from the launch arguments above.
+- `Tools/tailscale-bridge.py`: installs on the phone over Tailscale when it isn't on the Mac's network, by bridging
+  Xcode's wireless connection (setup and usage in its header).
+
+## Known issues
+
+- **A row's highlight lingers after a hold, a menu, a drag or a tap** (headings and tasks; open, 2026-11-06). The row
+  shows a lighter fill for about 0.4 s after a hold is let go, and about 0.5 s after its menu closes, after the dim has
+  faded. Cause: UIKit's context-menu highlight platter (`_UIContentPlatterView`), drawn from our highlight preview with
+  its `palette.base` background, is left on the row until UIKit's dismiss animator completes. `DragHighlight.clear`
+  (02d4100) hides it only when a drag begins.
+  - **Tried and rolled back:** branch `ios-highlight` (01697ad, merged to ios-next as fe5a647, then dropped). It faded
+    the platters at `willEndContextMenuInteraction` (`DragHighlight.fade`) and gave the dismissal preview a clear
+    background, on the lists and on Home.
+  - On the phone it didn't fix the highlight, and rows disappeared (the user: "it didn't fix the highlight and things
+    dissapear now"). Fading UIKit's own platter views is the likely cause of the disappearing; that's unconfirmed.
+  - Its probe (`-highlightProbe YES`) and HighlightTests are on that branch.
+  - Left as is, at the user's call: "i'll live without the highlight fix."

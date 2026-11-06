@@ -4,12 +4,18 @@ import SwiftUI
 struct RootView: View {
     @Environment(AppModel.self) private var app
     @Environment(\.horizontalSizeClass) private var size
+    /// The scene's undo manager: the window's one stack (Undo.swift).
+    @Environment(\.undoManager) private var undoManager
 
     var body: some View {
         Group {
             if size == .regular { SplitRoot() } else { PhoneRoot() }
         }
-        .onAppear { app.isSplit = size == .regular }
+        .onAppear {
+            app.adopt(undoManager)
+            app.isSplit = size == .regular
+        }
+        .onChange(of: undoManager.map(ObjectIdentifier.init)) { app.adopt(undoManager) }
         .onChange(of: size) { _, s in app.isSplit = s == .regular }
         // TasksCore's own notices ("A change couldn't be saved."), as the app's.
         .onChange(of: app.store.notice) { _, n in
@@ -31,7 +37,6 @@ struct PhoneRoot: View {
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     @Environment(\.interfaceStyle) private var style
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var keyboardUp = false
 
     var body: some View {
@@ -46,7 +51,7 @@ struct PhoneRoot: View {
                 .ignoresSafeArea(.keyboard)
                 .opacity(keyboardUp ? 0 : 1)
                 .allowsHitTesting(!keyboardUp)
-                .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: keyboardUp)
+                .motion(.easeOut(duration: 0.15), value: keyboardUp)
         }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in keyboardUp = true }
         .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in keyboardUp = false }
@@ -58,7 +63,7 @@ struct PhoneRoot: View {
                 .presentationBackground(style == .glass ? AnyShapeStyle(.regularMaterial) : AnyShapeStyle(p.base))
         }
         .sheet(item: Binding(get: { app.detailTask == nil ? app.dateTarget : nil }, set: { app.dateTarget = $0 })) { t in
-            DatePickerSheet(target: t).themed(app).datePickerPresentation()
+            DatePickerSheet(target: t).themed(app)
         }
         .sheet(isPresented: $app.showSettings) {
             SettingsView().themed(app).presentationDragIndicator(.visible)
@@ -74,27 +79,38 @@ struct FloatingControls: View {
     var showBar = true
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        let selecting = !home && app.isSelecting(source)
         VStack(alignment: .leading, spacing: 12) {
             if let n = app.notice {
+                // 12 above the + or, in select mode, the bar.
                 NoticeView(notice: n)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .motionTransition(.move(edge: .bottom).combined(with: .opacity))
             }
             HStack(alignment: .center, spacing: 12) {
-                if home && showBar { HomeBar() } else { Spacer() }
-                if home || (source?.canAdd ?? false) {
-                    AddButton { add() }
-                        .transition(.scale(scale: 0.6).combined(with: .opacity))
+                if selecting, let source {
+                    // Select mode's bar takes the +'s place: the + leaves on its scale and fade, the bar rises in (§3).
+                    SelectBar(source: source)
+                        .motionTransition(.move(edge: .bottom).combined(with: .opacity))
+                } else {
+                    if home && showBar { HomeBar() } else { Spacer() }
+                    if home || app.canAdd(source) {
+                        AddButton { add() }
+                            .motionTransition(.scale(scale: 0.6).combined(with: .opacity))
+                    }
                 }
             }
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 6)
         // Reduce Motion: they change at once (IX:255).
-        .animation(reduceMotion ? nil : Motion.natural, value: home)
-        .animation(reduceMotion ? nil : Motion.natural, value: source?.canAdd)
+        .motion(Motion.natural, value: home)
+        .motion(Motion.natural, value: app.canAdd(source))
+        .motion(Motion.natural, value: selecting)
+        // A bulk Complete's one haptic, for all the boxes it checks or unchecks (§3, §5).
+        .sensoryFeedback(.success, trigger: app.bulkChecks)
+        .sensoryFeedback(.selection, trigger: app.bulkUnchecks)
     }
 
     private func add() {
@@ -217,7 +233,7 @@ struct SplitRoot: View {
         }
         .navigationSplitViewStyle(.balanced)
         .background(AppBackground())
-        .sheet(item: $app.dateTarget) { t in DatePickerSheet(target: t).themed(app).datePickerPresentation() }
+        .sheet(item: $app.dateTarget) { t in DatePickerSheet(target: t).themed(app) }
         .sheet(isPresented: $app.showSettings) { SettingsView().themed(app) }
         .listEditorAlert()
     }
@@ -268,16 +284,12 @@ private struct PaneModifier: ViewModifier {
             .overlay(shape.strokeBorder(focused ? p.linePane : p.linePaneDim, lineWidth: 1))
             .padding(8)
             .background(AppBackground())
-            .animation(.easeOut(duration: 0.06), value: focused)
+            .motion(.easeOut(duration: 0.06), value: focused)
     }
 }
 
 extension View {
     func pane(focused: Bool) -> some View { modifier(PaneModifier(focused: focused)) }
-
-    func datePickerPresentation() -> some View {
-        presentationDetents([.height(560), .large]).presentationDragIndicator(.visible)
-    }
 
     /// Applies the theme: the appearance's palette, the interface style, the accent as tint and the colour scheme.
     func themed(_ app: AppModel) -> some View { modifier(Themed(app: app)) }

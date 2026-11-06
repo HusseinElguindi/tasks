@@ -5,8 +5,11 @@ import TasksCore
 @MainActor
 enum Line: @MainActor Identifiable {
     case group(key: String, title: String, sub: String?, quiet: Bool)
-    case heading(TaskModel, openCount: Int)
-    /// A heading's notes, under it: their own row, so they fold into it with its tasks, on the same curve (§23).
+    /// `notes`: its notes are drawn in its row, under its name, so a drag never opens a gap between them (§23: a
+    /// heading's notes belong to its row).
+    case heading(TaskModel, openCount: Int, notes: Bool = false)
+    /// A heading's notes as their own row: the collection view draws them as an item of their own
+    /// (`TaskCollection.items`), so they fold into the heading with its tasks (§23).
     case headingNotes(TaskModel)
     /// `groupDay`: in Upcoming, the day of the group it's in (its rows don't repeat that date). `day`: in a month group
     /// of Completed or Trash, the day it was done or deleted, after its list's name ("School · Oct 22").
@@ -15,22 +18,29 @@ enum Line: @MainActor Identifiable {
     case deletedList(ListModel, count: Int, open: Bool, day: CalendarDate? = nil)
     case draft
     case empty(title: String, message: String, symbol: String)
+    /// Today all done (IX §13): the sun and "All done for today", above the Completed group.
+    case allDone
+    /// The air above a heading or a Today or Undated group's label, as a row of its own that belongs to the section or
+    /// group above it, so a drop there is that one's end (Reorder.swift, "Edges"). Nothing is drawn.
+    case edge(key: String, height: CGFloat)
 
     var id: String {
         switch self {
         case let .group(key, _, _, _): "g:" + key
-        case let .heading(h, _): "h:" + h.id
+        case let .heading(h, _, _): "h:" + h.id
         case let .headingNotes(h): "hn:" + h.id
         case let .task(t, _, _, _): "t:" + t.id
         case let .completedToggle(key, _, _): "c:" + key
         case let .deletedList(l, _, _, _): "dl:" + l.id
         case .draft: "draft"
         case .empty: "empty"
+        case .allDone: "allDone"
+        case let .edge(key, _): "e:" + key
         }
     }
 
-    var isDraft: Bool {
-        if case .draft = self { true } else { false }
+    var isAllDone: Bool {
+        if case .allDone = self { true } else { false }
     }
 }
 
@@ -71,12 +81,12 @@ extension AppModel {
                 heading = m.id
                 // A heading's count: the open tasks under it, down to the next heading.
                 let section = models[(i + 1)...].prefix { !$0.isHeading }
-                out.append(.heading(m, openCount: section.filter { !$0.isDone }.count))
-                // Its notes, or the notes editor while they're typed.
+                // Its notes, or the notes editor while they're typed, in its row.
                 let typed = draft?.editedHeading == m.id && draft?.editsNotes == true
-                if !collapsed.contains(m.id), !m.notes.isEmpty || typed {
-                    out.append(.headingNotes(m))
-                }
+                let notes = !collapsed.contains(m.id) && (!m.notes.isEmpty || typed)
+                // Its air, a row of the section above (the end of that section, or the top of the list).
+                out.append(.edge(key: "h:" + m.id, height: HeadingRow.air))
+                out.append(.heading(m, openCount: section.filter { !$0.isDone }.count, notes: notes))
                 continue
             }
             if kind == .heading(before: m.id) { out.append(.draft) }
@@ -88,11 +98,14 @@ extension AppModel {
         let done = projection.completedTasks(in: id).ids.filter { !completing.contains($0) }
         if !done.isEmpty {
             let open = showCompleted.contains(id)
+            out.append(.edge(key: "c:" + id, height: CompletedToggleRow.air))
             out.append(.completedToggle(key: id, count: done.count, open: open))
             if open { out += done.compactMap(task).map { .task($0, indent: false) } }
         }
         if models.isEmpty && done.isEmpty && !(draftHere && draft?.editsListNotes != true) {
-            out.append(.empty(title: "No tasks", message: "Tap + to add one. Tasks you add here stay in this list.", symbol: "checklist"))
+            // A deleted list has no + to point to.
+            let message = list(id)?.isDeleted == true ? "" : "Tap + to add one. Tasks you add here stay in this list."
+            out.append(.empty(title: "No tasks", message: message, symbol: "checklist"))
         }
     }
 
@@ -112,16 +125,17 @@ extension AppModel {
             out += ids.compactMap(task).map { .task($0, indent: false) }
         }
         let done = projection.todayDone.ids.filter { !completing.contains($0) }
+        let open = !any && !draftHere
+        // All done: the sun comes first, under the large title, and the Completed group after it (IX §13).
+        if open, !done.isEmpty { out.append(.allDone) }
         if !done.isEmpty {
-            let open = showCompleted.contains(Self.todayDone)
-            out.append(.completedToggle(key: Self.todayDone, count: done.count, open: open))
-            if open { out += done.compactMap(task).map { .task($0, indent: false) } }
+            let shown = showCompleted.contains(Self.todayDone)
+            out.append(.edge(key: "c:" + Self.todayDone, height: CompletedToggleRow.air))
+            out.append(.completedToggle(key: Self.todayDone, count: done.count, open: shown))
+            if shown { out += done.compactMap(task).map { .task($0, indent: false) } }
         }
-        guard !any, !draftHere else { return }
-        if done.isEmpty {
+        if open, done.isEmpty {
             out.append(.empty(title: "Nothing for today", message: "Tasks you plan for today, or that are due, show up here.", symbol: "sun.max"))
-        } else {
-            out.append(.empty(title: "All done for today", message: "", symbol: "sun.max.fill"))
         }
     }
 

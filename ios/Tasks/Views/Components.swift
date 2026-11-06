@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import TasksCore
 import TasksTheme
 
@@ -202,7 +203,7 @@ struct CheckShape: Shape {
 
 /// A 22pt ring. Its cue: danger when overdue, attention when due today, `plan` (blue: COLOR.md §1 split it from the warm
 /// accent) when planned for today and seen outside Today; both at once is the double ring. Checking fills it with the
-/// accent and draws the mark.
+/// accent and draws the mark; checked here, it sparks (COLOR.md §4, the Mac's `CheckLayer` and `SparkLayer`).
 struct Checkbox: View {
     let checked: Bool
     /// Its task's title, for VoiceOver: "Complete: ECE 358 lab report, overdue" (the Mac's checkbox label).
@@ -211,43 +212,78 @@ struct Checkbox: View {
     var readOnly = false
     var placeholder = false
     var size: CGFloat = Metric.check
+    /// Checked on this device, just now (the box, a swipe, the menu, the sheet's box): it sparks as it checks. A check
+    /// that syncs in from elsewhere just shows the box done.
+    var sparks = false
+    /// One of several a bulk Complete checks at once: the screen gives one haptic for them all (§3).
+    var quiet = false
     var action: () -> Void = {}
     @Environment(\.palette) private var p
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Counts the checks made here, each of which runs the spark once; and every check or uncheck, for the pop.
+    @State private var sparkRuns = 0
+    @State private var pops = 0
+
+    /// The Mac's lengths scale with the box: k = its size ÷ 16 (1.375 on a row, 1.5 in the sheet).
+    private var k: CGFloat { size / 16 }
 
     var body: some View {
         Button(action: action) {
-            ZStack {
-                Circle().fill(checked ? p.accent : .clear)
-                Circle().strokeBorder(checked ? p.accent : ringColor, lineWidth: 1.5)
-                if !checked && cue.planned && cue.deadline != nil {
-                    Circle().strokeBorder(p.plan, lineWidth: 1.25).padding(size * 0.19)
+            KeyframeAnimator(initialValue: CheckMoment(), trigger: sparkRuns) { m in
+                KeyframeAnimator(initialValue: 1.0, trigger: pops) { scale in
+                    box(m)
+                        .overlay { Spark(moment: m, k: k, color: p.spark).allowsHitTesting(false) }
+                        .scaleEffect(scale)
+                } keyframes: { _ in
+                    // Checked or unchecked, it pops from 0.8 on `snappy` (§8).
+                    KeyframeTrack {
+                        MoveKeyframe(0.8)
+                        SpringKeyframe(1, duration: 0.3, spring: .snappy(duration: 0.2))
+                    }
                 }
-                CheckShape()
-                    .trim(from: 0, to: checked ? 1 : 0)
-                    .stroke(p.onAccent, style: StrokeStyle(lineWidth: 2.2 * size / 16 * 0.85, lineCap: .round, lineJoin: .round))
-                    .padding(size * 0.06)
-            }
-            .frame(width: size, height: size)
-            .opacity(placeholder ? 0.7 : readOnly ? 0.6 : 1)
-            .keyframeAnimator(initialValue: 1.0, trigger: checked) { v, s in
-                v.scaleEffect(s)
             } keyframes: { _ in
-                // Checked or unchecked, it pops from 0.8 (§8); with Reduce Motion it just fills.
-                KeyframeTrack {
-                    CubicKeyframe(reduceMotion ? 1.0 : 0.8, duration: 0.06)
-                    SpringKeyframe(1.0, duration: 0.3, spring: .snappy)
-                }
+                CheckMoment.spark
             }
             .frame(width: 44, height: 44)
             .contentShape(Rectangle())
         }
+        // The trigger counts, not `checked`, so the keyframes needn't know which way it went: a check made here sparks
+        // and pops; an uncheck pops; a check from elsewhere just shows. Under Reduce Motion nothing runs.
+        .onChange(of: checked) { _, now in
+            // The haptic is UIKit's: `.sensoryFeedback` stays silent in a UIHostingConfiguration cell, which is where
+            // the rows' boxes live since the collection view.
+            if !quiet { Haptic.check(now) }
+            guard !reduceMotion, !now || sparks else { return }
+            if now { sparkRuns += 1 }
+            pops += 1
+        }
         .buttonStyle(CheckPressStyle())
         .disabled(readOnly || placeholder)
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: checked)
-        .sensoryFeedback(trigger: checked) { _, new in new ? .success : .selection }
         .accessibilityLabel(label)
         .accessibilityAddTraits(checked ? .isSelected : [])
+    }
+
+    private func box(_ m: CheckMoment) -> some View {
+        // Checked, the fill and the ring go from the spark to the accent (520 ms ease-out) and the mark draws in
+        // (160 ms, after 40); unchecked, the fill and the mark go out in 160 ms. A check from elsewhere just shows.
+        let on = p.spark.mix(with: p.accent, by: 1 - m.heat)
+        let draw: Animation? = checked ? (sparks ? .easeOut(duration: 0.16).delay(0.04) : nil) : .easeOut(duration: 0.16)
+        return ZStack {
+            Circle().fill(checked ? on : .clear)
+                .motion(checked ? nil : .easeOut(duration: 0.16), value: checked)
+            Circle().strokeBorder(checked ? on : ringColor, lineWidth: 1.5)
+                .motion(checked ? nil : .easeOut(duration: 0.16), value: checked)
+            if !checked && cue.planned && cue.deadline != nil {
+                Circle().strokeBorder(p.plan, lineWidth: 1.25).padding(size * 0.19)
+            }
+            CheckShape()
+                .trim(from: 0, to: checked ? 1 : 0)
+                .stroke(p.onAccent, style: StrokeStyle(lineWidth: 2.2 * k * 0.85, lineCap: .round, lineJoin: .round))
+                .padding(size * 0.06)
+                .motion(draw, value: checked)
+        }
+        .frame(width: size, height: size)
+        .opacity(placeholder ? 0.7 : readOnly ? 0.6 : 1)
     }
 
     /// "Complete: Buy milk, overdue, planned for today"; "Mark not done: Buy milk" (the Mac's `TaskRowView`, with its
@@ -268,11 +304,90 @@ struct Checkbox: View {
     }
 }
 
+/// Pressed, the box scales to 0.86 (80 ms ease-out) and comes back on `snappy`. Not under Reduce Motion: it stays at its
+/// size.
 private struct CheckPressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.86 : 1)
-            .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.86 : 1)
+            .motion(configuration.isPressed ? .easeOut(duration: 0.08) : Motion.snappy, value: configuration.isPressed)
+    }
+}
+
+/// One check's moment: the box's warmth (1 = the spark's colour), and the spark's ring and rays, each as its progress
+/// along its curve. At rest everything is 0.
+struct CheckMoment {
+    var heat: Double = 0
+    var ring: CGFloat = 0
+    var ringAlpha: Double = 0
+    var rays: CGFloat = 0
+    var raysAlpha: Double = 0
+
+    /// A check made here: the warm fill (520 ms ease-out), the ring (460 ms) and the rays (560 ms, their opacity
+    /// peaking at 22%), on the Mac's curve.
+    @KeyframesBuilder<CheckMoment>
+    static var spark: some Keyframes<CheckMoment> {
+        KeyframeTrack(\.heat) {
+            MoveKeyframe(1)
+            LinearKeyframe(0, duration: 0.52, timingCurve: .easeOut)
+        }
+        KeyframeTrack(\.ring) {
+            MoveKeyframe(0)
+            LinearKeyframe(1, duration: 0.46, timingCurve: Motion.flight)
+        }
+        KeyframeTrack(\.ringAlpha) {
+            MoveKeyframe(0.95)
+            LinearKeyframe(0, duration: 0.46, timingCurve: Motion.flight)
+        }
+        KeyframeTrack(\.rays) {
+            MoveKeyframe(0)
+            LinearKeyframe(1, duration: 0.56, timingCurve: Motion.flight)
+        }
+        KeyframeTrack(\.raysAlpha) {
+            MoveKeyframe(0)
+            LinearKeyframe(1, duration: 0.56 * 0.22, timingCurve: Motion.flight)
+            LinearKeyframe(0, duration: 0.56 * 0.78, timingCurve: Motion.flight)
+        }
+    }
+}
+
+/// The spark that leaves a box as it's checked (`.check .spark`, the Mac's `SparkLayer`), in the Mac's 16-unit lengths
+/// × k: a ring of radius 9 going from 0.9× to 2.1× as its stroke thins from 2.5 to 0.4, and eight rays every 45° from
+/// 11 to 17 out (the odd four 11.03 to 15.98), 1.75 wide with round caps, from 0.55× and −8° to 1.2×. At its widest it
+/// reaches 20.4k from the centre, 28pt on a row: past the 48pt row by 4, so it's drawn unclipped.
+private struct Spark: View {
+    let moment: CheckMoment
+    let k: CGFloat
+    let color: Color
+
+    var body: some View {
+        let reach = 21 * k
+        Canvas { ctx, size in
+            guard moment.ringAlpha > 0.001 || moment.raysAlpha > 0.001 else { return }
+            let c = CGPoint(x: size.width / 2, y: size.height / 2)
+            if moment.ringAlpha > 0.001 {
+                let r = 9 * k * (0.9 + 1.2 * moment.ring)
+                let w = k * (2.5 - 2.1 * moment.ring)
+                let ring = Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: 2 * r, height: 2 * r))
+                ctx.stroke(ring, with: .color(color.opacity(moment.ringAlpha)), lineWidth: w * (0.9 + 1.2 * moment.ring))
+            }
+            if moment.raysAlpha > 0.001 {
+                let scale = 0.55 + 0.65 * moment.rays
+                let turn = -8 * .pi / 180 * (1 - moment.rays)
+                var rays = Path()
+                for i in 0..<8 {
+                    let a = CGFloat(i) * .pi / 4 + turn, (cs, sn) = (cos(a), sin(a))
+                    let (r0, r1): (CGFloat, CGFloat) = i % 2 == 0 ? (11, 17) : (11.03, 15.98)
+                    rays.move(to: CGPoint(x: c.x + cs * r0 * k * scale, y: c.y + sn * r0 * k * scale))
+                    rays.addLine(to: CGPoint(x: c.x + cs * r1 * k * scale, y: c.y + sn * r1 * k * scale))
+                }
+                ctx.stroke(rays, with: .color(color.opacity(moment.raysAlpha)),
+                           style: StrokeStyle(lineWidth: 1.75 * k * scale, lineCap: .round))
+            }
+        }
+        .frame(width: 2 * reach, height: 2 * reach)
+        .accessibilityHidden(true)
     }
 }
 
@@ -376,44 +491,38 @@ struct DateChip: View {
 /// A row's press: its own rounded fill, instant in, quick out. Selection uses the same shape. With `fadesOut`, the
 /// selected fill fades out over 300 ms ease-out when it goes (the phone's row whose details just closed, as in Mail
 /// and Settings), so you can see which row you came from; it comes in at once.
+///
+/// In select mode (`picked`, §3) the fill is the same, with no animation either way (IX §5: selection never animates),
+/// and selected neighbours join: the corners they share go square. The rows sit on a 48pt pitch with no gap, so there's
+/// none to fill (the Mac fills its 2pt one).
 struct RowStyle: ButtonStyle {
     var selected = false
     var focused = true
     var fadesOut = false
+    var picked = false
+    var joinTop = false
+    var joinBottom = false
     @Environment(\.palette) private var p
     func makeBody(configuration: Configuration) -> some View {
+        let r = Metric.rowRadius
         configuration.label
             .background {
-                RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous)
-                    .fill(configuration.isPressed ? p.press : selected ? (focused ? p.fillRowSelected : p.fillRowSelectedDim) : .clear)
-                    .animation(configuration.isPressed ? nil : .easeOut(duration: 0.085), value: configuration.isPressed)
-                    .animation(fadesOut && !selected ? .easeOut(duration: 0.3) : nil, value: selected)
+                ZStack {
+                    UnevenRoundedRectangle(topLeadingRadius: joinTop ? 0 : r, bottomLeadingRadius: joinBottom ? 0 : r,
+                                           bottomTrailingRadius: joinBottom ? 0 : r, topTrailingRadius: joinTop ? 0 : r,
+                                           style: .continuous)
+                        .fill(p.fillRowSelected)
+                        .opacity(picked ? 1 : 0)
+                        .animation(nil, value: picked)
+                        .animation(nil, value: joinTop)
+                        .animation(nil, value: joinBottom)
+                    RoundedRectangle(cornerRadius: r, style: .continuous)
+                        .fill(configuration.isPressed ? p.press : selected ? (focused ? p.fillRowSelected : p.fillRowSelectedDim) : .clear)
+                        .motion(configuration.isPressed ? nil : .easeOut(duration: 0.085), value: configuration.isPressed)
+                        .motion(fadesOut && !selected ? .easeOut(duration: 0.3) : nil, value: selected)
+                }
             }
             .contentShape(RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous))
-    }
-}
-
-extension View {
-    /// Shows a row's press the moment a finger lands, not after the list's usual pause, by turning off the
-    /// enclosing scroll view's `delaysContentTouches`. `canCancelContentTouches` stays on, so a drag that starts on a
-    /// row still scrolls (cancelling the press, and opening nothing) and swipe actions still swipe. Put it on a row
-    /// that's there when the list appears (its header); the setting is the list's.
-    func pressesShowAtOnce() -> some View { background(ImmediateTouches().allowsHitTesting(false).accessibilityHidden(true)) }
-}
-
-private struct ImmediateTouches: UIViewRepresentable {
-    func makeUIView(context: Context) -> Probe { Probe() }
-    func updateUIView(_ view: Probe, context: Context) {}
-
-    final class Probe: UIView {
-        override func didMoveToWindow() {
-            super.didMoveToWindow()
-            var v = superview
-            while let s = v, !(s is UIScrollView) { v = s.superview }
-            guard let scroll = v as? UIScrollView else { return }
-            scroll.delaysContentTouches = false
-            scroll.canCancelContentTouches = true
-        }
     }
 }
 
@@ -422,17 +531,28 @@ struct CapsuleButtonStyle: ButtonStyle {
     enum Kind { case primary, tinted, neutral, destructive }
     var kind: Kind = .neutral
     var height: CGFloat = 32
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.modifier(CapsuleFace(kind: kind, height: height, pressed: configuration.isPressed))
+    }
+}
+
+/// A capsule button's look, for a menu's label as well (a menu's label takes no button style).
+struct CapsuleFace: ViewModifier {
+    let kind: CapsuleButtonStyle.Kind
+    let height: CGFloat
+    var pressed = false
     @Environment(\.palette) private var p
     @Environment(\.isEnabled) private var enabled
 
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
+    func body(content: Content) -> some View {
+        content
             .font(.system(size: 15, weight: .medium))
             .foregroundStyle(fg)
             .padding(.horizontal, 14)
             .frame(height: height)
             .background(bg, in: Capsule())
-            .overlay { if configuration.isPressed { Capsule().fill(Color.black.opacity(0.14)) } }
+            .overlay { if pressed { Capsule().fill(Color.black.opacity(0.14)) } }
             .opacity(enabled ? 1 : 0.45)
             .contentShape(Capsule())
     }
@@ -444,17 +564,29 @@ struct CapsuleButtonStyle: ButtonStyle {
     }
 }
 
+extension View {
+    func capsuleFace(_ kind: CapsuleButtonStyle.Kind, height: CGFloat = 32) -> some View {
+        modifier(CapsuleFace(kind: kind, height: height))
+    }
+}
+
 // MARK: - Group label
 
 struct GroupLabel: View {
     let title: String
     var sub: String? = nil
     var quiet = false
+    /// A drag in Upcoming is over its day (the Mac's `dayTarget`): the name in accent-text.
+    var hot = false
+    /// The air above it: none when an edge row (`Line.edge`) holds it.
+    var top: CGFloat = GroupLabel.air
+    var bottom: CGFloat = 6
+    static let air: CGFloat = 18
     @Environment(\.palette) private var p
     var body: some View {
         // Cut off, the name and the day's date fade out at their ends, as a title does (the Mac's GroupLabelView).
         HStack(spacing: 6) {
-            Text(title).font(Typo.label).foregroundStyle(quiet ? p.inkQuiet : p.inkTertiary)
+            Text(title).font(Typo.label).foregroundStyle(hot ? p.accentText : quiet ? p.inkQuiet : p.inkTertiary)
                 .fadeTruncation(Metric.titleFade, text: title)
             if let sub {
                 Text(sub).font(Typo.quiet).foregroundStyle(p.inkQuiet).fadeTruncation(Metric.titleFade, text: sub)
@@ -463,8 +595,8 @@ struct GroupLabel: View {
         }
         .lineLimit(1)
         .padding(.leading, Metric.rowPad + 2)
-        .padding(.top, 18)
-        .padding(.bottom, 6)
+        .padding(.top, top)
+        .padding(.bottom, bottom)
         .accessibilityAddTraits(.isHeader)
     }
 }
@@ -567,5 +699,13 @@ extension View {
         overlay(alignment: .bottom) {
             Rectangle().fill(color).frame(height: 1).padding(.leading, leading).padding(.trailing, trailing)
         }
+    }
+}
+
+/// A box's haptic, from UIKit's generators: a check is `.success`, an uncheck `.selection` (§3).
+enum Haptic {
+    @MainActor static func check(_ checked: Bool) {
+        if checked { UINotificationFeedbackGenerator().notificationOccurred(.success) }
+        else { UISelectionFeedbackGenerator().selectionChanged() }
     }
 }

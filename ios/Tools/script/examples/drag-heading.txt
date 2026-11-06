@@ -1,0 +1,23 @@
+# (a) The last heading dragged up two sections and back home, then its notes edited.
+# Run with: -sampleData YES -screen list:phys
+log:start
+down:Exam prep
+wait:100
+move:-200,12
+wait:300
+log:up
+snap:up
+move:200,12
+wait:300
+log:back
+up
+wait:600
+log:home
+edit:Exam prep:notes
+type:Past papers first\nthen the formula sheet
+wait:400
+log:notes
+snap:notes
+done
+wait:400
+log:written

@@ -25,7 +25,7 @@ extension AppModel {
 
     /// Add Notes or Edit Notes in its menu, or a tap on them: the notes editor, under it. It expands first.
     func editHeadingNotes(_ id: EntityID) {
-        guard let h = task(id), h.isHeading, !isTrashed(h) else { return }
+        guard let h = task(id), h.isHeading, !isTrashed(h), selecting == nil else { return }
         expand(id)
         startDraft(.list(h.list), .notes(heading: id, original: h.notes), text: h.notes)
     }
@@ -45,14 +45,14 @@ extension AppModel {
         case let .heading(before):
             guard case let .list(list) = d.source, !d.title.isEmpty else { return false }
             let at: Ordering.Anchor = before.map { .before($0) } ?? .bottom
-            _ = store.createHeading(title: d.title, in: list, at: at, undoManager: undo)
+            undoable("New Heading") { store.createHeading(title: d.title, in: list, at: at, undoManager: undo) != nil }
         case let .rename(h, original):
             if !d.title.isEmpty, let name = EditSession.write(d.title, original: original, current: task(h)?.title) {
-                store.setTitle(h, name, name: "Rename Heading", undoManager: undo)
+                undoable("Rename Heading", ids: [h]) { store.setTitle(h, name, name: "Rename Heading", undoManager: undo) }
             }
         case let .notes(h, original):
             if let notes = EditSession.write(d.title, original: original, current: task(h)?.notes) {
-                store.setNotes(h, notes, name: "Edit Notes", undoManager: undo)
+                undoable("Edit Notes", ids: [h]) { store.setNotes(h, notes, name: "Edit Notes", undoManager: undo) }
             }
         case .task, .taskIn, .listNotes: break
         }
@@ -90,10 +90,10 @@ extension AppModel {
     // MARK: Collapsing (local to this device, never synced)
 
     /// The chevron, or Collapse or Expand in its menu. Collapsing folds its notes and tasks up into its row as they
-    /// fade (150 ms); expanding plays it backwards (220 ms ease-in). The notes are a line of their own, so they and the
-    /// tasks and the rows below all move on this one curve. Reduce Motion turns both off (`animate`).
+    /// fade (150 ms); expanding plays it backwards (220 ms ease-in): the collection view's fold (TaskCollection+Fold).
+    /// Reduce Motion turns both off (`animate`).
     func toggleCollapse(_ id: EntityID) {
-        guard isHeading(id) else { return }
+        guard let h = task(id), h.isHeading else { return }
         let collapse = !collapsed.contains(id)
         if collapse {
             // Typing in the section that folds away ends first; an iPad's selected task that folds away leaves the
@@ -119,10 +119,8 @@ extension AppModel {
         guard let h = task(id), h.isHeading else { return }
         if draft?.editedHeading == id { cancelDraft() }
         var done = false
-        animate(Motion.layout) { done = store.delete([id], name: "Delete Heading", undoManager: undo) }
+        animate(Motion.layout) { done = undoable("Delete Heading", ids: [id]) { store.delete([id], name: "Delete Heading", undoManager: undo) } }
         guard done else { return }
-        show(Notice(text: "Deleted heading \(quote(h.title))") { [weak self] in
-            animate(Motion.layout) { self?.undo.undo() }
-        })
+        show(Notice(text: "Deleted heading \(quote(h.title))", undo: undoStep))
     }
 }

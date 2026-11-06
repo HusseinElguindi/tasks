@@ -7,6 +7,8 @@ struct RootView: View {
     @Environment(\.undoManager) private var undoManager
     @Environment(\.paneInterfaceStyle) private var style
     @State private var window = WindowState()
+    /// A widget's link that came before the store or this window's lists were up.
+    @State private var pendingLink: DeepLink?
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -37,11 +39,32 @@ struct RootView: View {
         .background(WindowConfigurator(ground: tk.ground, window: window))
         .frame(minWidth: 620, minHeight: 420)
         .onAppear { window.undoManager = undoManager }
+        // A widget's link (`tasks://…`, DeepLink): an open window takes it rather than a new one opening for it; with
+        // none open, SwiftUI opens one and hands it the link.
+        .handlesExternalEvents(preferring: ["*"], allowing: ["*"])
+        .onOpenURL { url in
+            guard let link = DeepLink(url) else { return }
+            pendingLink = link
+            followPendingLink()
+        }
+        .onChange(of: model.store != nil) { followPendingLink() }
         .onChange(of: model.paneHighlight, initial: true) { _, new in
             window.paneHighlight = new
             window.detailList?.paneHighlight = new
         }
         .onChange(of: undoManager) { _, new in window.undoManager = new }
+    }
+
+    /// Follows the waiting link once the store is open, a turn later so a window that just opened has its lists.
+    private func followPendingLink() {
+        guard pendingLink != nil, model.store != nil else { return }
+        DispatchQueue.main.async {
+            guard let link = pendingLink, let store = model.store else { return }
+            pendingLink = nil
+            NSApp.activate()
+            window.nsWindow?.makeKeyAndOrderFront(nil)
+            WindowActions(store: store, window: window).follow(link)
+        }
     }
 }
 

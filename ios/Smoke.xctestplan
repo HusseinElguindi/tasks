@@ -1,0 +1,55 @@
+{
+  "configurations": [
+    {
+      "id": "6F1F7A0E-2D1B-4C61-9E39-7A3B7C0F5A02",
+      "name": "Configuration 1",
+      "options": {}
+    }
+  ],
+  "defaultOptions": {},
+  "testTargets": [
+    {
+      "target": {
+        "containerPath": "container:Tasks.xcodeproj",
+        "identifier": "FD47E5DABBF7FBD851DFF3AF",
+        "name": "TasksTests"
+      }
+    },
+    {
+      "selectedTests": [
+        "FlowTests/testAddReturn()",
+        "FlowTests/testAddCancel()",
+        "FlowTests/testCompleteAndUndo()",
+        "FlowTests/testSwipeActionsStillWork()",
+        "FlowTests/testDetailAndWhen()",
+        "FlowTests/testEditTitle()",
+        "FlowTests/testATypedDateSetsOnReturn()",
+        "FlowTests/testDeleteListAndTrash()",
+        "FlowTests/testPutBackSaysWhere()",
+        "FlowTests/testSettingsAppearance()",
+        "FlowTests/testRenameAHeading()",
+        "FlowTests/testCollapseAndExpandAHeading()",
+        "FlowTests/testAHeadingsNotes()",
+        "FlowTests/testAListsNotes()",
+        "FlowTests/testDragATaskIntoAnotherSection()",
+        "FlowTests/testDragAListOnHome()",
+        "FlowTests/testADragRightAfterADropRegisters()",
+        "FlowTests/testDragInTodayStaysInItsGroup()",
+        "FlowTests/testAHoldThatOpensTheMenuLeavesNoCopy()",
+        "FlowTests/testAQuickTapShowsThePress()",
+        "FlowTests/testALongPressAddsToTheSelection()",
+        "FlowTests/testUndoAndRedoFromTheMenu()",
+        "FlowTests/testSyncedTitleStandsAfterAnUntouchedEdit()",
+        "HomeDragTests/testBackToBackFastDragsOnHome()",
+        "WidgetLinkTests/testATaskLinkOpensItsListWithTheRowHighlighted()",
+        "WidgetLinkTests/testANewTaskLinkStartsATaskInTheList()"
+      ],
+      "target": {
+        "containerPath": "container:Tasks.xcodeproj",
+        "identifier": "51FD9CA215651FD483E3BAE3",
+        "name": "TasksUITests"
+      }
+    }
+  ],
+  "version": 1
+}
