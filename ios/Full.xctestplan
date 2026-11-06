@@ -11,6 +11,13 @@
     {
       "target": {
         "containerPath": "container:Tasks.xcodeproj",
+        "identifier": "FD47E5DABBF7FBD851DFF3AF",
+        "name": "TasksTests"
+      }
+    },
+    {
+      "target": {
+        "containerPath": "container:Tasks.xcodeproj",
         "identifier": "51FD9CA215651FD483E3BAE3",
         "name": "TasksUITests"
       }

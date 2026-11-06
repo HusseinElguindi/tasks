@@ -9,6 +9,13 @@
   "defaultOptions": {},
   "testTargets": [
     {
+      "target": {
+        "containerPath": "container:Tasks.xcodeproj",
+        "identifier": "FD47E5DABBF7FBD851DFF3AF",
+        "name": "TasksTests"
+      }
+    },
+    {
       "selectedTests": [
         "FlowTests/testAddReturn()",
         "FlowTests/testAddCancel()",
@@ -33,7 +40,9 @@
         "FlowTests/testALongPressAddsToTheSelection()",
         "FlowTests/testUndoAndRedoFromTheMenu()",
         "FlowTests/testSyncedTitleStandsAfterAnUntouchedEdit()",
-        "HomeDragTests/testBackToBackFastDragsOnHome()"
+        "HomeDragTests/testBackToBackFastDragsOnHome()",
+        "WidgetLinkTests/testATaskLinkOpensItsListAndDetails()",
+        "WidgetLinkTests/testANewTaskLinkStartsATaskInTheList()"
       ],
       "target": {
         "containerPath": "container:Tasks.xcodeproj",

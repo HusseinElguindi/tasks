@@ -107,6 +107,28 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Widgets/TasksWidgets.entitlements
         TARGETED_DEVICE_FAMILY: "1,2"
         SKIP_INSTALL: YES
+  # Unit tests in the app's process (so they have its App Group): the widgets' feed, the links, and Today as the
+  # widget computes it, from three of widgets/Shared's files. Simulator only, like the UI tests.
+  TasksTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: TasksTests
+      - path: ../widgets/Shared/TodaySnapshot.swift
+      - path: ../widgets/Shared/TodayProvider.swift
+      - path: ../widgets/Shared/WidgetGroup.swift
+    dependencies:
+      - target: Tasks
+      - package: TasksCore
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.elguindi.TasksTests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Tasks.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Tasks
+        BUNDLE_LOADER: $(TEST_HOST)
   TasksUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -127,9 +149,11 @@ schemes:
     build:
       targets:
         Tasks: all
+        TasksTests: [test]
         TasksUITests: [test]
     test:
       targets:
+        - TasksTests
         - TasksUITests
       # Full: every UI test (the default, as before). Smoke: a ~6 min set across the app's main paths, for before a phone
       # install (`-testPlan Smoke`; README.md). Its list is in Smoke.xctestplan.

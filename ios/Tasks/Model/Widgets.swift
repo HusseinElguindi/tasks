@@ -20,10 +20,16 @@ final class WidgetFeedWriter {
     /// The last feed written (or read at start), to skip writes that change nothing but the time.
     private var last: WidgetFeed?
 
-    init?(store: Store, isSample: Bool) {
+    /// The App Group's feed; nil for the sample data, or when the group's container isn't there.
+    convenience init?(store: Store, isSample: Bool) {
         guard !isSample, let folder = WidgetGroup.folder else { return nil }
+        self.init(store: store, url: WidgetFeed.url(in: folder))
+    }
+
+    /// A feed at `url` (tests).
+    init(store: Store, url: URL) {
         self.store = store
-        url = WidgetFeed.url(in: folder)
+        self.url = url
         last = WidgetFeed.read(at: url)
     }
 
