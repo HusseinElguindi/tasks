@@ -227,7 +227,7 @@ struct ListLargeView: View {
 
     var body: some View {
         WidgetFrame(gap: WM.largeHeaderGap) {
-            ListHeader(s: s)
+            ListHeader(s: s, titleSize: WM.largeTitle)
         } content: {
             switch s.content {
             case let .items(items): LargeItems(items: items, more: s.more)
@@ -239,11 +239,13 @@ struct ListLargeView: View {
 
 struct ListHeader: View {
     let s: ListSnapshot
+    var titleSize: CGFloat = WM.mediumTitle
 
     var body: some View {
         // A list in the Trash takes no new tasks: its + opens one in Today.
         let target: DeepLink = s.content == .trash ? .new(list: nil) : .new(list: s.list.id)
-        WidgetHeader(title: s.list.name, newTask: target, newTaskLabel: "New task in \(s.list.name)") {
+        WidgetHeader(title: s.list.name, newTask: target, newTaskLabel: "New task in \(s.list.name)",
+                     titleSize: titleSize) {
             Tile(list: s.list, width: 20, height: 16)
         }
     }

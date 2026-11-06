@@ -6,7 +6,13 @@ import TasksCore
 /// `Tasks Dev` for Debug ones, as the app's own data folders are, so a Debug build's widget never shows Release data
 /// or the other way round. Decided here, by the app's and the extension's own build, not by the package's.
 enum WidgetGroup {
+    #if os(macOS)
+    /// The Mac's group is prefixed with the signing team's id, which is what lets macOS grant it to the unsandboxed app
+    /// and the sandboxed extension with no prompt and no profile (WIDGETS.md §3.5; app/Signing.xcconfig).
+    static let id = "F4AMC8FYKT.com.elguindi.Tasks"
+    #else
     static let id = "group.com.elguindi.Tasks"
+    #endif
 
     #if DEBUG
     static let isDebug = true

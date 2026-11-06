@@ -16,7 +16,18 @@ enum WM {
     /// Medium and large: the header, and the gap under it.
     static let header: CGFloat = 24, headerGap: CGFloat = 2, largeHeaderGap: CGFloat = 4
     static let ring: CGFloat = 16
+    #if os(macOS)
+    // The Mac boards (Mac-Dark/Light, `mac`): the system's 170 / 364 × 170 / 364 × 382 sizes, a 14 pt title in medium
+    // (15 in large, as the iPhone), 13 pt task titles, and 23 pt rows in medium.
+    static let mediumRow: CGFloat = 23
+    static let mediumTitle: CGFloat = 14
+    static let taskTitle: CGFloat = 13
+    #else
     static let mediumRow: CGFloat = 21
+    static let mediumTitle: CGFloat = 15
+    static let taskTitle: CGFloat = 14
+    #endif
+    static let largeTitle: CGFloat = 15
     static let largeRow: CGFloat = 24
     /// A group's or a heading's label in large.
     static let label: CGFloat = 22
@@ -98,7 +109,7 @@ struct TodayLargeView: View {
     var body: some View {
         WidgetFrame(gap: WM.largeHeaderGap) {
             WidgetHeader(title: "Today", date: DateLabel.long(s.date, today: s.date), newTask: .new(list: nil),
-                         newTaskLabel: "New task in Today") { Sun(size: 14) }
+                         newTaskLabel: "New task in Today", titleSize: WM.largeTitle) { Sun(size: 14) }
         } content: {
             if s.openCount == 0 {
                 AllDoneView(s: s, compact: false)
@@ -135,19 +146,21 @@ struct WidgetHeader<Icon: View>: View {
     var date: String? = nil
     let newTask: DeepLink
     let newTaskLabel: String
+    /// The title's size: medium's or large's (WM; the same on the iPhone).
+    var titleSize: CGFloat = WM.mediumTitle
     @ViewBuilder let icon: Icon
     @Environment(\.widgetPalette) private var p
 
     var body: some View {
         HStack(spacing: 7) {
             icon
-            Text(title).font(.system(size: 15, weight: .semibold)).foregroundStyle(p.ink).lineLimit(1)
+            Text(title).font(.system(size: titleSize, weight: .semibold)).foregroundStyle(p.ink).lineLimit(1)
                 .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 4)
             if let date {
                 Text(date).font(.system(size: 12)).foregroundStyle(p.inkTertiary).lineLimit(1)
             }
-            Link(destination: newTask.url) {
+            WidgetLink(destination: newTask.url) {
                 Image(systemName: "plus")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(p.inkSecondary)
@@ -161,7 +174,7 @@ struct WidgetHeader<Icon: View>: View {
     }
 }
 
-/// As many rows as fit, 21 pt each.
+/// As many rows as fit, 21 pt each (23 on the Mac).
 struct MediumRows: View {
     let rows: [TodaySnapshot.Row]
     let trailing: TaskRowView.Trailing
@@ -250,6 +263,30 @@ struct LargeItems: View {
 
 // MARK: - Pieces
 
+/// A `Link` in a widget. Drawn off screen (the Mac's render tests), AppKit's ImageRenderer can't draw a `Link` and puts
+/// a placeholder in its place, so there `\.widgetLinksAsLabels` draws the label alone.
+struct WidgetLink<Label: View>: View {
+    let destination: URL
+    @ViewBuilder let label: Label
+    @Environment(\.widgetLinksAsLabels) private var asLabels
+
+    var body: some View {
+        if asLabels { label } else { Link(destination: destination) { label } }
+    }
+}
+
+private struct WidgetLinksAsLabelsKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
+extension EnvironmentValues {
+    /// Draw `WidgetLink`s as their labels (render tests only; the widgets keep their links).
+    var widgetLinksAsLabels: Bool {
+        get { self[WidgetLinksAsLabelsKey.self] }
+        set { self[WidgetLinksAsLabelsKey.self] = newValue }
+    }
+}
+
 /// A task's row: its ring, its title, its When in words (a list), its deadline capsule, and its list's tile (Today
 /// medium). A link to the task in the app: its list, scrolled to it, the row highlighted (`tasks://task/<id>`); the
 /// rest of the widget opens Today or the list.
@@ -261,7 +298,7 @@ struct TaskRowView: View {
     @Environment(\.widgetPalette) private var p
 
     var body: some View {
-        Link(destination: DeepLink.task(r.id).url) { content }
+        WidgetLink(destination: DeepLink.task(r.id).url) { content }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(trailing == .tile ? r.spoken + ", " + r.list.name : r.spoken)
     }
@@ -269,7 +306,7 @@ struct TaskRowView: View {
     private var content: some View {
         HStack(spacing: 10) {
             Ring(cue: r.cue, size: WM.ring, line: 1.5)
-            Text(r.title).font(.system(size: 14)).foregroundStyle(p.ink).lineLimit(1)
+            Text(r.title).font(.system(size: WM.taskTitle)).foregroundStyle(p.ink).lineLimit(1)
             if let w = r.when {
                 Text(w).font(.system(size: 12)).foregroundStyle(p.inkTertiary).lineLimit(1).fixedSize()
             }

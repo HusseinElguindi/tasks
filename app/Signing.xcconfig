@@ -15,3 +15,8 @@ DEVELOPMENT_TEAM = F4AMC8FYKT
 
 // Automatic signing adds get-task-allow (debugger attach) to every build; keep it out of Release.
 CODE_SIGN_INJECT_BASE_ENTITLEMENTS[config=Release] = NO
+
+// The group container the app and its widget extension share (Tasks.entitlements, Widgets/Widgets.entitlements; the
+// code's copy is WidgetGroup.id in widgets/Shared/WidgetGroup.swift, which must match). Team-prefixed, so macOS grants
+// it to both without a prompt or a profile.
+TASKS_APP_GROUP = $(DEVELOPMENT_TEAM).com.elguindi.Tasks

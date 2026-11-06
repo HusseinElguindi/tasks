@@ -108,6 +108,8 @@ final class AppModel {
     @ObservationIgnored private var appearanceObservation: NSKeyValueObservation?
     /// The CLI's nudge: sync at once after `tasks` pushed (feedback item 14).
     @ObservationIgnored private var nudges: SyncNudgeListener?
+    /// Writes the widgets' feed into the group container (Widgets/WidgetFeedWriter.swift).
+    @ObservationIgnored private(set) var widgetFeed: WidgetFeedWriter?
 
     enum Keys {
         static let serverURL = "serverURL"
@@ -162,6 +164,8 @@ final class AppModel {
         nudges = SyncNudgeListener(store: store)
         applyConfig()
         startTriggers(store)
+        widgetFeed = WidgetFeedWriter(store: store)
+        widgetFeed?.start()
     }
 
     // MARK: Sync settings
@@ -221,12 +225,13 @@ final class AppModel {
         observers.append(center.addObserver(forName: NSApplication.didResignActiveNotification, object: nil, queue: .main) { [weak store] _ in
             MainActor.assumeIsolated { store?.persistNow() }
         })
-        observers.append(center.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak store] _ in
+        observers.append(center.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak self, weak store] _ in
             MainActor.assumeIsolated {
                 guard let store else { return }
                 // What's being typed first: quitting never ends an edit by itself (docs/MAC-EDIT-DURABILITY.md).
                 WindowActions.endAllEdits(store: store)
                 store.persistNow()
+                self?.widgetFeed?.flush()
             }
         })
     }

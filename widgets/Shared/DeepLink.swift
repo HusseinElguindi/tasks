@@ -17,7 +17,13 @@ enum DeepLink: Hashable, Sendable {
     /// A new task: in a list, or in Today when nil.
     case new(list: String?)
 
+    #if os(macOS) && DEBUG
+    /// The Mac's Debug app is a separate app beside the real one (`com.elguindi.Tasks.dev`), so its widgets open it by
+    /// a scheme of its own; with one scheme for both, Launch Services would pick either app.
+    static let scheme = "tasks-dev"
+    #else
     static let scheme = "tasks"
+    #endif
 
     var url: URL {
         var c = URLComponents()

@@ -54,6 +54,23 @@ Notes:
 - **"Tasks Local Signing"** (`Scripts/make-signing-identity.sh`) still signs the `tasks` CLI (`Scripts/install-cli.sh`)
   so its Keychain access also sticks. `Signing.xcconfig` no longer reads `Signing.local.xcconfig`.
 
+### Widgets (design/WIDGETS.md)
+
+`TasksWidgets.appex` (the `TasksWidgets` target, embedded in the app) has Today (small, medium, large) and a List
+(medium, large; Edit Widget picks the list) for the desktop and Notification Center, and the New Task and Today
+controls for Control Center. The views, providers and links are `widgets/Shared`, shared with the iPhone; the
+controls are compiled from `ios/Widgets/Controls.swift` as they are. All read-only: a task opens the app at it,
+selected in its list, without its details; the header opens Today or the list, and the + a new task there.
+
+- **The feed:** the app writes `widget-feed.json` into the group container
+  `~/Library/Group Containers/F4AMC8FYKT.com.elguindi.Tasks/Tasks/` (`Tasks Dev/` for Debug) at launch, a second
+  after the last change, after a sync that brought changes, at midnight and when quitting, then reloads the widgets
+  (`Tasks/Widgets/WidgetFeedWriter.swift`). The extension is sandboxed and reads only that file.
+- **Links:** `tasks://…` (`tasks-dev://…` for the Debug app, so the two never open each other), handled by the front
+  window (`Tasks/Widgets/WidgetLinks.swift`).
+- **Tests:** `WidgetFeedWriterTests`, and `WidgetRenderTests`, which draws every widget at the Mac's sizes into `$SHOTS`
+  (default `/tmp/tasks-mac-widget-shots`; `TEST_RUNNER_SHOTS=… xcodebuild test`).
+
 Sync: Settings (⌘,) → Server URL (the Worker's base URL) and Token. The token goes to the login Keychain. Until
 both are set the sidebar footer says "Sync off".
 
