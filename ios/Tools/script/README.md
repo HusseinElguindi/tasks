@@ -31,11 +31,12 @@ Separated by `;` or new lines. In a step's text, `\;` is a semicolon, `\n` a Ret
 | `down:ROW` `move:DY[,STEPS,MS]` `up` `cancel` | the same, a phase at a time (`move` is from where the finger is; `cancel`: the touch taken away) |
 | `edit:ROW[:notes\|:title]` | a heading's name or notes, a list's notes (`edit:header:notes`) or name, a task's title or notes (its details open) |
 | `type:TEXT` `ret` `del[:N]` | characters to the first responder; Return; N backspaces |
+| `caret:N` | the caret to character N of the field being typed into (`-N`: N before its end) |
 | `done` | the list's Done (the draft ends and writes), or the details' Done |
 | `open:LIST` `home` `collapse:HEADING` `undo` `redo` `wait:MS` | navigation and the model, through the app's own calls |
 | `snap:NAME` | the window, `NAME.png` (drawHierarchy, afterScreenUpdates false: what's drawn, no keyboard) |
 | `log:NAME` | appends to `NAME.txt`: the drag probe's fields and the drag's state, the field being typed into (text, selection, caret rect), the shown rows' frames |
-| `frames:MS[:NAME]` | for MS ms, every display frame's caret and rows as drawn (presentation layers), to `NAME.txt` (`frames.txt`) |
+| `frames:MS[:NAME]` | for MS ms, every display frame's caret and rows as drawn (presentation layers), and the field and its views up to its cell as drawn (after `\|\|`, with its offset `tvoff=drawn/model`), to `NAME.txt` (`frames.txt`) |
 | `quit` | the app exits once the done marker is written |
 
 All points are window points. Output goes to the container's `tmp/script/`, emptied at each launch: `run.txt` (each

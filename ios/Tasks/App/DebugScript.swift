@@ -27,12 +27,14 @@ import UIKit
 ///                              (`edit:header:notes`, or its name) or a task's title or notes (its details open)
 ///     type:TEXT                each character as `insertText` on the first responder (\n is Return, \t a tab, \\ a \)
 ///     ret   del[:N]            Return; N (1) deleteBackward
+///     caret:N                  the caret to character N of the field (-N: N before its end)
 ///     done                     the list's Done (the draft ends and writes), or the details' Done
 ///     open:LIST   home   collapse:HEADING   undo   redo   wait:MS
 ///     snap:NAME                the window as a PNG (drawHierarchy, afterScreenUpdates false): NAME.png
 ///     log:NAME                 appends to NAME.txt: the drag probe's fields and the drag's state, the field being typed
 ///                              into (its text, selection and caret rect), and the shown rows' frames
-///     frames:MS[:NAME]         for MS ms, each display frame's rows (as drawn: presentation layers) and caret, to NAME.txt
+///     frames:MS[:NAME]         for MS ms, each display frame's rows (as drawn: presentation layers), caret, and the field
+///                              and its views up to its cell (as drawn, after "||"), to NAME.txt
 ///                              (frames)
 ///     quit                     the app exits (after the done marker is written)
 ///
@@ -176,6 +178,7 @@ final class ScriptRunner {
             case "del":
                 guard let r = responder() as? UIKeyInput else { fail("del: nothing is being typed into"); break }
                 for _ in 0..<max(1, Int(arg) ?? 1) { r.deleteBackward() }
+            case "caret": caret(Int(arg) ?? 0)
             case "done": done()
             case "open": await open(arg)
             case "home":
@@ -418,6 +421,14 @@ final class ScriptRunner {
         for c in text { r.insertText(String(c)) }
     }
 
+    private func caret(_ n: Int) {
+        guard let t = responder() as? UITextInput else { fail("caret: nothing is being typed into"); return }
+        let length = t.offset(from: t.beginningOfDocument, to: t.endOfDocument)
+        let at = max(0, min(length, n < 0 ? length + n : n))
+        guard let p = t.position(from: t.beginningOfDocument, offset: at) else { fail("caret: no place \(n)"); return }
+        t.selectedTextRange = t.textRange(from: p, to: p)
+    }
+
     private func done() {
         if app.draft != nil {
             app.endDraft()
@@ -479,6 +490,27 @@ final class ScriptRunner {
         """
     }
 
+    /// The field being typed into and its views up to its cell, each as drawn (presentation layers) in the window, with
+    /// the field's own offset: which of them moves when its text does.
+    private func fieldChain() -> String {
+        guard let r = responder(), let w = r.window else { return "" }
+        let wl = w.layer.presentation() ?? w.layer
+        var parts: [String] = []
+        var v: UIView? = r
+        while let cur = v, !(cur is UICollectionView), parts.count < 8 {
+            let l = cur.layer.presentation() ?? cur.layer
+            parts.append("\(Swift.type(of: cur)) \(ScriptFormat.rect(l.convert(l.bounds, to: wl)))")
+            if cur is UICollectionViewCell { break }
+            v = cur.superview
+        }
+        var s = " || " + parts.joined(separator: " < ")
+        if let sv = r as? UIScrollView {
+            let l = sv.layer.presentation() ?? sv.layer
+            s += " tvoff=\(ScriptFormat.n(l.bounds.minY))/\(ScriptFormat.n(sv.contentOffset.y))"
+        }
+        return s
+    }
+
     /// Each display frame for `ms`: the caret and the rows as drawn.
     private func frames(_ ms: Int, to name: String) async {
         let end = CACurrentMediaTime() + Double(ms) / 1000
@@ -489,7 +521,8 @@ final class ScriptRunner {
             if let r = self.responder(), let t = r as? UITextInput, let range = t.selectedTextRange {
                 caret = ScriptFormat.rect(r.convert(t.caretRect(for: range.end), to: nil))
             }
-            lines.v.append("F \(self.ms()) caret=\(caret) " + self.rows(drawn: true).replacingOccurrences(of: "\n  ", with: " | "))
+            lines.v.append("F \(self.ms()) caret=\(caret) " + self.rows(drawn: true).replacingOccurrences(of: "\n  ", with: " | ")
+                + self.fieldChain())
         }
         let link = CADisplayLink(target: tick, selector: #selector(Tick.fire))
         link.add(to: .main, forMode: .common)
