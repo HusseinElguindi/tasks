@@ -25,16 +25,38 @@ targets:
     platform: iOS
     sources:
       - path: Tasks
+      # The few widget files the app compiles too: the URL scheme and the feed's place in the App Group.
+      - path: ../widgets/Shared/DeepLink.swift
+      - path: ../widgets/Shared/WidgetGroup.swift
     dependencies:
       - package: TasksCore
       - package: TasksCore
         product: TasksTheme
+      # The widgets (WIDGETS.md §3.1), embedded in the app.
+      - target: TasksWidgets
+        embed: true
+        codeSign: true
     configFiles:
       Debug: Signing.xcconfig
       Release: Signing.xcconfig
+    # The tasks:// scheme the widgets open the app with (DeepLink.swift). Merged with the generated Info.plist.
+    info:
+      path: Tasks/Info.plist
+      properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleURLTypes:
+          - CFBundleURLName: com.elguindi.Tasks
+            CFBundleURLSchemes: [tasks]
+    # The App Group the app writes the widgets' feed into (WIDGETS.md §3.2); the extension has the same one.
+    entitlements:
+      path: Tasks/Tasks.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.elguindi.Tasks]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.elguindi.Tasks
+        CODE_SIGN_ENTITLEMENTS: Tasks/Tasks.entitlements
         PRODUCT_NAME: Tasks
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Tasks
@@ -49,6 +71,42 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         TARGETED_DEVICE_FAMILY: "1,2"
         ENABLE_PREVIEWS: YES
+  # The widget extension (WIDGETS.md §3.1): the views, the provider and the URL builder are in ../widgets/Shared, shared
+  # with the Mac's extension later; what only the iPhone has is in Widgets/. It reads the feed the app writes into the
+  # App Group and never opens the store.
+  TasksWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: ../widgets/Shared
+      - path: Widgets
+    dependencies:
+      - package: TasksCore
+      - package: TasksCore
+        product: TasksTheme
+    configFiles:
+      Debug: Signing.xcconfig
+      Release: Signing.xcconfig
+    info:
+      path: Widgets/Info.plist
+      properties:
+        CFBundleDisplayName: Tasks
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Widgets/TasksWidgets.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.elguindi.Tasks]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.elguindi.Tasks.Widgets
+        PRODUCT_NAME: TasksWidgets
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_ENTITLEMENTS: Widgets/TasksWidgets.entitlements
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SKIP_INSTALL: YES
   TasksUITests:
     type: bundle.ui-testing
     platform: iOS
