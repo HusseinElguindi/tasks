@@ -41,7 +41,7 @@
         "FlowTests/testUndoAndRedoFromTheMenu()",
         "FlowTests/testSyncedTitleStandsAfterAnUntouchedEdit()",
         "HomeDragTests/testBackToBackFastDragsOnHome()",
-        "WidgetLinkTests/testATaskLinkOpensItsListAndDetails()",
+        "WidgetLinkTests/testATaskLinkOpensItsListWithTheRowHighlighted()",
         "WidgetLinkTests/testANewTaskLinkStartsATaskInTheList()"
       ],
       "target": {
