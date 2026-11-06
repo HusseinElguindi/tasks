@@ -10,6 +10,8 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var server = ""
     @State private var token = ""
+    /// The background refresh's last run and count (BackgroundRefresh.swift), read as Settings opens.
+    @State private var refresh = RefreshHistory.Summary()
     @FocusState private var field: Field?
     private enum Field { case server, token }
 
@@ -68,6 +70,10 @@ struct SettingsView: View {
                                     .buttonStyle(CapsuleButtonStyle(kind: .neutral, height: 32))
                                     .disabled(app.store.config == nil)
                             }
+                            divider
+                            row("Background refresh", app.isSample ? "Off: this is the sample data." : refresh.text()) { EmptyView() }
+                                .accessibilityElement(children: .combine)
+                                .accessibilityIdentifier("backgroundRefresh")
                         }
                         .background(p.base, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
@@ -106,7 +112,10 @@ struct SettingsView: View {
             }
         }
         .background(p.ground)
-        .onAppear { server = app.serverURL }
+        .onAppear {
+            server = app.serverURL
+            refresh = BackgroundRefresh.shared.history.summary
+        }
         .onChange(of: field) { old, _ in if old == .server { saveServer() } }
         .onDisappear(perform: saveServer)
     }
