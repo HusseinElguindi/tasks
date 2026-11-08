@@ -2362,6 +2362,14 @@ final class FlowTests: XCTestCase {
         let labs = heading("Labs"), lectures = heading("Lectures")
         for (to, below) in [(app.staticTexts["Ask about problem 7 at office hours"].firstMatch, true),
                             (app.staticTexts["Read chapter 15 · oscillations"].firstMatch, false)] {
+            if !below {
+                // Back to the list's top, gently (no pull to refresh): scrolled to its end, the chapter was under the
+                // bar, in the top edge-scroll band, and the list scrolled under the flicked copy.
+                let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
+                start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: 160)), withVelocity: .slow,
+                            thenHoldForDuration: 0.3)
+                app.settle()
+            }
             at(labs).press(forDuration: 0.4, thenDragTo: at(to), withVelocity: XCUIGestureVelocity(rawValue: 3000), thenHoldForDuration: 0)
             sleep(2)
             let p = probe(), ev = p["ev"] ?? ""
