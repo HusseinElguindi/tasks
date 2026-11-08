@@ -330,6 +330,11 @@ if let id = window.detailTaskID {
 ```
 
 The list pane narrows on the same spring while the detail slides in from the right and fades up; closing reverses it.
+Its wrapping text (the list's notes, a heading's notes) wraps once, at the narrow end: as the pane starts to narrow, or
+once it has widened, with the rows under it moving on `layout` when the line count changes. It never re-wraps on every
+frame of the slide (the user, 2026-11-08: "the line wrapping is a bit distracting when it animates for the whole
+duration, and it's choppy when more lines are needed"). The same goes for the sidebar's slide and a divider's
+double-click; dragging a divider still re-wraps live (Resizing the panes, below). `TaskListView.settle`.
 The prototype copies this: the pane mounts its own width plus 8 to the right (+428 at the default width) and at opacity 0, and two frames later moves to 0 / 1 on `natural`
 while the list pane's right edge moves on the same curve; closing runs it backwards and removes the pane after 460 ms
 (`css:255–257`, `dc:1100–1114`).

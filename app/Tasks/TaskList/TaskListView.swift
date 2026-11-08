@@ -62,6 +62,16 @@ final class TaskListView: NSView {
     private var paletteChanged = true
     private var firstRender = true
     private var lastWidth: CGFloat = 0
+    /// The pane's width on an animation (the detail pane or the sidebar opening or closing, a divider springing back):
+    /// from what its text wraps at, to the width it settles at. Until it gets there the notes wrap at the narrower of
+    /// the two, so they re-wrap once, at the narrow end (as the pane starts to narrow, or once it has widened), and the
+    /// rows under them move on the `layout` spring. Before, they re-wrapped on every frame of the slide and the rows
+    /// jumped a line whenever the line count changed (the user, 2026-11-08: "the line wrapping is a bit distracting
+    /// when it animates for the whole duration, and it's choppy when more lines are needed").
+    private var settle: (from: CGFloat, to: CGFloat)?
+    /// The width the pane settles at, as the window's layout last gave it (`TaskListRepresentable.settleWidth`).
+    private var settleTarget: CGFloat?
+    private var settleTimer: Timer?
     private var pendingScroll: EntityID?
     private var cleanupTimer: Timer?
 
@@ -140,8 +150,42 @@ final class TaskListView: NSView {
         scroll.frame = bounds
         if abs(bounds.width - lastWidth) > 0.5 {
             lastWidth = bounds.width
-            render(animated: false)
+            if let s = settle, abs(bounds.width - s.to) <= 0.5 { endSettle() } else { render(animated: false) }
         }
+    }
+
+    /// The window's layout gives the pane a new width: on an animation, the text keeps one wrap the whole way
+    /// (`settle`); otherwise (a divider dragged, the window resized) it follows live, as before.
+    func paneWidth(to target: CGFloat?, animated: Bool) {
+        guard let target, target != settleTarget else { return }
+        let first = settleTarget == nil
+        settleTarget = target
+        guard animated, !first, window != nil, abs(target - bounds.width) > 0.5 else {
+            if settle != nil { endSettle() }
+            return
+        }
+        settle = (wrapBoundsWidth, target)
+        // A safety: the slide ends with the pane at `target`; should it stop short, the text settles anyway.
+        settleTimer?.invalidate()
+        settleTimer = Timer.scheduledTimer(withTimeInterval: 0.6, repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated { self?.endSettle() }
+        }
+        // Narrowing: the one re-wrap is now, at the width the pane is going to.
+        render(animated: true)
+    }
+
+    private func endSettle() {
+        settleTimer?.invalidate()
+        settleTimer = nil
+        guard settle != nil else { return }
+        settle = nil
+        render(animated: true)
+    }
+
+    /// The pane's width as far as wrapping goes: the narrower end while it animates (`settle`).
+    private var wrapBoundsWidth: CGFloat {
+        guard let s = settle else { return bounds.width }
+        return min(s.from, s.to, bounds.width)
     }
 
     override func viewDidMoveToWindow() {
@@ -700,9 +744,17 @@ final class TaskListView: NSView {
         }
     }
 
-    /// The width of the list pane's notes: from the checkbox's edge to 20 from the right.
+    /// The width of the list pane's notes: from the checkbox's edge to 20 from the right, at the narrower end while the
+    /// pane's width animates (`settle`).
     private var paneNotesWidth: CGFloat {
-        max(40, scroll.contentView.bounds.width - 2 * (TK.M.rowInset + TK.M.rowPadLeft))
+        max(40, wrapContentWidth - 2 * (TK.M.rowInset + TK.M.rowPadLeft))
+    }
+
+    /// The width the pane's wrapping text is measured at: the scroll view's, or while the pane settles the narrower end
+    /// (`settle`), from the pane's own width, since mid-slide the scroll view's lags it by a fraction and would have
+    /// the text measured again on every frame.
+    private var wrapContentWidth: CGFloat {
+        settle == nil ? scroll.contentView.bounds.width : wrapBoundsWidth
     }
 
     /// Makes (or updates) the list's and its headings' notes editors and measures them, before the layout: a heading
@@ -1871,7 +1923,17 @@ final class TaskListView: NSView {
     func debugFrameRows() -> String {
         let r: [(CGFloat, String)] = rows.values.filter { !$0.isHidden && $0.model != nil }.map { ($0.frame.minY, $0.debugFrameState) }
         let h: [(CGFloat, String)] = heads.values.filter { !$0.isHidden && $0.model != nil }.map { ($0.frame.minY, $0.debugFrameState) }
-        return "  title='\(titleView.debugTitle)'\n" + (r + h).sorted { $0.0 < $1.0 }.map { "  \(Int($0.0)) \($0.1)" }.joined(separator: "\n")
+        return "  title='\(titleView.debugTitle)'\n" + debugWrap() + "\n"
+            + (r + h).sorted { $0.0 < $1.0 }.map { "  \(Int($0.0)) \($0.1)" }.joined(separator: "\n")
+    }
+
+    /// Debug (the user, 2026-11-08): the pane's width, the list's notes as wrapped (width x height), the settle, and
+    /// the first row's place as drawn this frame (its spring included).
+    func debugWrap() -> String {
+        let notes = state.route.listID.flatMap { paneEditors[.list($0)] }.map { "\(Int($0.view.frame.width))x\(Int($0.view.frame.height))" } ?? "-"
+        let first = rows.values.filter { !$0.isHidden && $0.model != nil }.min { $0.frame.minY < $1.frame.minY }
+        let drawn = first.map { v in String(format: "%.1f", (v.layer?.presentation() ?? v.layer)?.frame.minY ?? v.frame.minY) } ?? "-"
+        return "  wrap pane=\(Int(bounds.width)) notes=\(notes) settle=\(settle.map { "\(Int($0.from))>\(Int($0.to))" } ?? "-") firstRow=\(drawn)"
     }
 
     /// Debug (§24): every row on screen, top to bottom, with what it shows of its dates.
@@ -2000,6 +2062,9 @@ struct TaskListRepresentable: NSViewRepresentable {
     let store: Store
     let window: WindowState
     let palette: TK.Palette
+    /// The width the window's layout settles the pane at (`TaskListView.paneWidth(to:animated:)`); nil keeps the text
+    /// following every width live.
+    var settleWidth: CGFloat? = nil
 
     func makeNSView(context: Context) -> TaskListView {
         let v = TaskListView(store: store, window: window)
@@ -2011,5 +2076,7 @@ struct TaskListRepresentable: NSViewRepresentable {
     func updateNSView(_ nsView: TaskListView, context: Context) {
         nsView.palette = palette
         window.palette = palette
+        let t = context.transaction
+        nsView.paneWidth(to: settleWidth, animated: t.animation != nil && !t.disablesAnimations)
     }
 }

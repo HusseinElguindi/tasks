@@ -99,7 +99,11 @@ struct MainLayout: View {
                 HStack(spacing: 0) {
                     if !(narrow && window.detailOpen) {
                         // The band's title makes room for the cloud on the sidebar's curve.
-                        ListPane(store: store, window: window, leadingInset: window.sidebarVisible ? TK.M.headerInset : collapsedInset)
+                        // Where its width settles (beside the detail pane, under a zoom, or alone), so its notes wrap
+                        // once as the detail pane or the sidebar slides, not on every frame.
+                        let settle = zoomed || (window.detailOpen && !narrow) ? g.listWidth : geo.size.width - g.lead - TK.M.gutter
+                        ListPane(store: store, window: window, leadingInset: window.sidebarVisible ? TK.M.headerInset : collapsedInset,
+                                 settleWidth: settle)
                             .animation(TK.Motion.sidebar, value: collapsedInset)
                             // Zoomed (§29): it keeps its width and its place, and its room closes up to nothing, so the
                             // detail pane (drawn after it) slides over it while it fades. Nothing reflows or scrolls.

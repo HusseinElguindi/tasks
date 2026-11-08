@@ -141,6 +141,9 @@ enum DebugViews {
         case "trace":
             let t = rest.split(separator: ":", maxSplits: 1).map(String.init)
             if t.count == 2, let ms = Int(t[0]) { trace(w, store: store, ms: ms, path: t[1]) }
+        case "wraptrace":
+            let t = rest.split(separator: ":", maxSplits: 1).map(String.init)
+            if t.count == 2, let ms = Int(t[0]) { wrapTrace(w, ms: ms, path: t[1]) }
         default: print("act: unknown \(arg)")
         }
     }
@@ -231,6 +234,30 @@ enum DebugViews {
         CFRunLoopAddObserver(CFRunLoopGetMain(), observer, .commonModes)
         DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(ms)) {
             CFRunLoopRemoveObserver(CFRunLoopGetMain(), observer, .commonModes)
+        }
+    }
+
+    /// `act:wraptrace:MS:/path` (the user, 2026-11-08): for MS ms, on every turn of the run loop (woken every 4 ms, so
+    /// it works with the screen locked), the list pane's width, its notes as wrapped and the first row's drawn place
+    /// (`TaskListView.debugWrap`), whenever they change.
+    static func wrapTrace(_ w: WindowState, ms: Int, path: String) {
+        guard let list = w.taskList else { return }
+        var last = ""
+        let t0 = CACurrentMediaTime()
+        let observer = CFRunLoopObserverCreateWithHandler(nil, CFRunLoopActivity.beforeWaiting.rawValue, true, 0) { _, _ in
+            MainActor.assumeIsolated {
+                let line = list.debugWrap()
+                guard line != last else { return }
+                last = line
+                append(String(format: "%.3f", CACurrentMediaTime() - t0) + line, to: path)
+            }
+        }
+        CFRunLoopAddObserver(CFRunLoopGetMain(), observer, .commonModes)
+        let wake = Timer(timeInterval: 0.004, repeats: true) { _ in }
+        RunLoop.main.add(wake, forMode: .common)
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(ms)) {
+            CFRunLoopRemoveObserver(CFRunLoopGetMain(), observer, .commonModes)
+            wake.invalidate()
         }
     }
 }
