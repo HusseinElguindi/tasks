@@ -20,6 +20,26 @@ final class TitleLayoutTests: XCTestCase {
         XCTAssertLessThanOrEqual(m.lastWidth, 300)
     }
 
+    /// At rest a name stops at two lines (the user, 2026-11-08: "yea let's do 2 line limit"); renaming shows it all.
+    func testAtRestANameStopsAtTwoLines() {
+        let long = String(repeating: "A list name that keeps going well past any width a pane could give it ", count: 3)
+        XCTAssertGreaterThan(TitleLayout.measure(long, width: 300).lines, 2)
+        XCTAssertEqual(TitleLayout.lineBox(long, width: 300, maxLines: TitleLayout.restLines), 2 * 26 + 4)
+        XCTAssertEqual(TitleLayout.lineBox(long, width: 300), CGFloat(TitleLayout.measure(long, width: 300).lines) * 26 + 4)
+        // A name that fits on two lines is the same either way, so renaming it moves nothing.
+        XCTAssertEqual(TitleLayout.lineBox(course, width: 456, maxLines: 2), TitleLayout.lineBox(course, width: 456))
+    }
+
+    /// The field draws two lines at most at rest, as the layout leaves room for.
+    func testTheFieldStopsAtTwoLinesToo() {
+        let long = String(repeating: "A list name that keeps going well past any width a pane could give it ", count: 3)
+        let f = field(long, width: 300)
+        f.maximumNumberOfLines = TitleLayout.restLines
+        f.cell?.truncatesLastVisibleLine = true
+        let drawn = f.cell!.cellSize(forBounds: NSRect(x: 0, y: 0, width: f.frame.width, height: 10_000)).height
+        XCTAssertEqual(Int((drawn / TitleLayout.lineHeight).rounded()), 2)
+    }
+
     func testAnEmptyNameStillTakesALine() {
         XCTAssertEqual(TitleLayout.lineBox("", width: 300), 30)
     }

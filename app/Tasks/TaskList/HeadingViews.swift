@@ -253,9 +253,10 @@ final class ListTitleView: NSView {
         max(1, width - textX(c) - TK.M.rowInset - TK.M.rowPadRight)
     }
 
-    /// The title line's height for `text` (the name, or what's being typed) in a pane `width` wide.
-    static func lineBox(_ c: Content, text: String, width: CGFloat) -> CGFloat {
-        TitleLayout.lineBox(text, width: textWidth(c, width: width))
+    /// The title line's height for `text` in a pane `width` wide: the name at rest (two lines at most), or all of
+    /// what's being typed while it's renamed.
+    static func lineBox(_ c: Content, text: String, width: CGFloat, renaming: Bool) -> CGFloat {
+        TitleLayout.lineBox(text, width: textWidth(c, width: width), maxLines: renaming ? nil : TitleLayout.restLines)
     }
 
     /// Lays out the title line in `width`; the list adds its notes editor at `notesTop`. While the name is renamed
@@ -280,27 +281,36 @@ final class ListTitleView: NSView {
         let avail = Self.textWidth(c, width: width)
         let shown = text ?? c.title
         let m = TitleLayout.measure(shown, width: avail)
-        lineBox = TitleLayout.lineBox(shown, width: avail)
+        // At rest two lines at most, the second ending in an ellipsis; while renaming (`text`), the whole name.
+        let limit: Int? = text == nil ? TitleLayout.restLines : nil
+        let lines = TitleLayout.shownLines(m, maxLines: limit)
+        let cut = lines < m.lines
+        if field.maximumNumberOfLines != (limit ?? 0) {
+            field.maximumNumberOfLines = limit ?? 0
+            field.cell?.truncatesLastVisibleLine = limit != nil
+        }
+        lineBox = TitleLayout.lineBox(shown, width: avail, maxLines: limit)
         // The field spans the line, so it breaks lines where `TitleLayout` measured them; a press only renames on the
         // name itself (one line: its natural width).
-        let textH = CGFloat(m.lines) * TitleLayout.lineHeight
+        let textH = CGFloat(lines) * TitleLayout.lineHeight
         let ff = CGRect(x: x - TitleLayout.inset, y: lineTop + (TitleLayout.line - TitleLayout.lineHeight) / 2,
                         width: avail + 2 * TitleLayout.inset, height: textH)
         if field.frame != ff { field.frame = ff }
         if !field.isEditing {
             restyle(c.title, color: palette.ink, force: paletteChanged)
         }
-        titleFrame = CGRect(x: x, y: lineTop, width: m.lines > 1 ? avail : min(avail, m.lastWidth + 2), height: lineBox)
+        titleFrame = CGRect(x: x, y: lineTop, width: lines > 1 ? avail : min(avail, m.lastWidth + 2), height: lineBox)
         // The date or "In Trash" goes 9 after the last line, and gives way there (css:441–442, v2 feedback 16).
         if let s = c.sub, !c.renaming {
             let subNat = ceil(TextLayer.width(s, font: TK.Font.body)) + 2
-            let room = avail - m.follow
+            // A name cut at two lines fills the second: no room after it.
+            let room = cut ? 0 : avail - m.follow
             let subW = min(subNat, max(0, room))
             if subW >= min(subNat, 40) {
                 sub.isHidden = false
                 sub.truncationMode = .end
                 sub.set(s, font: TK.Font.body, color: palette.inkTertiary)
-                let lastTop = lineTop + CGFloat(m.lines - 1) * TitleLayout.lineHeight
+                let lastTop = lineTop + CGFloat(lines - 1) * TitleLayout.lineHeight
                 sub.place(x: x + m.follow, lineTop: lastTop + 7 + 1, lineHeight: 16, width: subW)
             } else {
                 sub.isHidden = true

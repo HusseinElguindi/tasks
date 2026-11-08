@@ -878,11 +878,12 @@ final class TaskListView: NSView {
         return r.text
     }
 
-    /// The title line's height, for the layout: a long name wraps (§23), and while it's renamed the line follows
-    /// what's typed.
+    /// The title line's height, for the layout: a long name wraps onto a second line (§23), and while it's renamed
+    /// the line follows all of what's typed.
     private func measureTitle() {
         let c = titleContent()
-        state.titleLine = ListTitleView.lineBox(c, text: titleTyping ?? c.title, width: scroll.contentView.bounds.width)
+        state.titleLine = ListTitleView.lineBox(c, text: titleTyping ?? c.title, width: scroll.contentView.bounds.width,
+                                                renaming: titleTyping != nil)
     }
 
     /// The title block: the large title, and a list's notes under it (their editor is its subview).

@@ -445,11 +445,12 @@
 .tk .lhead .lht { min-height: 30px; display: flex; align-items: flex-start; gap: 9px; min-width: 0; }
 .tk .lhead .lht > span:first-child { margin-top: 7px; }
 .tk .lhead .lht > span > .i { width: 18px; height: 18px; }
-/* As built 2026-11-08 (INTERACTIONS-v2 §23, design/TITLE-RENAME.md B): the name wraps, and renames in place as the
+/* As built 2026-11-08 (INTERACTIONS-v2 §23, design/TITLE-RENAME.md B): the name wraps (two lines at most, then an
+   ellipsis), and renames in place as the
    same text, with no fill or ring; the selection and caret are the cue. Was: nowrap + ellipsis, and a 360px field
    with fill-control and a 1.5px accent ring. The prototype's field is still an <input> (Main.dc.html:73), so it shows
    one line while renaming here; the app wraps it. */
-.tk .lhead .lhn { min-width: 0; padding: 2px 0; font: 600 20px/26px var(--font); letter-spacing: -0.2px; color: var(--ink); overflow-wrap: anywhere; }
+.tk .lhead .lhn { min-width: 0; padding: 2px 0; font: 600 20px/26px var(--font); letter-spacing: -0.2px; color: var(--ink); overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .tk .lhead .lhs { color: var(--ink-3); white-space: nowrap; transform: translateY(1px); margin-top: 7px; }
 .tk .lhead .ri.lti { flex: 1 1 auto; min-width: 0; padding: 2px 0; margin: 0; border: 0; resize: none; overflow: hidden; field-sizing: content; font: 600 20px/26px var(--font); letter-spacing: -0.2px; color: var(--ink); background: none; box-shadow: none; }
 .tk .lhead .lhd { margin-top: 4px; }

@@ -84,10 +84,18 @@ enum TitleLayout {
         return m
     }
 
-    /// The title line's height for `text` in `width`: its lines, with 2 above and below. One line is the 30pt line it
-    /// always was. What follows the title (Today's date, "In Trash") never adds a line: it goes 9 after the last line
-    /// and gives way there, as it did after the one line (css:441–442).
-    static func lineBox(_ text: String, width: CGFloat) -> CGFloat {
-        CGFloat(measure(text, width: width).lines) * lineHeight + (line - lineHeight)
+    /// At rest the name shows on two lines at most, the second ending in an ellipsis; while it's renamed, all of it
+    /// (the user, 2026-11-08: "yea let's do 2 line limit").
+    static let restLines = 2
+
+    /// The title line's height for `text` in `width`: its lines (`maxLines` at most), with 2 above and below. One line
+    /// is the 30pt line it always was. What follows the title (Today's date, "In Trash") never adds a line: it goes 9
+    /// after the last line and gives way there, as it did after the one line (css:441–442).
+    static func lineBox(_ text: String, width: CGFloat, maxLines: Int? = nil) -> CGFloat {
+        CGFloat(shownLines(measure(text, width: width), maxLines: maxLines)) * lineHeight + (line - lineHeight)
+    }
+
+    static func shownLines(_ m: Measure, maxLines: Int?) -> Int {
+        maxLines.map { min(m.lines, $0) } ?? m.lines
     }
 }
