@@ -194,7 +194,7 @@ extension TaskLayout {
             L.labels[id] = y
             L.labelOrder.append(id)
             L.labelInfo[id] = info
-            y += pitch
+            y += L.labelHeight(id)
             L.groups.append(Group(listID: id, top: y, ids: ids, kind: kind, day: day))
             for rid in ids { L.place(rid, y, group: L.groups.count - 1); y += pitch }
         }
@@ -220,6 +220,11 @@ extension TaskLayout {
         case .upcoming:
             // Each open task on the day it reaches Today; a drag lays its rows out on the day under the copy (dc:2269–2296).
             var ids = v.ids, days = v.days, ranks = v.ranks
+            var homeDays: Set<CalendarDate> = []
+            if let d = inputs.drag, d.mode == .days, d.phase != .done, case .tasks(let dragged, _) = d.kind {
+                let set = Set(dragged)
+                for i in ids.indices where set.contains(ids[i]) { homeDays.insert(days[i]) }
+            }
             if let d = inputs.drag, d.mode == .days, d.phase != .done, let to = d.toDay, case .tasks(let dragged, _) = d.kind {
                 let set = Set(dragged)
                 var items = ids.indices.map { (id: ids[$0], day: set.contains(ids[$0]) ? to : days[$0], rank: ranks[$0], order: v.orders[$0]) }
@@ -234,26 +239,55 @@ extension TaskLayout {
                 ids.insert(draft.id, at: at); days.insert(when, at: at); ranks.insert(rank, at: at)
                 L.draftID = draft.id
             }
-            // The groups are TasksCore's (`ViewGroups.upcoming`); a day's label has its + for that day.
+            // The groups are TasksCore's (`ViewGroups.upcoming`); a day's label has its + for that day. A month lists
+            // its days, each under its own smaller label that works as a day's (`ViewGroups.upcomingDayInMonth`, the
+            // user, 2026-11-08): a month's label is then a group with no rows, so it's still no drop target.
             struct Bucket { var id: EntityID; var kind: GroupKind; var day: CalendarDate?; var info: LabelInfo; var ids: [EntityID] = [] }
-            func bucket(_ day: CalendarDate) -> Bucket {
-                let g = ViewGroups.upcoming(day, today: today)
-                return switch g.kind {
-                case .day: Bucket(id: g.id, kind: .day, day: g.day, info: LabelInfo(name: g.name, sub: g.sub, plus: true, day: g.day))
-                case .month: Bucket(id: g.id, kind: .month, day: nil, info: LabelInfo(name: g.name))
-                }
+            func dayBucket(_ g: ViewGroups.Group, inMonth: Bool) -> Bucket {
+                var info = LabelInfo(name: g.name, sub: g.sub, plus: true, day: g.day)
+                info.inMonth = inMonth
+                return Bucket(id: g.id, kind: .day, day: g.day, info: info)
             }
-            // The next seven days always, then a month per month that has tasks.
-            var buckets: [Bucket] = ViewGroups.upcomingDays(today: today).map(bucket)
+            // The next seven days always, then a month per month that has tasks, with a group per day in it that has
+            // tasks. While rows are dragged, the days they left keep their labels (empty, as an empty day's), so the
+            // labels under the pointer don't jump up as it leaves (§22 "Rescheduling by drag").
+            var buckets: [Bucket] = ViewGroups.upcomingDays(today: today).map { dayBucket(ViewGroups.upcoming($0, today: today), inMonth: false) }
             var index: [EntityID: Int] = [:]
             for (i, b) in buckets.enumerated() { index[b.id] = i }
+            func bucketIndex(_ day: CalendarDate) -> Int {
+                let g = ViewGroups.upcoming(day, today: today)
+                if g.kind == .day, let i = index[g.id] { return i }
+                // A day in a month: its month's label first, then its own.
+                if index[g.id] == nil {
+                    index[g.id] = buckets.count
+                    var info = LabelInfo(name: g.name)
+                    info.month = true
+                    buckets.append(Bucket(id: g.id, kind: .month, day: nil, info: info))
+                }
+                let d = ViewGroups.upcomingDayInMonth(day)
+                if let i = index[d.id] { return i }
+                index[d.id] = buckets.count
+                buckets.append(dayBucket(d, inMonth: true))
+                return buckets.count - 1
+            }
+            // Months and their days come in date order: rows are by day, and a kept day is merged in by its date.
+            var kept = homeDays.filter { $0 > today.adding(days: 7) }.sorted()
             for (i, id) in ids.enumerated() {
-                let b = bucket(days[i])
-                if index[b.id] == nil { index[b.id] = buckets.count; buckets.append(b) }
-                buckets[index[b.id]!].ids.append(id)
+                while let k = kept.first, k < days[i] { _ = bucketIndex(k); kept.removeFirst() }
+                buckets[bucketIndex(days[i])].ids.append(id)
+            }
+            for k in kept { _ = bucketIndex(k) }
+            // The columns: every list with a row here, and the widest Deadline as a date ("Due" is never wider).
+            var seen = Set<Int>()
+            for r in ranks where seen.insert(r).inserted { if r < active.count { L.markLists.append(active[r]) } }
+            for id in ids {
+                guard let dl = p.task(id)?.deadline else { continue }
+                let text = DateLabel.upcomingDeadline(dl, today: today, groupDay: nil).text
+                L.deadlineColumn = max(L.deadlineColumn, ChipLayer.width(.init(text: text, glyph: .flag)))
             }
             for var b in buckets {
-                b.info.quiet = b.ids.isEmpty
+                // An empty day's label is quiet; a month's has its rows under its days.
+                b.info.quiet = b.kind == .day && b.ids.isEmpty
                 group(b.id, b.info, b.ids, kind: b.kind, day: b.day)
             }
             if v.ids.isEmpty && L.draftID == nil {
@@ -296,6 +330,15 @@ extension TaskLayout {
                 }
             }
             for b in buckets { group(b.id, b.info, b.ids, kind: b.kind) }
+            // The columns (round 2b): the lists of the task rows (a deleted list's row and the tasks under it carry no
+            // mark), and the widest day of a month row.
+            var seen = Set<EntityID>()
+            for (i, id) in v.ids.enumerated() where p.list(id) == nil {
+                if let l = p.task(id)?.list, seen.insert(l).inserted { L.markLists.append(l) }
+                if ViewGroups.past(v.days[i], today: today).kind == .month {
+                    L.dayColumn = max(L.dayColumn, ceil(TextLayer.width(DateLabel.monthDay(v.days[i]), font: TaskRowView.dayFont)))
+                }
+            }
             if v.ids.isEmpty { L.empty = route == .completed ? .completed : .trash }
         }
         L.height = y + 24
@@ -303,7 +346,21 @@ extension TaskLayout {
         return L
     }
 
-    /// In Upcoming, the day of the group `id` sits in: its rows don't repeat that date as a chip (dc:2319).
+    /// A day's label inside one of Upcoming's months: 24pt, under the month's 32pt one (ROW-DENSITY.md direction C).
+    static let dayInMonthLabel: CGFloat = 24
+
+    /// An Upcoming month's label: a list heading's look, 13/16 semibold `ink` on a 1pt `line-separator` rule, in a 44pt
+    /// slot, so the months stand apart from the days (the user, 2026-11-08: "the months need to be more clear").
+    static let monthLabel: CGFloat = 44
+
+    /// A group label's slot: 32, 24 for a day inside a month, 44 for an Upcoming month.
+    func labelHeight(_ key: EntityID) -> CGFloat {
+        guard let info = labelInfo[key] else { return Self.pitch }
+        return info.inMonth ? Self.dayInMonthLabel : info.month ? Self.monthLabel : Self.pitch
+    }
+
+    /// In Upcoming, the day of the group `id` sits in: its rows don't repeat that date as a chip (dc:2319). Inside a
+    /// month, the day's own group (direction C): the rule now holds for every row.
     func groupDay(_ id: EntityID) -> CalendarDate? {
         guard let i = index[id] else { return nil }
         let g = groupIndex[i]

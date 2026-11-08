@@ -297,6 +297,23 @@ public enum DateLabel {
         return (n <= countdownDays ? "\(n)d left" : monthDayYear(d, today: today), n == 1 ? .soon : .neutral)
     }
 
+    // MARK: In Upcoming (§24 "In Upcoming", the user, 2026-11-08: "Yea show dates in upcoming.")
+
+    /// A row's When in Upcoming: the date, "Nov 16", or "Jan 3, 2027" in another year; nil on its own day's group,
+    /// where the label already says it. Upcoming's groups are a calendar, so its rows read as dates, never counts.
+    public static func upcomingWhen(_ d: CalendarDate, today: CalendarDate, groupDay: CalendarDate?) -> String? {
+        d == groupDay ? nil : monthDayYear(d, today: today)
+    }
+
+    /// A row's Deadline in Upcoming: "Due" on its own day's group, else the date ("Nov 16", "Jan 3, 2027"). The tone is
+    /// `deadlineChip`'s, so a deadline tomorrow still tints its flag. Upcoming has no past deadlines (a task sits on
+    /// its earlier date, after today), but one reads as `deadlineChip` would, so a row is never wrong.
+    public static func upcomingDeadline(_ d: CalendarDate, today: CalendarDate, groupDay: CalendarDate?) -> (text: String, tone: Tone) {
+        let c = deadlineChip(d, today: today)
+        if c.tone == .late || c.tone == .due { return c }
+        return (d == groupDay ? "Due" : monthDayYear(d, today: today), c.tone)
+    }
+
     /// A deadline in words, for tooltips, the detail pane and the CLI: "2 days overdue" (then weeks, months and years,
     /// as `relative`'s past: "10 months overdue", "1 year overdue"), "due today", "1 day left" … "14 days left", then
     /// how far it is ("in 2 weeks") (prototype `dueRelText`, §25).
