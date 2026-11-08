@@ -70,6 +70,9 @@ struct RowModel: Equatable {
     /// Upcoming: the Deadline's column (the widest date in the view), the capsule at its start; nil: the capsule at the
     /// row's end, as everywhere else.
     var deadlineColumn: CGFloat?
+    /// Completed and Trash (round 2b): the month rows' day column before the mark ("Oct 30", 12pt `ink-tertiary`), as
+    /// wide as the view's widest day; a row in a day group leaves it empty. nil: no row has a day.
+    var dayColumn: CGFloat?
 }
 
 /// A task row (css:159–188): a 30pt shape, 10 in from the pane's sides, radius 8. Checkbox at 10, the title 10 after
@@ -99,6 +102,8 @@ final class TaskRowView: NSView {
     /// The list mark: its tile and its short name (and a month row's day) in 12pt `ink-tertiary`.
     private let markTile = TileLayer()
     private let markLabel = TextLayer()
+    /// A month row's day in its own column before the mark (round 2b).
+    private let dayLabel = TextLayer()
     private(set) var markFrame: CGRect = .zero
     private let whenChip = ChipLayer()
     private let deadlineChip = ChipLayer()
@@ -141,6 +146,7 @@ final class TaskRowView: NSView {
         layer.addSublayer(whereSuffixLabel)
         layer.addSublayer(markTile)
         layer.addSublayer(markLabel)
+        layer.addSublayer(dayLabel)
         layer.addSublayer(whenChip)
         layer.addSublayer(deadlineChip)
         whereLabel.mask = whereMask
@@ -152,7 +158,7 @@ final class TaskRowView: NSView {
         layer.addSublayer(tile)
         layer.addSublayer(disclosure)
         for l in [selection, flash, ring, check, title, hintGlyph, hintCount, strike, whereLabel, whereSuffixLabel, open, whereMask, titleMask,
-                  whenChip, deadlineChip, tile, disclosure, markTile, markLabel] as [CALayer] {
+                  whenChip, deadlineChip, tile, disclosure, markTile, markLabel, dayLabel] as [CALayer] {
             l.actions = Self.noActions
         }
     }
@@ -256,9 +262,12 @@ final class TaskRowView: NSView {
         let column = m.deadlineColumn ?? 0
         let titleStart = m.heading ? TK.M.rowPadLeft : padLeft + TK.M.check + TK.M.titleGap
         let markAtEdge = m.mark?.column != nil
+        // Completed and Trash have the same shape (round 2b): a month row's day in its column, then the mark.
+        let dayW = markAtEdge ? m.dayColumn ?? 0 : 0
         if markAtEdge {
             let dlW = max(column, m.deadline.map { ChipLayer.width($0.content) } ?? 0)
-            right -= layoutMark(m, right: right, titleX: titleStart + dlW + TK.M.chipsGap, keep: Self.titleKeep)
+            let before = dlW + dayW
+            right -= layoutMark(m, right: right, titleX: titleStart + before + (before > 0 ? TK.M.chipsGap : 0), keep: Self.titleKeep)
         }
         if let c = m.deadline {
             let w = ChipLayer.width(c.content)
@@ -270,6 +279,17 @@ final class TaskRowView: NSView {
             right -= column
         }
         deadlineChip.isHidden = m.deadline == nil
+        if dayW > 0 {
+            let day = m.mark?.day ?? ""
+            dayLabel.isHidden = day.isEmpty
+            if !day.isEmpty {
+                dayLabel.set(day, font: Self.dayFont, color: palette.inkTertiary)
+                dayLabel.place(x: right - dayW, lineTop: (TK.M.row - 16) / 2, lineHeight: 16, width: dayW + 2)
+            }
+            right -= dayW
+        } else {
+            dayLabel.isHidden = true
+        }
         right -= TK.M.chipsGap
         // Who gives way when the row is short (v2 feedback 16, §24): the title keeps up to `titleKeep` (all of a
         // shorter one) and its notes hint; the When after them goes rather than cut the title below that, and the
@@ -477,6 +497,9 @@ final class TaskRowView: NSView {
         deadlineChip.pressed = part == .chip(.deadline)
     }
 
+    /// A month row's day (round 2b): 12pt with tabular digits, so the days line up.
+    nonisolated(unsafe) static let dayFont = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)
+
     nonisolated(unsafe) static let hintFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)   // .ncount 500 11/14
 
     /// What the title keeps before chips are dropped or the list name is cut (all of a shorter title), and what the
@@ -502,8 +525,9 @@ final class TaskRowView: NSView {
         }
         let font = TK.Font.small
         let tileW = TileLayer.dimensions(.small).width
-        let full = mk.day.map { mk.name + " · " + $0 } ?? mk.name
-        let compact = mk.day ?? ""
+        // In a column the day has its own (round 2b); otherwise it follows the name, " · Oct 22".
+        let full = mk.column != nil ? mk.name : mk.day.map { mk.name + " · " + $0 } ?? mk.name
+        let compact = mk.column != nil ? "" : mk.day ?? ""
         let fullW: CGFloat = tileW + 6 + (mk.column ?? ceil(TextLayer.width(full, font: font)))
         let compactW: CGFloat = compact.isEmpty ? tileW : tileW + 6 + ceil(TextLayer.width(compact, font: font))
         let slot = right - titleX

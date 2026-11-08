@@ -392,7 +392,9 @@ final class TaskListView: NSView {
         let selectedYs: Set<CGFloat> = Set(selection.compactMap { id in dragIDs.contains(id) ? nil : L.y(id) })
 
         let inUpcoming = state.route == .upcoming
-        let markColumn: CGFloat? = inUpcoming ? upcomingMarkColumn(L) : nil
+        // The marks' column (Upcoming 1a; Completed, Trash and Today's Completed group, round 2b).
+        let markColumn: CGFloat? = L.markLists.isEmpty ? nil : markColumnWidth(L)
+        let dayColumn: CGFloat? = (state.route == .completed || state.route == .trash) && L.dayColumn > 0 ? L.dayColumn : nil
         var headNeeded: [EntityID] = []
         for id in needed {
             guard let y = L.y(id) else { continue }
@@ -437,6 +439,7 @@ final class TaskListView: NSView {
                 // The list mark where the row's list isn't a label: Today's Completed group, and the views (§22).
                 if (inToday && L.isDone(id)) || state.route.isView { m.mark = viewMark(L, id: id, list: t.list, column: markColumn) }
                 if inUpcoming { m.deadlineColumn = L.deadlineColumn }
+                m.dayColumn = dayColumn
                 m.trashed = trashed
                 // Under its deleted list's row: indented, and no list mark (§28).
                 if L.childOf[id] != nil {
@@ -714,9 +717,13 @@ final class TaskListView: NSView {
         case .upcoming:
             mk.column = column
         case .completed, .trash:
+            mk.column = column
             guard L.groupKind(id) == .month, let t = store.projection.task(id) else { break }
             let at = state.route == .trash ? ViewItems.deletedAt(t) : t.completedAt
             if let at { mk.day = DateLabel.monthDay(CalendarDate(Date(timeIntervalSince1970: TimeInterval(at) / 1000))) }
+        case .today:
+            // Only its Completed group (the caller's check): the open rows are under their list's label.
+            mk.column = column
         default:
             break
         }
@@ -729,8 +736,8 @@ final class TaskListView: NSView {
         return s.isEmpty ? "Untitled" : s
     }
 
-    /// Upcoming's names column: as wide as the widest short name of the lists its rows are in (direction C).
-    private func upcomingMarkColumn(_ L: TaskLayout) -> CGFloat {
+    /// The names column: as wide as the widest short name of the lists the view's rows are in (direction C).
+    private func markColumnWidth(_ L: TaskLayout) -> CGFloat {
         L.markLists.reduce(0) { max($0, ceil(TextLayer.width(Self.shortName(actions.listName($1)), font: TK.Font.small))) }
     }
 

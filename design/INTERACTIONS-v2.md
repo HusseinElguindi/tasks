@@ -1330,8 +1330,8 @@ Management, Requirements, and Analysis") and the detail pane's. A press on the m
 | Where | The mark |
 |---|---|
 | Upcoming | The row's right edge, before the › slot: a column as wide as the view's widest short name (of the lists with rows there), tiles and names lined up. Before it, 8 apart, the Deadline's column, as wide as the view's widest date, its capsule at the column's start so the flags line up; a row without a Deadline leaves it empty (round 2, 1a: every row has a list, not every row a deadline) |
-| Completed, Trash | At the row's end; in a month group the day follows it, " · Oct 22" |
-| Today | Its Completed group's rows. Open rows are under their list's label: no change |
+| Completed, Trash | Upcoming's place and width rule: a column at the row's end, before the › slot, as wide as the view's widest short name, tiles lined up. In a month group the day has its own column 8 before it ("Oct 30", 12pt `ink-tertiary`, tabular digits, as wide as the view's widest day); a row in a day group leaves it empty (round 2b) |
+| Today | Its Completed group's rows, in a column as above (no day column). Open rows are under their list's label: no change |
 | Undated, a list | None: rows are under their list's label, or in it |
 | The medium Today widget (Mac) | The tile, 6, the short name, after the Deadline. The iPhone's waits for its own design |
 
@@ -1364,6 +1364,18 @@ and the Deadline leave no 120pt does the title go under it.
 the mark moved to Upcoming's right edge with the Deadline's column before it (1a), and Upcoming's months took a
 heading's look (B). The narrow order is unchanged: the names go all at once and the tile stays at the right edge.
 Completed and Trash are unchanged until their column version is designed.
+
+**Round 2b (the user, 2026-11-08: "yea i like th recommended.";** ROW-DENSITY.md §7.5, boards "Round 2 · Marks in a
+column: Completed and Trash" and "…: Today's Completed"): Completed, Trash and Today's Completed group put the mark in
+Upcoming's column, and a month row's day in its own column before it, replacing " · Oct 30". Narrow: the title keeps
+120pt, then the short names go, all at once; the tile and the day stay. A deleted list's row in Trash ("11 tasks")
+and the tasks under it still carry no mark.
+
+**As built, round 2b (2026-11-08, Mac).** `TaskLayout.markLists` is filled for Completed and Trash (the task rows,
+not a deleted list's) and for Today's Completed group, and `TaskLayout.dayColumn` is the widest month-row day
+(`TaskRowView.dayFont`, 12pt tabular). `TaskListView` gives every mark the column (`markColumnWidth`) and Completed
+and Trash rows `RowModel.dayColumn`; `TaskRowView` draws the day in `dayLabel` at the column's start and leaves the
+" · Oct 30" form only for a mark without a column (none now).
 
 **As built, round 2 (2026-11-08, Mac).** `TaskRowView.configure` lays out the mark first in Upcoming (`markAtEdge`),
 measuring the title's room as if the Deadline's column and its 8 were still before it, then the Deadline's column.

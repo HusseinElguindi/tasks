@@ -330,6 +330,15 @@ extension TaskLayout {
                 }
             }
             for b in buckets { group(b.id, b.info, b.ids, kind: b.kind) }
+            // The columns (round 2b): the lists of the task rows (a deleted list's row and the tasks under it carry no
+            // mark), and the widest day of a month row.
+            var seen = Set<EntityID>()
+            for (i, id) in v.ids.enumerated() where p.list(id) == nil {
+                if let l = p.task(id)?.list, seen.insert(l).inserted { L.markLists.append(l) }
+                if ViewGroups.past(v.days[i], today: today).kind == .month {
+                    L.dayColumn = max(L.dayColumn, ceil(TextLayer.width(DateLabel.monthDay(v.days[i]), font: TaskRowView.dayFont)))
+                }
+            }
             if v.ids.isEmpty { L.empty = route == .completed ? .completed : .trash }
         }
         L.height = y + 24
