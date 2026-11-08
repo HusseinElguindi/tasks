@@ -680,6 +680,9 @@ final class GroupLabelView: NSView {
     private let selection = CALayer()
     /// An Upcoming month's rule (round 2: B).
     private let rule = CALayer()
+    /// A list's tile, in a view grouped by list (round 2c).
+    private let tile = TileLayer()
+    struct ListTile: Equatable { var monogram: String; var slot: Int }
     private var month = false
     private var palette = TK.Palette.dark
     private var quiet = false
@@ -706,7 +709,8 @@ final class GroupLabelView: NSView {
         label.mask = labelMask
         sub.mask = subMask
         rule.isHidden = true
-        for l in [selection, rule, label, sub, count, plus, chevron] as [CALayer] {
+        tile.isHidden = true
+        for l in [selection, rule, tile, label, sub, count, plus, chevron] as [CALayer] {
             l.actions = TaskRowView.noActions
             layer?.addSublayer(l)
         }
@@ -723,7 +727,8 @@ final class GroupLabelView: NSView {
 
     /// `chevron`: Today's Completed, which folds (`collapsed` shows `count` after the name). `selected`: its fill.
     func configure(key: EntityID, name: String, plus hasPlus: Bool, palette: TK.Palette, width: CGFloat,
-                   height: CGFloat = TK.M.pitch, month: Bool = false, sub subText: String? = nil, quiet: Bool = false, chevron hasChevron: Bool = false,
+                   height: CGFloat = TK.M.pitch, month: Bool = false, tile listTile: ListTile? = nil, sub subText: String? = nil,
+                   quiet: Bool = false, chevron hasChevron: Bool = false,
                    collapsed: Bool = false, count n: Int = 0, selected: Bool = false, paneFocused: Bool = true,
                    animated: Bool = false) {
         let paletteChanged = palette != self.palette || self.key.isEmpty
@@ -739,7 +744,9 @@ final class GroupLabelView: NSView {
         let buttons: CGFloat = (hasPlus || hasChevron ? 32 : 0) + (hasPlus && hasChevron ? 24 : 0)
         let countText = isCollapsed && n > 0 ? String(n) : ""
         let countW = countText.isEmpty ? 0 : TextLayer.width(countText, font: HeadingRowView.countFont) + 8
-        let room = max(0, width - 12 - buttons - countW)
+        // A list's label in a view grouped by list (§22, round 2c): its 16×13 tile, 6, then the text.
+        let textX: CGFloat = listTile == nil ? 12 : 12 + TileLayer.dimensions(.small).width + 6
+        let room = max(0, width - textX - buttons - countW)
         // The text sits at the slot's foot: 8 under it in a 32pt slot, 5 in a month's 24pt day label (direction C). A
         // month in Upcoming has a heading's 16pt line 8 above the slot's foot, where its rule is.
         self.month = month
@@ -757,11 +764,18 @@ final class GroupLabelView: NSView {
             rule.isHidden = !month
             rule.backgroundColor = palette.lineSeparator.cgColor
             rule.frame = CGRect(x: 10, y: height - 1, width: max(0, width - 20), height: 1)
-            // The name takes at most 70% when a date follows it (css:417).
-            let nameRoom = subText == nil ? room : min(full, room * 0.7)
+            // The name takes at most 70% when a date follows it (css:417). A list's short name keeps its room and the
+            // quiet rest of its name fades first.
+            let nameRoom = subText == nil || listTile != nil ? room : min(full, room * 0.7)
             let nameW = min(nameRoom, ceil(full) + 1)
             // 1pt of room past the text, so the clip never takes a glyph's overhang.
-            label.place(x: 12, lineTop: textTop, lineHeight: month ? 16 : 14, width: nameW + 1)
+            label.place(x: textX, lineTop: textTop, lineHeight: month ? 16 : 14, width: nameW + 1)
+            tile.isHidden = listTile == nil
+            if let listTile {
+                tile.set(monogram: listTile.monogram, hue: palette.tile(slot: listTile.slot), palette: palette, size: .small)
+                let d = TileLayer.dimensions(.small)
+                tile.frame = CGRect(x: 12, y: textTop + 7 - d.height / 2, width: d.width, height: d.height)
+            }
             labelMask.update(width: nameW + 1, height: label.bounds.height, fade: full > nameRoom + 0.5 ? TK.M.titleFade : 0)
             if let subText, !subText.isEmpty {
                 sub.isHidden = false
@@ -769,14 +783,14 @@ final class GroupLabelView: NSView {
                 let subRoom = max(0, room - nameW - 6)
                 let subFull = TextLayer.width(subText, font: Self.subFont)
                 let subW = min(subRoom, ceil(subFull) + 1)
-                sub.place(x: 12 + nameW + 6, lineTop: textTop, lineHeight: 14, width: subW + 1)
+                sub.place(x: textX + nameW + 6, lineTop: textTop, lineHeight: 14, width: subW + 1)
                 subMask.update(width: subW + 1, height: sub.bounds.height, fade: subFull > subRoom + 0.5 ? TK.M.titleFade : 0)
             } else {
                 sub.isHidden = true
             }
             count.isHidden = countText.isEmpty
             count.set(countText, font: HeadingRowView.countFont, color: palette.inkTertiary)
-            count.place(x: 12 + nameW + 8, lineTop: textTop, lineHeight: 14, width: countW + 2)
+            count.place(x: textX + nameW + 8, lineTop: textTop, lineHeight: 14, width: countW + 2)
             plus.isHidden = !hasPlus
             chevron.isHidden = !hasChevron
             if paletteChanged {

@@ -609,7 +609,16 @@ final class TaskListView: NSView {
             guard let y = L.labels[key] else { continue }
             let isDone = key == TaskLayout.doneGroup
             let info = L.labelInfo[key]
-            let name = info.map { $0.list.map(actions.listName) ?? $0.name } ?? (isDone ? "Completed" : actions.listName(key))
+            var name = info.map { $0.list.map(actions.listName) ?? $0.name } ?? (isDone ? "Completed" : actions.listName(key))
+            // A list's label (Undated, Today's open groups): its tile, its short name, then the rest of its name quiet
+            // (§22, round 2c). Its rows carry no mark.
+            var listTile: GroupLabelView.ListTile?
+            var rest: String?
+            if let lid = info?.list ?? (info == nil && !isDone ? key : nil), let l = p.listModel(lid) {
+                listTile = .init(monogram: l.monogram, slot: l.colorSlot)
+                let parts = ListName.split(name)
+                if let r = parts.rest { name = parts.short; rest = r }
+            }
             var isNew = false
             let v: GroupLabelView
             if let existing = labels[key] { v = existing } else {
@@ -624,7 +633,7 @@ final class TaskListView: NSView {
             // selected (Space folds it).
             let folds = isDone && state.route == .today
             v.configure(key: key, name: name, plus: info?.plus ?? !isDone, palette: palette, width: rowW, height: L.labelHeight(key),
-                        month: info?.month ?? false, sub: info?.sub,
+                        month: info?.month ?? false, tile: listTile, sub: rest ?? info?.sub,
                         quiet: info?.quiet ?? false, chevron: folds, collapsed: folds && state.todayDoneCollapsed,
                         count: L.doneCount, selected: folds && state.selection.contains(key),
                         paneFocused: PaneLook.rowsFocused(state), animated: animate && !isNew)

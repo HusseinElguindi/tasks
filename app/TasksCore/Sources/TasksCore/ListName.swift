@@ -20,7 +20,13 @@ public enum ListName {
     public static let maxLength = 12
 
     /// The short name of `name`. An empty or blank name gives "".
-    public static func short(_ name: String) -> String {
+    public static func short(_ name: String) -> String { split(name).short }
+
+    /// The name as a group label shows it (§22, a view grouped by list): the short name, and the rest of the name after
+    /// the separator, trimmed ("SE 463" and "Software Project Management, …"), shown quieter after it. A parenthesis
+    /// stays with the rest ("ECE 358" and "(Computer Networks)"). `rest` is nil when the short name is the whole name
+    /// (no separator, a first part too long) or nothing follows the separator ("Inbox —").
+    public static func split(_ name: String) -> (short: String, rest: String?) {
         let whole = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let chars = Array(whole)
         // Skip what the name starts with: separators and spaces.
@@ -28,13 +34,18 @@ public enum ListName {
         while start < chars.count, chars[start].isWhitespace || separatorLength(chars, at: start) > 0 { start += 1 }
         var i = start
         while i < chars.count {
-            if separatorLength(chars, at: i) > 0 {
+            let n = separatorLength(chars, at: i)
+            if n > 0 {
                 let head = String(chars[start..<i]).trimmingCharacters(in: .whitespacesAndNewlines)
-                return !head.isEmpty && head.count <= maxLength ? head : whole
+                guard !head.isEmpty, head.count <= maxLength else { return (whole, nil) }
+                // " (" keeps its parenthesis in the rest.
+                let from = chars[i] == " " && n == 2 ? i + 1 : i + n
+                let rest = String(chars[min(from, chars.count)...]).trimmingCharacters(in: .whitespacesAndNewlines)
+                return (head, rest.isEmpty ? nil : rest)
             }
             i += 1
         }
-        return whole
+        return (whole, nil)
     }
 
     /// How many characters a separator starting at `i` takes, 0 when none does.

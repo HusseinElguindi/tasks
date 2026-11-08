@@ -60,6 +60,9 @@ enum DemoCourses {
         up(ece, "Final exam", dl: 46, notes: notes)
         up(se463, "Final exam", dl: 48, notes: notes)
         // Undated.
+        t(inbox, "Apple gift card")
+        t(se463, "Read the project brief", notes: notes)
+        t(earth, "Buy a field notebook")
         t(se490, "Book a room for the team meeting")
         // Completed: this week and the month before (a month row reads "CS 489 · Oct 30").
         t(se463, "Deliverable 2", notes: notes, done: 1)

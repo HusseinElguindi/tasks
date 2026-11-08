@@ -69,4 +69,28 @@ final class ListNameTests: XCTestCase {
         check("   ", "")
         check("—", "—")
     }
+
+    /// A group label's two parts (Undated and Today, §22): the short name, then the rest after the separator.
+    func testSplit() {
+        func check(_ name: String, _ short: String, _ rest: String?, line: UInt = #line) {
+            let p = ListName.split(name)
+            XCTAssertEqual(p.short, short, "split(\"\(name)\").short", line: line)
+            XCTAssertEqual(p.rest, rest, "split(\"\(name)\").rest", line: line)
+        }
+        check("SE 463 — Software Project Management, Requirements, and Analysis", "SE 463",
+              "Software Project Management, Requirements, and Analysis")
+        check("SE 490 — Design Project 1", "SE 490", "Design Project 1")
+        check("SE 463: Software", "SE 463", "Software")
+        check("SE 463|Software", "SE 463", "Software")
+        check("SE 463 - Part 1: Intro", "SE 463", "Part 1: Intro")
+        check("ECE 358 (Computer Networks)", "ECE 358", "(Computer Networks)")
+        // No separator, too long, nothing after it, a separator at the start: the whole name, nothing quiet.
+        check("Inbox", "Inbox", nil)
+        check("CS 489", "CS 489", nil)
+        check("Groceries and errands — weekly", "Groceries and errands — weekly", nil)
+        check("Inbox —", "Inbox", nil)
+        check("— Notes", "— Notes", nil)
+        check("| Work | Home", "Work", "Home")
+        check("", "", nil)
+    }
 }
