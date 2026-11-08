@@ -194,7 +194,7 @@ extension TaskLayout {
             L.labels[id] = y
             L.labelOrder.append(id)
             L.labelInfo[id] = info
-            y += info.inMonth ? dayInMonthLabel : pitch
+            y += L.labelHeight(id)
             L.groups.append(Group(listID: id, top: y, ids: ids, kind: kind, day: day))
             for rid in ids { L.place(rid, y, group: L.groups.count - 1); y += pitch }
         }
@@ -260,7 +260,9 @@ extension TaskLayout {
                 // A day in a month: its month's label first, then its own.
                 if index[g.id] == nil {
                     index[g.id] = buckets.count
-                    buckets.append(Bucket(id: g.id, kind: .month, day: nil, info: LabelInfo(name: g.name)))
+                    var info = LabelInfo(name: g.name)
+                    info.month = true
+                    buckets.append(Bucket(id: g.id, kind: .month, day: nil, info: info))
                 }
                 let d = ViewGroups.upcomingDayInMonth(day)
                 if let i = index[d.id] { return i }
@@ -338,9 +340,14 @@ extension TaskLayout {
     /// A day's label inside one of Upcoming's months: 24pt, under the month's 32pt one (ROW-DENSITY.md direction C).
     static let dayInMonthLabel: CGFloat = 24
 
-    /// A group label's slot: 32, or 24 for a day inside a month.
+    /// An Upcoming month's label: a list heading's look, 13/16 semibold `ink` on a 1pt `line-separator` rule, in a 44pt
+    /// slot, so the months stand apart from the days (the user, 2026-11-08: "the months need to be more clear").
+    static let monthLabel: CGFloat = 44
+
+    /// A group label's slot: 32, 24 for a day inside a month, 44 for an Upcoming month.
     func labelHeight(_ key: EntityID) -> CGFloat {
-        labelInfo[key]?.inMonth == true ? Self.dayInMonthLabel : Self.pitch
+        guard let info = labelInfo[key] else { return Self.pitch }
+        return info.inMonth ? Self.dayInMonthLabel : info.month ? Self.monthLabel : Self.pitch
     }
 
     /// In Upcoming, the day of the group `id` sits in: its rows don't repeat that date as a chip (dc:2319). Inside a

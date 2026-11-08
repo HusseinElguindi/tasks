@@ -250,9 +250,16 @@ final class TaskRowView: NSView {
         // The Deadline at the right, always shown (§24): a date never truncates. `.chips` keeps its 8pt margin even
         // when there's none.
         chipFrames = []
-        // In Upcoming the Deadline has a column, as wide as the view's widest, its capsule at the column's start so the
-        // marks before it line up (direction C).
+        // In Upcoming the list mark is the row's right edge (every row has a list), and the Deadline has a column before
+        // it, 8 apart, as wide as the view's widest, its capsule at the column's start so the flags line up; a row
+        // without one leaves it empty (direction C, round 2: 1a). The title's slot starts 8 before the Deadline's.
         let column = m.deadlineColumn ?? 0
+        let titleStart = m.heading ? TK.M.rowPadLeft : padLeft + TK.M.check + TK.M.titleGap
+        let markAtEdge = m.mark?.column != nil
+        if markAtEdge {
+            let dlW = max(column, m.deadline.map { ChipLayer.width($0.content) } ?? 0)
+            right -= layoutMark(m, right: right, titleX: titleStart + dlW + TK.M.chipsGap, keep: Self.titleKeep)
+        }
         if let c = m.deadline {
             let w = ChipLayer.width(c.content)
             let x = column > 0 ? right - max(w, column) : right - w
@@ -282,7 +289,7 @@ final class TaskRowView: NSView {
         // Who gives way: the title keeps up to `titleKeep`; then the When; then the short name, leaving the tile; the
         // tile and the Deadline never go. In Upcoming the names are a column, so they go for the whole view at once
         // (the row's width decides, not its title); elsewhere each row decides, and a month row's day stays.
-        right -= layoutMark(m, right: right, titleX: titleX, keep: min(titleNat, Self.titleKeep) + hintSpace)
+        if !markAtEdge { right -= layoutMark(m, right: right, titleX: titleX, keep: min(titleNat, Self.titleKeep) + hintSpace) }
         // The When's glyph sits 6 after the hint (or the title); its capsule's 5pt padding reaches back over the gap.
         let whenNat = m.when.map { ChipLayer.width($0.content) + 6 - ChipLayer.quietPad } ?? 0
         let showWhen = whenNat > 0 && right - titleX >= min(titleNat, Self.titleKeep) + hintSpace + whenNat
@@ -484,6 +491,8 @@ final class TaskRowView: NSView {
 
     /// Lays out the list mark ending at `right`, and returns the room it takes with the 8 before it (0 without one).
     /// `keep` is what the title's slot keeps before the short name goes (a column's names go only under `titleKeep`).
+    /// In Upcoming `titleX` is where the title's slot would start if the Deadline's column and its gap were at its left,
+    /// so the room the title keeps is measured the same as before the mark moved to the edge.
     private func layoutMark(_ m: RowModel, right: CGFloat, titleX: CGFloat, keep: CGFloat) -> CGFloat {
         guard let mk = m.mark else {
             markTile.isHidden = true
@@ -645,6 +654,9 @@ final class GroupLabelView: NSView {
     private let subMask = FadeMask()
     private let count = TextLayer()
     private let selection = CALayer()
+    /// An Upcoming month's rule (round 2: B).
+    private let rule = CALayer()
+    private var month = false
     private var palette = TK.Palette.dark
     private var quiet = false
     private var drop = false
@@ -669,7 +681,8 @@ final class GroupLabelView: NSView {
         selection.isHidden = true
         label.mask = labelMask
         sub.mask = subMask
-        for l in [selection, label, sub, count, plus, chevron] as [CALayer] {
+        rule.isHidden = true
+        for l in [selection, rule, label, sub, count, plus, chevron] as [CALayer] {
             l.actions = TaskRowView.noActions
             layer?.addSublayer(l)
         }
@@ -686,7 +699,7 @@ final class GroupLabelView: NSView {
 
     /// `chevron`: Today's Completed, which folds (`collapsed` shows `count` after the name). `selected`: its fill.
     func configure(key: EntityID, name: String, plus hasPlus: Bool, palette: TK.Palette, width: CGFloat,
-                   height: CGFloat = TK.M.pitch, sub subText: String? = nil, quiet: Bool = false, chevron hasChevron: Bool = false,
+                   height: CGFloat = TK.M.pitch, month: Bool = false, sub subText: String? = nil, quiet: Bool = false, chevron hasChevron: Bool = false,
                    collapsed: Bool = false, count n: Int = 0, selected: Bool = false, paneFocused: Bool = true,
                    animated: Bool = false) {
         let paletteChanged = palette != self.palette || self.key.isEmpty
@@ -703,21 +716,28 @@ final class GroupLabelView: NSView {
         let countText = isCollapsed && n > 0 ? String(n) : ""
         let countW = countText.isEmpty ? 0 : TextLayer.width(countText, font: HeadingRowView.countFont) + 8
         let room = max(0, width - 12 - buttons - countW)
-        // The text sits at the slot's foot: 8 under it in a 32pt slot, 5 in a month's 24pt day label (direction C).
-        let textTop: CGFloat = height < TK.M.pitch ? height - 19 : 10
+        // The text sits at the slot's foot: 8 under it in a 32pt slot, 5 in a month's 24pt day label (direction C). A
+        // month in Upcoming has a heading's 16pt line 8 above the slot's foot, where its rule is.
+        self.month = month
+        let textTop: CGFloat = month ? height - 24 : height < TK.M.pitch ? height - 19 : 10
         layer?.setInstant {
             let colors = labelColors
             // Selected (Today's Completed): the row's fill, in the row's 30pt shape (§5).
             selection.isHidden = !selected
             selection.backgroundColor = (paneFocused ? palette.fillRowSelected : palette.fillRowSelectedDim).cgColor
             selection.frame = CGRect(x: 0, y: 1, width: width, height: TK.M.row)
-            label.set(name, font: TK.Font.label, color: colors.name)
-            let full = TextLayer.width(name, font: TK.Font.label)
+            let font = month ? HeadingRowView.font : TK.Font.label
+            label.set(name, font: font, color: colors.name)
+            let full = TextLayer.width(name, font: font)
+            // A month's rule: a heading's, 1pt `line-separator` along the foot, 10 in from each end (§23).
+            rule.isHidden = !month
+            rule.backgroundColor = palette.lineSeparator.cgColor
+            rule.frame = CGRect(x: 10, y: height - 1, width: max(0, width - 20), height: 1)
             // The name takes at most 70% when a date follows it (css:417).
             let nameRoom = subText == nil ? room : min(full, room * 0.7)
             let nameW = min(nameRoom, ceil(full) + 1)
             // 1pt of room past the text, so the clip never takes a glyph's overhang.
-            label.place(x: 12, lineTop: textTop, lineHeight: 14, width: nameW + 1)
+            label.place(x: 12, lineTop: textTop, lineHeight: month ? 16 : 14, width: nameW + 1)
             labelMask.update(width: nameW + 1, height: label.bounds.height, fade: full > nameRoom + 0.5 ? TK.M.titleFade : 0)
             if let subText, !subText.isEmpty {
                 sub.isHidden = false
@@ -778,6 +798,7 @@ final class GroupLabelView: NSView {
     /// in Upcoming would land on.
     private var labelColors: (name: NSColor, sub: NSColor) {
         if drop { return (palette.accentText, palette.accentText) }
+        if month { return (palette.ink, palette.inkQuiet) }
         return (quiet ? palette.inkQuiet : palette.inkTertiary, palette.inkQuiet)
     }
 

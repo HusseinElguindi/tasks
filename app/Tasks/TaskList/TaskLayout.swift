@@ -33,6 +33,8 @@ struct TaskLayout {
         var day: CalendarDate?
         /// A day inside one of Upcoming's months: a 24pt label (`dayInMonthLabel`).
         var inMonth = false
+        /// One of Upcoming's months: a list heading's look in a 44pt slot (`monthLabel`, round 2: B).
+        var month = false
     }
 
     enum Empty: Equatable { case list, today, allDone, upcoming, undated, completed, trash }

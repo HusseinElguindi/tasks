@@ -620,7 +620,8 @@ final class TaskListView: NSView {
             // Today's Completed folds (v2 feedback 15): its chevron, its count while collapsed, and its fill when it's
             // selected (Space folds it).
             let folds = isDone && state.route == .today
-            v.configure(key: key, name: name, plus: info?.plus ?? !isDone, palette: palette, width: rowW, height: L.labelHeight(key), sub: info?.sub,
+            v.configure(key: key, name: name, plus: info?.plus ?? !isDone, palette: palette, width: rowW, height: L.labelHeight(key),
+                        month: info?.month ?? false, sub: info?.sub,
                         quiet: info?.quiet ?? false, chevron: folds, collapsed: folds && state.todayDoneCollapsed,
                         count: L.doneCount, selected: folds && state.selection.contains(key),
                         paneFocused: PaneLook.rowsFocused(state), animated: animate && !isNew)
