@@ -21,6 +21,8 @@ enum DemoData {
         func day(_ n: Int) -> CalendarDate { today.adding(days: n) }
         // doneAt(k): k days ago at 15:00, or 20 minutes ago today.
         func doneAt(_ k: Int) -> Int { k == 0 ? max(startOfToday + 60_000, now - 20 * 60_000) : startOfToday - k * dayMs + 15 * 3_600_000 }
+        // The screenshots' data instead (row density, design/ROW-DENSITY.md).
+        if d.bool(forKey: "demoCourses") { DemoCourses.seed(store, doneAt: doneAt); return }
         let inbox = store.defaultListID
         let school = store.createList(name: "School")
         // The example list for headings (§23, dc:463, dc:530–543): a course with notes, headings with and without

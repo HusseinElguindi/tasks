@@ -3,16 +3,18 @@ import TasksCore
 /// How a row shows its dates (INTERACTIONS-v2 §24): the When as quiet text after the title, the Deadline as a capsule
 /// in its tone at the right, both with a tooltip in full words; and the checkbox's ring.
 extension RowModel.Chip {
-    /// "Today", "Tomorrow", "in 2d" … "in 14d", then the date.
-    static func when(_ d: CalendarDate, today: CalendarDate) -> Self {
-        .init(field: .when, content: .init(text: DateLabel.whenChip(d, today: today), glyph: .calendar, quiet: true),
-              tip: DateLabel.tooltip(deadline: false, d, today: today))
+    /// "Today", "Tomorrow", "in 2d" … "in 14d", then the date. `dates` (Upcoming): always the date ("Nov 16").
+    static func when(_ d: CalendarDate, today: CalendarDate, dates: Bool = false) -> Self {
+        let text = dates ? DateLabel.monthDayYear(d, today: today) : DateLabel.whenChip(d, today: today)
+        return .init(field: .when, content: .init(text: text, glyph: .calendar, quiet: true),
+                     tip: DateLabel.tooltip(deadline: false, d, today: today))
     }
 
     /// "2d ago", "Due today", "1d left" … "14d left", then the date. In Upcoming, on its own day's group, "Due", with
-    /// its tone.
-    static func deadline(_ d: CalendarDate, today: CalendarDate, groupDay: CalendarDate?) -> Self {
-        let c = DateLabel.deadlineChip(d, today: today)
+    /// its tone; `dates` (Upcoming, the user, 2026-11-08): the date otherwise ("Nov 16"), never a count. The tooltip
+    /// keeps the count.
+    static func deadline(_ d: CalendarDate, today: CalendarDate, groupDay: CalendarDate?, dates: Bool = false) -> Self {
+        let c = dates ? DateLabel.upcomingDeadline(d, today: today, groupDay: groupDay) : DateLabel.deadlineChip(d, today: today)
         let tone: ChipLayer.Tone = switch c.tone {
         case .late: .late
         case .due: .due

@@ -108,4 +108,50 @@ final class ViewGroupsTests: XCTestCase {
         XCTAssertEqual(ViewGroups.month(year: 2026, month: 12, today: today), "December")
         XCTAssertEqual(ViewGroups.month(year: 2027, month: 1, today: today), "January 2027")
     }
+
+    /// Upcoming's rows in the screenshots' data (ROW-DENSITY.md §1): today is Sat, Nov 7. Upcoming reads in dates; a
+    /// row never repeats the day it's filed under, in the first week or in a month.
+    func testUpcomingDates() {
+        let sat = date("2026-11-07")
+        func when(_ d: String, on g: String?) -> String? { DateLabel.upcomingWhen(date(d), today: sat, groupDay: g.map(date)) }
+        func dl(_ d: String, on g: String?) -> String { DateLabel.upcomingDeadline(date(d), today: sat, groupDay: g.map(date)).text }
+        func tone(_ d: String, on g: String?) -> DateLabel.Tone { DateLabel.upcomingDeadline(date(d), today: sat, groupDay: g.map(date)).tone }
+        // "Discussion 3 — replies": When Fri Nov 13, Deadline Mon Nov 16, on Friday: the deadline as a date, not "9d left".
+        XCTAssertNil(when("2026-11-13", on: "2026-11-13"))
+        XCTAssertEqual(dl("2026-11-16", on: "2026-11-13"), "Nov 16")
+        // "Deliverable 4": a deadline on its own day reads "Due", in the first week or inside a month.
+        XCTAssertEqual(dl("2026-11-11", on: "2026-11-11"), "Due")
+        XCTAssertEqual(dl("2026-11-18", on: "2026-11-18"), "Due")
+        // A When later than the deadline (the task sits on its deadline) shows as a date, never "in 11d".
+        XCTAssertEqual(when("2026-11-18", on: "2026-11-13"), "Nov 18")
+        // Under 14 days, past 14 days, another year: always the date.
+        XCTAssertEqual(dl("2026-11-09", on: "2026-11-08"), "Nov 9")
+        XCTAssertEqual(dl("2026-12-15", on: "2026-11-18"), "Dec 15")
+        XCTAssertEqual(dl("2027-01-03", on: "2026-12-04"), "Jan 3, 2027")
+        XCTAssertEqual(when("2027-01-03", on: "2026-12-30"), "Jan 3, 2027")
+        // No group day (a row not in a day group): the date.
+        XCTAssertEqual(dl("2026-11-16", on: nil), "Nov 16")
+        XCTAssertEqual(when("2026-11-16", on: nil), "Nov 16")
+        // Tones are §24's: tomorrow is soon (only the flag is tinted), later neutral, also on "Due".
+        XCTAssertEqual(tone("2026-11-08", on: "2026-11-08"), .soon)
+        XCTAssertEqual(dl("2026-11-08", on: "2026-11-08"), "Due")
+        XCTAssertEqual(tone("2026-11-08", on: nil), .soon)
+        XCTAssertEqual(tone("2026-11-16", on: "2026-11-13"), .neutral)
+        // Never in Upcoming, but a past or today's deadline reads as everywhere else, in its tone.
+        XCTAssertEqual(DateLabel.upcomingDeadline(date("2026-11-05"), today: sat, groupDay: nil).text, "2d ago")
+        XCTAssertEqual(DateLabel.upcomingDeadline(date("2026-11-05"), today: sat, groupDay: nil).tone, .late)
+        XCTAssertEqual(DateLabel.upcomingDeadline(sat, today: sat, groupDay: sat).text, "Due today")
+        // The tooltip keeps the count (§24): the row says the date, the tooltip how far.
+        XCTAssertEqual(DateLabel.tooltip(deadline: true, date("2026-11-16"), today: sat), "Deadline: Mon, Nov 16 · 9 days left")
+    }
+
+    func testUpcomingDaysInsideAMonth() {
+        // A month's days get their own groups, with a day group's id, so a drop, the + and "Due" work as in the first week.
+        let g = ViewGroups.upcomingDayInMonth(date("2026-11-18"))
+        XCTAssertEqual(g, .init(id: "d:2026-11-18", kind: .day, day: date("2026-11-18"), name: "Wednesday", sub: "Nov 18"))
+        XCTAssertEqual(ViewGroups.upcomingDayInMonth(date("2027-01-04")).sub, "Jan 4")
+        // The same id as the day's own group once it's in the first week, so its label carries over at midnight.
+        XCTAssertEqual(g.id, ViewGroups.upcoming(date("2026-11-18"), today: date("2026-11-12")).id)
+        XCTAssertEqual(ViewGroups.upcoming(date("2026-11-18"), today: date("2026-11-07")).kind, .month)
+    }
 }

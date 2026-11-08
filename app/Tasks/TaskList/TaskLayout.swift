@@ -31,6 +31,10 @@ struct TaskLayout {
         /// The + adds to this list (Undated) or for this day (Upcoming).
         var list: EntityID?
         var day: CalendarDate?
+        /// A day inside one of Upcoming's months: a 24pt label (`dayInMonthLabel`).
+        var inMonth = false
+        /// One of Upcoming's months: a list heading's look in a 44pt slot (`monthLabel`, round 2: B).
+        var month = false
     }
 
     enum Empty: Equatable { case list, today, allDone, upcoming, undated, completed, trash }
@@ -59,6 +63,13 @@ struct TaskLayout {
     var draftID: EntityID?
     /// The views' labels (Today's are list names, from `labels` alone).
     var labelInfo: [EntityID: LabelInfo] = [:]
+    /// Upcoming's columns (direction C): the lists its rows are in, whose widest short name sets the mark's column, and
+    /// the Deadline's column, as wide as its widest date (0: no row has one). Both stay put through a drag.
+    var markLists: [EntityID] = []
+    var deadlineColumn: CGFloat = 0
+    /// Completed and Trash (round 2b): the month rows' day column, as wide as the view's widest day ("Oct 30"); 0 when
+    /// no row is in a month group. Today's Completed group and Completed and Trash fill `markLists` too.
+    var dayColumn: CGFloat = 0
 
     // Headings and the title block (design/INTERACTIONS-v2.md §23).
     /// The title block's top (under a deleted list's banner, §28) and height: the large title, and a list's notes.
@@ -354,6 +365,9 @@ struct TaskLayout {
                 }
             }
             L.doneCount = done.count
+            // Today's Completed group: its marks are a column too (round 2b).
+            var seen = Set<EntityID>()
+            for id in done { if let l = p.task(id)?.list, seen.insert(l).inserted { L.markLists.append(l) } }
             L.height = y + 24
             L.applyDrag(inputs.drag)
             return L
