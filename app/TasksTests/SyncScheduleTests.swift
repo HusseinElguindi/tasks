@@ -40,9 +40,19 @@ final class SyncScheduleTests: XCTestCase {
                       "a tick that drifted early by under a second still counts")
     }
 
-    func testFeedWritesWaitASecondWithAWindowOpen() {
-        XCTAssertEqual(SyncSchedule.feedDelay(windowVisible: true, now: 100, lastWrite: 99.5), 1)
-        XCTAssertEqual(SyncSchedule.feedDelay(windowVisible: true, now: 100, lastWrite: nil), 1)
+    func testWithAWindowOpenFeedWritesWaitASecondAndAreTwentySecondsApart() {
+        XCTAssertEqual(SyncSchedule.feedDelay(windowVisible: true, now: 100, lastWrite: nil), 1, "the first goes out")
+        XCTAssertEqual(SyncSchedule.feedDelay(windowVisible: true, now: 100, lastWrite: 99.5), 19.5, "20 s after the last")
+        XCTAssertEqual(SyncSchedule.feedDelay(windowVisible: true, now: 100, lastWrite: 50), 1, "long since: a second")
+    }
+
+    /// A change every half second for a minute still goes out once per gap, not when the changes stop.
+    func testASteadyStreamOfChangesStillGoesOutOncePerGap() {
+        XCTAssertEqual(SyncSchedule.feedDelay(windowVisible: true, now: 104.5, lastWrite: nil, waitingSince: 85), 0.5,
+                       "20 s after the first change waiting, though the last came just now")
+        XCTAssertEqual(SyncSchedule.feedDelay(windowVisible: true, now: 110, lastWrite: 90, waitingSince: 91), 1,
+                       "the gap and the wait both run out: a second")
+        XCTAssertEqual(SyncSchedule.feedDelay(windowVisible: false, now: 100, lastWrite: nil, waitingSince: 100), 1)
     }
 
     func testWithNoWindowFeedWritesAreTwoMinutesApart() {

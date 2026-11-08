@@ -13,11 +13,13 @@ struct TodayEntry: TimelineEntry {
 }
 
 /// Reads the feed the app wrote (with the widget's own checks from the inbox on top, for piece 3) and computes Today
-/// for now and for each of the next three midnights, so Today rolls over on time without the app (WIDGETS.md §3.2,
+/// for now and for the next midnight, so Today rolls over on time without the app (WIDGETS.md §3.2,
 /// §3.4). The app reloads the timeline after each feed write.
 struct TodayProvider: TimelineProvider {
-    /// How many midnights ahead the timeline reaches.
-    static let midnights = 3
+    /// How many midnights ahead the timeline reaches. One: at its end (`.atEnd`) WidgetKit asks again and the provider
+    /// computes the next day from the feed, still without the app. Each entry is a rendered copy of every widget, so
+    /// three cost three times the archive and the render on every reload (coord title-design T8).
+    static let midnights = 1
 
     func placeholder(in context: Context) -> TodayEntry {
         TodayEntry(date: Date(), content: .today(.placeholder))
@@ -32,7 +34,7 @@ struct TodayProvider: TimelineProvider {
         completion(Self.timeline(overlay: Self.overlay(), now: Date()))
     }
 
-    /// Now, then each of the next midnights; once they're used up the widget asks again (`.atEnd`).
+    /// Now, then the next midnight(s); once they're used up the widget asks again (`.atEnd`).
     static func timeline(overlay: WidgetOverlay?, now: Date, calendar: Calendar = .current) -> Timeline<TodayEntry> {
         let start = calendar.startOfDay(for: now)
         let dates = [now] + (1...midnights).compactMap { calendar.date(byAdding: .day, value: $0, to: start) }

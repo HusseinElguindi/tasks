@@ -61,6 +61,17 @@ public struct WidgetFeed: Hashable, Sendable, Codable {
     /// For each live list, its first `listTopCount` open tasks in list order, with the headings among them.
     public var listTops: [EntityID: [EntityID]]
 
+    /// Which widgets a new feed changes (`changes(since:)`): Today's kinds, the List widget, or both.
+    public struct Change: OptionSet, Hashable, Sendable {
+        public let rawValue: Int
+        public init(rawValue: Int) { self.rawValue = rawValue }
+        /// What Today shows: the dated and completed tasks.
+        public static let today = Change(rawValue: 1)
+        /// What the List widget shows: each list's tops.
+        public static let list = Change(rawValue: 2)
+        public static let all: Change = [.today, .list]
+    }
+
     public init(schema: Int = WidgetFeed.currentSchema, written: Int, lists: [List], tasks: [TaskItem],
                 listTops: [EntityID: [EntityID]]) {
         self.schema = schema
@@ -110,9 +121,44 @@ public struct WidgetFeed: Hashable, Sendable, Codable {
                 if day.contains(ms: c) { ids.insert(id) }
             }
         }
-        let tasks = ids.sorted().compactMap { projection.task($0) }
+        let tasks = ids.sorted().compactMap { projection.task($0).map(Self.drawable) }
         let written = Int((now.timeIntervalSince1970 * 1000).rounded())
         return WidgetFeed(written: written, lists: lists, tasks: tasks, listTops: tops)
+    }
+
+    /// A task as the feed carries it: what a widget can draw or act on, and nothing else. The widgets never show notes,
+    /// and `createdAt`/`updatedAt` are informational (never conflict resolution), so the feed leaves them out: it stays
+    /// small (the notes were two-thirds of it), and an edit to a task's notes changes nothing a widget would draw, so it
+    /// doesn't reload them (coord title-design T8).
+    public static func drawable(_ t: TaskItem) -> TaskItem {
+        var d = t
+        d.notes = ""
+        d.createdAt = 0
+        d.updatedAt = 0
+        return d
+    }
+
+    /// What this feed changes for the widgets since `old`, the last one written (or read at launch). Empty: they'd draw
+    /// the same, so neither the write nor the reload is needed. A change to the lists (a name, the order, a colour)
+    /// changes both kinds; otherwise Today changes when a dated or completed task does, and the List widget when a list's
+    /// tops or a task among them does. `written` never counts.
+    public func changes(since old: WidgetFeed?) -> Change {
+        guard let old, old.schema == schema, old.lists == lists else { return .all }
+        var c: Change = []
+        if old.todayTasks != todayTasks { c.insert(.today) }
+        if old.listTops != listTops || old.topTasks != topTasks { c.insert(.list) }
+        return c
+    }
+
+    /// The tasks Today can show on some day of the timeline: dated or completed (sorted by id, as `tasks` is).
+    var todayTasks: [TaskItem] {
+        tasks.filter { !$0.isHeading && ($0.when != nil || $0.deadline != nil || $0.completedAt != nil) }
+    }
+
+    /// The tasks in some list's tops (sorted by id).
+    var topTasks: [TaskItem] {
+        let ids = Set(listTops.values.joined())
+        return tasks.filter { ids.contains($0.id) }
     }
 
     static func dated(_ t: TaskItem, onOrBefore date: CalendarDate) -> Bool {
@@ -147,6 +193,23 @@ public struct WidgetFeed: Hashable, Sendable, Codable {
         for l in lists { s.lists[l.id] = TaskList(id: l.id, name: l.name, order: l.order) }
         for t in tasks { s.tasks[t.id] = t }
         return s
+    }
+}
+
+/// When the apps write the feed (and so reload the widgets), from when the feed last changed (design/WIDGETS.md §3.2,
+/// coord title-design T8): `quiet` after the last change, no sooner than `gap` after the last write, and never later than
+/// `gap` after the first change that's waiting, so a steady stream of changes still goes out once per `gap`. Each
+/// app picks its gap (the Mac: 20 s with a window on screen, 2 min with none) and writes at once when its window goes
+/// away (`flush`). Pure, so it's tested without timers.
+public enum WidgetFeedPace {
+    /// Seconds from `now` until the write. `lastWrite`: the last write (nil: none to keep a gap from). `waitingSince`:
+    /// the first change not written yet (nil: this one).
+    public static func delay(now: TimeInterval, lastWrite: TimeInterval?, waitingSince: TimeInterval?,
+                             quiet: TimeInterval, gap: TimeInterval) -> TimeInterval {
+        var due = now + quiet
+        if let lastWrite { due = max(due, lastWrite + gap) }
+        due = min(due, (waitingSince ?? now) + max(gap, quiet))
+        return max(0, due - now)
     }
 }
 
