@@ -243,3 +243,62 @@ on line 2 the short name goes first, then the When").
 4. **Checklist count and notes glyph:** keep both on line 2 (they cost nothing there), or show the count only once an
    item is checked?
 5. **iPad:** the one-line row when the list column is wide (over ~600pt), or the two-line row everywhere?
+
+---
+
+## 7. Round 2 on the Mac: the list at the right, and clearer months
+
+The user, 2026-11-08, on the installed C (coord/title-design/rowc, 32e5a94): "On the row readbility: looks pretty
+good. 2 things. I'm thinking maybe we put the lists on the right since every task has a list, but not every task has a
+deadline. also, the months need to be more clear. can barely differentiate them now. do these in claude design first"
+
+Boards, at the end of the canvas (https://claude.ai/artifact/GRcqfVRJASqquUDWhjztFz), drawn on the installed build's
+data and metrics (the T19 screenshots; today Sun, Nov 8):
+- **Round 2 · C as installed (reference):** the T19 screenshots.
+- **Round 2 · 1a** and **1b:** the mark at the right, wide and narrow (1a also tight at 300, and Completed).
+- **Round 2 · 2 · Months that stand out:** as installed, A, B and C side by side.
+- **Round 2 · Recommended:** 1a and B together, wide and narrow.
+
+### 7.1 The list mark at the right edge
+
+Every row has a list, so the mark's column is the one that's always full: it becomes the row's right edge (before the
+› slot), and the Deadline's column moves before it, 8pt apart. Rows without a Deadline leave its column empty.
+
+- **1a (recommended):** the Deadline column as wide as the view's widest date, the capsule at its start, as now. The
+  flags line up.
+- **1b:** each capsule ends 8pt before the mark, so the capsules' right edges line up instead. Tighter for a short
+  "Due", but the flags don't line up and the gap after the title changes from row to row.
+- **Narrow order:** unchanged; only the positions move. The title keeps 120pt; then the When goes; then the short
+  names go, all at once (the tile stays at the right edge); the tile and the Deadline never go.
+- **Completed, Trash, Today's Completed:** the mark is already at the row's end and done rows show no dates, so
+  nothing moves. One small change to match: put their marks in a column too (as wide as the widest mark with its
+  " · Oct 30"), so the tiles line up; now each is right-aligned at its own width.
+
+### 7.2 Months that stand out
+
+As installed, "Later in November" and "December" use the day labels' type (11/14 semibold `ink-tertiary`); only the
+space above differs (32pt slot vs 24).
+
+- **A · Larger month:** 15/20 semibold `ink` (the detail title's size), a 52pt slot. Clear, but it reads as a title,
+  close to the pane's own.
+- **B · A heading with a rule (recommended):** a list heading's look (§23): 13/16 semibold `ink` on a 1pt
+  `line-separator` rule, 10 in from each end, in a 44pt slot. Two clear ranks (ink month, tertiary days), a line where
+  the weeks end and the months begin, no new size. Upcoming has no user headings, so the two can't be confused there.
+- **C · B, and sticky:** the month pins to the pane's top while its days scroll under it. Useful for long months; new
+  behaviour (the pin, a fill, drag-scrolling under it), so later, if months get long.
+- **Not drawn:** indenting days under a month (breaks the checkbox column shared with the first week), and lighter day
+  labels (`ink-quiet` is the empty day's colour, so a day with tasks would read as empty).
+
+### 7.3 Spec changes if 1a and B are picked
+
+- §22 "The list mark", Upcoming: the Deadline's column, then 8, then the mark's column at the row's end. Completed and
+  Trash: the mark in a column as wide as the view's widest mark and day.
+- §22, Upcoming's month label: 13/16 semibold `ink` with a 1pt `line-separator` rule, 10 in from each end, a 44pt slot.
+  It still takes no +, double-click or drop.
+- Unchanged: the narrow order, the day labels, dates as dates, "Due", the first week, the iPhone (§6), the widgets.
+
+### 7.4 For the user to decide
+
+1. The mark at the right: 1a (flags line up; recommended) or 1b (capsules hug the mark)?
+2. Months: A, B (recommended) or C (B plus sticky)?
+3. Completed and Trash: line their marks up in a column too (recommended), or leave them right-aligned?
