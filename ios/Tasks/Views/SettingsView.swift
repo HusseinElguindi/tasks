@@ -66,11 +66,16 @@ struct SettingsView: View {
                             }
                             divider
                             row("Status", app.syncStatus) {
-                                Button("Sync Now") { app.store.requestSync(force: true) }
+                                Button("Sync Now") { app.requestSyncNow() }
                                     .buttonStyle(CapsuleButtonStyle(kind: .neutral, height: 32))
                                     .disabled(app.store.config == nil)
                             }
                             divider
+                            // The poke socket (design/SYNC-STATUS.md): hidden until sync is set up.
+                            if let live = app.liveInput {
+                                liveRow(live)
+                                divider
+                            }
                             row("Background refresh", app.isSample ? "Off: this is the sample data." : refresh.text()) { EmptyView() }
                                 .accessibilityElement(children: .combine)
                                 .accessibilityIdentifier("backgroundRefresh")
@@ -153,6 +158,27 @@ struct SettingsView: View {
         .padding(.vertical, 12)
     }
 
+    /// Settings ▸ Sync ▸ Live updates (design/SYNC-STATUS.md §2, A): the title and detail, and a dot and a word on the
+    /// right. The countdown in the detail ticks once a second; nothing else moves. One element for VoiceOver.
+    private func liveRow(_ input: LiveStatus.Input) -> some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let r = LiveStatus(input, device: .iPhone, pace: LiveStatus.pace(for: .front), now: context.date)
+            row(LiveStatus.title, r.detail) {
+                HStack(spacing: 7) {
+                    LiveDot(dot: r.dot)
+                    Text(r.word)
+                        .font(Typo.body)
+                        .foregroundStyle(r.dot == .attention ? p.attention : p.inkSecondary)
+                        .fixedSize()
+                }
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(LiveStatus.title)
+            .accessibilityValue(r.spoken)
+            .accessibilityIdentifier("liveUpdates")
+        }
+    }
+
     private func stacked<T: View>(_ title: String, _ description: String, @ViewBuilder control: () -> T) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
@@ -170,5 +196,26 @@ struct SettingsView: View {
             Text(title).font(.system(size: 15, weight: .semibold)).foregroundStyle(p.ink).padding(.leading, 4)
             content()
         }
+    }
+}
+
+/// Live updates' dot, 8pt: filled `list-green` while live, a 1.5pt ring while trying, filled `ink-quiet` offline or
+/// with an old server, `attention` for a refused token, a quiet ring when off.
+struct LiveDot: View {
+    let dot: LiveStatus.Dot
+    @Environment(\.palette) private var p
+
+    var body: some View {
+        Group {
+            switch dot {
+            case .live: Circle().fill(p.list(.green))
+            case .ring: Circle().strokeBorder(p.inkTertiary, lineWidth: 1.5)
+            case .quietRing: Circle().strokeBorder(p.inkQuiet, lineWidth: 1.5)
+            case .quiet: Circle().fill(p.inkQuiet)
+            case .attention: Circle().fill(p.attention)
+            }
+        }
+        .frame(width: 8, height: 8)
+        .accessibilityHidden(true)
     }
 }

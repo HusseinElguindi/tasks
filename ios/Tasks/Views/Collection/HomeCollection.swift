@@ -73,7 +73,7 @@ struct HomeLine: View {
         // The air under "Lists" and under the last list: the lists' run's edges (Reorder.swift, "Edges").
         case "e:top": Color.clear.frame(height: 6).accessibilityHidden(true)
         case "e:end": Color.clear.frame(height: 14).accessibilityHidden(true)
-        case "sync": if let s = app.syncSummary { SyncLine(text: s) }
+        case "sync": if let s = app.syncSummary { SyncLine(text: s, live: app.syncLineLive) }
         default:
             // No count: only Today has one (the user, 2026-10-31; IX:37–39).
             if id.hasPrefix("l:") {

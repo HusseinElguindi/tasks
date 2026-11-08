@@ -19,7 +19,9 @@ phone is behind, so another device's edit shows in about half a second once it r
 is a safety net beside it: every 5 min while the socket is up, every 30 s while it's down. Going to the background
 closes the socket; there, only the background refresh syncs (`BackgroundRefresh.swift`), and it never opens the
 socket. The socket's states and pokes are in the unified log (subsystem `com.elguindi.Tasks`, category
-`sync-socket`). Home shows how it's going under the views; Settings shows the status and has Sync Now.
+`sync-socket`). Home shows how it's going under the views, with a bolt in the cloud while the socket is live;
+Settings shows the status and has Sync Now (which also connects a waiting socket at once), and Live updates says what
+the socket is doing (design/SYNC-STATUS.md; hidden until sync is set up).
 
 Debug builds only talk to a local `wrangler dev` (`localhost` or `127.0.0.1`), as the Mac's do, unless the
 `allowRemoteServer` default is set; the sample data never syncs. To try it against `server/` (`pnpm dev`, with a
@@ -93,6 +95,7 @@ Mac-only CLI, and building there writes `.swiftpm/` into `app/TasksCore`. (The `
 | `-style` | `classic` `glass` |
 | `-expand <listID>` | opens a deleted list in Trash (`w26`, `move`) |
 | `-completed <listID>` | opens a list's Completed |
+| `-debugLive` | Debug only: `live` `connecting` `reconnecting` `offline` `unavailable` `rejected` `off` stands in for the poke socket in Settings ▸ Sync ▸ Live updates (design/SYNC-STATUS.md), even on the sample data, whose row is otherwise hidden |
 | `-hold YES` | keeps notices and just-checked rows on screen |
 | `-remoteTask <taskID>` with `-remoteTitle <text>` and/or `-remoteNotes <text>`; `-remoteList <listID>` with `-remoteName <text>` | Debug only, for UI tests: that change, as if another device made it, each time the test posts the Darwin notification `com.elguindi.Tasks.test.remote-edit` (`Tasks/App/RemoteEdit.swift`) |
 

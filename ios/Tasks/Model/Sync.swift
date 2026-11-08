@@ -97,8 +97,12 @@ extension AppModel {
             Self.socketLogger.notice("poke head \(head)")
             pokes.poke(head: head)
         }
-        socket.onState = { state in Self.socketLogger.notice("state \(String(describing: state), privacy: .public)") }
+        socket.onState = { [weak self] state in
+            Self.socketLogger.notice("state \(String(describing: state), privacy: .public)")
+            self?.socketChanged()
+        }
         pokes.log = { what in Self.socketLogger.notice("\(what, privacy: .public)") }
+        socketChanged()
     }
 
     /// At launch: the config (and the socket, if in front), then the periodic sync while the app is in front: every
@@ -140,6 +144,10 @@ extension AppModel {
     func wentToBackground() {
         endDraft()
         inFront = false
+        // Nothing counts in the background: the live cloud keeps what it shows.
+        liveTimer?.invalidate()
+        liveTimer = nil
+        liveGlyph.pause()
         socket.update(config: store.config, hold: false)
         store.persistNow()
         widgetFeed?.flush()
@@ -148,10 +156,75 @@ extension AppModel {
     /// Pull to refresh, the Mac's ⌘R: a sync now, clearing a stopped state or a backoff, and wait for it.
     func syncNow() async {
         guard store.config != nil else { return }
+        socket.retryNow()
         store.requestSync(force: true)
         store.cancelScheduledSync()
         await store.sync()
     }
+
+    /// Settings' Sync Now: a sync at once, and the socket connects now if it was waiting out a backoff or an old
+    /// server's hour (design/SYNC-STATUS.md decision 5). Pull to refresh does both too (`syncNow`).
+    func requestSyncNow() {
+        store.requestSync(force: true)
+        socket.retryNow()
+    }
+
+    // MARK: Live updates (design/SYNC-STATUS.md)
+
+    /// The socket's state changed: the live cloud follows it, the bolt at once, the plain cloud after 5 s down. Only
+    /// in front; in the background it keeps what it shows.
+    func socketChanged() {
+        liveTimer?.invalidate()
+        liveTimer = nil
+        var connected = socket.isConnected
+        #if DEBUG
+        if let d = Self.debugLive() { connected = d.state == .connected }
+        #endif
+        guard inFront || connected else { return }
+        let now = ProcessInfo.processInfo.systemUptime
+        if let again = liveGlyph.update(connected: connected, now: now) {
+            liveTimer = Timer.scheduledTimer(withTimeInterval: again - now + 0.005, repeats: false) { [weak self] _ in
+                MainActor.assumeIsolated { self?.socketChanged() }
+            }
+        }
+        if liveGlyph.live != syncLive { syncLive = liveGlyph.live }
+    }
+
+    /// What Settings ▸ Sync ▸ Live updates shows; nil (the row hidden) until sync is set up, and on the sample data
+    /// (design/SYNC-STATUS.md decision 4). The socket is observable, so the row follows it.
+    var liveInput: LiveStatus.Input? {
+        #if DEBUG
+        if let d = Self.debugLive() { return d }
+        #endif
+        guard store.config != nil else { return nil }
+        return socket.liveInput
+    }
+
+    /// The home line shows the bolt cloud: push is live and the line says "Synced…" (every other state keeps
+    /// `icloud`, as its words already say what's wrong).
+    var syncLineLive: Bool {
+        guard syncLive, store.recovery == nil, store.pendingCount == 0, case .idle = store.syncState else { return false }
+        return true
+    }
+
+    #if DEBUG
+    /// `-debugLive live|connecting|reconnecting|offline|unavailable|rejected|off` (Debug only): stands in for the
+    /// socket in Settings ▸ Sync ▸ Live updates, for screenshots and UI tests, even on the sample data. Times are as
+    /// of each read: the last change 2 min ago, a drop 3 min ago, the reconnect in 8 s, an old server's retry in 58 min.
+    static func debugLive(now: Date = Date()) -> LiveStatus.Input? {
+        guard let s = UserDefaults.standard.string(forKey: "debugLive") else { return nil }
+        switch s {
+        case "live": return .init(state: .connected, lastChangeAt: now - 120)
+        case "connecting": return .init(state: .connecting)
+        case "reconnecting": return .init(state: .waiting(until: now + 7.5, why: .dropped), droppedAt: now - 180)
+        case "offline": return .init(state: .waiting(until: now + 30, why: .dropped), offline: true, droppedAt: now - 180)
+        case "unavailable": return .init(state: .waiting(until: now + 58 * 60, why: .oldServer))
+        case "rejected": return .init(state: .stopped)
+        case "off": return .init(state: .off)
+        default: return nil
+        }
+    }
+    #endif
 
     // MARK: What it says
 

@@ -238,6 +238,11 @@ final class AppModel {
     @ObservationIgnored let pokes: SyncPokes
     /// When the periodic loop last synced (system uptime), for `SocketPolicy.pollDue`.
     @ObservationIgnored var lastPoll: Double?
+    /// The home line's live cloud (design/SYNC-STATUS.md §3, B): the bolt once the socket is live, the plain cloud only
+    /// after 5 s down in front (`LiveGlyph`), so coming to the front doesn't flash it.
+    var syncLive = false
+    @ObservationIgnored var liveGlyph = LiveGlyph()
+    @ObservationIgnored var liveTimer: Timer?
     /// Writes the widgets' feed (Widgets.swift); nil for the sample data.
     @ObservationIgnored var widgetFeed: WidgetFeedWriter?
 

@@ -116,6 +116,7 @@ final class FlowTests: XCTestCase {
         app.launch()
         app.buttons["Settings"].firstMatch.tap()
         app.settle()
+        XCTAssertFalse(app.descendants(matching: .any)["liveUpdates"].exists, "the sample data never syncs: no Live updates row")
         app.buttons["Dark"].firstMatch.tap()
         app.settle()
         shot("flow-settings-dark")
@@ -128,6 +129,27 @@ final class FlowTests: XCTestCase {
         app.buttons["Done"].firstMatch.tap()
         app.settle()
         shot("flow-home-light-glass")
+    }
+
+    /// Settings ▸ Sync ▸ Live updates (design/SYNC-STATUS.md), from `-debugLive`: between Status and Background
+    /// refresh, one element whose value is the word and the detail, the countdown ticking.
+    func testLiveUpdatesInSettings() {
+        app.launchArguments += ["-debugLive", "reconnecting"]
+        app.launch()
+        app.buttons["Settings"].firstMatch.tap()
+        let row = app.descendants(matching: .any)["liveUpdates"]
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        XCTAssertEqual(row.label, "Live updates")
+        let value = row.value as? String ?? ""
+        XCTAssertTrue(value.hasPrefix("Reconnecting. Lost the connection at "), value)
+        // The countdown ticks from 8 s (and -debugLive's wait never ends, so it stays at 1 s).
+        XCTAssertNotNil(value.range(of: #"Trying again in [1-8] seconds?; checking every 30 seconds meanwhile\.$"#,
+                                    options: .regularExpression), value)
+        let status = app.staticTexts["Status"].firstMatch.frame
+        let refresh = app.descendants(matching: .any)["backgroundRefresh"].frame
+        XCTAssertGreaterThan(row.frame.minY, status.minY, "under Status")
+        XCTAssertLessThan(row.frame.minY, refresh.minY, "above Background refresh")
+        shot("flow-settings-live-reconnecting")
     }
 
     /// The title is edited in the details and written when they close (one change, as on the Mac): the row has it.
