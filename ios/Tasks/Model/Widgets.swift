@@ -7,20 +7,35 @@ import TasksCore
 // widget's link points (`tasks://…`, DeepLink.swift). The app is the feed's only writer; the widgets never open the
 // store.
 
-/// Writes `widget-feed.json` into the App Group after any visible change (1 s after the last one), after a sync that
-/// brought changes, and when the day changes; then reloads the widgets. A feed that would say the same as the last
-/// one isn't written. Never for the sample data: the widgets must never show it.
+/// Writes `widget-feed.json` into the App Group 1 s after the last visible change, after a sync that brought changes,
+/// and when the day changes; then reloads the widgets whose content changed (`WidgetFeed.changes`,
+/// `WidgetGroup.kinds`), as the Mac's writer does. A feed that would draw the same as the last one isn't written, so
+/// the syncs that bring nothing, and edits to notes, cost one comparison. Writes are at least 20 s apart
+/// (`WidgetFeedPace`): the home and lock screens' widgets aren't on screen while the app is in front, and each reload
+/// re-renders every entry of their timelines. Going to the background writes what's waiting at once (`flush`), and the
+/// background refresh writes at once (`writeNow`). Never for the sample data: the widgets must never show it.
 @MainActor
 final class WidgetFeedWriter {
-    static let delay: Duration = .seconds(1)
+    /// The quiet after the last change before a write.
+    static let quiet: TimeInterval = 1
+    /// The least time between two writes (coord title-design T10: the Mac's gap with a window open).
+    static let gap: TimeInterval = 20
 
     private let store: Store
     private let url: URL
     private var scheduled: Task<Void, Never>?
-    /// The last feed written (or read at start), to skip writes that change nothing but the time.
+    /// The last feed written (or read at start), to skip writes that change nothing the widgets draw.
     private var last: WidgetFeed?
-    /// Reloads every widget's timeline after a write (tests watch it).
-    private let reload: @MainActor () -> Void
+    /// Reloads the widgets of these kinds after a write (WidgetCenter; tests watch it).
+    private let reload: @MainActor ([String]) -> Void
+    /// Seconds on a monotonic clock (tests move it).
+    private let clock: @MainActor () -> TimeInterval
+    /// When the feed was last written, on `clock`.
+    private var lastWriteAt: TimeInterval?
+    /// The first change not written yet, on `clock` (`WidgetFeedPace` writes it within a gap of it).
+    private var waitingSince: TimeInterval?
+    /// Writes done (tests).
+    private(set) var writes = 0
 
     /// The App Group's feed; nil for the sample data, or when the group's container isn't there.
     convenience init?(store: Store, isSample: Bool) {
@@ -29,16 +44,23 @@ final class WidgetFeedWriter {
     }
 
     /// A feed at `url` (tests).
-    init(store: Store, url: URL, reload: @escaping @MainActor () -> Void = { WidgetCenter.shared.reloadAllTimelines() }) {
+    init(store: Store, url: URL,
+         reload: @escaping @MainActor ([String]) -> Void = { kinds in
+             kinds.forEach { WidgetCenter.shared.reloadTimelines(ofKind: $0) }
+         },
+         clock: @escaping @MainActor () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) {
         self.store = store
         self.url = url
         self.reload = reload
+        self.clock = clock
         last = WidgetFeed.read(at: url)
     }
 
-    /// Writes now (at launch), then follows the store.
+    /// Writes now (at launch), then follows the store. The launch write doesn't start the 20 s gap, so what the launch
+    /// sync brings goes out a second later.
     func start() {
         write()
+        lastWriteAt = nil
         observe()
     }
 
@@ -57,17 +79,22 @@ final class WidgetFeedWriter {
         }
     }
 
-    /// Something changed: write in a second, unless more changes come first.
+    /// Something changed: write in a second, unless more changes come first; no sooner than 20 s after the last write,
+    /// and within 20 s of the first change waiting.
     func changed() {
         scheduled?.cancel()
+        let now = clock()
+        if waitingSince == nil { waitingSince = now }
+        let delay = WidgetFeedPace.delay(now: now, lastWrite: lastWriteAt, waitingSince: waitingSince,
+                                         quiet: Self.quiet, gap: Self.gap)
         scheduled = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: Self.delay)
+            try? await Task.sleep(for: .seconds(delay))
             guard !Task.isCancelled else { return }
             self?.write()
         }
     }
 
-    /// Going to the background: a change waiting for its second is written now, so the home screen shows it.
+    /// Going to the background: a change that's waiting is written now, so the home screen shows it.
     func flush() {
         guard let s = scheduled else { return }
         s.cancel()
@@ -76,7 +103,7 @@ final class WidgetFeedWriter {
     }
 
     /// Writes at once, whatever is waiting (the background refresh). Returns whether the feed changed (and the widgets
-    /// reloaded); false when it says what the last one said, or couldn't be written.
+    /// reloaded); false when they'd draw what the last one drew, or it couldn't be written.
     @discardableResult
     func writeNow() -> Bool {
         scheduled?.cancel()
@@ -86,16 +113,17 @@ final class WidgetFeedWriter {
     @discardableResult
     private func write() -> Bool {
         scheduled = nil
+        waitingSince = nil
         let p = store.projection
         let feed = WidgetFeed.make(from: p, day: p.day)
-        if let last, last.lists == feed.lists, last.tasks == feed.tasks, last.listTops == feed.listTops,
-           last.schema == feed.schema {
-            return false
-        }
+        let change = feed.changes(since: last)
+        guard !change.isEmpty else { return false }
         do {
             try feed.write(at: url)
             last = feed
-            reload()
+            lastWriteAt = clock()
+            writes += 1
+            reload(WidgetGroup.kinds(for: change))
             return true
         } catch {
             // The widgets keep the last feed; the next change tries again.

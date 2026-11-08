@@ -102,6 +102,17 @@ extension AppModel {
         store.requestSync(force: true)
     }
 
+    /// Going to the background, where iOS may end the app without notice: no new-task row waits (a title is written,
+    /// an empty row goes), the snapshot is written now (TasksCore otherwise writes it only at a 500-entry tail or
+    /// 10 min after the first entry it doesn't hold), and a feed write that's waiting goes out, so the home screen
+    /// shows it.
+    func wentToBackground() {
+        endDraft()
+        inFront = false
+        store.persistNow()
+        widgetFeed?.flush()
+    }
+
     /// Pull to refresh, the Mac's ⌘R: a sync now, clearing a stopped state or a backoff, and wait for it.
     func syncNow() async {
         guard store.config != nil else { return }

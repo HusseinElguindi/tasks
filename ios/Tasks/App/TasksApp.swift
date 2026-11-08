@@ -57,11 +57,7 @@ struct TasksApp: App {
             switch now {
             case .active: app.cameToFront()
             case .background:
-                // No new-task row waits in the background: a title is written (and saved, next), an empty row goes.
-                app.endDraft()
-                app.inFront = false
-                app.store.persistNow()
-                app.widgetFeed?.flush()
+                app.wentToBackground()
                 BackgroundRefresh.shared.schedule(for: app)
             default: app.inFront = false
             }

@@ -86,6 +86,77 @@ final class WidgetTests: XCTestCase {
         XCTAssertEqual(WidgetFeed.read(at: feedURL)?.written, stamp, "nothing the widgets show changed")
     }
 
+    /// After the first change, a second within 20 s of the last write waits for the gap (the widgets aren't on screen
+    /// while the app is in front); going to the background writes it at once (coord title-design T10).
+    func testWritesAreTwentySecondsApartUntilTheBackground() async throws {
+        let store = await openStore()
+        var now: TimeInterval = 1000
+        let writer = WidgetFeedWriter(store: store, url: feedURL, reload: { _ in }, clock: { now })
+        writer.start()
+        let today = store.projection.day.date
+        let a = try XCTUnwrap(store.createTask(title: "Buy milk", when: today))
+        let first = await waitForFeed { $0.tasks.contains { $0.id == a } }
+        XCTAssertNotNil(first, "the first change goes out after its second: the launch write starts no gap")
+        XCTAssertEqual(writer.writes, 2)
+        now += 5
+        let b = try XCTUnwrap(store.createTask(title: "Water the plants", when: today))
+        try await Task.sleep(for: .milliseconds(1500))
+        XCTAssertFalse(WidgetFeed.read(at: feedURL)?.tasks.contains { $0.id == b } ?? true, "held for the 20 s gap")
+        XCTAssertEqual(writer.writes, 2)
+        writer.flush()   // going to the background
+        XCTAssertTrue(WidgetFeed.read(at: feedURL)?.tasks.contains { $0.id == b } ?? false)
+        XCTAssertEqual(writer.writes, 3)
+        // 20 s on, the next change waits only its second.
+        now += WidgetFeedWriter.gap
+        let c = try XCTUnwrap(store.createTask(title: "Later", when: today))
+        let feed = await waitForFeed { $0.tasks.contains { $0.id == c } }
+        XCTAssertNotNil(feed)
+        XCTAssertEqual(writer.writes, 4)
+    }
+
+    /// An edit to a task's notes changes nothing a widget draws: no write, no reload. A change to a dated task in a
+    /// list's tops reloads Today, the lock screen's Today and the List widget; the circular lock-screen widgets and
+    /// the controls never reload.
+    func testOnlyWhatAWidgetDrawsReloadsIt() async throws {
+        let store = await openStore()
+        var now: TimeInterval = 1000
+        var reloaded: [[String]] = []
+        let writer = WidgetFeedWriter(store: store, url: feedURL, reload: { reloaded.append($0) }, clock: { now })
+        writer.start()
+        XCTAssertEqual(reloaded.last.map(Set.init), [WidgetGroup.Kind.today, WidgetGroup.Kind.todayLock,
+                                                     WidgetGroup.Kind.list], "no feed before: every kind that draws it")
+        let inbox = try XCTUnwrap(store.projection.activeLists.ids.first)
+        let undated = try XCTUnwrap(store.createTask(title: "Call the bank", in: inbox))
+        _ = await waitForFeed { $0.tasks.contains { $0.id == undated } }
+        XCTAssertEqual(reloaded.last, [WidgetGroup.Kind.list], "an undated task in the Inbox's tops: the List widget")
+
+        now += WidgetFeedWriter.gap
+        let writes = writer.writes
+        reloaded = []
+        _ = store.setNotes(undated, "- [ ] the account number")
+        try await Task.sleep(for: .milliseconds(1500))
+        XCTAssertEqual(writer.writes, writes, "notes aren't in the feed")
+        XCTAssertEqual(reloaded, [])
+        XCTAssertEqual(WidgetFeed.read(at: feedURL)?.tasks.first { $0.id == undated }?.notes, "")
+
+        _ = store.setWhen([undated], store.projection.day.date)
+        _ = await waitForFeed { $0.tasks.first { $0.id == undated }?.when != nil }
+        XCTAssertEqual(reloaded.last.map(Set.init), [WidgetGroup.Kind.today, WidgetGroup.Kind.todayLock,
+                                                     WidgetGroup.Kind.list], "dated, and in the Inbox's tops: all three")
+
+        // A dated task outside the Inbox's first 12: Today's kinds alone.
+        for i in 1..<WidgetFeed.listTopCount { _ = store.createTask(title: "Task \(i)", in: inbox) }
+        now += WidgetFeedWriter.gap
+        _ = await waitForFeed { $0.listTops[inbox]?.count == WidgetFeed.listTopCount }
+        now += WidgetFeedWriter.gap
+        let dated = try XCTUnwrap(store.createTask(title: "Thirteenth, for today", in: inbox,
+                                                   when: store.projection.day.date))
+        _ = await waitForFeed { $0.tasks.contains { $0.id == dated } }
+        XCTAssertEqual(reloaded.last, [WidgetGroup.Kind.today, WidgetGroup.Kind.todayLock])
+        XCTAssertFalse(reloaded.joined().contains(WidgetGroup.Kind.newTask))
+        XCTAssertFalse(reloaded.joined().contains(WidgetGroup.Kind.todayCircle))
+    }
+
     func testTheSampleDataNeverWritesAFeed() async {
         let store = await openStore()
         XCTAssertNil(WidgetFeedWriter(store: store, isSample: true))
