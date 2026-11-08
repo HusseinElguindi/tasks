@@ -330,7 +330,7 @@ if let id = window.detailTaskID {
 ```
 
 The list pane narrows on the same spring while the detail slides in from the right and fades up; closing reverses it.
-Its wrapping text (the list's notes, a heading's notes) wraps once, at the narrow end: as the pane starts to narrow, or
+Its wrapping text (the list's large title and notes, a heading's notes) wraps once, at the narrow end: as the pane starts to narrow, or
 once it has widened, with the rows under it moving on `layout` when the line count changes. It never re-wraps on every
 frame of the slide (the user, 2026-11-08: "the line wrapping is a bit distracting when it animates for the whole
 duration, and it's choppy when more lines are needed"). The same goes for the sidebar's slide and a divider's

@@ -931,10 +931,11 @@ final class TaskListView: NSView {
     }
 
     /// The title line's height, for the layout: a long name wraps onto a second line (§23), and while it's renamed
-    /// the line follows all of what's typed.
+    /// the line follows all of what's typed. Like the notes, it wraps at the narrower end while the pane's width
+    /// animates (`settle`), so it re-wraps once, not on every frame of the slide.
     private func measureTitle() {
         let c = titleContent()
-        state.titleLine = ListTitleView.lineBox(c, text: titleTyping ?? c.title, width: scroll.contentView.bounds.width,
+        state.titleLine = ListTitleView.lineBox(c, text: titleTyping ?? c.title, width: wrapContentWidth,
                                                 renaming: titleTyping != nil)
     }
 
@@ -945,7 +946,7 @@ final class TaskListView: NSView {
         if titleView.frame != f { titleView.frame = f }
         // The rename's end first, so the field shows the model's name, styled, in this same transaction.
         updateTitleField(c.renaming ? state.rename : nil)
-        titleView.configure(c, palette: palette, width: width, text: titleTyping)
+        titleView.configure(c, palette: palette, width: wrapContentWidth, text: titleTyping)
         updateTitlePlaceholder(animated: false)
         updateTitleScrolled()
     }
