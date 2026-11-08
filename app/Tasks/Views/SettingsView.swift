@@ -32,7 +32,7 @@ struct SettingsView: View {
                 PaneRowDivider()
                 // The user, 2026-11-06 (spec §5 Realtime): keep the widgets current after ⌘W, and a way to turn it off.
                 PaneRow("Sync with no window open", description: model.syncWithoutWindow
-                        ? "Every minute while Tasks is open, so widgets stay current."
+                        ? "Keeps syncing while Tasks is open, so widgets stay current."
                         : "Only while a window is open, and after a tasks CLI change.") {
                     Toggle("Sync with no window open", isOn: $model.syncWithoutWindow)
                         .labelsHidden()
