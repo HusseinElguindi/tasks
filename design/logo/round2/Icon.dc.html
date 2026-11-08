@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tasks app icon, round 2</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<svg width="{{size}}" height="{{size}}" viewBox="0 0 1024 1024" role="img" aria-label="{{label}}" style="{{svgStyle}}">
+<defs>
+<linearGradient id="tk-em" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#F0805A"></stop>
+<stop offset="1" stop-color="#DC5D32"></stop>
+</linearGradient>
+<linearGradient id="tk-bd" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#2A2A2A"></stop>
+<stop offset="1" stop-color="#1A1A1A"></stop>
+</linearGradient>
+<linearGradient id="tk-bl" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#FFFFFF"></stop>
+<stop offset="1" stop-color="#ECECEC"></stop>
+</linearGradient>
+</defs>
+
+<!-- Body: the macOS squircle (824 on the 1024 grid, continuous corners) or the full-bleed iOS rounded square. -->
+<path display="{{macShow}}" d="M383.4 100H640.6C722.2 100 763 100 806.9 113.9C854.9 131.3 892.7 169.1 910.1 217.1C924 261 924 301.8 924 383.4V640.6C924 722.2 924 763 910.1 806.9C892.7 854.9 854.9 892.7 806.9 910.1C763 924 722.2 924 640.6 924H383.4C301.8 924 261 924 217.1 910.1C169.1 892.7 131.3 854.9 113.9 806.9C100 763 100 722.2 100 640.6V383.4C100 301.8 100 261 113.9 217.1C131.3 169.1 169.1 131.3 217.1 113.9C261 100 301.8 100 383.4 100Z" fill="{{bodyFill}}" stroke="{{rim}}" stroke-width="4"></path>
+<rect display="{{iosShow}}" x="0" y="0" width="1024" height="1024" rx="230" fill="{{bodyFill}}"></rect>
+
+<!-- The mark: up to fourteen shapes, drawn in 1024 units for the macOS grid; iOS scales them to its full-bleed body. -->
+<g transform="{{gt}}">
+<path d="{{p0.d}}" fill="{{p0.f}}" stroke="{{p0.s}}" stroke-width="{{p0.w}}" stroke-linecap="{{p0.c}}" stroke-linejoin="round" transform="{{p0.t}}"></path>
+<path d="{{p1.d}}" fill="{{p1.f}}" stroke="{{p1.s}}" stroke-width="{{p1.w}}" stroke-linecap="{{p1.c}}" stroke-linejoin="round" transform="{{p1.t}}"></path>
+<path d="{{p2.d}}" fill="{{p2.f}}" stroke="{{p2.s}}" stroke-width="{{p2.w}}" stroke-linecap="{{p2.c}}" stroke-linejoin="round" transform="{{p2.t}}"></path>
+<path d="{{p3.d}}" fill="{{p3.f}}" stroke="{{p3.s}}" stroke-width="{{p3.w}}" stroke-linecap="{{p3.c}}" stroke-linejoin="round" transform="{{p3.t}}"></path>
+<path d="{{p4.d}}" fill="{{p4.f}}" stroke="{{p4.s}}" stroke-width="{{p4.w}}" stroke-linecap="{{p4.c}}" stroke-linejoin="round" transform="{{p4.t}}"></path>
+<path d="{{p5.d}}" fill="{{p5.f}}" stroke="{{p5.s}}" stroke-width="{{p5.w}}" stroke-linecap="{{p5.c}}" stroke-linejoin="round" transform="{{p5.t}}"></path>
+<path d="{{p6.d}}" fill="{{p6.f}}" stroke="{{p6.s}}" stroke-width="{{p6.w}}" stroke-linecap="{{p6.c}}" stroke-linejoin="round" transform="{{p6.t}}"></path>
+<path d="{{p7.d}}" fill="{{p7.f}}" stroke="{{p7.s}}" stroke-width="{{p7.w}}" stroke-linecap="{{p7.c}}" stroke-linejoin="round" transform="{{p7.t}}"></path>
+<path d="{{p8.d}}" fill="{{p8.f}}" stroke="{{p8.s}}" stroke-width="{{p8.w}}" stroke-linecap="{{p8.c}}" stroke-linejoin="round" transform="{{p8.t}}"></path>
+<path d="{{p9.d}}" fill="{{p9.f}}" stroke="{{p9.s}}" stroke-width="{{p9.w}}" stroke-linecap="{{p9.c}}" stroke-linejoin="round" transform="{{p9.t}}"></path>
+<path d="{{p10.d}}" fill="{{p10.f}}" stroke="{{p10.s}}" stroke-width="{{p10.w}}" stroke-linecap="{{p10.c}}" stroke-linejoin="round" transform="{{p10.t}}"></path>
+<path d="{{p11.d}}" fill="{{p11.f}}" stroke="{{p11.s}}" stroke-width="{{p11.w}}" stroke-linecap="{{p11.c}}" stroke-linejoin="round" transform="{{p11.t}}"></path>
+<path d="{{p12.d}}" fill="{{p12.f}}" stroke="{{p12.s}}" stroke-width="{{p12.w}}" stroke-linecap="{{p12.c}}" stroke-linejoin="round" transform="{{p12.t}}"></path>
+<path d="{{p13.d}}" fill="{{p13.f}}" stroke="{{p13.s}}" stroke-width="{{p13.w}}" stroke-linecap="{{p13.c}}" stroke-linejoin="round" transform="{{p13.t}}"></path>
+</g>
+</svg>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"mark":{"editor":"enum","options":["log","spark","ember","fan","steps","letter","breakout","daybreak","cursor","chain","tick","blank"],"default":"letter"},"look":{"editor":"enum","options":["dark","light"],"default":"dark"},"shape":{"editor":"enum","options":["mac","ios"],"default":"mac"},"size":{"editor":"int","min":16,"max":1024,"default":512},"$preview":{"width":512,"height":512}}'>
+class Component extends DCLogic {
+renderVals() {
+const mark = this.props.mark ?? 'letter';
+const shape = this.props.shape ?? 'mac';
+const size = Number(this.props.size ?? 512);
+let look = this.props.look ?? 'dark';
+if (mark === 'log') look = 'dark'; // the shipped icon is dark only, in every appearance
+const sm = size < 60; // the small cut: fewer, thicker parts below 60px
+const EM = 'url(#tk-em)';
+const L = {
+dark: { ink: '#F2F3F4', ink2: '#9A9DA0', cut: '#1E1E1E', spark: '#E68565', body: 'url(#tk-bd)', rim: 'rgba(255,255,255,0.10)', blank: '#3A3B3D' },
+light: { ink: '#1C1C1C', ink2: '#8C8F92', cut: '#FFFFFF', spark: '#E6683D', body: 'url(#tk-bl)', rim: 'rgba(0,0,0,0.10)', blank: '#C9CACC' }
+}[look];
+const r1 = (n) => Math.round(n * 10) / 10;
+const rr = (x, y, w, h, r) => `M${r1(x + r)} ${r1(y)}H${r1(x + w - r)}A${r1(r)} ${r1(r)} 0 0 1 ${r1(x + w)} ${r1(y + r)}V${r1(y + h - r)}A${r1(r)} ${r1(r)} 0 0 1 ${r1(x + w - r)} ${r1(y + h)}H${r1(x + r)}A${r1(r)} ${r1(r)} 0 0 1 ${r1(x)} ${r1(y + h - r)}V${r1(y + r)}A${r1(r)} ${r1(r)} 0 0 1 ${r1(x + r)} ${r1(y)}Z`;
+const ci = (cx, cy, r) => `M${r1(cx - r)} ${r1(cy)}A${r1(r)} ${r1(r)} 0 1 0 ${r1(cx + r)} ${r1(cy)}A${r1(r)} ${r1(r)} 0 1 0 ${r1(cx - r)} ${r1(cy)}Z`;
+const pol = (cx, cy, r, a) => { const t = a * Math.PI / 180; return [r1(cx + r * Math.cos(t)), r1(cy + r * Math.sin(t))]; };
+const F = (d, f, t) => ({ d, f, s: 'none', w: 0, c: 'round', t: t || '' });
+const S = (d, s, w, c) => ({ d, f: 'none', s, w, c: c || 'round', t: '' });
+const ray = (cx, cy, a, ra, rb, w, col) => { const p = pol(cx, cy, ra, a), q = pol(cx, cy, rb, a); return S(`M${p[0]} ${p[1]}L${q[0]} ${q[1]}`, col, w); };
+let shapes = [];
+let bodyFill = L.body;
+
+if (mark === 'log') {
+// 00 Current: the shipped 04 Log, from ios/Tools/MakeIcon.swift (mark viewBox 150..874 drawn 640 wide).
+const K = 640 / 724, X = (v) => 192 + (v - 150) * K, U = (v) => v * K;
+const trail = '#6D7072', ring = '#A8ADB1', ink = '#E6EDF3', head = '#2F81F7', cut = '#1C1C1C';
+shapes = [
+F(rr(X(304), X(436), U(36), U(64), 0.01), trail), F(rr(X(304), X(612), U(36), U(64), 0.01), trail),
+F(rr(X(462), X(524), U(280), U(64), U(32)), trail), F(rr(X(462), X(700), U(220), U(64), U(32)), trail),
+sm ? F(ci(X(322), X(556), U(56)), ring) : S(ci(X(322), X(556), U(45)), ring, U(22)),
+sm ? F(ci(X(322), X(732), U(56)), ring) : S(ci(X(322), X(732), U(45)), ring, U(22)),
+F(rr(X(462), X(296), U(340), U(80), U(40)), ink), F(ci(X(322), X(336), U(90)), head),
+S(`M${r1(X(282))} ${r1(X(338))}L${r1(X(310))} ${r1(X(366))}L${r1(X(362))} ${r1(X(306))}`, cut, U(26))
+];
+} else if (mark === 'spark') {
+// 01 Spark: the Ember checkbox with the completion spark's eight rays.
+const box = sm ? 440 : 380, o = 512 - box / 2;
+shapes.push(F(rr(o, o, box, box, box * 0.26), EM));
+for (let a = 0; a < 360; a += 45) {
+const diag = a % 90 !== 0;
+shapes.push(ray(512, 512, a, diag ? (sm ? 300 : 268) : (sm ? 262 : 236), diag ? (sm ? 372 : 336) : (sm ? 352 : 318), sm ? 60 : 40, L.spark));
+}
+shapes.push(S('M418 520L488 590L614 446', '#FFFFFF', sm ? 70 : 56));
+} else if (mark === 'ember') {
+// 02 Ember tile: light is the lit Ember tile with a white check; dark keeps the dark body and the check goes Ember.
+if (look === 'light') bodyFill = EM;
+shapes = [S('M318 530L448 660L712 380', look === 'light' ? '#FFFFFF' : EM, sm ? 120 : 100)];
+} else if (mark === 'fan') {
+// 03 Fan: three list tiles fanned from one corner; the top one is Ember and checked.
+const x = 332, y = 425, w = 440, h = 352;
+shapes = [
+{ ...F(rr(x, y, w, h, 96), '#7C5CD6', 'rotate(-26 290 777)'), s: L.cut, w: 16 },
+{ ...F(rr(x, y, w, h, 96), '#17808A', 'rotate(-13 290 777)'), s: L.cut, w: 16 },
+{ ...F(rr(x, y, w, h, 96), EM), s: L.cut, w: 16 },
+S('M470 601L534 665L652 539', '#FFFFFF', sm ? 64 : 52)
+];
+} else if (mark === 'steps') {
+// 04 Steps: a check made of five tiles, light Ember to deep.
+const u = 136, t = sm ? 128 : 122, ox = 512 - 2.5 * u, oy = 512 - 2 * u + 20;
+const cells = [[0, 2, '#F29A76'], [1, 3, EM], [2, 2, '#D45A31'], [3, 1, '#BC4F2B'], [4, 0, '#A04325']];
+shapes = cells.map(([i, j, col]) => F(rr(ox + i * u + (u - t) / 2, oy + j * u + (u - t) / 2, t, t, t * 0.27), col));
+} else if (mark === 'letter') {
+// 05 t: the stem in ink, the crossbar an Ember task row.
+const w = sm ? 136 : 120;
+shapes = [S('M500 250V640Q500 772 632 772H700', L.ink, w), F(rr(262, 360 - w / 2, 500, w, w / 2), EM)];
+} else if (mark === 'breakout') {
+// 06 Breakout: an open ring and a check whose long stroke leaves through the gap.
+const r = 236, w = sm ? 92 : 76, a = pol(512, 512, r, -12), b = pol(512, 512, r, -78);
+shapes = [S(`M${a[0]} ${a[1]}A${r} ${r} 0 1 1 ${b[0]} ${b[1]}`, L.ink, w), S('M372 520L474 622L760 300', EM, w + 8)];
+} else if (mark === 'daybreak') {
+// 07 Daybreak: Today's sun rising behind a checked box.
+shapes.push(F(ci(512, 500, sm ? 190 : 176), EM));
+if (!sm) [-90, -130, -50, -168, -12].forEach((a) => shapes.push(ray(512, 500, a, 222, 290, 44, EM)));
+shapes.push({ ...F(rr(232, 482, 560, 330, 112), L.ink), s: L.cut, w: 28 });
+shapes.push(S('M418 650L488 720L616 584', L.cut, sm ? 70 : 58));
+} else if (mark === 'cursor') {
+// 08 Cursor: a check, then the block cursor waiting for the next task.
+shapes = [S('M222 548L338 664L556 410', L.ink, sm ? 104 : 88), F(rr(636, 400, sm ? 150 : 136, sm ? 300 : 290, 18), EM)];
+} else if (mark === 'chain') {
+// 09 Chain: two links of the sync log, over and under.
+const w = sm ? 84 : 72;
+shapes = [
+S(rr(222, 232, 400, 400, 128), L.ink, w), S(rr(402, 392, 400, 400, 128), EM, w),
+S('M622 322V462', L.cut, w + 36, 'butt'), S('M622 312V472', L.ink, w, 'butt')
+];
+} else if (mark === 'tick') {
+// 10 Tick: one heavy check, the short stroke Ember.
+const w = sm ? 150 : 132;
+shapes = [S('M262 520L432 690', EM, w), S('M432 690L772 330', L.ink, w)];
+} else {
+bodyFill = L.blank; // a neutral neighbour in the Dock
+}
+
+const none = { d: 'M0 0', f: 'none', s: 'none', w: 0, c: 'round', t: '' };
+const vals = {};
+for (let i = 0; i < 14; i++) vals['p' + i] = shapes[i] || none;
+const ios = shape === 'ios';
+return {
+...vals,
+size,
+label: mark === 'blank' ? 'Another app' : 'Tasks app icon',
+macShow: ios ? 'none' : 'inline',
+iosShow: ios ? 'inline' : 'none',
+bodyFill,
+rim: mark === 'ember' && look === 'light' ? 'rgba(0,0,0,0.06)' : L.rim,
+gt: ios ? 'translate(512 512) scale(1.2427) translate(-512 -512)' : '',
+svgStyle: 'display: block; overflow: visible;' + (!ios && size >= 64 ? ' filter: drop-shadow(0 ' + Math.round(size / 64) + 'px ' + Math.round(size / 32) + 'px rgba(0,0,0,0.28));' : '')
+};
+}
+}
+</script>
+</body>
+</html>

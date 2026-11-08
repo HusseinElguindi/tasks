@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Logo round 2 overview</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1848px; height: 1400px; box-sizing: border-box; padding: 40px 48px 48px; background: #111111; color: #E6EDF3; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif; -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; gap: 28px;">
+
+<header style="display: flex; flex-direction: column; gap: 6px;">
+<h1 style="margin: 0; font-size: 28px; line-height: 34px; font-weight: 600;">Ten new directions, beside the current icon</h1>
+<p style="margin: 0; font-size: 15px; line-height: 20px; color: #A8ADB1;">Each is drawn on the macOS squircle and the iOS rounded square, then at 32 and 16 (Finder, Dock and sidebar sizes), in light and in dark. Below 60px each mark switches to a small cut with fewer, thicker parts. All of them use the app's Ember accent (#E6683D) and Rex's surfaces.</p>
+</header>
+
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px;">
+<sc-for list="{{cards}}" as="d" hint-placeholder-count="11">
+<section style="height: 380px; box-sizing: border-box; border-radius: 16px; background: #181818; box-shadow: inset 0 0 0 1px #262728; overflow: hidden; display: flex; flex-direction: column;">
+<div style="height: 92px; box-sizing: border-box; padding: 16px 18px 0; display: flex; flex-direction: column; gap: 6px;">
+<div style="display: flex; align-items: baseline; gap: 10px;">
+<span style="font: 600 12px/16px 'SF Mono', ui-monospace, Menlo, monospace; color: #7F8386;">{{d.num}}</span>
+<h2 style="margin: 0; font-size: 17px; line-height: 22px; font-weight: 600;">{{d.name}}</h2>
+<sc-if value="{{d.top}}" hint-placeholder-val="{{false}}"><span style="margin-left: auto; align-self: center; height: 20px; padding: 0 9px; border-radius: 10px; background: #362620; color: #E68565; font-size: 11px; line-height: 20px; font-weight: 600;">{{d.topLabel}}</span></sc-if>
+<sc-if value="{{d.now}}" hint-placeholder-val="{{false}}"><span style="margin-left: auto; align-self: center; height: 20px; padding: 0 9px; border-radius: 10px; background: #2D2E2E; color: #A8ADB1; font-size: 11px; line-height: 20px; font-weight: 600;">Shipping now</span></sc-if>
+</div>
+<p style="margin: 0; font-size: 13px; line-height: 17px; color: #A8ADB1;">{{d.line}}</p>
+</div>
+<div style="flex-grow: 1; background: #E9E9EA; display: flex; align-items: center; justify-content: center; gap: 18px;">
+<dc-import name="Icon" mark="{{d.mark}}" look="light" shape="mac" size="{{n112}}" hint-size="112px,112px"></dc-import>
+<dc-import name="Icon" mark="{{d.mark}}" look="light" shape="ios" size="{{n90}}" hint-size="90px,90px"></dc-import>
+<dc-import name="Icon" mark="{{d.mark}}" look="light" shape="mac" size="{{n32}}" hint-size="32px,32px"></dc-import>
+<dc-import name="Icon" mark="{{d.mark}}" look="light" shape="mac" size="{{n16}}" hint-size="16px,16px"></dc-import>
+</div>
+<div style="flex-grow: 1; background: #1C1C1C; display: flex; align-items: center; justify-content: center; gap: 18px;">
+<dc-import name="Icon" mark="{{d.mark}}" look="dark" shape="mac" size="{{n112}}" hint-size="112px,112px"></dc-import>
+<dc-import name="Icon" mark="{{d.mark}}" look="dark" shape="ios" size="{{n90}}" hint-size="90px,90px"></dc-import>
+<dc-import name="Icon" mark="{{d.mark}}" look="dark" shape="mac" size="{{n32}}" hint-size="32px,32px"></dc-import>
+<dc-import name="Icon" mark="{{d.mark}}" look="dark" shape="mac" size="{{n16}}" hint-size="16px,16px"></dc-import>
+</div>
+</section>
+</sc-for>
+
+<section style="height: 380px; box-sizing: border-box; padding: 16px 18px; border-radius: 16px; background: #1F1B19; box-shadow: inset 0 0 0 1px #3A2A23; display: flex; flex-direction: column; gap: 14px;">
+<h2 style="margin: 0; font-size: 17px; line-height: 22px; font-weight: 600;">My top 3</h2>
+<sc-for list="{{top}}" as="t" hint-placeholder-count="3">
+<div style="display: flex; gap: 14px; align-items: center;">
+<dc-import name="Icon" mark="{{t.mark}}" look="dark" shape="mac" size="{{n64}}" hint-size="64px,64px"></dc-import>
+<div style="display: flex; flex-direction: column; gap: 3px; min-width: 0;">
+<span style="font-size: 13px; line-height: 17px; font-weight: 600;">{{t.title}}</span>
+<span style="font-size: 12px; line-height: 16px; color: #A8ADB1;">{{t.why}}</span>
+</div>
+</div>
+</sc-for>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1848,"height":1400}}'>
+class Component extends DCLogic {
+renderVals() {
+return {
+n16: 16, n32: 32, n64: 64, n90: 90, n112: 112,
+cards: [
+{ num: '00', name: 'Current · Log', mark: 'log', now: true, top: false, line: 'Sync’s commit graph with a checked task at its head. Dark only, and the head is still Rex blue.' },
+{ num: '01', name: 'Spark', mark: 'spark', now: false, top: true, topLabel: 'Top 3 · #3', line: 'The checked Ember box and the eight-ray spark the app plays when you finish a task.' },
+{ num: '02', name: 'Ember tile', mark: 'ember', now: false, top: false, line: 'The app’s lit tile at full size, with one big check. An Ember body in light, an Ember check in dark.' },
+{ num: '03', name: 'Fan', mark: 'fan', now: false, top: false, line: 'Your lists as a fan of tiles in the sidebar’s colours, with today’s on top and checked.' },
+{ num: '04', name: 'Steps', mark: 'steps', now: false, top: false, line: 'A check built from five tiles, light Ember to deep: many small tasks adding up to one done.' },
+{ num: '05', name: 't', mark: 'letter', now: false, top: true, topLabel: 'Top 3 · #1', line: 'A lowercase t: the stem in ink, the crossbar an Ember task row. It reads as a letter at 16.' },
+{ num: '06', name: 'Breakout', mark: 'breakout', now: false, top: true, topLabel: 'Top 3 · #2', line: 'A check breaking out of its ring: done, and moving on. One gesture in two strokes.' },
+{ num: '07', name: 'Daybreak', mark: 'daybreak', now: false, top: false, line: 'Today’s sun rising behind a checked box: the view you open first each morning.' },
+{ num: '08', name: 'Cursor', mark: 'cursor', now: false, top: false, line: 'A check, then the block cursor waiting for the next task. Round 1’s top pick, redone in Ember.' },
+{ num: '09', name: 'Chain', mark: 'chain', now: false, top: false, line: 'Two linked rounds of the sync log, one in ink and one in Ember. The current idea, made bold.' },
+{ num: '10', name: 'Tick', mark: 'tick', now: false, top: false, line: 'The plainest mark: one heavy check with an Ember short stroke. It survives 16 best.' }
+],
+top: [
+{ mark: 'letter', title: '1 · 05 t', why: 'A name, not another checkbox. It’s ownable and holds at 16, but it ties the icon to “Tasks”.' },
+{ mark: 'breakout', title: '2 · 06 Breakout', why: 'One clear gesture with a round silhouette at 16. It’s close to the check-circle family.' },
+{ mark: 'spark', title: '3 · 01 Spark', why: 'It’s the app’s own checkbox and spark, the warmest of the set. At 16 the rays thin to a halo.' }
+]
+};
+}
+}
+</script>
+</body>
+</html>

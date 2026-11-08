@@ -1,0 +1,32 @@
+{
+  "v": 3,
+  "createdOnFiles": {"v": 1, "at": "2026-11-08T20:45:00Z"},
+  "title": "Tasks logo, round 2",
+  "launch": {"view": "canvas", "page": "directions"},
+  "pages": [{"id": "directions", "name": "Directions"}, {"id": "parts", "name": "Parts"}],
+  "boards": {
+    "Main.dc.html": {"x": 0, "y": 0, "w": 1848, "h": 1400, "radius": 16, "page": "directions", "title": "Overview · the current icon and ten new directions, macOS and iOS, light and dark, 32 and 16"},
+    "D00-Current.dc.html": {"x": 0, "y": 1640, "w": 1640, "h": 900, "radius": 16, "page": "directions", "title": "00 Current · Log, as shipped"},
+    "D01-Spark.dc.html": {"x": 1720, "y": 1640, "w": 1640, "h": 900, "radius": 16, "page": "directions", "title": "01 Spark · the checked box and the completion spark"},
+    "D02-Ember.dc.html": {"x": 0, "y": 2660, "w": 1640, "h": 900, "radius": 16, "page": "directions", "title": "02 Ember tile · the app's lit tile, one big check"},
+    "D03-Fan.dc.html": {"x": 1720, "y": 2660, "w": 1640, "h": 900, "radius": 16, "page": "directions", "title": "03 Fan · your lists as a fan of tiles, the top one checked"},
+    "D04-Steps.dc.html": {"x": 0, "y": 3680, "w": 1640, "h": 900, "radius": 16, "page": "directions", "title": "04 Steps · a check built from five tiles"},
+    "D05-Letter.dc.html": {"x": 1720, "y": 3680, "w": 1640, "h": 900, "radius": 16, "page": "directions", "title": "05 t · a lowercase t with an Ember crossbar"},
+    "D06-Breakout.dc.html": {"x": 0, "y": 4700, "w": 1640, "h": 900, "radius": 16, "page": "directions", "title": "06 Breakout · a check breaking out of its ring"},
+    "D07-Daybreak.dc.html": {"x": 1720, "y": 4700, "w": 1640, "h": 900, "radius": 16, "page": "directions", "title": "07 Daybreak · Today's sun over a checked box"},
+    "D08-Cursor.dc.html": {"x": 0, "y": 5720, "w": 1640, "h": 900, "radius": 16, "page": "directions", "title": "08 Cursor · a check, then the block cursor, in Ember"},
+    "D09-Chain.dc.html": {"x": 1720, "y": 5720, "w": 1640, "h": 900, "radius": 16, "page": "directions", "title": "09 Chain · two linked rounds of the sync log"},
+    "D10-Tick.dc.html": {"x": 0, "y": 6740, "w": 1640, "h": 900, "radius": 16, "page": "directions", "title": "10 Tick · one heavy check, the short stroke Ember"},
+    "Sheet.dc.html": {"x": 0, "y": 0, "w": 1640, "h": 900, "radius": 16, "page": "parts", "title": "Sheet · the per-direction layout (Mark tweak picks the direction)"},
+    "Icon.dc.html": {"x": 1720, "y": 0, "w": 512, "h": 512, "page": "parts", "title": "Icon · every mark, look, shape and size (tweaks)"}
+  },
+  "order": ["Main.dc.html", "D00-Current.dc.html", "D01-Spark.dc.html", "D02-Ember.dc.html", "D03-Fan.dc.html", "D04-Steps.dc.html", "D05-Letter.dc.html", "D06-Breakout.dc.html", "D07-Daybreak.dc.html", "D08-Cursor.dc.html", "D09-Chain.dc.html", "D10-Tick.dc.html", "Sheet.dc.html", "Icon.dc.html"],
+  "notes": {
+    "title": {"x": 0, "y": -300, "text": "Tasks · logo, round 2", "kind": "title1", "maxW": 2560, "page": "directions"},
+    "weak": {"x": 1928, "y": 0, "w": 560, "size": "m", "fill": "orange", "page": "directions", "text": "What might be weak about the current icon (guesses for you to confirm, not your reasons)\n\n1. It's off-palette. The app went Ember on 2026-11-01, but the icon's head is still Rex blue (#2F81F7).\n\n2. Its idea doesn't show. The sync log drawn as a commit graph is an engineer's in-joke; to anyone else it's a bulleted checklist, the most common to-do glyph there is.\n\n3. It's weak at small sizes. At 16 and 32 it's a blue dot beside grey dashes, with no silhouette of its own in the Dock or a Finder list.\n\n4. It doesn't share the app's finish. The app now draws solid, lit tiles with white glyphs; the icon is a flat diagram of thin parts.\n\n5. It's busy: nine parts (three nodes, two links, three bars and a check) for an app whose point is quiet."},
+    "top3": {"x": 1928, "y": 700, "w": 560, "size": "m", "fill": "green", "page": "directions", "text": "My top 3\n\n1. 05 t. The only one that's a name and not a checkbox: an ownable letterform, with the Ember crossbar as a task row. It reads at 16 and sits apart in the Dock. The risk is that it ties the icon to the working name \"Tasks\".\n\n2. 06 Breakout. A single gesture, a check leaving its ring (done, and moving on). It has a clear round silhouette at 16, and the two colours separate the two strokes. The risk is that it's in the check-circle family.\n\n3. 01 Spark. It uses what the app already does: the Ember checkbox and the spark it plays when you finish a task (COLOR.md D). It's the warmest and most \"this app\" of the set. At 16 the rays thin to a halo, but the orange square still carries it.\n\nSafe fallback: 02 Ember tile is the strongest at 16, but also the most generic."}
+  },
+  "designSystems": [
+    {"title": "Pane", "namespace": "pane", "artifact": "https://claude.ai/artifact/MS3VdrN9VHU7A7pTUTzpm8", "version": "1793611507-82bc", "copiedAt": "2026-11-08T20:45:00Z"}
+  ]
+}

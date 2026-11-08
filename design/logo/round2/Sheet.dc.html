@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Logo direction sheet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1640px; height: 900px; box-sizing: border-box; padding: 32px 30px; background: #111111; color: #E6EDF3; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif; -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; gap: 22px;">
+
+<header style="display: flex; align-items: baseline; gap: 14px; height: 34px;">
+<span style="font: 600 13px/16px 'SF Mono', ui-monospace, Menlo, monospace; color: #7F8386;">{{info.num}}</span>
+<h1 style="margin: 0; font-size: 28px; line-height: 34px; font-weight: 600;">{{info.name}}</h1>
+<p style="margin: 0; font-size: 15px; line-height: 20px; color: #A8ADB1;">{{info.line}}</p>
+<sc-if value="{{info.top}}" hint-placeholder-val="{{false}}"><span style="align-self: center; height: 22px; padding: 0 10px; border-radius: 11px; background: #362620; color: #E68565; font-size: 12px; line-height: 22px; font-weight: 600;">{{info.topLabel}}</span></sc-if>
+</header>
+
+<div style="display: flex; gap: 20px; height: 420px;">
+<section style="flex: 1 1 0; box-sizing: border-box; padding: 18px; border-radius: 16px; background: #E9E9EA; display: flex; flex-direction: column;">
+<h2 style="margin: 0; font-size: 11px; line-height: 14px; font-weight: 600; color: #626568;">macOS · light · 1024 shown at 300</h2>
+<div style="flex-grow: 1; display: flex; align-items: center; justify-content: center;">
+<dc-import name="Icon" mark="{{mark}}" look="light" shape="mac" size="{{n300}}" hint-size="300px,300px"></dc-import>
+</div>
+</section>
+<section style="flex: 1 1 0; box-sizing: border-box; padding: 18px; border-radius: 16px; background: #181818; box-shadow: inset 0 0 0 1px #262728; display: flex; flex-direction: column;">
+<h2 style="margin: 0; font-size: 11px; line-height: 14px; font-weight: 600; color: #7F8386;">macOS · dark · 1024 shown at 300</h2>
+<div style="flex-grow: 1; display: flex; align-items: center; justify-content: center;">
+<dc-import name="Icon" mark="{{mark}}" look="dark" shape="mac" size="{{n300}}" hint-size="300px,300px"></dc-import>
+</div>
+</section>
+<section style="flex: 1 1 0; box-sizing: border-box; padding: 18px; border-radius: 16px; background: #F2F2F7; display: flex; flex-direction: column;">
+<h2 style="margin: 0; font-size: 11px; line-height: 14px; font-weight: 600; color: #626568;">iOS · light · rounded square at 240</h2>
+<div style="flex-grow: 1; display: flex; align-items: center; justify-content: center;">
+<dc-import name="Icon" mark="{{mark}}" look="light" shape="ios" size="{{n240}}" hint-size="240px,240px"></dc-import>
+</div>
+</section>
+<section style="flex: 1 1 0; box-sizing: border-box; padding: 18px; border-radius: 16px; background: #000000; box-shadow: inset 0 0 0 1px #262728; display: flex; flex-direction: column;">
+<h2 style="margin: 0; font-size: 11px; line-height: 14px; font-weight: 600; color: #7F8386;">iOS · dark · rounded square at 240</h2>
+<div style="flex-grow: 1; display: flex; align-items: center; justify-content: center;">
+<dc-import name="Icon" mark="{{mark}}" look="dark" shape="ios" size="{{n240}}" hint-size="240px,240px"></dc-import>
+</div>
+</section>
+</div>
+
+<div style="display: flex; gap: 20px; flex-grow: 1;">
+<section style="flex: 1 1 0; box-sizing: border-box; padding: 18px; border-radius: 16px; background: #E9E9EA; display: flex; flex-direction: column;">
+<h2 style="margin: 0; font-size: 11px; line-height: 14px; font-weight: 600; color: #626568;">Light · 128 to 16 at 1× (32 and 16 use the small cut)</h2>
+<div style="flex-grow: 1; display: flex; align-items: flex-end; justify-content: center; gap: 28px; padding-bottom: 8px;">
+<sc-for list="{{ladder}}" as="s" hint-placeholder-count="4">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+<dc-import name="Icon" mark="{{mark}}" look="light" shape="mac" size="{{s.n}}" hint-size="{{s.hint}}"></dc-import>
+<span style="font: 500 11px/14px 'SF Mono', ui-monospace, Menlo, monospace; color: #626568;">{{s.label}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+<section style="flex: 1 1 0; box-sizing: border-box; padding: 18px; border-radius: 16px; background: #181818; box-shadow: inset 0 0 0 1px #262728; display: flex; flex-direction: column;">
+<h2 style="margin: 0; font-size: 11px; line-height: 14px; font-weight: 600; color: #7F8386;">Dark · 128 to 16 at 1×</h2>
+<div style="flex-grow: 1; display: flex; align-items: flex-end; justify-content: center; gap: 28px; padding-bottom: 8px;">
+<sc-for list="{{ladder}}" as="s" hint-placeholder-count="4">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+<dc-import name="Icon" mark="{{mark}}" look="dark" shape="mac" size="{{s.n}}" hint-size="{{s.hint}}"></dc-import>
+<span style="font: 500 11px/14px 'SF Mono', ui-monospace, Menlo, monospace; color: #7F8386;">{{s.label}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+<section style="flex: 1 1 0; box-sizing: border-box; padding: 18px; border-radius: 16px; background: #181818; box-shadow: inset 0 0 0 1px #262728; display: flex; flex-direction: column; gap: 14px;">
+<h2 style="margin: 0; font-size: 11px; line-height: 14px; font-weight: 600; color: #7F8386;">In context · the Dock at 48, a Finder list at 16 (neighbours are blank stand-ins)</h2>
+<div style="display: flex; gap: 12px;">
+<div style="flex: 1 1 0; height: 92px; border-radius: 12px; background: #2B2F36; display: flex; align-items: center; justify-content: center;">
+<div style="display: flex; gap: 6px; padding: 5px 8px; border-radius: 16px; background: rgba(255,255,255,0.14); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);">
+<sc-for list="{{dock}}" as="it" hint-placeholder-count="5">
+<dc-import name="Icon" mark="{{it.mark}}" look="dark" shape="mac" size="{{n48}}" hint-size="48px,48px"></dc-import>
+</sc-for>
+</div>
+</div>
+<div style="flex: 1 1 0; height: 92px; border-radius: 12px; background: #C9D3DE; display: flex; align-items: center; justify-content: center;">
+<div style="display: flex; gap: 6px; padding: 5px 8px; border-radius: 16px; background: rgba(255,255,255,0.45); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5);">
+<sc-for list="{{dock}}" as="it" hint-placeholder-count="5">
+<dc-import name="Icon" mark="{{it.mark}}" look="light" shape="mac" size="{{n48}}" hint-size="48px,48px"></dc-import>
+</sc-for>
+</div>
+</div>
+</div>
+<div style="display: flex; gap: 12px; flex-grow: 1;">
+<div style="flex: 1 1 0; border-radius: 10px; background: #FFFFFF; padding: 8px; display: flex; flex-direction: column; gap: 2px;">
+<div style="display: flex; align-items: center; gap: 6px; height: 22px; padding: 0 6px; color: #1C1C1C; font-size: 13px;"><dc-import name="Icon" mark="blank" look="light" shape="mac" size="{{n16}}" hint-size="16px,16px"></dc-import><span>Preview</span></div>
+<div style="display: flex; align-items: center; gap: 6px; height: 22px; padding: 0 6px; border-radius: 5px; background: #DCE3EB; color: #1C1C1C; font-size: 13px;"><dc-import name="Icon" mark="{{mark}}" look="light" shape="mac" size="{{n16}}" hint-size="16px,16px"></dc-import><span>Tasks</span></div>
+<div style="display: flex; align-items: center; gap: 6px; height: 22px; padding: 0 6px; color: #1C1C1C; font-size: 13px;"><dc-import name="Icon" mark="blank" look="light" shape="mac" size="{{n16}}" hint-size="16px,16px"></dc-import><span>TextEdit</span></div>
+</div>
+<div style="flex: 1 1 0; border-radius: 10px; background: #1E1E1E; box-shadow: inset 0 0 0 1px #2D2E2E; padding: 8px; display: flex; flex-direction: column; gap: 2px;">
+<div style="display: flex; align-items: center; gap: 6px; height: 22px; padding: 0 6px; color: #E6EDF3; font-size: 13px;"><dc-import name="Icon" mark="blank" look="dark" shape="mac" size="{{n16}}" hint-size="16px,16px"></dc-import><span>Preview</span></div>
+<div style="display: flex; align-items: center; gap: 6px; height: 22px; padding: 0 6px; border-radius: 5px; background: #2D2E2E; color: #E6EDF3; font-size: 13px;"><dc-import name="Icon" mark="{{mark}}" look="dark" shape="mac" size="{{n16}}" hint-size="16px,16px"></dc-import><span>Tasks</span></div>
+<div style="display: flex; align-items: center; gap: 6px; height: 22px; padding: 0 6px; color: #E6EDF3; font-size: 13px;"><dc-import name="Icon" mark="blank" look="dark" shape="mac" size="{{n16}}" hint-size="16px,16px"></dc-import><span>TextEdit</span></div>
+</div>
+</div>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"mark":{"editor":"enum","options":["log","spark","ember","fan","steps","letter","breakout","daybreak","cursor","chain","tick"],"default":"letter"},"$preview":{"width":1640,"height":900}}'>
+class Component extends DCLogic {
+renderVals() {
+const mark = this.props.mark ?? 'letter';
+const INFO = {
+log: { num: '00', name: 'Current · Log', line: 'Sync’s commit graph with a checked task at its head. As shipped: dark in every appearance, the head in Rex blue.' },
+spark: { num: '01', name: 'Spark', line: 'The checked Ember box and the eight-ray spark the app plays when you finish a task (COLOR.md D).', top: true, topLabel: 'Top 3 · #3' },
+ember: { num: '02', name: 'Ember tile', line: 'The app’s lit tile at full size, with one big check. Light: an Ember body. Dark: the dark body and an Ember check.' },
+fan: { num: '03', name: 'Fan', line: 'Your lists as a fan of tiles in the sidebar’s colours, with today’s on top and checked.' },
+steps: { num: '04', name: 'Steps', line: 'A check built from five tiles, light Ember to deep: many small tasks adding up to one done.' },
+letter: { num: '05', name: 't', line: 'A lowercase t. The stem is ink and the crossbar is an Ember task row. It reads as a letter even at 16.', top: true, topLabel: 'Top 3 · #1' },
+breakout: { num: '06', name: 'Breakout', line: 'A check breaking out of its ring: done, and moving on. One gesture in two strokes and two colours.', top: true, topLabel: 'Top 3 · #2' },
+daybreak: { num: '07', name: 'Daybreak', line: 'Today’s sun rising behind a checked box: the view you open first each morning. The rays drop below 60px.' },
+cursor: { num: '08', name: 'Cursor', line: 'A check, then the block cursor waiting for the next task. Round 1’s top pick, redone in Ember.' },
+chain: { num: '09', name: 'Chain', line: 'Two linked rounds of the append-only log, ink over Ember at one crossing and under at the other.' },
+tick: { num: '10', name: 'Tick', line: 'The plainest mark: one heavy check with an Ember short stroke. It survives 16 best.' }
+};
+const info = INFO[mark] || INFO.letter;
+return {
+mark,
+info: { top: false, topLabel: '', ...info },
+n16: 16, n48: 48, n240: 240, n300: 300,
+ladder: [128, 64, 32, 16].map((n) => ({ n, hint: n + 'px,' + n + 'px', label: String(n) })),
+dock: [{ mark: 'blank' }, { mark: 'blank' }, { mark }, { mark: 'blank' }, { mark: 'blank' }]
+};
+}
+}
+</script>
+</body>
+</html>
