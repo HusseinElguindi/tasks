@@ -1014,22 +1014,24 @@ final class FlowTests: XCTestCase {
     }
 
     /// The copy follows the finger sideways too, keeping the grab offset; the slot is still chosen by its height, and
-    /// it sets down back in the row's column.
+    /// it sets down back in the row's column. (It's taken to the pre-lab, not to the bench under it: with two-line rows
+    /// the bench's middle is in the list's bottom edge-scroll band, and the second's hold there scrolled the list.)
     func testDragCopyFollowsSideways() {
         app.launchArguments += ["-screen", "list:phys", "-dragProbe", "YES"]
         app.launch()
         let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
         XCTAssertTrue(redo.appears(timeout: 10))
         app.settle()
+        let prelab = app.staticTexts["Lab 4 pre-lab · RC circuits"].firstMatch
         let bench = app.staticTexts["Book a make-up lab bench"].firstMatch
         redo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            .press(forDuration: 0.5, thenDragTo: bench.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: 70, dy: 0)),
+            .press(forDuration: 0.5, thenDragTo: prelab.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: 70, dy: 0)),
                    withVelocity: .default, thenHoldForDuration: 1)
         sleep(2)
-        XCTAssertEqual(Double(probe()["dx"] ?? "") ?? 0, 70 + Double(bench.frame.midX - redo.frame.midX), accuracy: 4,
+        XCTAssertEqual(Double(probe()["dx"] ?? "") ?? 0, 70 + Double(prelab.frame.midX - redo.frame.midX), accuracy: 4,
                        "the copy was where the finger took it, 70 pt right: \(probe())")
-        XCTAssertGreaterThan(y(redo), y(bench), "dropped by its height: under the bench, as without the sideways move")
-        XCTAssertLessThan(y(redo), y(heading("Exam prep")))
+        XCTAssertGreaterThan(y(redo), y(prelab), "dropped by its height: under the pre-lab, as without the sideways move")
+        XCTAssertLessThan(y(redo), y(bench), "above the next")
         assertLandedExactly()
     }
 
@@ -1629,15 +1631,30 @@ final class FlowTests: XCTestCase {
             let origin = app.coordinate(withNormalizedOffset: .zero)
             let field = app.textFields["headingName"]
             var seen = 0
+            // Lectures' place, by Labs' (always on the screen): slow drags, held at their end so they don't fling, till
+            // it's within 3 pt. A short one goes back and on (the list's end is close below): a drag under the slop
+            // would be a tap.
+            let labs = heading("Labs"), span = labs.frame.minY - lectures.frame.minY
+            func scroll(lectures span: CGFloat, to y: CGFloat) {
+                func drag(_ d: CGFloat) {
+                    origin.withOffset(CGVector(dx: 200, dy: 700))
+                        .press(forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: 200, dy: 700 - d)),
+                               withVelocity: .slow, thenHoldForDuration: 0.5)
+                    sleep(1)
+                }
+                for _ in 0..<4 {
+                    let d = labs.frame.minY - span - y
+                    if abs(d) <= 3 { return }
+                    if abs(d) < 30 { drag(d - 80); drag(80) } else { drag(d) }
+                }
+            }
             for attempt in 1...3 {
                 let what = "\(look), rename \(attempt)"
-                // To the list's end: Lectures' box top (its name's frame, padded as the box is) is under the bar, its
-                // name's foot still shows.
-                origin.withOffset(CGVector(dx: 200, dy: 650))
-                    .press(forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: 200, dy: 250)),
-                           withVelocity: 600, thenHoldForDuration: 0.5)
-                sleep(1)
+                // Lectures' box top (its name's frame, padded as the box is) 12 pt under the bar, its name's foot still
+                // showing. (It was a drag to the list's end; with two-line rows that takes Lectures off the screen.)
+                scroll(lectures: span, to: top - 12)
                 let f = lectures.frame
+                print("RENAME \(what): Lectures \(f), the list's top \(top)")
                 XCTAssertLessThan(f.minY, top - 2, "\(what): Lectures' top under the bar (\(f), the list's top \(top))")
                 XCTAssertGreaterThan(f.maxY, top + 12, "\(what): its name shows")
                 let film = Film()
@@ -2240,9 +2257,10 @@ final class FlowTests: XCTestCase {
             func luma(_ x: Int, _ row: Int) -> Int { let i = (row * w + x) * 4; return (Int(px[i]) + Int(px[i + 1]) + Int(px[i + 2])) / 3 }
             let xs = [0.2, 0.35, 0.5, 0.65].map { Int(width * $0 * scale) }
             var rules: [Int] = []
-            // Down to 40 above the bottom: the + is right of the columns looked at, and the iPhone 18 Pro has Exam
-            // prep's rule below the old 120 (it failed there on List too).
-            for row in Int(labs.minY * scale)..<Int((height - 40) * scale) {
+            // Down to 20 above the bottom: the + is right of the columns looked at, and the iPhone 18 Pro has Exam
+            // prep's rule below the old 120 (it failed there on List too), and with two-line rows and the synced notes
+            // at 837 of 874, below the old 40. (The home indicator, under 854, is clear of the 0.2 column.)
+            for row in Int(labs.minY * scale)..<Int((height - 20) * scale) {
                 let l = xs.map { luma($0, row) }, bg = luma(Int(4 * scale), row)
                 if l.allSatisfy({ abs($0 - bg) >= 6 }), l.max()! - l.min()! <= 3, rules.last.map({ row - $0 > 3 }) ?? true {
                     rules.append(row)
@@ -3232,6 +3250,11 @@ final class FlowTests: XCTestCase {
     /// A heading with no tasks takes a drop over its row or the air above the next heading: the top of its section.
     func testADropIntoAnEmptyHeading() {
         openPhys()
+        // To the list's end first: with two-line rows the formula sheet is at the foot, where Home's New List bar is
+        // still fading out as the list comes in (its press went to the bar), and Reading would be in the bottom
+        // edge-scroll band, so the drags' holds scrolled the list.
+        app.swipeUp()
+        app.settle()
         menuOpen {
             app.staticTexts["Make the midterm formula sheet"].firstMatch.press(forDuration: 1.0)
             app.buttons["New Heading Above"].tap()
@@ -3432,7 +3455,8 @@ final class FlowTests: XCTestCase {
         let y0 = header.frame.minY
         app.swipeUp()
         sleep(1)
-        XCTAssertLessThan(header.frame.minY, y0 - 20, "one finger still scrolls")
+        // With two-line rows the list is long enough that the swipe takes the header off the screen (its cell goes).
+        XCTAssertTrue(!header.exists || header.frame.minY < y0 - 20, "one finger still scrolls")
     }
 
     /// Complete with a mixed selection completes the open ones: "Completed 2 tasks", with Undo ("Complete 3 Tasks");
