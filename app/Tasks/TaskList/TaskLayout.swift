@@ -31,6 +31,8 @@ struct TaskLayout {
         /// The + adds to this list (Undated) or for this day (Upcoming).
         var list: EntityID?
         var day: CalendarDate?
+        /// A day inside one of Upcoming's months: a 24pt label (`dayInMonthLabel`).
+        var inMonth = false
     }
 
     enum Empty: Equatable { case list, today, allDone, upcoming, undated, completed, trash }
@@ -59,6 +61,10 @@ struct TaskLayout {
     var draftID: EntityID?
     /// The views' labels (Today's are list names, from `labels` alone).
     var labelInfo: [EntityID: LabelInfo] = [:]
+    /// Upcoming's columns (direction C): the lists its rows are in, whose widest short name sets the mark's column, and
+    /// the Deadline's column, as wide as its widest date (0: no row has one). Both stay put through a drag.
+    var markLists: [EntityID] = []
+    var deadlineColumn: CGFloat = 0
 
     // Headings and the title block (design/INTERACTIONS-v2.md §23).
     /// The title block's top (under a deleted list's banner, §28) and height: the large title, and a list's notes.

@@ -1305,13 +1305,69 @@ From Trash, a list puts the tasks back into that list; Today and Completed don't
 
 | View | Tasks | Groups, in order | Row extras | Source |
 |---|---|---|---|---|
-| Upcoming | Open, in active lists, whose **earlier date is after today**. Each sits on the day it will reach Today (SPEC §4: either date brings it in), so every dated open task is in exactly one of Today and Upcoming. A task with both dates shows **once**, on the earlier date | **The next seven days, always**: "Tomorrow", then weekday names, each with its date after it in 400 `ink-quiet` ("Monday  Nov 2"). An empty day's label is `ink-quiet` and still takes +, a double-click and a drop. **Then one group per month**: "Later in November" (the rest of the seventh day's month), "December", "January 2027". Within a group: by date, then the list's sidebar order, then the list's order | The list's name after the title (12pt `ink-tertiary`, as Today's Completed rows). In a day group the day's own date isn't repeated: When on that day shows no chip, and a deadline on that day reads "Due" (neutral flag chip). The other date shows as its usual chip | `dc:3225–3252`, `dc:3275`, `dc:3278–3284` |
+| Upcoming | Open, in active lists, whose **earlier date is after today**. Each sits on the day it will reach Today (SPEC §4: either date brings it in), so every dated open task is in exactly one of Today and Upcoming. A task with both dates shows **once**, on the earlier date | **The next seven days, always**: "Tomorrow", then weekday names, each with its date after it in 400 `ink-quiet` ("Monday  Nov 2"). An empty day's label is `ink-quiet` and still takes +, a double-click and a drop. **Then one group per month**: "Later in November" (the rest of the seventh day's month), "December", "January 2027". **A month lists its days** (2026-11-08, below): each day with tasks has its own label ("Wednesday  Nov 18", the same 11pt type in a 24pt slot) that takes +, a double-click and a drop like a day group's label; the month's label takes none of them, as before. Within a day: the list's sidebar order, then the list's order | **The list mark** (below), in a column, then the Deadline in a column. No row repeats the day it's filed under, in the first week or in a month: a When on that day shows no chip, and a deadline on that day reads "Due" (its tone's flag chip). The other date shows as a **date** ("Nov 16"), never a count (§24 "In Upcoming") | `dc:3225–3252`, `dc:3275`, `dc:3278–3284`; ROW-DENSITY.md C |
 | Undated | Open, in active lists, with **no When and no Deadline** | By list, in sidebar order, each list's name as the label with its +; rows in the list's order. Exactly Today's grouping | none | `dc:3218–3224` |
-| Completed | Completed, in active lists, **newest first, all of them**: it's the logbook (kept forever, SPEC §2; the app draws only what's on screen) | A group per local day for the last 7 days ("Today", "Yesterday", weekday names, with the date), then per month. A stamp ahead of today, from another device's clock, groups under Today (the user, 2026-11-02; `ViewGroups.past`) | The list's name; in a month group also the day ("School · Oct 22") | `dc:3253–3269` |
-| Trash | Deleted tasks, wherever their list is, and deleted lists, each one row (§28), newest deleted first. A task in a deleted list counts as deleted everywhere else | As Completed, by the day it was deleted | The list's name (and the day, in a month group). Titles `ink-secondary` (completed ones keep their struck `ink-tertiary`); the checkbox at 60% and deaf to the pointer; no When, no Deadline and no ring (§24) | `dc:3253–3269`, `css:427–430` |
+| Completed | Completed, in active lists, **newest first, all of them**: it's the logbook (kept forever, SPEC §2; the app draws only what's on screen) | A group per local day for the last 7 days ("Today", "Yesterday", weekday names, with the date), then per month (a logbook's months stay months: no day labels). A stamp ahead of today, from another device's clock, groups under Today (the user, 2026-11-02; `ViewGroups.past`) | The list mark at the row's end; in a month group also the day ("CS 489 · Oct 22") | `dc:3253–3269` |
+| Trash | Deleted tasks, wherever their list is, and deleted lists, each one row (§28), newest deleted first. A task in a deleted list counts as deleted everywhere else | As Completed, by the day it was deleted | The list mark (and the day, in a month group). A task under its deleted list's row has none; a deleted list's row keeps its count ("11 tasks"). Titles `ink-secondary` (completed ones keep their struck `ink-tertiary`); the checkbox at 60% and deaf to the pointer; no When, no Deadline and no ring (§24) | `dc:3253–3269`, `css:427–430` |
 
 Label metrics are Today's (`css:131`, `css:236–239`); the date part is `css:421`, an empty day `css:422`. Group labels
-keep one node per id while the view is open, so they move with their rows (`dc:3286–3310`).
+keep one node per id while the view is open, so they move with their rows (`dc:3286–3310`). A day inside a month has a
+day group's id ("d:2026-11-18"), so its label carries over when the day moves into the first week at midnight.
+
+### The list mark (2026-11-08)
+
+The user, 2026-11-08, on rows that mix lists and dates (design/ROW-DENSITY.md, direction C, "Day by day"): "Ok for the
+row readability, i like the C approach." The mock-ups are https://claude.ai/artifact/GRcqfVRJASqquUDWhjztFz (boards
+C and "C elsewhere").
+
+**What it is.** Where a row's list isn't already a label, the row ends with the list's mark: its 16×13 tile (the
+sidebar's small tile: its colour, its monogram), 6pt, then its **short name** in 12pt `ink-tertiary`. It replaces the
+list's full name. The full name is the mark's tooltip, VoiceOver's (the row reads "…, SE 463 — Software Project
+Management, Requirements, and Analysis") and the detail pane's. A press on the mark is the row's.
+
+| Where | The mark |
+|---|---|
+| Upcoming | In a column as wide as the view's widest short name (of the lists with rows there), tiles and names lined up; then 8, then the Deadline's column, as wide as the view's widest date, its capsule at the column's start. Rows without a Deadline keep the column |
+| Completed, Trash | At the row's end; in a month group the day follows it, " · Oct 22" |
+| Today | Its Completed group's rows. Open rows are under their list's label: no change |
+| Undated, a list | None: rows are under their list's label, or in it |
+| The medium Today widget (Mac) | The tile, 6, the short name, after the Deadline. The iPhone's waits for its own design |
+
+**The short name** (`ListName.short` in TasksCore, so every client and the widgets agree; the user: "Short names, yes
+(but not just --, do : and other common separators)"). It's derived from the name; there's no new field.
+- The part of the name before its first separator, trimmed, when that part is 1 to **12 characters**; otherwise the
+  whole name.
+- **Separators:** an em dash "—" or en dash "–" (spaced or not), a hyphen with a space on both sides (" - ", so
+  "ECE-358" and "e-mail" keep theirs), a colon followed by a space or ending the name ("SE 463: …", not "10:30"), a
+  vertical bar "|", a middle dot "·", and an opening parenthesis after a space ("ECE 358 (Computer Networks)").
+- **The first separator wins,** of any kind: "SE 463 — Part 1: Intro" is "SE 463".
+- **A separator at the very start doesn't count:** the search starts after the separators and spaces a name begins
+  with. "— Notes" has no short name; "| Work | Home" is "Work".
+- **Too long:** a first part over 12 characters gives the whole name ("Groceries and errands — weekly"): a long first
+  part doesn't tell lists apart at a glance any better than the name.
+- **No separator:** the whole name ("Inbox", "CS 489"). A blank name is "Untitled", as in the sidebar.
+
+**Colours stay automatic** (the user: "List colors, keep automatic"): the tile's colour is still the hash of the
+list's id (`ListModel.slot`), so two lists can share one; the short name next to it tells them apart. **The notes glyph
+stays** (the user: "Notes icon, keep it").
+
+**When the row is short** (replaces v2 feedback 16's list-name rule for these rows): the title keeps up to 120pt (all
+of a shorter one) and its notes hint; then the When goes; then the short name, leaving the tile; the tile and the
+Deadline never go, and the mark is never cut. In Upcoming the names are a column, so they go for the whole view at
+once, when the title's slot beside them would be under 120pt (the list pane under about 370pt with the user's course names).
+In Completed, Trash and Today each row decides, and a month row's day stays ("[C] Oct 30"). Only when even the tile
+and the Deadline leave no 120pt does the title go under it.
+
+**As built (2026-11-08, Mac).** TasksCore: `ListName.short` (`ListName.swift`, `ListNameTests`),
+`DateLabel.upcomingWhen` and `upcomingDeadline` (`DatePhrase.swift`), `ViewGroups.upcomingDayInMonth`
+(`ViewGroupsTests.testUpcomingDates`, `testUpcomingDaysInsideAMonth`), for the iPhone and the widgets to take later.
+The app: `ViewLayout.buildView` makes a month a label-only group followed by a 24pt day group per day with tasks
+(`TaskLayout.dayInMonthLabel`, `LabelInfo.inMonth`), and measures the Deadline's column and the lists in view;
+`TaskRowView.layoutMark` lays out the mark (`RowModel.Mark`, `RowModel.deadlineColumn`). While rows are dragged in
+Upcoming, the days they left keep their labels, empty, so the labels under the pointer don't jump up (a month whose
+only task moved used to lose its label mid-drag). The medium Today widget's mark is Mac only (`#if os(macOS)` in
+`widgets/Shared/TodayViews.swift`). Debug: `-demoData YES -demoCourses YES` seeds the screenshots' data
+(`Support/DemoCourses.swift`). The iPhone is unchanged.
 
 ### What you can do in each
 
@@ -1705,8 +1761,12 @@ A deadline counts the whole days left, not counting its own day; the When says w
 - **The deadline's day reads "Due today":** the one day the countdown runs out, and the one amber capsule.
 - **Farther than 14 days, the date:** "Nov 15", with the year when it isn't this year. No "Due": the flag and the
   capsule say it.
-- **In Upcoming,** a deadline on its own day group's date reads "Due". Elsewhere it counts from today, like everywhere
-  else: "3d left" under Monday is three days from today.
+- **In Upcoming,** both dates read as **dates**: "Nov 16", "Jan 3, 2027", never "9d left" or "in 11d" (the user,
+  2026-11-08: "Yea show dates in upcoming."; this changes the 2026-10-31 pick in Upcoming only). Its groups are a
+  calendar, and a count under a future day counted from today, which made the reader do a sum. A deadline on its own
+  day's date reads "Due"; a When on its own day isn't shown (§22). Tones, the ring, the tooltips ("Deadline: Mon,
+  Nov 16 · 9 days left") and the detail pane's words are unchanged, so the count is a hover away. Today and the lists
+  keep the counts: there the frame *is* today. (`DateLabel.upcomingWhen`, `DateLabel.upcomingDeadline`.)
 
 **The When** is a plan, not a countdown, so it never says "left" or "ago":
 
@@ -1762,7 +1822,8 @@ These follow v2 feedback 16 as the app built it (`f08ca77`), with the When in th
   out and the title gets the room back. In SwiftUI, that's `ViewThatFits` over the title slot with and without the
   When.
 - The deadline always shows, at its full size.
-- The list name keeps up to 72pt, then truncates with the title's end fade.
+- The list name keeps up to 72pt, then truncates with the title's end fade. (Superseded 2026-11-08 by the list mark,
+  §22: its short name goes whole, after the When, and its tile stays.)
 - Spare room goes to the title first.
 - Only if even that doesn't fit (the list pane at its 220pt minimum) does the title go under 120pt.
 - Dates never truncate.

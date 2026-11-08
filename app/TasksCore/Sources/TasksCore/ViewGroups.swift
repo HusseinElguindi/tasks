@@ -80,6 +80,14 @@ public enum ViewGroups {
         return Group(id: "m:\(day.year)-\(day.month)", kind: .month, day: nil, name: name, sub: nil)
     }
 
+    /// A day inside one of Upcoming's month groups (ROW-DENSITY.md direction C, the user, 2026-11-08): a month lists
+    /// its days too, each with a smaller label ("Wednesday  Nov 18") that takes +, a double-click and a drop like a day
+    /// group's, so no row repeats the day it's filed under. Only days with tasks get one. Its id is a day group's
+    /// ("d:2026-11-18"), so a day keeps its label as it moves into the first week at midnight.
+    public static func upcomingDayInMonth(_ day: CalendarDate) -> Group {
+        Group(id: "d:" + day.string, kind: .day, day: day, name: weekday(day), sub: DateLabel.monthDay(day))
+    }
+
     // MARK: Completed and Trash
 
     /// Completed's and Trash's group for the local day a task was completed or deleted: a group per day for the last

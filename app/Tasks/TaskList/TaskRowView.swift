@@ -52,12 +52,30 @@ struct RowModel: Equatable {
     }
     /// A deleted list's task, expanded under its row: indented 26, so its box starts under the list's name (§28).
     var indent: CGFloat = 0
+    /// The list mark (§22 "The list mark", direction C): the list's 16×13 tile and its short name, where the row's list
+    /// isn't in a label (Upcoming, Completed, Trash, Today's Completed group). Replaces the list's full name there.
+    var mark: Mark?
+    struct Mark: Equatable {
+        var monogram: String
+        var slot: Int
+        /// The short name (`ListName.short`), and the full name for its tooltip and VoiceOver.
+        var name: String
+        var full: String
+        /// Upcoming: the names' column, as wide as the view's widest short name, so tiles and names line up down the
+        /// view. nil: the mark's own width, at the row's end (Completed, Trash, Today).
+        var column: CGFloat?
+        /// Completed and Trash, in a month group: the day after the name, "Oct 22", kept whole (" · Oct 22").
+        var day: String?
+    }
+    /// Upcoming: the Deadline's column (the widest date in the view), the capsule at its start; nil: the capsule at the
+    /// row's end, as everywhere else.
+    var deadlineColumn: CGFloat?
 }
 
 /// A task row (css:159–188): a 30pt shape, 10 in from the pane's sides, radius 8. Checkbox at 10, the title 10 after
 /// it with its last 24pt fading out, chips 8 after the title, the › slot always kept, 5 from the right edge.
 final class TaskRowView: NSView {
-    enum Part: Equatable { case body, check, chip(Overlays.Picker.Field), open, disclosure }
+    enum Part: Equatable { case body, check, chip(Overlays.Picker.Field), open, disclosure, mark }
     enum Style { case row, lifted }
 
     private(set) var model: RowModel?
@@ -78,6 +96,10 @@ final class TaskRowView: NSView {
     private let whereLabel = TextLayer()
     private let whereMask = FadeMask()
     private let whereSuffixLabel = TextLayer()
+    /// The list mark: its tile and its short name (and a month row's day) in 12pt `ink-tertiary`.
+    private let markTile = TileLayer()
+    private let markLabel = TextLayer()
+    private(set) var markFrame: CGRect = .zero
     private let whenChip = ChipLayer()
     private let deadlineChip = ChipLayer()
     private var chipFrames: [(Overlays.Picker.Field, CGRect)] = []
@@ -117,6 +139,8 @@ final class TaskRowView: NSView {
         layer.addSublayer(strike)
         layer.addSublayer(whereLabel)
         layer.addSublayer(whereSuffixLabel)
+        layer.addSublayer(markTile)
+        layer.addSublayer(markLabel)
         layer.addSublayer(whenChip)
         layer.addSublayer(deadlineChip)
         whereLabel.mask = whereMask
@@ -128,7 +152,7 @@ final class TaskRowView: NSView {
         layer.addSublayer(tile)
         layer.addSublayer(disclosure)
         for l in [selection, flash, ring, check, title, hintGlyph, hintCount, strike, whereLabel, whereSuffixLabel, open, whereMask, titleMask,
-                  whenChip, deadlineChip, tile, disclosure] as [CALayer] {
+                  whenChip, deadlineChip, tile, disclosure, markTile, markLabel] as [CALayer] {
             l.actions = Self.noActions
         }
     }
@@ -226,11 +250,17 @@ final class TaskRowView: NSView {
         // The Deadline at the right, always shown (§24): a date never truncates. `.chips` keeps its 8pt margin even
         // when there's none.
         chipFrames = []
+        // In Upcoming the Deadline has a column, as wide as the view's widest, its capsule at the column's start so the
+        // marks before it line up (direction C).
+        let column = m.deadlineColumn ?? 0
         if let c = m.deadline {
             let w = ChipLayer.width(c.content)
-            let f = CGRect(x: right - w, y: (TK.M.row - TK.M.chip) / 2, width: w, height: TK.M.chip)
+            let x = column > 0 ? right - max(w, column) : right - w
+            let f = CGRect(x: x, y: (TK.M.row - TK.M.chip) / 2, width: w, height: TK.M.chip)
             bind(deadlineChip, c, frame: f, m: m, paletteChanged: paletteChanged, same: same)
-            right -= w
+            right -= max(w, column)
+        } else {
+            right -= column
         }
         deadlineChip.isHidden = m.deadline == nil
         right -= TK.M.chipsGap
@@ -248,6 +278,11 @@ final class TaskRowView: NSView {
         let hintW = layoutHint(m, palette)
         let hintSpace = hintW > 0 ? hintW + 6 : 0
         let titleNat = ceil(title.textWidth) + 1
+        // The list mark, 8 after the title's slot: its tile, 6, its short name, whole or not at all (direction C).
+        // Who gives way: the title keeps up to `titleKeep`; then the When; then the short name, leaving the tile; the
+        // tile and the Deadline never go. In Upcoming the names are a column, so they go for the whole view at once
+        // (the row's width decides, not its title); elsewhere each row decides, and a month row's day stays.
+        right -= layoutMark(m, right: right, titleX: titleX, keep: min(titleNat, Self.titleKeep) + hintSpace)
         // The When's glyph sits 6 after the hint (or the title); its capsule's 5pt padding reaches back over the gap.
         let whenNat = m.when.map { ChipLayer.width($0.content) + 6 - ChipLayer.quietPad } ?? 0
         let showWhen = whenNat > 0 && right - titleX >= min(titleNat, Self.titleKeep) + hintSpace + whenNat
@@ -342,7 +377,7 @@ final class TaskRowView: NSView {
             }
         }
         let notesLabel = !m.notes.hasNotes ? nil : m.notes.total > 0 ? "\(m.notes.checked) of \(m.notes.total) checked" : "Has notes"
-        let whereFull = m.whereText.map { $0 + (m.whereSuffix ?? "") }
+        let whereFull = m.mark.map { $0.full + ($0.day.map { ", " + $0 } ?? "") } ?? m.whereText.map { $0 + (m.whereSuffix ?? "") }
         let dates = [m.when, m.deadline].compactMap { $0.map { $0.tip.isEmpty ? $0.content.text : $0.tip } }
         if let dl = m.deletedList {
             // "School, deleted list, 11 tasks, collapsed" (§28).
@@ -361,8 +396,9 @@ final class TaskRowView: NSView {
         guard let m = model else { return .body }
         if m.deletedList != nil { return style == .row && disclosure.frame.contains(p) ? .disclosure : .body }
         if style == .row, m.openAllowed, open.frame.insetBy(dx: 0, dy: 0).contains(p) { return .open }
-        if m.trashed { return .body }
+        if m.trashed { return m.mark != nil && !markTile.isHidden && markFrame.insetBy(dx: -2, dy: -4).contains(p) ? .mark : .body }
         for (field, f) in chipFrames where f.contains(p) { return .chip(field) }
+        if m.mark != nil, !markTile.isHidden, markFrame.insetBy(dx: -2, dy: -4).contains(p) { return .mark }
         // The checkbox's hit area is 30×30 around it (css:192); a new task's box ignores the pointer.
         let c = check.position
         if !m.draft, abs(p.x - c.x) <= TK.M.checkHit / 2, abs(p.y - c.y) <= TK.M.checkHit / 2 { return .check }
@@ -390,7 +426,7 @@ final class TaskRowView: NSView {
             c.isHidden ? "-" : "'\(c.content.text)'@\(Int(c.frame.minX))w\(Int(c.frame.width))"
         }
         return "'\(m.title)' hint=\(hintGlyph.isHidden ? "-" : hintCount.isHidden ? "notes" : hintCount.text) "
-            + "where=\(whereLabel.isHidden ? "-" : whereLabel.text) when=\(chip(whenChip)) deadline=\(chip(deadlineChip)) "
+            + "where=\(whereLabel.isHidden ? "-" : whereLabel.text) mark=\(markTile.isHidden ? "-" : "\(markTile.frame.minX.rounded())'\(markLabel.isHidden ? "" : markLabel.text)'") when=\(chip(whenChip)) deadline=\(chip(deadlineChip)) "
             + "check=\(check.isHidden ? "-" : String(format: "%.1f", check.opacity)) \(debugDates)"
     }
     #endif
@@ -442,6 +478,44 @@ final class TaskRowView: NSView {
     static let titleKeep: CGFloat = 120
     static let whereKeep: CGFloat = 72
     static let whereMin: CGFloat = 32
+
+    /// The mark's tooltip: the list's full name.
+    var markTip: String? { markTile.isHidden ? nil : model?.mark?.full }
+
+    /// Lays out the list mark ending at `right`, and returns the room it takes with the 8 before it (0 without one).
+    /// `keep` is what the title's slot keeps before the short name goes (a column's names go only under `titleKeep`).
+    private func layoutMark(_ m: RowModel, right: CGFloat, titleX: CGFloat, keep: CGFloat) -> CGFloat {
+        guard let mk = m.mark else {
+            markTile.isHidden = true
+            markLabel.isHidden = true
+            markFrame = .zero
+            return 0
+        }
+        let font = TK.Font.small
+        let tileW = TileLayer.dimensions(.small).width
+        let full = mk.day.map { mk.name + " · " + $0 } ?? mk.name
+        let compact = mk.day ?? ""
+        let fullW: CGFloat = tileW + 6 + (mk.column ?? ceil(TextLayer.width(full, font: font)))
+        let compactW: CGFloat = compact.isEmpty ? tileW : tileW + 6 + ceil(TextLayer.width(compact, font: font))
+        let slot = right - titleX
+        let showName = mk.column != nil ? slot - fullW - 8 >= Self.titleKeep : slot - fullW - 8 >= keep
+        let w = showName ? fullW : compactW
+        let text = showName ? full : compact
+        let x0 = right - w
+        markTile.isHidden = false
+        markTile.set(monogram: mk.monogram, hue: palette.tile(slot: mk.slot), palette: palette, size: .small)
+        let d = TileLayer.dimensions(.small)
+        markTile.frame = CGRect(x: x0, y: (TK.M.row - d.height) / 2, width: d.width, height: d.height)
+        let textW = text.isEmpty ? 0 : ceil(TextLayer.width(text, font: font))
+        markLabel.isHidden = text.isEmpty
+        if !text.isEmpty {
+            markLabel.set(text, font: font, color: palette.inkTertiary)
+            markLabel.place(x: x0 + tileW + 6, lineTop: (TK.M.row - 16) / 2, lineHeight: 16, width: textW + 2)
+        }
+        // What the pointer finds for the tooltip: the tile and the text, not a column's slack.
+        markFrame = CGRect(x: x0, y: 0, width: tileW + (text.isEmpty ? 0 : 6 + textW), height: TK.M.row)
+        return w + 8
+    }
 
     /// Sets the hint's glyph, count and colors, and returns its width (0 without notes): the glyph alone in a 14pt
     /// box (`ink-quaternary`), or the box glyph, 4, and "2/5" in `ink-tertiary`, `ink-quaternary` once all are checked
@@ -612,7 +686,7 @@ final class GroupLabelView: NSView {
 
     /// `chevron`: Today's Completed, which folds (`collapsed` shows `count` after the name). `selected`: its fill.
     func configure(key: EntityID, name: String, plus hasPlus: Bool, palette: TK.Palette, width: CGFloat,
-                   sub subText: String? = nil, quiet: Bool = false, chevron hasChevron: Bool = false,
+                   height: CGFloat = TK.M.pitch, sub subText: String? = nil, quiet: Bool = false, chevron hasChevron: Bool = false,
                    collapsed: Bool = false, count n: Int = 0, selected: Bool = false, paneFocused: Bool = true,
                    animated: Bool = false) {
         let paletteChanged = palette != self.palette || self.key.isEmpty
@@ -629,6 +703,8 @@ final class GroupLabelView: NSView {
         let countText = isCollapsed && n > 0 ? String(n) : ""
         let countW = countText.isEmpty ? 0 : TextLayer.width(countText, font: HeadingRowView.countFont) + 8
         let room = max(0, width - 12 - buttons - countW)
+        // The text sits at the slot's foot: 8 under it in a 32pt slot, 5 in a month's 24pt day label (direction C).
+        let textTop: CGFloat = height < TK.M.pitch ? height - 19 : 10
         layer?.setInstant {
             let colors = labelColors
             // Selected (Today's Completed): the row's fill, in the row's 30pt shape (§5).
@@ -641,7 +717,7 @@ final class GroupLabelView: NSView {
             let nameRoom = subText == nil ? room : min(full, room * 0.7)
             let nameW = min(nameRoom, ceil(full) + 1)
             // 1pt of room past the text, so the clip never takes a glyph's overhang.
-            label.place(x: 12, lineTop: 10, lineHeight: 14, width: nameW + 1)
+            label.place(x: 12, lineTop: textTop, lineHeight: 14, width: nameW + 1)
             labelMask.update(width: nameW + 1, height: label.bounds.height, fade: full > nameRoom + 0.5 ? TK.M.titleFade : 0)
             if let subText, !subText.isEmpty {
                 sub.isHidden = false
@@ -649,22 +725,22 @@ final class GroupLabelView: NSView {
                 let subRoom = max(0, room - nameW - 6)
                 let subFull = TextLayer.width(subText, font: Self.subFont)
                 let subW = min(subRoom, ceil(subFull) + 1)
-                sub.place(x: 12 + nameW + 6, lineTop: 10, lineHeight: 14, width: subW + 1)
+                sub.place(x: 12 + nameW + 6, lineTop: textTop, lineHeight: 14, width: subW + 1)
                 subMask.update(width: subW + 1, height: sub.bounds.height, fade: subFull > subRoom + 0.5 ? TK.M.titleFade : 0)
             } else {
                 sub.isHidden = true
             }
             count.isHidden = countText.isEmpty
             count.set(countText, font: HeadingRowView.countFont, color: palette.inkTertiary)
-            count.place(x: 12 + nameW + 8, lineTop: 10, lineHeight: 14, width: countW + 2)
+            count.place(x: 12 + nameW + 8, lineTop: textTop, lineHeight: 14, width: countW + 2)
             plus.isHidden = !hasPlus
             chevron.isHidden = !hasChevron
             if paletteChanged {
                 plus.setPalette(palette)
                 chevron.setPalette(palette)
             }
-            chevron.position = CGPoint(x: width - 5 - 11, y: 6 + 11)
-            plus.position = CGPoint(x: width - 5 - 11 - (hasChevron ? 24 : 0), y: 6 + 11)
+            chevron.position = CGPoint(x: width - 5 - 11, y: textTop + 7)
+            plus.position = CGPoint(x: width - 5 - 11 - (hasChevron ? 24 : 0), y: textTop + 7)
         }
         // The chevron points down when open and right when collapsed, turning in 200 ms ease-out.
         if hasChevron {

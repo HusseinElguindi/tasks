@@ -37,6 +37,8 @@ struct TodaySnapshot: Hashable, Sendable {
         let name: String
         let slot: Int
         let monogram: String
+        /// The list mark's name (`ListName.short`, INTERACTIONS-v2 §22): "SE 463" for "SE 463 — Software …".
+        var shortName: String { ListName.short(name) }
     }
 
     /// One list's open Today tasks, in its order.

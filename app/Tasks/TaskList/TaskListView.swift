@@ -391,6 +391,8 @@ final class TaskListView: NSView {
         // Selected rows join into one block when adjacent (css:182–186).
         let selectedYs: Set<CGFloat> = Set(selection.compactMap { id in dragIDs.contains(id) ? nil : L.y(id) })
 
+        let inUpcoming = state.route == .upcoming
+        let markColumn: CGFloat? = inUpcoming ? upcomingMarkColumn(L) : nil
         var headNeeded: [EntityID] = []
         for id in needed {
             guard let y = L.y(id) else { continue }
@@ -411,7 +413,8 @@ final class TaskListView: NSView {
             if isDraft, let draft {
                 let untitled = draft.title.isEmpty
                 m = RowModel(id: id, title: draft.title, untitled: untitled, done: false, draft: true)
-                if let when = draft.when, !(inToday && when <= today), when != groupDay { m.when = .when(when, today: today) }
+                if let when = draft.when, !(inToday && when <= today), when != groupDay { m.when = .when(when, today: today, dates: inUpcoming) }
+                if inUpcoming { m.mark = viewMark(L, id: id, list: draft.list, column: markColumn); m.deadlineColumn = L.deadlineColumn }
             } else if L.listRows.contains(id), let l = p.listModel(id) {
                 // A deleted list in Trash: one row, with "11 tasks" in the list-name slot (§28).
                 m = RowModel(id: id, title: l.name, untitled: false, done: false, draft: false)
@@ -426,18 +429,19 @@ final class TaskListView: NSView {
                 let trashed = t.deleted || !p.isActive(list: t.list)
                 // Done and trashed rows show no dates and no ring (§24, §22).
                 if !t.isDone, !trashed {
-                    if let when = t.when, !(inToday && when <= today), when != groupDay { m.when = .when(when, today: today) }
-                    if let dl = t.deadline { m.deadline = .deadline(dl, today: today, groupDay: groupDay) }
+                    // Upcoming reads in dates, never counts (§24 "In Upcoming", the user, 2026-11-08).
+                    if let when = t.when, !(inToday && when <= today), when != groupDay { m.when = .when(when, today: today, dates: inUpcoming) }
+                    if let dl = t.deadline { m.deadline = .deadline(dl, today: today, groupDay: groupDay, dates: inUpcoming) }
                     m.cue = .init(when: t.when, deadline: t.deadline, today: today, inToday: inToday)
                 }
-                if inToday && L.isDone(id) { m.whereText = actions.listName(t.list) }
-                if state.route.isView, let w = viewWhere(L, id: id, list: t.list) { m.whereText = w.name; m.whereSuffix = w.suffix }
+                // The list mark where the row's list isn't a label: Today's Completed group, and the views (§22).
+                if (inToday && L.isDone(id)) || state.route.isView { m.mark = viewMark(L, id: id, list: t.list, column: markColumn) }
+                if inUpcoming { m.deadlineColumn = L.deadlineColumn }
                 m.trashed = trashed
-                // Under its deleted list's row: indented, and no list name (§28).
+                // Under its deleted list's row: indented, and no list mark (§28).
                 if L.childOf[id] != nil {
                     m.indent = 26
-                    m.whereText = nil
-                    m.whereSuffix = nil
+                    m.mark = nil
                 }
             } else {
                 continue
@@ -616,7 +620,7 @@ final class TaskListView: NSView {
             // Today's Completed folds (v2 feedback 15): its chevron, its count while collapsed, and its fill when it's
             // selected (Space folds it).
             let folds = isDone && state.route == .today
-            v.configure(key: key, name: name, plus: info?.plus ?? !isDone, palette: palette, width: rowW, sub: info?.sub,
+            v.configure(key: key, name: name, plus: info?.plus ?? !isDone, palette: palette, width: rowW, height: L.labelHeight(key), sub: info?.sub,
                         quiet: info?.quiet ?? false, chevron: folds, collapsed: folds && state.todayDoneCollapsed,
                         count: L.doneCount, selected: folds && state.selection.contains(key),
                         paneFocused: PaneLook.rowsFocused(state), animated: animate && !isNew)
@@ -628,17 +632,17 @@ final class TaskListView: NSView {
             v.setDrop(key == dropDay, animated: animate)
             if isNew {
                 if animate, let old = prevLabels[key], old != y {
-                    place(v, y: old, width: rowW, height: TK.M.pitch)
+                    place(v, y: old, width: rowW, height: L.labelHeight(key))
                     move(v, toY: y, animate: true)
                 } else {
-                    place(v, y: y, width: rowW, height: TK.M.pitch)
+                    place(v, y: y, width: rowW, height: L.labelHeight(key))
                     if animate && prevLabels[key] == nil {
                         v.layer?.add(TK.CA.basic("opacity", TK.CA.fadeInT, from: 0, to: 1), forKey: "enter")
                     }
                 }
             } else {
                 if v.frame.minY != y { move(v, toY: y, animate: animate) }
-                if v.frame.width != rowW { place(v, y: y, width: rowW, height: TK.M.pitch) }
+                if v.frame.width != rowW || v.frame.height != L.labelHeight(key) { place(v, y: y, width: rowW, height: L.labelHeight(key)) }
             }
         }
     }
@@ -699,19 +703,34 @@ final class TaskListView: NSView {
         DateLabel.monthDay(CalendarDate(Date(timeIntervalSince1970: TimeInterval(ms) / 1000)))
     }
 
-    /// The list's name after the title in Upcoming, Completed and Trash; in a month group, the day too (dc:2321–2327),
-    /// kept whole when the name is cut (v2 feedback 16).
-    private func viewWhere(_ L: TaskLayout, id: EntityID, list: EntityID) -> (name: String, suffix: String?)? {
-        let name = actions.listName(list)
+    /// The list mark (§22, direction C): the list's tile and short name, in Upcoming, Completed, Trash and Today's
+    /// Completed group; in a month group of Completed and Trash, the day too (dc:2321–2327), kept whole.
+    private func viewMark(_ L: TaskLayout, id: EntityID, list: EntityID, column: CGFloat?) -> RowModel.Mark? {
+        guard let l = store.projection.listModel(list) else { return nil }
+        let full = actions.listName(list)
+        var mk = RowModel.Mark(monogram: l.monogram, slot: l.colorSlot, name: Self.shortName(full), full: full)
         switch state.route {
-        case .upcoming: return (name, nil)
+        case .upcoming:
+            mk.column = column
         case .completed, .trash:
-            guard L.groupKind(id) == .month, let t = store.projection.task(id) else { return (name, nil) }
+            guard L.groupKind(id) == .month, let t = store.projection.task(id) else { break }
             let at = state.route == .trash ? ViewItems.deletedAt(t) : t.completedAt
-            guard let at else { return (name, nil) }
-            return (name, " · " + DateLabel.monthDay(CalendarDate(Date(timeIntervalSince1970: TimeInterval(at) / 1000))))
-        default: return nil
+            if let at { mk.day = DateLabel.monthDay(CalendarDate(Date(timeIntervalSince1970: TimeInterval(at) / 1000))) }
+        default:
+            break
         }
+        return mk
+    }
+
+    /// A list's short name for its mark: `ListName.short` of the name as the sidebar shows it ("Untitled" for none).
+    static func shortName(_ name: String) -> String {
+        let s = ListName.short(name)
+        return s.isEmpty ? "Untitled" : s
+    }
+
+    /// Upcoming's names column: as wide as the widest short name of the lists its rows are in (direction C).
+    private func upcomingMarkColumn(_ L: TaskLayout) -> CGFloat {
+        L.markLists.reduce(0) { max($0, ceil(TextLayer.width(Self.shortName(actions.listName($1)), font: TK.Font.small))) }
     }
 
     // MARK: - Headings, the title block and the list pane's notes (§23)
@@ -1243,7 +1262,7 @@ final class TaskListView: NSView {
             return .completed
         }
         if inRows {
-            for (key, y) in L.labels where p.y >= y && p.y < y + TK.M.pitch {
+            for (key, y) in L.labels where p.y >= y && p.y < y + L.labelHeight(key) {
                 // The + and the chevron first, whatever their fade (§23 "Bugs the prototype had").
                 let part = labels[key].map { $0.part(at: CGPoint(x: p.x - $0.frame.minX, y: p.y - $0.frame.minY)) } ?? .body
                 return .label(key, part: part)
@@ -1308,6 +1327,11 @@ final class TaskListView: NSView {
             if let v = rows[id], let f = v.chipFrame(field), let tip = v.chipTip(field), !tip.isEmpty {
                 overlays.hoverTip(tip, for: windowRect(f, from: v), windowWidth: window?.frame.width ?? 1200)
             }
+        case .row(let id, .mark):
+            // The list's full name (§22 "The list mark").
+            if let v = rows[id], let tip = v.markTip, !tip.isEmpty {
+                overlays.hoverTip(tip, for: windowRect(v.markFrame, from: v), windowWidth: window?.frame.width ?? 1200)
+            }
         case .head(let id, .plus):
             if let v = heads[id] {
                 let name = store.projection.task(id)?.title ?? ""
@@ -1323,6 +1347,7 @@ final class TaskListView: NSView {
         default:
             // Only the tips this list showed: the pointer may have moved onto another control with its own.
             if case .row(_, .open) = old { overlays.hideTip() } else if case .row(_, .chip) = old { overlays.hideTip() }
+            else if case .row(_, .mark) = old { overlays.hideTip() }
             else if case .label(_, part: .plus) = old { overlays.hideTip() }
             else if case .head(_, .plus) = old { overlays.hideTip() }
         }
@@ -1332,7 +1357,9 @@ final class TaskListView: NSView {
 
     func pointerDown(_ event: NSEvent) {
         let p = doc.convert(event.locationInWindow, from: nil)
-        let t = target(at: p)
+        var t = target(at: p)
+        // The list mark only has a tooltip: a press there is the row's (it selects, drags, double-click edits).
+        if case .row(let id, .mark) = t { t = .row(id, .body) }
         let a = actions
         state.overlays.hideTip()
         let editing = state.rename != nil || state.draft != nil || state.detailEditing != nil
@@ -1398,6 +1425,8 @@ final class TaskListView: NSView {
                 press = nil
             case .check, .chip, .open, .disclosure:
                 rows[id]?.setPressed(part)
+            case .mark:
+                break
             }
         case .label(let key, part: let part) where part != .body:
             labels[key]?.setPressed(part)
@@ -1517,6 +1546,8 @@ final class TaskListView: NSView {
                 a.openDetail()
             case .disclosure:
                 a.toggleTrashExpanded([id])
+            case .mark:
+                break
             }
         case .label(let key, part: .plus):
             labels[key]?.setPressed(nil)

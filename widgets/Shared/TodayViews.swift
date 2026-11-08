@@ -312,7 +312,18 @@ struct TaskRowView: View {
             }
             Spacer(minLength: 0)
             if let c = r.chip { DeadlineCapsule(chip: c) }
-            if trailing == .tile { Tile(list: r.list, width: 16, height: 13) }
+            if trailing == .tile {
+                #if os(macOS)
+                // The list mark (direction C): the tile alone repeats colours, so its short name follows it. The iPhone
+                // keeps the tile alone until its own design (ROW-DENSITY.md).
+                HStack(spacing: 6) {
+                    Tile(list: r.list, width: 16, height: 13)
+                    Text(r.list.shortName).font(.system(size: 12)).foregroundStyle(p.inkTertiary).lineLimit(1).fixedSize()
+                }
+                #else
+                Tile(list: r.list, width: 16, height: 13)
+                #endif
+            }
         }
         .frame(height: height)
         .contentShape(Rectangle())

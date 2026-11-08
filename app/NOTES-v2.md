@@ -360,6 +360,8 @@ typed dates and chip texts; 31 tests). The views were rebuilt, not patched:
     beyond those goes to the title first, then to the list name. A month row's " · Oct 22" stays whole after a cut
     name. Nothing draws over the leading content or past the row. At the list pane's 220pt minimum that means titles
     only, chips dropped; from about 300pt chips and cut names come back.
+    - Superseded for these rows on 2026-11-08 by the list mark (INTERACTIONS-v2 §22 "The list mark"): the tile and
+      the short name, never cut; the When goes first, then the short name, and the tile stays.
     - The rest of the audit: the large title (it lost its descenders when cut: the layer's own font now sets the line,
       and its date or "Archived" gives way first) and heading names end in an ellipsis, as the prototype's `.lhn` and
       `.ht` do; the band's title truncates after the name's priority; sidebar names already faded into their counts;
@@ -651,7 +653,8 @@ rule are unchanged.
   a deadline on its group's day reads "Due" with its tone. Done and trashed rows show no dates (item 19); the detail pane still does.
 - **Narrow widths:** v2 feedback 16's order with the When in the title's slot: the When goes when the title would
   drop under 120pt; the Deadline always shows; the list name keeps 72pt then fades; only at the list pane's 220pt
-  minimum does the title go under 120.
+  minimum does the title go under 120. (2026-11-08: the list name became the list mark, §22, and Upcoming reads in
+  dates, §24 "In Upcoming".)
 - **The checkbox ring** (`CheckLayer.Cue`): `danger` overdue, `attention` due today, `accent-text` planned for today
   (its When today or earlier) outside Today; planned with a deadline's ring is the double ring, the deadline's outside
   and a 1.25pt `accent-text` ring inset 3. Hover keeps it; checking clears it; done, trashed and new tasks have none;
