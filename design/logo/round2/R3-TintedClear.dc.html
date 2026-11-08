@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Round 3 tinted and clear</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1848px; height: 1080px; box-sizing: border-box; padding: 40px 48px 48px; background: #111111; color: #E6EDF3; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif; -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; gap: 24px;">
+
+<header style="display: flex; flex-direction: column; gap: 6px;">
+<h1 style="margin: 0; font-size: 28px; line-height: 34px; font-weight: 600;">Tinted and Clear, sketched for each pick</h1>
+<p style="margin: 0; font-size: 15px; line-height: 20px; color: #A8ADB1;">A sketch of what macOS 26 and iOS 26 would draw, not an Icon Composer render. Tinted: the dark body, the colour layers in the viewer’s tint, stepping down by depth (the Tint tweak changes it). Clear: a glass body over the wallpaper, the layers in white at falling strengths. The lit light, ring and halo stay on.</p>
+</header>
+
+<div style="display: grid; grid-template-columns: 220px minmax(0, 1fr) minmax(0, 1fr); gap: 16px 20px; align-items: stretch;">
+<span style="font-size: 11px; line-height: 14px; font-weight: 600; color: #7F8386;">Pick</span>
+<span style="font-size: 11px; line-height: 14px; font-weight: 600; color: #7F8386;">Tinted · 128, 64, 32</span>
+<span style="font-size: 11px; line-height: 14px; font-weight: 600; color: #7F8386;">Clear · 128, 64, 32</span>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="4">
+<div style="height: 190px; display: flex; flex-direction: column; justify-content: center; gap: 4px;">
+<span style="font: 600 12px/16px 'SF Mono', ui-monospace, Menlo, monospace; color: #7F8386;">{{r.num}}</span>
+<span style="font-size: 17px; line-height: 22px; font-weight: 600;">{{r.name}}</span>
+</div>
+<div style="height: 190px; border-radius: 16px; background: #161718; box-shadow: inset 0 0 0 1px #262728; display: flex; align-items: center; justify-content: center; gap: 36px;">
+<dc-import name="Icon" mark="{{r.mark}}" look="tinted" tint="{{tint}}" shape="mac" size="{{n128}}" hint-size="128px,128px"></dc-import>
+<dc-import name="Icon" mark="{{r.mark}}" look="tinted" tint="{{tint}}" shape="mac" size="{{n64}}" hint-size="64px,64px"></dc-import>
+<dc-import name="Icon" mark="{{r.mark}}" look="tinted" tint="{{tint}}" shape="mac" size="{{n32}}" hint-size="32px,32px"></dc-import>
+<dc-import name="Icon" mark="{{r.mark}}" look="tinted" tint="{{tint}}" shape="ios" size="{{n104}}" hint-size="104px,104px"></dc-import>
+</div>
+<div style="height: 190px; border-radius: 16px; background: linear-gradient(160deg, #6E8FB0 0%, #3E5874 55%, #2C3B4F 100%); display: flex; align-items: center; justify-content: center; gap: 36px;">
+<dc-import name="Icon" mark="{{r.mark}}" look="clear" shape="mac" size="{{n128}}" hint-size="128px,128px"></dc-import>
+<dc-import name="Icon" mark="{{r.mark}}" look="clear" shape="mac" size="{{n64}}" hint-size="64px,64px"></dc-import>
+<dc-import name="Icon" mark="{{r.mark}}" look="clear" shape="mac" size="{{n32}}" hint-size="32px,32px"></dc-import>
+<dc-import name="Icon" mark="{{r.mark}}" look="clear" shape="ios" size="{{n104}}" hint-size="104px,104px"></dc-import>
+</div>
+</sc-for>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"tint":{"editor":"color","default":"#8FB3FF","options":["#8FB3FF","#E6683D","#B8B8B8","#9BD18B"]},"$preview":{"width":1848,"height":1080}}'>
+class Component extends DCLogic {
+renderVals() {
+return {
+tint: this.props.tint ?? '#8FB3FF',
+n32: 32, n64: 64, n104: 104, n128: 128,
+rows: [
+{ num: '02b', name: 'Ember tile · list mark', mark: 'ember-mark' },
+{ num: '03b', name: 'Fan · tight', mark: 'fan-tight' },
+{ num: '01b', name: 'Spark · lit round', mark: 'spark-round' },
+{ num: '10a', name: 'Tick · refined', mark: 'tick-refined' }
+]
+};
+}
+}
+</script>
+</body>
+</html>

@@ -2,10 +2,13 @@
   "fill-specializations": [
     {
       "value": {
-        "linear-gradient": [
-          "srgb:0.16471,0.16471,0.16471,1.00000",
-          "srgb:0.08627,0.08627,0.08627,1.00000"
-        ]
+        "solid": "srgb:0.90196,0.40784,0.23922,1.00000"
+      }
+    },
+    {
+      "appearance": "dark",
+      "value": {
+        "solid": "srgb:0.90196,0.40784,0.23922,1.00000"
       }
     }
   ],
@@ -16,7 +19,13 @@
           "fill-specializations": [
             {
               "value": {
-                "solid": "srgb:0.18431,0.50588,0.96863,1.00000"
+                "solid": "srgb:1.00000,1.00000,1.00000,1.00000"
+              }
+            },
+            {
+              "appearance": "dark",
+              "value": {
+                "solid": "srgb:1.00000,1.00000,1.00000,1.00000"
               }
             },
             {
@@ -28,65 +37,14 @@
           ],
           "glass": false,
           "hidden": false,
-          "image-name": "head.svg",
-          "name": "head"
+          "image-name": "check.svg",
+          "name": "check"
         },
         {
-          "fill-specializations": [
-            {
-              "value": {
-                "solid": "srgb:0.90196,0.92941,0.95294,1.00000"
-              }
-            },
-            {
-              "appearance": "tinted",
-              "value": {
-                "solid": "srgb:1.00000,1.00000,1.00000,1.00000"
-              }
-            }
-          ],
           "glass": false,
           "hidden": false,
-          "image-name": "head-bar.svg",
-          "name": "head-bar"
-        },
-        {
-          "fill-specializations": [
-            {
-              "value": {
-                "solid": "srgb:0.65882,0.67843,0.69412,1.00000"
-              }
-            },
-            {
-              "appearance": "tinted",
-              "value": {
-                "solid": "srgb:0.72157,0.72157,0.72157,1.00000"
-              }
-            }
-          ],
-          "glass": false,
-          "hidden": false,
-          "image-name": "rings.svg",
-          "name": "rings"
-        },
-        {
-          "fill-specializations": [
-            {
-              "value": {
-                "solid": "srgb:0.42745,0.43922,0.44706,1.00000"
-              }
-            },
-            {
-              "appearance": "tinted",
-              "value": {
-                "solid": "srgb:0.47843,0.47843,0.47843,1.00000"
-              }
-            }
-          ],
-          "glass": false,
-          "hidden": false,
-          "image-name": "trail.svg",
-          "name": "trail"
+          "image-name": "finish.svg",
+          "name": "finish"
         }
       ],
       "shadow": {
