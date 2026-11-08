@@ -1,7 +1,7 @@
 #!/bin/zsh
 # Builds a scratch Release copy of the Mac app for performance measurement (coord title-design T8).
 #
-#   app/Scripts/perf/build.sh <out-dir> [--automation]
+#   [PERF_FOLDER="Tasks Perf X"] app/Scripts/perf/build.sh <out-dir> [--automation]
 #
 # It copies app/, widgets/ and ios/Widgets into <out-dir>/src and builds there, so the worktree is never touched.
 # The copy differs from a real Release build in three ways, all so it can't touch the installed app:
@@ -24,10 +24,13 @@ rsync -a --delete --exclude .build --exclude Tasks.xcodeproj "$repo/app/" "$src/
 rsync -a --delete "$repo/widgets/" "$src/widgets/"
 rsync -a --delete "$repo/ios/Widgets/" "$src/ios/Widgets/"
 
-# The widget feed's folder: "Tasks Perf", never "Tasks" or "Tasks Dev".
-perl -0pi -e 's/\.map \{ WidgetFolder\.url\(in: \$0, debug: isDebug\) \}/.map { \$0.appendingPathComponent("Tasks Perf", isDirectory: true) }/' \
+# The widget feed's folder: "Tasks Perf" (or $PERF_FOLDER, so two people's scratch runs don't share one), never
+# "Tasks" or "Tasks Dev".
+folder=${PERF_FOLDER:-Tasks Perf}
+[[ $folder == "Tasks" || $folder == "Tasks Dev" ]] && { echo "PERF_FOLDER can't be the real apps' folder" >&2; exit 1; }
+FOLDER=$folder perl -0pi -e 's/\.map \{ WidgetFolder\.url\(in: \$0, debug: isDebug\) \}/.map { \$0.appendingPathComponent("$ENV{FOLDER}", isDirectory: true) }/' \
   "$src/widgets/Shared/WidgetGroup.swift"
-grep -q '"Tasks Perf"' "$src/widgets/Shared/WidgetGroup.swift" || { echo "widget folder patch failed" >&2; exit 1; }
+grep -q "\"$folder\"" "$src/widgets/Shared/WidgetGroup.swift" || { echo "widget folder patch failed" >&2; exit 1; }
 
 # Own bundle ids and name.
 perl -pi -e 's/PRODUCT_BUNDLE_IDENTIFIER: com\.elguindi\.Tasks$/PRODUCT_BUNDLE_IDENTIFIER: com.elguindi.Tasks.perf/;
