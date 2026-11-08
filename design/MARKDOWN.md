@@ -333,6 +333,11 @@ Where the app does something other than the text above:
   `measure` of the editor.
 - **A box toggled at rest** is its own undo step with no notice, as in the prototype (§5's "usual notice" isn't
   there).
+- **A press on a box, a link, a dot or a number** is refused as first responder (`acceptsFirstResponder` reads the
+  press from `NSApp.currentEvent`): NSWindow makes the view under a press first responder before its `mouseDown`, so
+  a box clicked at rest started the session with the caret at the end of the notes, and scrolled there (the user,
+  2026-11-08). A box toggled in a session keeps the scroll as well as the selection (§5 doesn't say; Apple Notes
+  doesn't move either). `Scripts/notes-box-check.sh` checks both with real clicks.
 - **Undoing a box toggled in a session** selects the flipped character, as NSTextView's undo does, instead of putting
   the caret back where it was.
 - **Links** are drawn and opened by the editor (`.mdLink`), not NSTextView's `.link`, which drew its own underline.

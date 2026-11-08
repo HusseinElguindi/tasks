@@ -25,7 +25,8 @@ import TasksCore
 ///     mktask:TITLE|NOTES   (a new task with notes, in the open list or Inbox)
 ///     menukey:z|Z|ret|RET:/path.txt   (the main menu's ⌘z, or ⇧⌘z for Z, ⇧⌘↩ for RET, sent as with the window key; appends the item and
 ///     who took it)   event   (a pass of NSApp's event loop, as real input makes: it closes undo groups)
-///     ncaret:A[,B]   (the notes take the keys with A..B selected)   nbox:OFFSET   (a click on the checklist box there)
+///     ncaret:A[,B]   (the notes take the keys with A..B selected)   nbox:OFFSET   (toggles the checklist box there)
+///     nboxclick:OFFSET   ntextclick:OFFSET   (a real click on that box, or that character, through the window)   nscroll:Y | nscroll:box:OFFSET   (scrolls the notes)
 ///     nlog:/path.txt   (appends the notes' text, selection, hidden marks, session and the task's stored notes)
 ///     watch:MS:/path.txt   (for MS ms, checks the traffic lights on every turn of the run loop, before each commit,
 ///     and appends how many turns they were out of place)
@@ -175,6 +176,30 @@ enum DebugScript {
                     model.store?.createTask(title: parts[0], notes: notes, in: window.route.listID, when: nil, deadline: nil)
                 case "nbox":
                     if let n = notesView(w), let at = Int(arg) { n.notes?.toggleBox(at) }
+                case "nboxclick":
+                    // nboxclick:OFFSET — a real press and release on the box there, queued for the run loop as a click
+                    // comes (it's NSApp's current event, and NSWindow picks the first responder before the view's
+                    // mouseDown), wherever the app is.
+                    guard let n = notesView(w), let at = Int(arg), let c = boxCenter(n, at) else { continue }
+                    clickQueued(w, n.convert(c, to: nil))
+                case "ntextclick":
+                    // ntextclick:OFFSET — the same real click, on the middle of the character there.
+                    guard let n = notesView(w), let at = Int(arg), let lm = n.layoutManager, let tc = n.textContainer else { continue }
+                    lm.ensureLayout(for: tc)
+                    let g = lm.glyphRange(forCharacterRange: NSRange(location: at, length: 1), actualCharacterRange: nil)
+                    let r = lm.boundingRect(forGlyphRange: g, in: tc)
+                    clickQueued(w, n.convert(NSPoint(x: n.textContainerOrigin.x + r.midX, y: n.textContainerOrigin.y + r.midY), to: nil))
+                case "nscroll":
+                    // nscroll:Y — the notes' scroll view to Y (its clip view's top), or nscroll:box:OFFSET to put that box
+                    // 40pt above the bottom of the view.
+                    guard let n = notesView(w), let sv = n.enclosingScrollView else { continue }
+                    var y = Double(arg) ?? 0
+                    if arg.hasPrefix("box:"), let at = Int(arg.dropFirst(4)), let c = boxCenter(n, at) {
+                        let inDoc = n.convert(c, to: sv.documentView)
+                        y = (sv.documentView?.isFlipped ?? true) ? inDoc.y - sv.contentView.bounds.height + 40 : inDoc.y - 40
+                    }
+                    sv.contentView.scroll(to: NSPoint(x: 0, y: max(0, y)))
+                    sv.reflectScrolledClipView(sv.contentView)
                 case "nbench":
                     if let n = notesView(w), let c = n.notes {
                         let line = c.benchmark() + "\n"
@@ -270,7 +295,8 @@ enum DebugScript {
                     }
                     let stored = window.selection.first.flatMap { model.store?.projection.task($0)?.notes } ?? "-"
                     let sel = n.selectedRange()
-                    let line = "notes=\(n.string.debugDescription) sel=\(sel.location),\(sel.length) hidden=\(hidden) editing=\(window.detailEditing.map { "\($0)" } ?? "-") stored=\(stored.debugDescription) responder=\(w.firstResponder === n) inert=\(n.inert) group=\(n.undoManager?.groupingLevel ?? -1)\n"
+                    let scroll = n.enclosingScrollView.map { "\(Int($0.contentView.bounds.origin.y))" } ?? "-"
+                    let line = "notes=\(n.string.debugDescription) sel=\(sel.location),\(sel.length) hidden=\(hidden) editing=\(window.detailEditing.map { "\($0)" } ?? "-") stored=\(stored.debugDescription) responder=\(w.firstResponder === n) inert=\(n.inert) group=\(n.undoManager?.groupingLevel ?? -1) scroll=\(scroll)\n"
                     if let h = FileHandle(forWritingAtPath: arg) { h.seekToEndOfFile(); h.write(Data(line.utf8)); h.closeFile() }
                     else { try? line.write(toFile: arg, atomically: true, encoding: .utf8) }
                 case "sidebar":
@@ -376,6 +402,27 @@ enum DebugScript {
             pressed = nil
         default: NSApp.sendEvent(e)
         }
+    }
+
+    /// A press and release at `p` (window coordinates) queued for the run loop, as real input comes: the press is NSApp's
+    /// current event while it's sent, and the release waits for a tracking loop's `nextEvent` to take it.
+    private static func clickQueued(_ w: NSWindow, _ p: NSPoint) {
+        for t in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+            if let e = NSEvent.mouseEvent(with: t, location: p, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                                          windowNumber: w.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1) {
+                NSApp.postEvent(e, atStart: false)
+            }
+        }
+    }
+
+    /// The middle of the checklist box at character `at`, in the notes view's coordinates (§5: 12pt, 3.5 down).
+    private static func boxCenter(_ n: NotesTextView, _ at: Int) -> NSPoint? {
+        guard let lm = n.layoutManager as? NotesLayoutManager, let tc = n.textContainer,
+              let l = Markdown.parse(n.string).lines.first(where: { $0.kind == .task && $0.box == at }) else { return nil }
+        lm.ensureLayout(for: tc)
+        guard let f = lm.fragment(l, first: true) else { return nil }
+        return NSPoint(x: n.textContainerOrigin.x + CGFloat(l.level) * NotesStyle.column + 2 + 6,
+                       y: n.textContainerOrigin.y + f.minY + 3.5 + 6)
     }
 
     private static func notesView(_ w: NSWindow) -> NotesTextView? {
