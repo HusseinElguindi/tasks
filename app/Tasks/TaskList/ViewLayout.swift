@@ -185,7 +185,7 @@ extension TaskLayout {
         default: "trash"
         }
         // The title line, without notes (§23).
-        var L = TaskLayout(key: key, top: TaskLayout.titleBlockHeight(notes: nil))
+        var L = TaskLayout(key: key, top: TaskLayout.titleBlockHeight(notes: nil, line: inputs.titleLine))
         L.titleHeight = L.top
         let v = inputs.view ?? ViewItems()
         L.reserve(v.ids.count + 1)

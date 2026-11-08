@@ -1024,7 +1024,7 @@ checkbox is the exception: it shrinks over 80 ms ease-out and comes back on `sna
 | Day | — | `hover` fill (`icon`) | Sets it | Highlighted `accent`; current ring; today `accent-text` | `css:335` |
 | Menu item | — | `accent` + white, instant (native) | — | ✓ column when the menu has checks | `css:312` |
 | Notice | — | Holds it open | — | — | `dc:2713` |
-| Text fields | — | — | — | Row and list renames: a 1.5pt `accent` ring on the row; the detail title and notes: the caret only; selected text `text-selection` | `css:167` |
+| Text fields | — | — | — | Row and list renames: a 1.5pt `accent` ring on the row; the detail title, the list's large title (§23) and notes: the caret only; selected text `text-selection` | `css:167` |
 | Disabled | 45% (the detail pane under an untitled new task) | — | — | — | `css:288` |
 
 **Tooltips** (Rex draws its own, with keys, preview.23) on the toolbar and pane-header buttons, the row's ›, and the
@@ -1550,10 +1550,19 @@ centered like "No task selected" (`dc:141`, `dc:3822–3830`).
 
 - **Where**: the top of the list's scroll content, 4 below the band. It scrolls with the rows.
 - **Size**: 20/26 semibold `ink`, −0.2 tracking, after the list's or the view's tile (20×16; COLOR.md B), 9 apart, on
-  a 30pt line. Today's date, and a deleted list's "In Trash" (§28), follow it in `ink-tertiary`.
+  a 30pt line. A name too long for the line wraps onto more lines, 26 each, with no limit and no ellipsis; the tile
+  stays on the first line. Today's date, and a deleted list's "In Trash" (§28), follow the last line in
+  `ink-tertiary`, and give way there when it's full.
 - **The list's notes**: 4 below the title; the rows start 12 after them.
-- **Renaming**: double-click it. The field is in place at 20/26, 30 tall, radius 6, `fill-control`, with a 1.5pt
-  `accent` ring. Tab goes on to the notes.
+- **Renaming**: double-click the name. It's edited in place as the same text: no fill, no ring, the same font,
+  tracking, position and line breaks, with the whole name selected in `text-selection`. The caret and the selection
+  are the cue, as in the detail title (§7). While typing, the title wraps and grows, and the notes and rows move down
+  with it. Return, Tab (on to the notes), ⇧Tab, ⌘Return, Esc and a press elsewhere work as for every rename (§7).
+- **As built (2026-11-08):** the user, 2026-11-08, choosing direction B of `design/TITLE-RENAME.md` ("plain text
+  that wraps"). Before, the name was one line ending in an ellipsis, and renaming swapped it for a 360pt boxed field
+  with `fill-control` and a 1.5pt `accent` ring that cut long names off. The app draws the name with one wrapping
+  field at rest and while renaming (`ListTitleView`, `TitleLayout`). Today and the views share it, though their
+  names never wrap.
 - `dc:47–51`, `dc:71–75`, `css:435–446`.
 - **On scroll.** The band keeps + and the split button. Its own tile and title are hidden while the large title is
   in view, and fade in (150 ms ease-out) once the list has scrolled 24pt; scrolling back fades them out

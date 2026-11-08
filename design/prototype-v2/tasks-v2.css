@@ -442,11 +442,16 @@
 /* The top of the list pane (scrolls with the rows): the large title, 20/26 semibold after the list's tile (or a view's
    glyph) at the checkbox's edge, then the list's notes. */
 .tk .lhead { position: absolute; left: 0; right: 0; top: 0; z-index: 2; padding: 4px 20px 12px; }
-.tk .lhead .lht { height: 30px; display: flex; align-items: center; gap: 9px; min-width: 0; }
+.tk .lhead .lht { min-height: 30px; display: flex; align-items: flex-start; gap: 9px; min-width: 0; }
+.tk .lhead .lht > span:first-child { margin-top: 7px; }
 .tk .lhead .lht > span > .i { width: 18px; height: 18px; }
-.tk .lhead .lhn { min-width: 0; font: 600 20px/26px var(--font); letter-spacing: -0.2px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tk .lhead .lhs { color: var(--ink-3); white-space: nowrap; transform: translateY(1px); }
-.tk .lhead .ri.lti { flex: 0 1 360px; min-width: 0; height: 30px; padding: 0 6px; margin-left: -6px; border-radius: 6px; font: 600 20px/26px var(--font); letter-spacing: -0.2px; color: var(--ink); background: var(--fill-control); box-shadow: inset 0 0 0 1.5px var(--accent); }
+/* As built 2026-11-08 (INTERACTIONS-v2 §23, design/TITLE-RENAME.md B): the name wraps, and renames in place as the
+   same text, with no fill or ring; the selection and caret are the cue. Was: nowrap + ellipsis, and a 360px field
+   with fill-control and a 1.5px accent ring. The prototype's field is still an <input> (Main.dc.html:73), so it shows
+   one line while renaming here; the app wraps it. */
+.tk .lhead .lhn { min-width: 0; padding: 2px 0; font: 600 20px/26px var(--font); letter-spacing: -0.2px; color: var(--ink); overflow-wrap: anywhere; }
+.tk .lhead .lhs { color: var(--ink-3); white-space: nowrap; transform: translateY(1px); margin-top: 7px; }
+.tk .lhead .ri.lti { flex: 1 1 auto; min-width: 0; padding: 2px 0; margin: 0; border: 0; resize: none; overflow: hidden; field-sizing: content; font: 600 20px/26px var(--font); letter-spacing: -0.2px; color: var(--ink); background: none; box-shadow: none; }
 .tk .lhead .lhd { margin-top: 4px; }
 /* Text in a list is the notes editor (markdown.css), a step quieter than the tasks: ink-secondary, no minimum height.
    An empty list's line keeps its place; its "Notes" shows on hover, while renaming, or with the caret in it. */

@@ -42,7 +42,6 @@ final class TaskListView: NSView {
     private var heads: [EntityID: HeadingRowView] = [:]
     private var headsLeaving: [EntityID: (view: HeadingRowView, until: CFTimeInterval)] = [:]
     let titleView = ListTitleView()
-    private var titleField: InlineField?
     private var titleFieldID: EntityID?
     /// The notes editors in the list pane: the list's (in the title block) and each heading's with notes.
     final class PaneEditor {
@@ -216,8 +215,9 @@ final class TaskListView: NSView {
         #endif
         guard window != nil else { return }
         let p = store.projection
-        // The list pane's notes are measured before the layout, which leaves room for them (§23).
+        // The list pane's notes and its title's lines are measured before the layout, which leaves room for them (§23).
         syncPaneEditors()
+        measureTitle()
         let L = TaskLayout.make(store: store, window: state)
         Self.phase()
         let now = CACurrentMediaTime()
@@ -806,7 +806,7 @@ final class TaskListView: NSView {
             switch target {
             case .list:
                 let h = max(19, state.noteHeights[TaskLayout.listNotesKey(state.route.listID ?? "")] ?? 19)
-                let f = CGRect(x: TK.M.rowInset + TK.M.rowPadLeft, y: ListTitleView.notesTop, width: w, height: h)
+                let f = CGRect(x: TK.M.rowInset + TK.M.rowPadLeft, y: titleView.notesTop, width: w, height: h)
                 if e.view.frame != f { e.view.frame = f }
                 e.view.isHidden = false
             case .task(let hid):
@@ -854,27 +854,45 @@ final class TaskListView: NSView {
         }
     }
 
-    /// The title block: the large title, and a list's notes under it (their editor is its subview).
-    private func renderTitle(_ L: TaskLayout, width: CGFloat) {
+    /// What the title line shows for the window's view.
+    private func titleContent() -> ListTitleView.Content {
         let p = store.projection
         let today = p.day.date
-        var c: ListTitleView.Content
         let renaming = state.rename?.kind == .title
         switch state.route {
         case .list(let id):
             let m = p.listModel(id)
             let name = m?.name ?? ""
-            c = .init(mark: .tile(monogram: m?.monogram ?? "·", slot: m?.colorSlot ?? ListModel.slot(for: id)),
-                      title: name.isEmpty ? "New List" : name, sub: m?.isDeleted == true ? "In Trash" : nil, renaming: renaming)
+            return .init(mark: .tile(monogram: m?.monogram ?? "·", slot: m?.colorSlot ?? ListModel.slot(for: id)),
+                         title: name.isEmpty ? "New List" : name, sub: m?.isDeleted == true ? "In Trash" : nil, renaming: renaming)
         case .today:
-            c = .init(mark: .view(.today), title: "Today", sub: DateLabel.long(today, today: today))
+            return .init(mark: .view(.today), title: "Today", sub: DateLabel.long(today, today: today))
         default:
-            c = .init(mark: .view(state.route), title: state.route.viewName ?? "", sub: nil)
+            return .init(mark: .view(state.route), title: state.route.viewName ?? "", sub: nil)
         }
+    }
+
+    /// The name being typed into the large title, while it's renamed.
+    private var titleTyping: String? {
+        guard let r = state.rename, r.kind == .title else { return nil }
+        return r.text
+    }
+
+    /// The title line's height, for the layout: a long name wraps (§23), and while it's renamed the line follows
+    /// what's typed.
+    private func measureTitle() {
+        let c = titleContent()
+        state.titleLine = ListTitleView.lineBox(c, text: titleTyping ?? c.title, width: scroll.contentView.bounds.width)
+    }
+
+    /// The title block: the large title, and a list's notes under it (their editor is its subview).
+    private func renderTitle(_ L: TaskLayout, width: CGFloat) {
+        let c = titleContent()
         let f = CGRect(x: 0, y: L.headY, width: width, height: max(L.titleHeight, 46))
         if titleView.frame != f { titleView.frame = f }
-        titleView.configure(c, palette: palette, width: width)
-        updateTitleField(renaming ? state.rename : nil)
+        // The rename's end first, so the field shows the model's name, styled, in this same transaction.
+        updateTitleField(c.renaming ? state.rename : nil)
+        titleView.configure(c, palette: palette, width: width, text: titleTyping)
         updateTitlePlaceholder(animated: false)
         updateTitleScrolled()
     }
@@ -908,62 +926,68 @@ final class TaskListView: NSView {
     }
     private var titleScrolledRoute: WindowState.Route?
 
-    /// The list's title renames in place: 20/26, 30 tall, radius 6, `fill-control`, a 1.5pt `accent` ring (css:443).
+    /// The list's title renames in place as the text it is (§23 Renaming; design/TITLE-RENAME.md, direction B): the
+    /// field that draws the name becomes editable with the whole name selected, with no fill and no ring; the caret
+    /// and the Ember selection are the cue, as in the detail title (§7). Its text stays on the same pixels, and the
+    /// line wraps and grows with what's typed.
     private func updateTitleField(_ rename: WindowState.Rename?) {
+        let f = titleView.field
         guard let rename else {
-            if let f = titleField {
-                titleField = nil
-                titleFieldID = nil
-                let wasEditing = f.isEditing
-                f.onEnd = nil
-                f.removeFromSuperview()
-                if wasEditing { takeKeys() }
-            }
+            guard titleFieldID != nil else { return }
+            titleFieldID = nil
+            let wasEditing = f.isEditing
+            f.onEnd = nil
+            f.onKey = nil
+            f.onChange = nil
+            f.onFocus = nil
+            // Esc, or a commit from the keys: the field lets go here, and `configure` (next) shows the model's name.
+            if wasEditing { f.abortEditing() }
+            f.isEditable = false
+            f.isSelectable = false
+            if wasEditing { takeKeys() }
             return
         }
-        let f: InlineField
-        if let existing = titleField, titleFieldID == rename.id {
-            f = existing
-        } else {
-            titleField?.onEnd = nil
-            titleField?.removeFromSuperview()
-            f = InlineField(frame: .zero)
-            f.font = ListTitleView.font
-            f.placeholderString = "New List"
-            f.stringValue = rename.text
-            f.wantsLayer = true
-            f.layer?.cornerRadius = 6
-            f.layer?.borderWidth = 1.5
-            let a = actions
-            f.onChange = { a.setRenameText($0) }
-            f.onKey = { [weak self] key in
-                switch key {
-                case .returnKey, .commandReturn, .backtab:
-                    a.commitRename()
-                    self?.takeKeys()
-                case .tab:
-                    // Tab goes on to the list's notes.
-                    a.commitRename()
-                    a.editListNotes()
-                case .escape:
-                    a.cancelRename()
-                    self?.takeKeys()
-                }
-                return true
-            }
-            f.onEnd = { _ in if a.window.rename?.kind == .title { a.commitRename() } }
-            titleView.addSubview(f)
-            titleField = f
-            titleFieldID = rename.id
-            DispatchQueue.main.async { f.focus(.all) }
+        guard titleFieldID != rename.id else { return }
+        titleFieldID = rename.id
+        let a = actions
+        let view = titleView
+        f.isEditable = true
+        f.isSelectable = true
+        f.onFocus = { [weak view] in view?.styleEditor() }
+        f.onChange = { [weak view] text in
+            view?.styleEditor()
+            a.setRenameText(text)
         }
-        f.textColor = palette.ink
-        f.layer?.backgroundColor = palette.fillControl.cgColor
-        f.layer?.borderColor = palette.focus.cgColor
-        let x = titleView.titleX - 6
-        let w = min(360, max(120, titleView.bounds.width - x - TK.M.rowInset - TK.M.rowPadRight))
-        f.frame = CGRect(x: x, y: 4, width: w, height: 30)
-        f.displayIfNeeded()
+        f.onKey = { [weak self, weak view] key in
+            switch key {
+            case .returnKey, .commandReturn, .backtab:
+                a.commitRename()
+                self?.takeKeys()
+            case .tab:
+                // Tab goes on to the list's notes.
+                a.commitRename()
+                a.editListNotes()
+            case .escape:
+                // The old name back on the same pixels at once (the model's, which the next render shows anyway).
+                let original = a.window.rename?.original
+                a.cancelRename()
+                f.abortEditing()
+                if let original, !original.isEmpty { view?.restyle(original) }
+                self?.takeKeys()
+            }
+            // The field has let go: its plain text gets the title's attributes back before this frame draws.
+            view?.restyle()
+            return true
+        }
+        f.onEnd = { [weak view] _ in
+            if a.window.rename?.kind == .title { a.commitRename() }
+            DispatchQueue.main.async { view?.restyle() }
+            view?.restyle()
+        }
+        DispatchQueue.main.async { [weak view] in
+            f.focus(.all)
+            view?.styleEditor()
+        }
     }
 
     // MARK: - Rename in place (§7)

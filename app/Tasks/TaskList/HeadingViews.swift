@@ -183,12 +183,16 @@ final class HeadingRowView: NSView {
 
 /// The top of the list pane, scrolling with the rows (§23 The list's title): the list's or the view's tile (20×16),
 /// 9 apart from the name in 20/26 semibold `ink` with −0.2 tracking, on a 30pt line 4 below the band; Today's
-/// date or "In Trash" after it in `ink-tertiary`. A list's notes sit 4 below the title, in the notes editor (the list
-/// adds it as a subview), with a "Notes" placeholder in `ink-quaternary` that fades in only on hover, while renaming,
-/// or with the caret in them.
+/// date or "In Trash" after it in `ink-tertiary`. A long name wraps onto more lines (`TitleLayout`), the tile staying on
+/// the first. A list's notes sit 4 below the title, in the notes editor (the list adds it as a subview), with a "Notes"
+/// placeholder in `ink-quaternary` that fades in only on hover, while renaming, or with the caret in them.
+///
+/// The name is always drawn by `field`, a wrapping `InlineField`: at rest it takes no keys and no presses; renaming
+/// makes it editable in place (the list sets that up), so nothing is swapped and nothing moves (design/TITLE-RENAME.md,
+/// direction B).
 final class ListTitleView: NSView {
     private let tile = TileLayer()
-    private let title = TextLayer()
+    let field = InlineField(frame: .zero)
     private let sub = TextLayer()
     private let placeholder = TextLayer()
     private var palette = TK.Palette.dark
@@ -196,14 +200,16 @@ final class ListTitleView: NSView {
     private(set) var hovered = false
     /// The title's text frame: a double-click there renames the list.
     private(set) var titleFrame: CGRect = .zero
+    /// The title line's height (30 for one line of text, 26 more for each further line).
+    private(set) var lineBox: CGFloat = TitleLayout.line
     var onDoubleClickTitle: (() -> Void)?
     var onHover: ((Bool) -> Void)?
     #if DEBUG
-    var debugTitle: String { title.text + (sub.text.isEmpty ? "" : " | " + sub.text) }
+    var debugTitle: String { field.stringValue + (sub.text.isEmpty ? "" : " | " + sub.text) }
     #endif
 
-    nonisolated(unsafe) static let font: NSFont = NSFont.systemFont(ofSize: 20, weight: .semibold)   // .lhn 600 20/26
-    static let kern: CGFloat = -0.2
+    nonisolated(unsafe) static let font: NSFont = TitleLayout.font
+    static let kern: CGFloat = TitleLayout.kern
 
     override var isFlipped: Bool { true }
 
@@ -212,12 +218,17 @@ final class ListTitleView: NSView {
         wantsLayer = true
         layerContentsRedrawPolicy = .never
         guard let layer else { return }
-        title.truncationMode = .end
-        for l in [tile, title, sub, placeholder] as [CALayer] {
+        for l in [tile, sub, placeholder] as [CALayer] {
             l.actions = TaskRowView.noActions
             layer.addSublayer(l)
         }
         placeholder.setInstant { placeholder.opacity = 0 }
+        field.makeWrapping(matchingLabels: true)
+        field.font = Self.font
+        field.isEditable = false
+        field.isSelectable = false
+        field.setAccessibilityLabel("List name")
+        addSubview(field)
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -236,60 +247,110 @@ final class ListTitleView: NSView {
         var renaming = false
     }
 
-    /// Lays out the title line in `width`; the list adds its notes editor at `notesOrigin`.
-    func configure(_ c: Content, palette: TK.Palette, width: CGFloat) {
+    /// Where the name starts, and the width it wraps in, in a pane `width` wide.
+    static func textX(_ c: Content) -> CGFloat { TK.M.rowInset + TK.M.rowPadLeft + 20 + 9 }
+    static func textWidth(_ c: Content, width: CGFloat) -> CGFloat {
+        max(1, width - textX(c) - TK.M.rowInset - TK.M.rowPadRight)
+    }
+
+    /// The title line's height for `text` (the name, or what's being typed) in a pane `width` wide.
+    static func lineBox(_ c: Content, text: String, width: CGFloat) -> CGFloat {
+        TitleLayout.lineBox(text, width: textWidth(c, width: width))
+    }
+
+    /// Lays out the title line in `width`; the list adds its notes editor at `notesTop`. While the name is renamed
+    /// the field keeps what's typed and the line follows its height (`text`, what's being typed).
+    func configure(_ c: Content, palette: TK.Palette, width: CGFloat, text: String? = nil) {
+        let paletteChanged = palette != self.palette
         self.palette = palette
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         let lineTop: CGFloat = 4
-        var x: CGFloat = TK.M.rowInset + TK.M.rowPadLeft
+        let x0: CGFloat = TK.M.rowInset + TK.M.rowPadLeft
         switch c.mark {
         case .tile(let monogram, let slot):
             tile.set(monogram: monogram, hue: palette.tile(slot: slot), palette: palette)
-            tile.position = CGPoint(x: x + 10, y: lineTop + 15)
-            x += 20 + 9
         case .view(let route):
             // B: a view's glyph is a tile too, white on the view's hue (color.css `.lht > span.vg`).
             tile.set(monogram: nil, hue: route.tileHue(palette), palette: palette, glyph: route.glyph ?? .sun)
-            tile.position = CGPoint(x: x + 10, y: lineTop + 15)
-            x += 20 + 9
         }
-        // The name keeps up to 160 (all of a shorter one), then the date or "In Trash" after it gives way, then the
-        // name; both end in an ellipsis, as the prototype's `.lhn` and `.lhs` do (css:441–442, v2 feedback 16).
-        let titleNat = ceil(TextLayer.width(c.title, font: Self.font) + abs(Self.kern) * CGFloat(c.title.count)) + 2
-        let subNat = c.sub.map { ceil(TextLayer.width($0, font: TK.Font.body)) + 2 } ?? 0
-        let avail = max(0, width - x - TK.M.rowInset - TK.M.rowPadRight)
-        var subW: CGFloat = 0
-        if c.sub != nil {
-            subW = titleNat + 9 + subNat <= avail ? subNat : min(subNat, max(0, avail - 9 - min(titleNat, 160)))
-            if subW < min(subNat, 40) { subW = 0 }
+        // On the first line, however many the name takes.
+        tile.position = CGPoint(x: x0 + 10, y: lineTop + 15)
+        let x = Self.textX(c)
+        let avail = Self.textWidth(c, width: width)
+        let shown = text ?? c.title
+        let m = TitleLayout.measure(shown, width: avail)
+        lineBox = TitleLayout.lineBox(shown, width: avail)
+        // The field spans the line, so it breaks lines where `TitleLayout` measured them; a press only renames on the
+        // name itself (one line: its natural width).
+        let textH = CGFloat(m.lines) * TitleLayout.lineHeight
+        let ff = CGRect(x: x - TitleLayout.inset, y: lineTop + (TitleLayout.line - TitleLayout.lineHeight) / 2,
+                        width: avail + 2 * TitleLayout.inset, height: textH)
+        if field.frame != ff { field.frame = ff }
+        if !field.isEditing {
+            restyle(c.title, color: palette.ink, force: paletteChanged)
         }
-        let titleW = min(titleNat, max(0, avail - (subW > 0 ? subW + 9 : 0)))
-        // The layer's own font sets the line CATextLayer truncates in: the attributed string alone left it at 13pt,
-        // and a cut title lost its descenders.
-        title.set(c.title, font: Self.font, color: palette.ink)
-        title.string = NSAttributedString(string: c.title, attributes: [.font: Self.font, .kern: Self.kern,
-                                                                         .foregroundColor: palette.ink])
-        title.place(x: x, lineTop: lineTop + 2, lineHeight: 26, width: titleW)
-        title.isHidden = c.renaming
-        titleFrame = CGRect(x: x, y: lineTop, width: titleW, height: 30)
-        if let s = c.sub, subW > 0 {
-            sub.isHidden = c.renaming
-            sub.truncationMode = .end
-            sub.set(s, font: TK.Font.body, color: palette.inkTertiary)
-            sub.place(x: x + titleW + 9, lineTop: lineTop + 7 + 1, lineHeight: 16, width: subW)
+        titleFrame = CGRect(x: x, y: lineTop, width: m.lines > 1 ? avail : min(avail, m.lastWidth + 2), height: lineBox)
+        // The date or "In Trash" goes 9 after the last line, and gives way there (css:441–442, v2 feedback 16).
+        if let s = c.sub, !c.renaming {
+            let subNat = ceil(TextLayer.width(s, font: TK.Font.body)) + 2
+            let room = avail - m.follow
+            let subW = min(subNat, max(0, room))
+            if subW >= min(subNat, 40) {
+                sub.isHidden = false
+                sub.truncationMode = .end
+                sub.set(s, font: TK.Font.body, color: palette.inkTertiary)
+                let lastTop = lineTop + CGFloat(m.lines - 1) * TitleLayout.lineHeight
+                sub.place(x: x + m.follow, lineTop: lastTop + 7 + 1, lineHeight: 16, width: subW)
+            } else {
+                sub.isHidden = true
+            }
         } else {
             sub.isHidden = true
         }
         placeholder.set("Notes", font: TK.Font.body, color: palette.inkQuiet)
-        placeholder.place(x: TK.M.rowInset + TK.M.rowPadLeft, lineTop: Self.notesTop, lineHeight: 19, width: 60)
+        placeholder.place(x: x0, lineTop: notesTop, lineHeight: 19, width: 60)
         CATransaction.commit()
     }
 
-    /// The notes editor's top in this view: the title line, then 4.
-    static let notesTop: CGFloat = 4 + 30 + 4
+    /// Puts the title's attributes back on what the field shows: at rest, and the moment a rename ends (the field
+    /// editor hands back plain text in the cell's font, which would draw a frame without the tracking or line box).
+    func restyle(_ text: String? = nil, color: NSColor? = nil, force: Bool = false) {
+        guard !field.isEditing else { return }
+        let want = NSAttributedString(string: text ?? field.stringValue, attributes: TitleLayout.attributes(color ?? palette.ink))
+        if force || !field.attributedStringValue.isEqual(to: want) { field.attributedStringValue = want }
+    }
 
-    /// Where the title text starts: the rename field goes there.
+    /// The field editor's look while renaming: the title's attributes on its text and for typing, Ember selection, an
+    /// `ink` caret (§16).
+    func styleEditor() {
+        guard let editor = field.currentEditor() as? NSTextView else { return }
+        let a = TitleLayout.attributes(palette.ink)
+        editor.insertionPointColor = palette.ink
+        editor.selectedTextAttributes = [.backgroundColor: palette.textSelection]
+        editor.defaultParagraphStyle = TitleLayout.paragraph
+        if let storage = editor.textStorage, storage.length > 0 {
+            var same = true
+            storage.enumerateAttributes(in: NSRange(location: 0, length: storage.length)) { attrs, _, stop in
+                if attrs[.kern] as? CGFloat != TitleLayout.kern || attrs[.baselineOffset] as? CGFloat != TitleLayout.baselineOffset
+                    || attrs[.foregroundColor] as? NSColor != palette.ink {
+                    same = false
+                    stop.pointee = true
+                }
+            }
+            if !same {
+                let sel = editor.selectedRanges
+                storage.setAttributes(a, range: NSRange(location: 0, length: storage.length))
+                editor.selectedRanges = sel
+            }
+        }
+        editor.typingAttributes = a
+    }
+
+    /// The notes editor's top in this view: the title line, then 4.
+    var notesTop: CGFloat { 4 + lineBox + 4 }
+
+    /// Where the title text starts.
     var titleX: CGFloat { titleFrame.minX }
 
     /// "Notes" over an empty list's notes line: on hover, while renaming, or with the caret in it (css:448–450).
@@ -308,7 +369,9 @@ final class ListTitleView: NSView {
     override func hitTest(_ point: NSPoint) -> NSView? {
         guard let sv = superview else { return nil }
         let p = convert(point, from: sv)
-        if let hit = super.hitTest(point), hit !== self { return hit }
+        // At rest the name is this view's (a double-click renames); while it's renamed, the field's (a press moves
+        // the caret).
+        if let hit = super.hitTest(point), hit !== self, hit !== field || field.isEditing { return hit }
         return titleFrame.contains(p) ? self : nil
     }
 
