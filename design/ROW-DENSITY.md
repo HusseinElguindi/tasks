@@ -302,3 +302,20 @@ space above differs (32pt slot vs 24).
 1. The mark at the right: 1a (flags line up; recommended) or 1b (capsules hug the mark)?
 2. Months: A, B (recommended) or C (B plus sticky)?
 3. Completed and Trash: line their marks up in a column too (recommended), or leave them right-aligned?
+
+### 7.5 The user's pick, and marks in a column elsewhere
+
+The user, 2026-11-08: "yea i like the recommended 1a and B.  line the tiles up in a column: show me in design."
+
+Boards: **Round 2 · Marks in a column: Completed and Trash** and **Round 2 · Marks in a column: Today's Completed**,
+each as installed next to the column, wide (940) and narrow (520).
+
+- **The column:** as wide as the widest short name in the view, tiles lined up at its start, at the row's end before
+  the › slot: Upcoming's place and width rule.
+- **The day in a month group (recommended):** its own column, 8 before the mark, 12pt `ink-tertiary`, as wide as the
+  view's widest day ("Oct 30"), empty in day groups. It replaces " · Oct 30" after the name, so Completed and Trash
+  have Upcoming's shape: a date, then the mark at the edge. The board also shows the smaller change (mark and
+  " · Oct 30" in one column; tiles lined up, days ragged).
+- **Narrow:** the title keeps 120pt; then the short names go, all at once; the tile and the day never go.
+- **Today:** only the Completed group's rows carry a mark; they line up the same way. Open rows don't change.
+- **Unchanged:** a deleted list's row in Trash ("11 tasks") and the tasks under it carry no mark.
