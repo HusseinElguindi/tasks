@@ -62,3 +62,33 @@ final class TitleLayoutTests: XCTestCase {
         return f
     }
 }
+
+/// A task's and a heading's rename in their rows select in the theme's `text-selection`, as the sidebar's rename and the
+/// detail title do, not AppKit's blue (the user, 2026-11-08: "sure yea fix the highlight").
+@MainActor
+final class InlineFieldSelectionTests: XCTestCase {
+    func testTheFieldSelectsInItsSelectionColour() {
+        let ember = NSColor(srgbRed: 230 / 255, green: 104 / 255, blue: 61 / 255, alpha: 0.42)
+        let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 300, height: 100), styleMask: [.titled], backing: .buffered, defer: false)
+        let f = InlineField(frame: NSRect(x: 10, y: 10, width: 200, height: 17))
+        f.stringValue = "Write the report"
+        f.selectionColor = ember
+        w.contentView?.addSubview(f)
+        f.focus(.all)
+        let editor = f.currentEditor() as? NSTextView
+        XCTAssertNotNil(editor)
+        XCTAssertEqual(editor?.selectedTextAttributes[.backgroundColor] as? NSColor, ember)
+        XCTAssertEqual(editor?.selectedRange(), NSRange(location: 0, length: 16))
+    }
+
+    /// A new colour (the theme changed) reaches the editor of a field that already has the keys.
+    func testANewColourReachesAFieldBeingEdited() {
+        let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 300, height: 100), styleMask: [.titled], backing: .buffered, defer: false)
+        let f = InlineField(frame: NSRect(x: 10, y: 10, width: 200, height: 17))
+        f.stringValue = "Labs"
+        w.contentView?.addSubview(f)
+        f.focus(.all)
+        f.selectionColor = .systemOrange
+        XCTAssertEqual((f.currentEditor() as? NSTextView)?.selectedTextAttributes[.backgroundColor] as? NSColor, .systemOrange)
+    }
+}

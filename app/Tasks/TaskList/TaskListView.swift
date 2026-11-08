@@ -1049,6 +1049,8 @@ final class TaskListView: NSView {
             }
         }
         f.textColor = palette.ink
+        // Selected text in the theme's `text-selection` (Ember), as in every other field (§16), not AppKit's blue.
+        if f.selectionColor != palette.textSelection { f.selectionColor = palette.textSelection }
         // The field replaces the title in place: same font, origin and color (NSTextField draws its text 2pt in). Its
         // text lands on the title's pixels (measured frame by frame across the swap, v2 feedback 5).
         let t = (row as? TaskRowView)?.titleFrame ?? (row as? HeadingRowView)?.nameFrame ?? .zero

@@ -16,6 +16,10 @@ final class InlineField: NSTextField, NSTextFieldDelegate {
     var onFocus: (() -> Void)?
     /// Pasted line breaks become spaces (§7).
     var singleLine = true
+    /// The selected text's background while the field has the keys (§16: `text-selection`); nil keeps AppKit's.
+    var selectionColor: NSColor? {
+        didSet { applySelectionColor() }
+    }
     private let fieldUndo = UndoManager()
 
     override class var cellClass: AnyClass? {
@@ -72,8 +76,16 @@ final class InlineField: NSTextField, NSTextFieldDelegate {
 
     override func becomeFirstResponder() -> Bool {
         let ok = super.becomeFirstResponder()
-        if ok { onFocus?() }
+        if ok {
+            applySelectionColor()
+            onFocus?()
+        }
         return ok
+    }
+
+    private func applySelectionColor() {
+        guard let color = selectionColor, let editor = currentEditor() as? NSTextView else { return }
+        editor.selectedTextAttributes = [.backgroundColor: color]
     }
 
     // MARK: NSTextFieldDelegate
