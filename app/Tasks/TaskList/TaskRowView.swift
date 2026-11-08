@@ -42,13 +42,21 @@ struct RowModel: Equatable {
     var trashed = false
     /// A heading's drag copy (§23, css:479–481): no checkbox, its name semibold at the checkbox's edge.
     var heading = false
-    /// A deleted list's row in Trash (§28, `del.css` `.lrow`): its tile centred on the checkbox's column, its name in
-    /// 13/16 medium, its count in the list-name slot, and a chevron at the end, always shown, where a task's › goes.
+    /// A deleted list's row in Trash (§28), on the task rows' grid (ROW-DENSITY.md §7.7, one grid): the mark's 16×13
+    /// tile centred on the checkbox's column, its name in 13/16 medium, its date in the day column, its count where a
+    /// task's mark goes, and a chevron at the end, always shown, where a task's › goes.
     var deletedList: DeletedList?
     struct DeletedList: Equatable {
         var monogram: String
         var slot: Int
         var expanded: Bool
+        /// "5 tasks", "Empty" in the mark's column, and its number ("5", "0") once the marks' names have gone.
+        var count = ""
+        var number = ""
+        /// In a month group, the day it was deleted ("Oct 31"), in the day column.
+        var day: String?
+        /// The marks' column (as `Mark.column`): the count starts where a task's tile does.
+        var column: CGFloat?
     }
     /// A deleted list's task, expanded under its row: indented 26, so its box starts under the list's name (§28).
     var indent: CGFloat = 0
@@ -73,6 +81,9 @@ struct RowModel: Equatable {
     /// Completed and Trash (round 2b): the month rows' day column before the mark ("Oct 30", 12pt `ink-tertiary`), as
     /// wide as the view's widest day; a row in a day group leaves it empty. nil: no row has a day.
     var dayColumn: CGFloat?
+    /// The mark column's width once the names have gone: the tile's, or a deleted list's widest number if wider, so the
+    /// numbers start where the tiles do (Trash, §7.7).
+    var compactMark: CGFloat = 0
 }
 
 /// A task row (css:159–188): a 30pt shape, 10 in from the pane's sides, radius 8. Checkbox at 10, the title 10 after
@@ -213,9 +224,10 @@ final class TaskRowView: NSView {
         // Checkbox at x 10 (36 under a deleted list), centered.
         let padLeft = TK.M.rowPadLeft + m.indent
         check.position = CGPoint(x: padLeft + TK.M.check / 2, y: TK.M.row / 2)
-        // A deleted list's tile, 20×16, centred on the checkbox's column (so its name starts where titles do).
+        // A deleted list's tile, the mark's 16×13, centred on the checkbox's column (so its name starts where titles do,
+        // and a run of lists isn't a stack of loud tiles among the rings, §7.7).
         if let dl = m.deletedList {
-            tile.set(monogram: dl.monogram, hue: palette.tile(slot: dl.slot), palette: palette, glyph: .sun)
+            tile.set(monogram: dl.monogram, hue: palette.tile(slot: dl.slot), palette: palette, size: .small, glyph: .sun)
             tile.position = CGPoint(x: padLeft + TK.M.check / 2, y: TK.M.row / 2)
         }
         tile.isHidden = m.deletedList == nil
@@ -261,13 +273,19 @@ final class TaskRowView: NSView {
         // without one leaves it empty (direction C, round 2: 1a). The title's slot starts 8 before the Deadline's.
         let column = m.deadlineColumn ?? 0
         let titleStart = m.heading ? TK.M.rowPadLeft : padLeft + TK.M.check + TK.M.titleGap
-        let markAtEdge = m.mark?.column != nil
-        // Completed and Trash have the same shape (round 2b): a month row's day in its column, then the mark.
+        let markAtEdge = m.mark?.column != nil || m.deletedList?.column != nil
+        // Completed and Trash have the same shape (round 2b): a month row's day in its column, then the mark; a deleted
+        // list's row the same, its count in the mark's place (§7.7).
         let dayW = markAtEdge ? m.dayColumn ?? 0 : 0
         if markAtEdge {
             let dlW = max(column, m.deadline.map { ChipLayer.width($0.content) } ?? 0)
             let before = dlW + dayW
-            right -= layoutMark(m, right: right, titleX: titleStart + before + (before > 0 ? TK.M.chipsGap : 0), keep: Self.titleKeep)
+            let x = titleStart + before + (before > 0 ? TK.M.chipsGap : 0)
+            if let dl = m.deletedList {
+                right -= layoutCount(m, dl, right: right, titleX: x)
+            } else {
+                right -= layoutMark(m, right: right, titleX: x, keep: Self.titleKeep)
+            }
         }
         if let c = m.deadline {
             let w = ChipLayer.width(c.content)
@@ -280,7 +298,7 @@ final class TaskRowView: NSView {
         }
         deadlineChip.isHidden = m.deadline == nil
         if dayW > 0 {
-            let day = m.mark?.day ?? ""
+            let day = m.mark?.day ?? m.deletedList?.day ?? ""
             dayLabel.isHidden = day.isEmpty
             if !day.isEmpty {
                 dayLabel.set(day, font: Self.dayFont, color: palette.inkTertiary)
@@ -407,8 +425,8 @@ final class TaskRowView: NSView {
         let whereFull = m.mark.map { $0.full + ($0.day.map { ", " + $0 } ?? "") } ?? m.whereText.map { $0 + (m.whereSuffix ?? "") }
         let dates = [m.when, m.deadline].compactMap { $0.map { $0.tip.isEmpty ? $0.content.text : $0.tip } }
         if let dl = m.deletedList {
-            // "School, deleted list, 11 tasks, collapsed" (§28).
-            setAccessibilityLabel([text, "deleted list", m.whereText ?? "", dl.expanded ? "expanded" : "collapsed"].filter { !$0.isEmpty }
+            // "School, deleted list, 11 tasks, Oct 31, collapsed" (§28).
+            setAccessibilityLabel([text, "deleted list", dl.count, dl.day ?? "", dl.expanded ? "expanded" : "collapsed"].filter { !$0.isEmpty }
                 .joined(separator: ", "))
         } else {
             setAccessibilityLabel(([text, notesLabel].compactMap { $0 } + dates + [whereFull].compactMap { $0 }).joined(separator: ", "))
@@ -529,7 +547,7 @@ final class TaskRowView: NSView {
         let full = mk.column != nil ? mk.name : mk.day.map { mk.name + " · " + $0 } ?? mk.name
         let compact = mk.column != nil ? "" : mk.day ?? ""
         let fullW: CGFloat = tileW + 6 + (mk.column ?? ceil(TextLayer.width(full, font: font)))
-        let compactW: CGFloat = compact.isEmpty ? tileW : tileW + 6 + ceil(TextLayer.width(compact, font: font))
+        let compactW: CGFloat = compact.isEmpty ? max(tileW, m.compactMark) : tileW + 6 + ceil(TextLayer.width(compact, font: font))
         let slot = right - titleX
         let showName = mk.column != nil ? slot - fullW - 8 >= Self.titleKeep : slot - fullW - 8 >= keep
         let w = showName ? fullW : compactW
@@ -547,6 +565,26 @@ final class TaskRowView: NSView {
         }
         // What the pointer finds for the tooltip: the tile and the text, not a column's slack.
         markFrame = CGRect(x: x0, y: 0, width: tileW + (text.isEmpty ? 0 : 6 + textW), height: TK.M.row)
+        return w + 8
+    }
+
+    /// Lays out a deleted list's count in the marks' column ending at `right` (§7.7, one grid): "5 tasks" at the column's
+    /// start, where a task's tile is, in 12pt `ink-tertiary`; its number ("5") when the names go, which happens at the
+    /// same width as a task row's (`layoutMark`'s column rule), so the whole view changes at once. Returns the room it
+    /// takes with the 8 before it.
+    private func layoutCount(_ m: RowModel, _ dl: RowModel.DeletedList, right: CGFloat, titleX: CGFloat) -> CGFloat {
+        let tileW = TileLayer.dimensions(.small).width
+        let fullW = tileW + 6 + (dl.column ?? 0)
+        let showName = right - titleX - fullW - 8 >= Self.titleKeep
+        let w = showName ? fullW : max(tileW, m.compactMark)
+        let text = showName ? dl.count : dl.number
+        markTile.isHidden = true
+        markFrame = .zero
+        markLabel.isHidden = text.isEmpty
+        if !text.isEmpty {
+            markLabel.set(text, font: Self.dayFont, color: palette.inkTertiary)
+            markLabel.place(x: right - w, lineTop: (TK.M.row - 16) / 2, lineHeight: 16, width: ceil(markLabel.textWidth) + 2)
+        }
         return w + 8
     }
 
@@ -678,7 +716,7 @@ final class GroupLabelView: NSView {
     private let subMask = FadeMask()
     private let count = TextLayer()
     private let selection = CALayer()
-    /// An Upcoming month's rule (round 2: B).
+    /// A month's rule (round 2: B; every view's months).
     private let rule = CALayer()
     /// A list's tile, in a view grouped by list (round 2c).
     private let tile = TileLayer()

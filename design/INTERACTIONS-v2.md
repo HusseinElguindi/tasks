@@ -1306,15 +1306,31 @@ From Trash, a list puts the tasks back into that list; Today and Completed don't
 | View | Tasks | Groups, in order | Row extras | Source |
 |---|---|---|---|---|
 | Upcoming | Open, in active lists, whose **earlier date is after today**. Each sits on the day it will reach Today (SPEC §4: either date brings it in), so every dated open task is in exactly one of Today and Upcoming. A task with both dates shows **once**, on the earlier date | **The next seven days, always**: "Tomorrow", then weekday names, each with its date after it in 400 `ink-quiet` ("Monday  Nov 2"). An empty day's label is `ink-quiet` and still takes +, a double-click and a drop. **Then one group per month**: "Later in November" (the rest of the seventh day's month), "December", "January 2027"; a month's label has a list
-heading's look (§23): 13/16 semibold `ink` on a 1pt `line-separator` rule, 10 in from each end, in a 44pt slot
-(2026-11-08, round 2). **A month lists its days** (2026-11-08, below): each day with tasks has its own label ("Wednesday  Nov 18", the same 11pt type in a 24pt slot) that takes +, a double-click and a drop like a day group's label; the month's label takes none of them, as before. Within a day: the list's sidebar order, then the list's order | The Deadline in a column, then **the list mark** (below) in a column at the row's end. No row repeats the day it's filed under, in the first week or in a month: a When on that day shows no chip, and a deadline on that day reads "Due" (its tone's flag chip). The other date shows as a **date** ("Nov 16"), never a count (§24 "In Upcoming") | `dc:3225–3252`, `dc:3275`, `dc:3278–3284`; ROW-DENSITY.md C |
+heading's look, as every month label does ("Month labels" below; 2026-11-08, round 2). **A month lists its days** (2026-11-08, below): each day with tasks has its own label ("Wednesday  Nov 18", the same 11pt type in a 24pt slot) that takes +, a double-click and a drop like a day group's label; the month's label takes none of them, as before. Within a day: the list's sidebar order, then the list's order | The Deadline in a column, then **the list mark** (below) in a column at the row's end. No row repeats the day it's filed under, in the first week or in a month: a When on that day shows no chip, and a deadline on that day reads "Due" (its tone's flag chip). The other date shows as a **date** ("Nov 16"), never a count (§24 "In Upcoming") | `dc:3225–3252`, `dc:3275`, `dc:3278–3284`; ROW-DENSITY.md C |
 | Undated | Open, in active lists, with **no When and no Deadline** | By list, in sidebar order, each list's name as the label with its +; rows in the list's order. Exactly Today's grouping | none | `dc:3218–3224` |
-| Completed | Completed, in active lists, **newest first, all of them**: it's the logbook (kept forever, SPEC §2; the app draws only what's on screen) | A group per local day for the last 7 days ("Today", "Yesterday", weekday names, with the date), then per month (a logbook's months stay months: no day labels). A stamp ahead of today, from another device's clock, groups under Today (the user, 2026-11-02; `ViewGroups.past`) | The list mark at the row's end; in a month group also the day ("CS 489 · Oct 22") | `dc:3253–3269` |
-| Trash | Deleted tasks, wherever their list is, and deleted lists, each one row (§28), newest deleted first. A task in a deleted list counts as deleted everywhere else | As Completed, by the day it was deleted | The list mark (and the day, in a month group). A task under its deleted list's row has none; a deleted list's row keeps its count ("11 tasks"). Titles `ink-secondary` (completed ones keep their struck `ink-tertiary`); the checkbox at 60% and deaf to the pointer; no When, no Deadline and no ring (§24) | `dc:3253–3269`, `css:427–430` |
+| Completed | Completed, in active lists, **newest first, all of them**: it's the logbook (kept forever, SPEC §2; the app draws only what's on screen) | A group per local day for the last 7 days ("Today", "Yesterday", weekday names, with the date), then per month, each month's label a heading ("Month labels" below; a logbook's months stay months: no day labels). A stamp ahead of today, from another device's clock, groups under Today (the user, 2026-11-02; `ViewGroups.past`) | The list mark in a column at the row's end; in a month group the day in its own column before it ("Oct 22", round 2b) | `dc:3253–3269` |
+| Trash | Deleted tasks, wherever their list is, and deleted lists, each one row (§28), newest deleted first. A task in a deleted list counts as deleted everywhere else | As Completed, by the day it was deleted | The list mark (and the day, in a month group). A task under its deleted list's row has none. A deleted list's row is on the task rows' grid: the mark's tile in the checkbox's column, its day in the day column, its count ("11 tasks") in the mark's column (§28, round 3). Titles `ink-secondary` (completed ones keep their struck `ink-tertiary`); the checkbox at 60% and deaf to the pointer; no When, no Deadline and no ring (§24) | `dc:3253–3269`, `css:427–430` |
 
 Label metrics are Today's (`css:131`, `css:236–239`); the date part is `css:421`, an empty day `css:422`. Group labels
 keep one node per id while the view is open, so they move with their rows (`dc:3286–3310`). A day inside a month has a
 day group's id ("d:2026-11-18"), so its label carries over when the day moves into the first week at midnight.
+
+### Month labels (2026-11-08)
+
+**One rule for every month label, in every view** (the user, 2026-11-08: "why dont we use the same month heading look.
+we need to be consistent everywhere"): a month's label has a list heading's look (§23): **13/16 semibold `ink` on a
+1pt `line-separator` rule, 10 in from each end, in a 44pt slot**, the text's line 8 above the slot's foot. It's
+round 2's B, first built for Upcoming. It takes no +, double-click or drop, and it doesn't fold.
+
+- **Where:** Upcoming's months ("Later in November", "December", "January 2027"), and Completed's and Trash's
+  ("October", "September 2025"). Any later view that groups by month takes it too.
+- **Day labels stay day labels** (11/14 semibold `ink-tertiary`, the date in 400 `ink-quiet`): the first week's in
+  Upcoming (32pt), the days inside Upcoming's months (24pt), and the last seven days in Completed and Trash (32pt). So
+  every view has the same two ranks: an `ink` month on a rule, `ink-tertiary` days.
+- **Not month labels, so unchanged:** the date picker's month ("November 2026", §11) is a calendar's header, not a
+  group; Today's "Completed" label is a group label that folds; a list's group label (Undated, Today) is round 2c's.
+- **The iPhone** groups Completed and Trash by month too (`ios/Tasks/Model/Lines.swift`); it takes this rule with its
+  own row-density design (ROW-DENSITY.md §6), not yet.
 
 ### The list mark (2026-11-08)
 
@@ -1380,6 +1396,23 @@ and the tasks under it still carry no mark.
 list · Undated" and "· Today"): a list's group label shows its tile and splits its name, the short name then the rest
 quiet; the rows under it carry no mark (the Fix above).
 
+**Round 3 (the user, 2026-11-08: "go with the recommended (1). Also, why dont we use the same month heading look. we
+need to be consistent everywhere.";** ROW-DENSITY.md §7.7, board "Trash: deleted lists next to task rows", fix 1 "One
+grid"):
+- **A deleted list's row in Trash is on the task rows' grid.** Its tile is the mark's 16×13, centred in the
+  checkbox's column; in a month group its day ("Oct 31") is in the day column; its count ("5 tasks", "Empty",
+  "4 completed") starts where a task's tile does, in the mark's column (12pt `ink-tertiary`, tabular digits); the ›
+  stays. The column is wide enough for the widest count. Narrow, when the marks' names go (the same width, so the
+  whole view changes at once), a count becomes its number ("5", "0" for Empty, "4" for 4 completed), the numbers
+  starting where the tiles do.
+- **Months in Completed and Trash** take the month look ("Month labels" above).
+
+**As built, round 3 (2026-11-08, Mac).** `RowModel.DeletedList` carries `count`, `number`, `day` and the marks'
+`column`; `TaskRowView.layoutCount` lays the count out in the mark's place with `layoutMark`'s column rule, and the
+day goes in `dayLabel`. `TaskListView.markColumnWidth` widens the column for the counts and returns the compact width
+(`RowModel.compactMark`: the tile's 16, or the widest number if wider). `TaskLayout.dayColumn` counts a deleted list's
+day. Completed and Trash set `LabelInfo.month` on their month groups. Debug: `-demoCourses` adds four deleted lists.
+
 **As built, round 2c (2026-11-08, Mac).** TasksCore: `ListName.split` (the short name and the rest after the
 separator, a parenthesis kept with the rest; `ListNameTests.testSplit`); `ListName.short` is its first part.
 `GroupLabelView.configure(tile:)` draws the small tile at the label's x and moves the text 22 right; with a tile, the
@@ -1395,8 +1428,8 @@ and Trash rows `RowModel.dayColumn`; `TaskRowView` draws the day in `dayLabel` a
 **As built, round 2 (2026-11-08, Mac).** `TaskRowView.configure` lays out the mark first in Upcoming (`markAtEdge`),
 measuring the title's room as if the Deadline's column and its 8 were still before it, then the Deadline's column.
 `LabelInfo.month` and `TaskLayout.monthLabel` (44) give a month its slot; `GroupLabelView` draws it in
-`HeadingRowView.font` and `ink`, 8 above the slot's foot, with a heading's rule. Months in Completed and Trash keep the
-32pt label.
+`HeadingRowView.font` and `ink`, 8 above the slot's foot, with a heading's rule. Months in Completed and Trash kept the
+32pt label until round 3.
 
 **As built (2026-11-08, Mac).** TasksCore: `ListName.short` (`ListName.swift`, `ListNameTests`),
 `DateLabel.upcomingWhen` and `upcomingDeadline` (`DatePhrase.swift`), `ViewGroups.upcomingDayInMonth`
@@ -2269,12 +2302,14 @@ list deleted last spring. C puts a long list in a 420pt pane, and nothing in tha
 
 **The row** (`del.css`, `.lrow`). A deleted list's row is 30pt on the 32pt pitch, like a task row:
 
-- The list's tile (20×16) is centred on the checkbox's column, so the name starts where task titles do (2pt left of
-  the box, 8 to the name).
+- The list's tile is centred on the checkbox's column, so the name starts where task titles do. Since round 3 (§22,
+  ROW-DENSITY.md §7.7) it's the mark's 16×13, not 20×16, so a run of lists isn't a stack of loud tiles among rings.
 - The name is in 13/16 medium `ink-secondary`: medium because the row holds things, and secondary like the rest of
   Trash.
-- The count goes in the list-name slot (12pt `ink-tertiary`). It counts open tasks: "11 tasks", "1 task". With none
-  open it reads "4 completed", and an empty list reads "Empty". In a month group the date follows: "2 tasks · Sep 14".
+- The count goes in the mark's column, where a task's tile starts (12pt `ink-tertiary`). It counts open tasks:
+  "11 tasks", "1 task". With none open it reads "4 completed", and an empty list reads "Empty". In a month group its
+  day is in the day column ("Sep 14"), as a task's is (round 3; it used to follow the count, "2 tasks · Sep 14").
+  Narrow, the count is its number ("11", "0").
 - A 22pt chevron sits at the end, always shown, where a task row's › appears on hover. It rests in `ink-tertiary`,
   takes the `hover` fill with `ink-secondary` on hover and the `press` fill on press, and turns 90° in 200 ms ease-out.
   The row has no › of its own.
