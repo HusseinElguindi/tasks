@@ -1365,6 +1365,10 @@ the mark moved to Upcoming's right edge with the Deadline's column before it (1a
 heading's look (B). The narrow order is unchanged: the names go all at once and the tile stays at the right edge.
 Completed and Trash are unchanged until their column version is designed.
 
+**Fix (2026-11-08, the user: "also, undated has the listnames twice here? is this expected?"):** the first build
+gave Undated's rows the mark under their list's label; C added it (before C, Undated showed no list name). Now no row
+under a label that names its list carries a mark: Undated, Today's open groups, and a list.
+
 **Round 2b (the user, 2026-11-08: "yea i like th recommended.";** ROW-DENSITY.md §7.5, boards "Round 2 · Marks in a
 column: Completed and Trash" and "…: Today's Completed"): Completed, Trash and Today's Completed group put the mark in
 Upcoming's column, and a month row's day in its own column before it, replacing " · Oct 30". Narrow: the title keeps

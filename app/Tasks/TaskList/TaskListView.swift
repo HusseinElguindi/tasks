@@ -725,7 +725,9 @@ final class TaskListView: NSView {
             // Only its Completed group (the caller's check): the open rows are under their list's label.
             mk.column = column
         default:
-            break
+            // Undated and a list: every row is under its list's label, or in it (§22). Before C, Undated showed no
+            // list name either.
+            return nil
         }
         return mk
     }
