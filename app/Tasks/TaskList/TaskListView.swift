@@ -1944,22 +1944,14 @@ final class TaskListView: NSView {
         }
         let others = g.ids.filter { !d.ids.contains($0) }
         let tops = L.slotTops(g, others: others)
-        let headingDrag = d.ids.first.map(L.isHeading) ?? false
         let slotY = tops[min(max(current.target, 0), tops.count - 1)] + (d.ids.first.map(L.rowOffset) ?? 0)
         let slotDoc = CGRect(x: TK.M.rowInset, y: slotY, width: 10, height: TK.M.row)
         let slot = windowRect(slotDoc, from: doc)
         state.drag?.phase = .fly
         overlay?.flyCopy(to: CGPoint(x: d.startFrame.minX, y: slot.minY), shrink: false)
-        let contiguous = d.ids.enumerated().allSatisfy { i, id in g.ids.firstIndex(of: id) == (g.ids.firstIndex(of: d.ids[0]) ?? 0) + i }
         DispatchQueue.main.asyncAfter(deadline: .now() + TK.Timer.fly) { [weak self] in
             guard let self else { return }
-            if headingDrag {
-                // The heading and every task in its section, completed ones included; where it started, nothing.
-                if current.target != d.origTarget {
-                    let t = min(max(current.target, 0), others.count)
-                    a.moveSection(d.ids[0], to: t < others.count ? .before(others[t]) : .bottom)
-                }
-            } else if !(contiguous && current.target == d.origTarget) { a.reorder(group: d.group, ids: d.ids, target: current.target) }
+            a.dropInGroup(d.ids, group: d.group, target: current.target, from: d.origTarget)
             self.state.drag?.phase = .done
             self.land(on: d.ids.first, overlay)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) { [weak self] in self?.state.drag = nil }
@@ -1990,17 +1982,23 @@ final class TaskListView: NSView {
         let p = store.projection
         if d.mode == .days, let day = current.toDay, d.ids.contains(where: { id in
             p.task(id).flatMap { ViewGroups.upDay(when: $0.when, deadline: $0.deadline) } != day
-        }), let L = currentLayout, let grabbed = d.ids.first, let y = L.y(grabbed) {
-            let slot = windowRect(CGRect(x: TK.M.rowInset, y: y, width: 10, height: TK.M.row), from: doc)
+        }), let grabbed = d.ids.first {
+            // The copy flies into the layout of the drop's state: the days the rows left, kept through the drag, close
+            // up now (`ViewItems.kept`), so a row dropped below one lands where the copy goes, not a label lower.
             state.drag?.phase = .fly
+            guard let y = TaskLayout.make(store: store, window: state).y(grabbed) else {
+                overlay?.endCopy()
+                state.drag = nil
+                return
+            }
+            let slot = windowRect(CGRect(x: TK.M.rowInset, y: y, width: 10, height: TK.M.row), from: doc)
             overlay?.flyCopy(to: CGPoint(x: d.startFrame.minX, y: slot.minY), shrink: false)
             DispatchQueue.main.asyncAfter(deadline: .now() + TK.Timer.fly) { [weak self] in
                 guard let self else { return }
-                a.setDate(d.ids, .when, day)
                 // The row lands in a layout that already has its new day, as a list's drop lands in its new order:
                 // read on the old dates, it would show on the day it left (where the landing cuts its move short) and
-                // then slide back to the gap (the user, 2026-11-06).
-                self.state.viewDates.invalidate()
+                // then slide back to the gap (the user, 2026-11-06). `dropOnDay` reads them at once.
+                a.dropOnDay(d.ids, day)
                 self.state.drag?.phase = .done
                 self.land(on: grabbed, overlay)
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.04) { [weak self] in self?.state.drag = nil }

@@ -603,6 +603,41 @@ struct WindowActions {
         undoable(name) { store.reorder(moving, in: group, at: anchor, name: name, undoManager: undo) }
     }
 
+    /// A list drag's drop once its copy has flown into the slot (§14): the order, or a heading's section moved (§23);
+    /// at its own place, nothing. `origTarget`: the slot it left. Whether it wrote. Shared with `DebugDropCheck`, so the
+    /// check writes what a drop writes.
+    @discardableResult
+    func dropInGroup(_ ids: [EntityID], group: EntityID, target: Int, from origTarget: Int) -> Bool {
+        let L = layout
+        guard let g = L.groups.first(where: { $0.listID == group }), let first = ids.first else { return false }
+        let others = g.ids.filter { !ids.contains($0) }
+        let start = g.ids.firstIndex(of: first) ?? 0
+        let contiguous = ids.enumerated().allSatisfy { i, id in g.ids.firstIndex(of: id) == start + i }
+        var wrote = false
+        if L.isHeading(first) {
+            // The heading and every task in its section, completed ones included; where it started, nothing.
+            if target != origTarget {
+                let t = min(max(target, 0), others.count)
+                moveSection(first, to: t < others.count ? .before(others[t]) : .bottom)
+                wrote = true
+            }
+        } else if !(contiguous && target == origTarget) {
+            reorder(group: group, ids: ids, target: target)
+            wrote = true
+        }
+        // Undated's rows are read through `ViewDates`, bumped a turn later: the landing renders in this one, so it reads
+        // them now, or it shows the old order and the rows swap after (as Upcoming's day did, the user, 2026-11-06).
+        if wrote, window.route.isView { window.viewDates.invalidate() }
+        return wrote
+    }
+
+    /// Upcoming's drop on a day (§22): When is set to it (the deadline is never touched), and the landing, rendered in
+    /// this turn, reads the new dates (`ViewDates.invalidate`). Shared with `DebugDropCheck`.
+    func dropOnDay(_ ids: [EntityID], _ day: CalendarDate) {
+        setDate(ids, .when, day)
+        window.viewDates.invalidate()
+    }
+
     /// ⌥⌘↑ ⌥⌘↓ (dc:962–975).
     func moveSelectionBy(_ delta: Int) {
         if viewMoveBy(delta) || inTrash { return }

@@ -15,6 +15,8 @@ struct ViewItems: Equatable {
     var orders: [String] = []
     /// Completed and Trash: when each was completed or deleted (ms), newest first.
     var stamps: [Int] = []
+    /// Upcoming while rows are dragged: the days they're on now, whose labels stay until the release (§22).
+    var kept: Set<CalendarDate> = []
 
     /// What the rows were read from. Upcoming and Undated depend on each open task's dates, which no bucket changes
     /// with: `ViewDates` watches them and bumps `revision`. Completed and Trash depend on the buckets a completion,
@@ -26,6 +28,12 @@ struct ViewItems: Equatable {
         var pins: [EntityID: WindowState.Pin]
         var day: CalendarDate
         var revision: Int
+        /// Upcoming while rows are dragged (`WindowState.Drag.Mode.days`): the dragged tasks, and the day under the copy.
+        var dragged: [EntityID] = []
+        var toDay: CalendarDate?
+        /// The days they left keep their labels while the pointer is down; from the release the layout is the drop's
+        /// state alone, which the copy flies into (`endViewDrag`).
+        var keep = false
     }
 
     /// The `at` of the op that last touched a task, which for a task in the Trash is its deletion: nothing edits a
@@ -44,6 +52,11 @@ struct ViewItems: Equatable {
             // A fresh pass may have seen changes made while it was disarmed (in Today, say): read again.
             if window.viewDates.arm(store: store, window: window) { window.viewItemsCache = nil }
             key.revision = window.viewDatesRevision
+            if route == .upcoming, let d = window.drag, d.mode == .days, d.phase != .done, case .tasks(let ids, _) = d.kind {
+                key.dragged = ids
+                key.toDay = d.toDay
+                key.keep = d.phase == .drag
+            }
         case .completed:
             key.buckets = active.map { p.completedTasks(in: $0).ids }
         default:
@@ -68,9 +81,19 @@ struct ViewItems: Equatable {
         switch key.route {
         case .upcoming, .undated:
             let upcoming = key.route == .upcoming
+            let dragged = Set(key.dragged)
             var items: [(id: EntityID, day: CalendarDate, rank: Int, order: String)] = []
             func consider(_ e: ViewDates.Entry) {
                 if upcoming {
+                    var e = e
+                    if dragged.contains(e.id) {
+                        // Dragged rows: the day each is on now keeps its label, and over a day each is read as the drop
+                        // will write it (When is that day; `endViewDrag`). The preview is the layout of the drop's own
+                        // state, by the sort the landing reads, so the copy flies to where the row lands (the user,
+                        // 2026-11-06: "a very wierd jump when movign tasks around").
+                        if key.keep, let home = ViewGroups.upDay(when: e.when, deadline: e.deadline), home > today { v.kept.insert(home) }
+                        if let to = key.toDay { e.when = to }
+                    }
                     guard let day = ViewGroups.upDay(when: e.when, deadline: e.deadline), day > today else { return }
                     items.append((e.id, day, e.rank, e.order))
                 } else if e.when == nil && e.deadline == nil {
@@ -218,21 +241,10 @@ extension TaskLayout {
             if L.order.isEmpty { L.empty = .undated }
 
         case .upcoming:
-            // Each open task on the day it reaches Today; a drag lays its rows out on the day under the copy (dc:2269–2296).
+            // Each open task on the day it reaches Today. A drag lays its rows out on the day under the copy: `ViewItems`
+            // reads them as the drop will write them (dc:2269–2296), and keeps the days they left (`kept`).
             var ids = v.ids, days = v.days, ranks = v.ranks
-            var homeDays: Set<CalendarDate> = []
-            if let d = inputs.drag, d.mode == .days, d.phase != .done, case .tasks(let dragged, _) = d.kind {
-                let set = Set(dragged)
-                for i in ids.indices where set.contains(ids[i]) { homeDays.insert(days[i]) }
-            }
-            if let d = inputs.drag, d.mode == .days, d.phase != .done, let to = d.toDay, case .tasks(let dragged, _) = d.kind {
-                let set = Set(dragged)
-                var items = ids.indices.map { (id: ids[$0], day: set.contains(ids[$0]) ? to : days[$0], rank: ranks[$0], order: v.orders[$0]) }
-                // Moved rows sort into their new day by list, then by their key in it: where the drop will put them.
-                items.sort { ViewGroups.upcomingPrecedes(.init(id: $0.id, day: $0.day, rank: $0.rank, order: $0.order),
-                                                         .init(id: $1.id, day: $1.day, rank: $1.rank, order: $1.order)) }
-                ids = items.map(\.id); days = items.map(\.day); ranks = items.map(\.rank)
-            }
+            let homeDays = v.kept
             if let draft, let when = draft.when, when > today, let rank = active.firstIndex(of: draft.list) {
                 // The new task sits at the end of its list's rows on its day.
                 let at = ids.indices.first { days[$0] > when || (days[$0] == when && ranks[$0] > rank) } ?? ids.count
