@@ -86,7 +86,76 @@ final class WidgetFeedTests: XCTestCase {
         for id in ["when-15", "deadline-15", "done-yesterday", "done-today-deleted", "deleted", "C-today", "A-tail-head"] {
             XCTAssertFalse(feed.tasks.contains { $0.id == id }, id)
         }
-        XCTAssertEqual(feed.tasks.first { $0.id == "done-today" }, p.task("done-today"), "TaskItem as the projection has it")
+        XCTAssertEqual(feed.tasks.first { $0.id == "done-today" }, p.task("done-today").map(WidgetFeed.drawable),
+                       "TaskItem as the projection has it, less what no widget draws")
+    }
+
+    /// The feed carries no notes or timestamps (coord title-design T8): the widgets never show them, and they were
+    /// most of its bytes.
+    func testTheFeedLeavesOutNotesAndTimestamps() throws {
+        var m = OpMaker()
+        let ops = [
+            m.createList("A", name: "School", order: "a0"),
+            m.createTask("t", list: "A", order: "a0", title: "Read", when: date("2026-11-05")),
+            m.updateTask("t", Patch(notes: String(repeating: "x", count: 5000))),
+        ]
+        let p = Projection(confirmed: AppState.replay(ops), day: day)
+        XCTAssertEqual(p.task("t")?.notes.count, 5000)
+        let t = try XCTUnwrap(WidgetFeed.make(from: p, day: day).tasks.first)
+        XCTAssertEqual(t.notes, "")
+        XCTAssertEqual(t.createdAt, 0)
+        XCTAssertEqual(t.updatedAt, 0)
+        XCTAssertEqual(t.title, "Read")
+        XCTAssertEqual(t.when, date("2026-11-05"))
+    }
+
+    /// Which widgets a new feed changes: none for what they don't draw, Today for a dated or completed task, the List
+    /// widget for a list's tops, both for the lists themselves.
+    func testChanges() {
+        let p = fixture()
+        let base = WidgetFeed.make(from: p, day: day)
+        XCTAssertEqual(base.changes(since: nil), .all, "no feed yet")
+        var same = base
+        same.written += 60_000
+        XCTAssertEqual(same.changes(since: base), [], "the time alone")
+
+        func with(_ id: EntityID, _ edit: (inout TaskItem) -> Void) -> WidgetFeed {
+            var f = base
+            if let i = f.tasks.firstIndex(where: { $0.id == id }) { edit(&f.tasks[i]) }
+            return f
+        }
+        XCTAssertEqual(with("overdue") { $0.title = "Overdue!" }.changes(since: base), [.today],
+                       "a dated task outside the tops: Today alone")
+        XCTAssertEqual(with("A-b0") { $0.title = "Renamed" }.changes(since: base), [.list],
+                       "an undated task in the tops: the List widget alone")
+        XCTAssertEqual(with("B-today") { $0.title = "Both" }.changes(since: base), .all, "dated and in B's tops")
+        XCTAssertEqual(with("A-b1") { $0.when = date("2026-11-05") }.changes(since: base), .all, "a top task gets a date")
+
+        var tops = base
+        tops.listTops["B"] = ["B-undated", "B-today"]
+        XCTAssertEqual(tops.changes(since: base), [.list], "reordered tops")
+        var lists = base
+        lists.lists[0].name = "School 2026"
+        XCTAssertEqual(lists.changes(since: base), .all, "a list renamed")
+        var schema = base
+        schema.schema += 1
+        XCTAssertEqual(base.changes(since: schema), .all)
+    }
+
+    /// When the feed is written: a second after the last change, a gap after the last write, and within a gap of the
+    /// first change waiting.
+    func testPace() {
+        func d(_ now: TimeInterval, _ last: TimeInterval?, _ since: TimeInterval?) -> TimeInterval {
+            WidgetFeedPace.delay(now: now, lastWrite: last, waitingSince: since, quiet: 1, gap: 20)
+        }
+        XCTAssertEqual(d(100, nil, nil), 1)
+        XCTAssertEqual(d(100, 95, nil), 15)
+        XCTAssertEqual(d(100, 50, nil), 1)
+        XCTAssertEqual(d(100, nil, 85), 1, "a second after this change…")
+        XCTAssertEqual(d(104.5, nil, 85), 0.5, "…but a steady stream goes out within 20 s of its first change")
+        XCTAssertEqual(d(100, nil, 70), 0, "overdue: at once")
+        XCTAssertEqual(WidgetFeedPace.delay(now: 100, lastWrite: nil, waitingSince: nil, quiet: 1, gap: 0), 1,
+                       "no gap still waits its second")
     }
 
     /// The widget's Today, computed from the feed alone, is the app's Today: for the feed's own day, and for the next

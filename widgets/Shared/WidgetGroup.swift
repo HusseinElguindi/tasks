@@ -29,6 +29,20 @@ enum WidgetGroup {
     /// The feed the widgets draw from: `<group>/Tasks/widget-feed.json`.
     static var feedURL: URL? { folder.map(WidgetFeed.url(in:)) }
 
+    /// The widgets a feed change reloads (`WidgetFeed.changes`): Today's when what Today shows changed, the List
+    /// widget's when a list's rows did. The lock screen's circular ones and the controls never show the feed.
+    static func kinds(for change: WidgetFeed.Change) -> [String] {
+        var kinds: [String] = []
+        if change.contains(.today) {
+            kinds.append(Kind.today)
+            #if os(iOS)
+            kinds.append(Kind.todayLock)
+            #endif
+        }
+        if change.contains(.list) { kinds.append(Kind.list) }
+        return kinds
+    }
+
     /// The widgets' kinds.
     enum Kind {
         static let today = "com.elguindi.Tasks.today"
