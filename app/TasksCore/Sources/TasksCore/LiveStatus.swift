@@ -247,6 +247,12 @@ public struct LiveGlyph: Sendable, Equatable {
         }
         return since + Self.downAfter
     }
+
+    /// Keeps what it shows and forgets how long the socket has been down: the iPhone going to the background, where
+    /// nothing counts, so coming back starts the 5 s again rather than flashing the plain cloud while it reconnects.
+    public mutating func pause() {
+        downSince = nil
+    }
 }
 
 extension SyncSocket {
