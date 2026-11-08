@@ -3,6 +3,15 @@ import SwiftUI
 /// The iPhone's row grid and type, scaled up from the Mac's 13/16 on a 32pt pitch (tasks-v2.css) to 17/22 on 48.
 enum Metric {
     static let rowHeight: CGFloat = 48
+    /// A row with a detail line (ROW-DENSITY.md §6.4): 6 + the title's 22 + 2 + line 2's 20 + 6.
+    static let twoLineHeight: CGFloat = 56
+    static let twoLinePad: CGFloat = 6
+    static let lineGap: CGFloat = 2
+    static let detailLine: CGFloat = 20
+    /// The list mark's tile (§22): the sidebar's small tile, 16×13.
+    static let markTileW: CGFloat = 16
+    /// A list column wider than this (iPad) keeps the one-line row (the user, 2026-11-08: "yea sure").
+    static let wideColumn: CGFloat = 600
     static let rowInset: CGFloat = 10          // screen edge to the row's pressed fill
     static let rowPad: CGFloat = 10            // fill edge to the checkbox / tile
     static let rowRadius: CGFloat = 12

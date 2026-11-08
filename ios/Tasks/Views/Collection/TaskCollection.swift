@@ -267,13 +267,13 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
         cell.owner = self
         cell.backgroundConfiguration = .clear()
         // Nothing here holds the controller: the cells are its view's.
-        let app = app, source = source, rows = rows, state = sizes[id]
+        let app = app, source = source, rows = rows, state = sizes[id], wide = wide
         // A row being typed into is cut at its cell as drawn: a line it gains is under the row's top (`CellTop`) before
         // the cell grows on the spring, and shows as the cell opens, not over the next row.
         cell.clipsToBounds = state?.hasPrefix(TaskCollection.editingMark) == true
         weak let owner = self
         cell.contentConfiguration = UIHostingConfiguration {
-            CollectionLine(id: id, source: source, rows: rows, state: state, owner: owner).modifier(CellTheme(app: app))
+            CollectionLine(id: id, source: source, rows: rows, state: state, wide: wide, owner: owner).modifier(CellTheme(app: app))
                 // One identity per task, so a reused cell starts fresh: its box sees no "change" and gives no haptic.
                 .id(id)
         }
@@ -281,6 +281,18 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
         .margins(.vertical, 0)
         .minSize(width: nil, height: 0)
         drag.configured(cell)
+    }
+
+    /// The list column is wider than `Metric.wideColumn` (iPad): task rows are one line. Rows are configured again as it
+    /// crosses (`viewDidLayoutSubviews`).
+    private var wide = false
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        let now = cv.bounds.width - 2 * Metric.rowInset > Metric.wideColumn
+        guard now != wide else { return }
+        wide = now
+        if dataSource.snapshot().numberOfItems > 0 { reconfigureAll() }
     }
 
     /// Every shown row configured again, e.g. for a new text size.

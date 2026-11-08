@@ -15,6 +15,8 @@ struct CollectionLine: View {
     let rows: CollectionRows
     /// The row's height signature when it was configured (`TaskCollection.signatures`).
     var state: String? = nil
+    /// The list column is wider than `Metric.wideColumn`: task rows are one line (TaskRow).
+    var wide = false
     weak var owner: TaskCollectionController?
     @Environment(AppModel.self) private var app
 
@@ -42,9 +44,14 @@ struct CollectionLine: View {
 
     @ViewBuilder private func row(_ line: Line) -> some View {
         switch line {
-        case let .group(_, title, sub, quiet):
-            // Lit while a drag in Upcoming is over its day (CollectionDrag.hover).
-            GroupLabel(title: title, sub: sub, quiet: quiet, hot: owner?.drag.hover.key == id, top: GroupLabel.air)
+        case let .group(key, title, sub, quiet):
+            // Lit while a drag in Upcoming is over its day (CollectionDrag.hover). In Upcoming a month is a heading on a
+            // rule, and the days inside it have a smaller air; Today's and Undated's labels are their list's (§22).
+            let style: GroupLabel.Style = source != .upcoming ? .plain
+                : key.hasPrefix("m:") ? .month
+                : (AppModel.upcomingDay(ofLabel: "g:" + key).map { $0 > app.today.adding(days: 7) } ?? false) ? .inMonth : .plain
+            let list = source == .today || source == .undated ? app.list(key) : nil
+            GroupLabel(title: title, sub: sub, quiet: quiet, hot: owner?.drag.hover.key == id, style: style, list: list)
                 .allowsHitTesting(false)
         case let .heading(h, count, _):
             // The state it was configured with (its signature): the field shows only as it's resized.
@@ -59,7 +66,9 @@ struct CollectionLine: View {
             let pick = owner?.select.pick(t.id) ?? .init()
             let row = TaskRow(task: t, source: source, indent: indent, groupDay: groupDay, day: day,
                               selected: app.flashed.contains(t.id) || (app.isSplit ? app.selectedTask == t.id : app.detailTask == t.id),
-                              picked: pick.picked, joinTop: pick.joinTop, joinBottom: pick.joinBottom)
+                              picked: pick.picked, joinTop: pick.joinTop, joinBottom: pick.joinBottom,
+                              // The state it was configured with (its signature): line 2 shows only as it's resized.
+                              twoLineOverride: state.map { $0 == "2" }, wide: wide)
             // A deleted list's rows are deaf, as on the Mac (§28).
             if app.deletedList(source) != nil {
                 row.disabled(true)

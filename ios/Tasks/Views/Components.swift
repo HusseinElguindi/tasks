@@ -393,13 +393,12 @@ private struct Spark: View {
 
 // MARK: - Dates on a row
 
-/// The quiet When: glyph and date in ink-tertiary, no capsule (`DateLabel.whenChip`: "Today", "Tomorrow", "in 2d"…).
+/// The quiet When: glyph and words in ink-tertiary, no capsule (`DateLabel.whenChip`: "Today", "Tomorrow", "in 2d"…; in
+/// Upcoming `DateLabel.upcomingWhen`: "Nov 16").
 struct QuietWhen: View {
-    let date: CalendarDate
-    @Environment(AppModel.self) private var app
+    let text: String
     @Environment(\.palette) private var p
     var body: some View {
-        let text = DateLabel.whenChip(date, today: app.today)
         HStack(spacing: 3) {
             Image(systemName: "calendar")
                 .font(.system(size: 10.5, weight: .medium))
@@ -413,16 +412,20 @@ struct QuietWhen: View {
 }
 
 /// The deadline: the one capsule on a row, so a capsule always means something is due (`DateLabel.deadlineChip`:
-/// "2d ago", "Due today", "3d left"…). In Upcoming, on its own day's group, "Due", as on the Mac.
+/// "2d ago", "Due today", "3d left"…). In Upcoming, a date ("Nov 16"), and "Due" on its own day's group
+/// (`DateLabel.upcomingDeadline`, §24 "In Upcoming"). `compact`: on a row's line 2, 20pt tall (ROW-DENSITY.md §6.4).
 struct DeadlineChip: View {
     let date: CalendarDate
     var groupDay: CalendarDate? = nil
+    var upcoming = false
+    var compact = false
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
 
     var body: some View {
-        let c = DateLabel.deadlineChip(date, today: app.today)
-        let text = date == groupDay ? "Due" : c.text
+        let c = upcoming ? DateLabel.upcomingDeadline(date, today: app.today, groupDay: groupDay)
+            : DateLabel.deadlineChip(date, today: app.today)
+        let text = !upcoming && date == groupDay ? "Due" : c.text
         HStack(spacing: 4) {
             Image(systemName: "flag.fill")
                 .font(.system(size: 9.5, weight: .semibold))
@@ -432,8 +435,8 @@ struct DeadlineChip: View {
                 .monospacedDigit()
         }
         .foregroundStyle(fg(c.tone))
-        .padding(.horizontal, 8)
-        .frame(height: 22)
+        .padding(.horizontal, compact ? 7 : 8)
+        .frame(height: compact ? Metric.detailLine : 22)
         .background(bg(c.tone), in: Capsule())
         .fixedSize()
         .accessibilityElement(children: .combine)
@@ -573,30 +576,78 @@ extension View {
 // MARK: - Group label
 
 struct GroupLabel: View {
+    enum Style {
+        case plain
+        /// Upcoming's month (§22, round 2 B): a heading's look, 15 semibold `ink` on a hairline.
+        case month
+        /// A day inside an Upcoming month: a day's label with less air, under its month.
+        case inMonth
+    }
     let title: String
     var sub: String? = nil
     var quiet = false
     /// A drag in Upcoming is over its day (the Mac's `dayTarget`): the name in accent-text.
     var hot = false
+    var style = Style.plain
+    /// A label that names its list (Today, Undated): the tile, then the short name, then the rest of the name quiet
+    /// (§22 "The list mark", round 2c, `ListName.split`).
+    var list: ListModel? = nil
     /// The air above it: none when an edge row (`Line.edge`) holds it.
     var top: CGFloat = GroupLabel.air
     var bottom: CGFloat = 6
     static let air: CGFloat = 18
+    static let inMonthAir: CGFloat = 12
     @Environment(\.palette) private var p
     var body: some View {
-        // Cut off, the name and the day's date fade out at their ends, as a title does (the Mac's GroupLabelView).
+        switch style {
+        case .month: month
+        case .plain, .inMonth: label
+        }
+    }
+
+    private var label: some View {
+        // Cut off, the name and the day's date fade out at their ends, as a title does (the Mac's GroupLabelView). A
+        // list's label: the quiet rest of its name fades first, then the short name.
         HStack(spacing: 6) {
-            Text(title).font(Typo.label).foregroundStyle(hot ? p.accentText : quiet ? p.inkQuiet : p.inkTertiary)
-                .fadeTruncation(Metric.titleFade, text: title)
-            if let sub {
-                Text(sub).font(Typo.quiet).foregroundStyle(p.inkQuiet).fadeTruncation(Metric.titleFade, text: sub)
+            if let list {
+                ListMarkTile(list: list)
+                let split = ListName.split(title)
+                // VoiceOver reads the list's name whole, on the short name.
+                Text(split.short).font(Typo.label).foregroundStyle(p.inkTertiary)
+                    .fadeTruncation(Metric.titleFade, text: split.short)
+                    .layoutPriority(1)
+                    .accessibilityLabel(title)
+                if let rest = split.rest {
+                    Text(rest).font(Typo.quiet).foregroundStyle(p.inkQuiet).fadeTruncation(Metric.titleFade, text: rest)
+                        .accessibilityHidden(true)
+                }
+            } else {
+                Text(title).font(Typo.label).foregroundStyle(hot ? p.accentText : quiet ? p.inkQuiet : p.inkTertiary)
+                    .fadeTruncation(Metric.titleFade, text: title)
+                if let sub {
+                    Text(sub).font(Typo.quiet).foregroundStyle(p.inkQuiet).fadeTruncation(Metric.titleFade, text: sub)
+                }
             }
             Spacer(minLength: 0)
         }
         .lineLimit(1)
         .padding(.leading, Metric.rowPad + 2)
-        .padding(.top, top)
+        .padding(.top, style == .inMonth ? Self.inMonthAir : top)
         .padding(.bottom, bottom)
+        .accessibilityAddTraits(.isHeader)
+    }
+
+    /// A list heading's look (HeadingRow's name, with no chevron): its name at the checkbox's edge on a hairline.
+    private var month: some View {
+        HStack(spacing: 0) {
+            Text(title).font(Typo.heading).foregroundStyle(p.ink).fadeTruncation(Metric.titleFade, text: title)
+            Spacer(minLength: 0)
+        }
+        .lineLimit(1)
+        .padding(.leading, Metric.rowPad)
+        .padding(.vertical, 9)
+        .hairline(p.lineSeparator, leading: Metric.rowPad, trailing: Metric.rowPad)
+        .padding(.top, top)
         .accessibilityAddTraits(.isHeader)
     }
 }

@@ -233,8 +233,9 @@ final class CollectionDrag {
     }
 
     /// Upcoming (IX §22, the Mac's `dayTarget`): the day is the group whose label is the last one drawn above the
-    /// copy's middle (above them all, the first). On a day the task may take (not a month, not past its deadline, not its own
-    /// day), the gap opens where the drop puts it, by list order among that day's tasks, and the label lights;
+    /// copy's middle (above them all, the first). On a day the task may take (a day inside a month too; not a month's own
+    /// label, not past its deadline, not its own day), the gap opens where the drop puts it, by list order among that
+    /// day's tasks, and the label lights;
     /// elsewhere the gap stays at its own place (the drop writes nothing and it goes back).
     private func upcomingTarget(_ d: State, _ copyTop: CGFloat) -> (slot: Int, hot: String?) {
         let app = owner.app, current = owner.current
@@ -250,7 +251,7 @@ final class CollectionDrag {
         let labels = others.indices.filter { others[$0].hasPrefix("g:") }
         guard let label = labels.last(where: { top($0) <= mid }) ?? labels.first else { return (from, nil) }
         let today = app.today
-        guard let day = ViewGroups.upcomingDays(today: today).first(where: { "g:" + ViewGroups.upcoming($0, today: today).id == others[label] }),
+        guard let day = AppModel.upcomingDay(ofLabel: others[label]), day > today,
               t.deadline.map({ day <= $0 }) ?? true,
               ViewGroups.upDay(when: t.when, deadline: t.deadline) != day else { return (from, nil) }
         let ranks = app.projection.activeLists.ids

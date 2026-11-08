@@ -133,7 +133,7 @@ extension AppModel {
         return undoable("Move", ids: moving) { store.reorder(moving, in: t.list, at: anchor, name: "Move", undoManager: undo) }
     }
 
-    /// A drop in Upcoming (above, "Upcoming"): on a day, When is set to it, one "Set When" step; on a month, past
+    /// A drop in Upcoming (above, "Upcoming"): on a day (a month's days too), When is set to it, one "Set When" step; on a month's own label, past
     /// the task's deadline or on its own day, nothing. Returns whether anything was written.
     private func dropOnDay(_ from: IndexSet, _ to: Int, in lines: [Line]) -> Bool {
         let moving = from.compactMap { lines[$0].entityID }.compactMap(task).filter { !$0.isHeading && !$0.isDone }
@@ -142,12 +142,17 @@ extension AppModel {
         let slot = min(max(DropSlot.slot(from, to), 0), others.count)
         let labels = others.indices.filter { if case .group = others[$0] { true } else { false } }
         guard let label = labels.last(where: { $0 < slot }) ?? labels.first else { return false }
-        // The seven days are the only day groups; the rest are months, which aren't targets.
-        let days = ViewGroups.upcomingDays(today: today)
-        guard let day = days.first(where: { "g:" + ViewGroups.upcoming($0, today: today).id == others[label].id }),
+        // A day's label, in the first week or inside a month; a month's own label isn't a target.
+        guard let day = Self.upcomingDay(ofLabel: others[label].id), day > today,
               moving.allSatisfy({ $0.deadline.map { day <= $0 } ?? true }),
               moving.contains(where: { ViewGroups.upDay(when: $0.when, deadline: $0.deadline) != day }) else { return false }
         return setDate(moving.map(\.id), .when, day)
+    }
+
+    /// The day an Upcoming label stands for, from its item's id ("g:d:2026-11-18"): a day of the first week or a day
+    /// inside a month (`ViewGroups.upcomingDayInMonth`); nil for a month ("g:m:2026-12").
+    nonisolated static func upcomingDay(ofLabel id: String) -> CalendarDate? {
+        id.hasPrefix("g:d:") ? CalendarDate(String(id.dropFirst(4))) : nil
     }
 
     /// A list dropped on Home (and iPad's sidebar). Today and the views aren't in the run, so they don't move. `ids`:
