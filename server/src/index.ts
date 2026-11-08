@@ -1,5 +1,9 @@
 // The Worker: routing, auth, size limits, parsing and validation, then one RPC to the
 // UserLog Durable Object (SPEC §5 "Check order", §7). A bad request never reaches the DO.
+//
+// Two routes: POST /v1/sync (the protocol), and GET /v1/events, a WebSocket on which the DO sends
+// {"head":N} at connect and after each append (design/PUSH-SYNC.md). The socket carries no data:
+// a client that hears a head past its cursor syncs through /v1/sync as usual.
 
 import { createHash, timingSafeEqual } from "node:crypto";
 import { HttpError, MAX_BODY_BYTES, parseSyncRequest } from "./validate";
@@ -7,17 +11,21 @@ import { HttpError, MAX_BODY_BYTES, parseSyncRequest } from "./validate";
 export { UserLog } from "./log";
 
 const PATH = "/v1/sync";
+const EVENTS = "/v1/events";
 
 export default {
   async fetch(request, env): Promise<Response> {
     const encoding = pickEncoding(request);
+    const isEvents = new URL(request.url).pathname === EVENTS;
     try {
+      if (isEvents) return await events(request, env);
       return json(200, await handle(request, env), encoding);
     } catch (e) {
       if (e instanceof HttpError) {
         const body: Record<string, unknown> = { error: e.code, message: e.message };
         if (e.index !== undefined) Object.assign(body, { index: e.index, field: e.field });
-        return json(e.status, JSON.stringify(body), encoding, e.status === 405 ? { Allow: "POST" } : {});
+        const allow: Record<string, string> = e.status === 405 ? { Allow: isEvents ? "GET" : "POST" } : {};
+        return json(e.status, JSON.stringify(body), encoding, allow);
       }
       console.error(e);
       return json(500, JSON.stringify({ error: "internal", message: "Internal error." }), encoding);
@@ -38,6 +46,22 @@ async function handle(request: Request, env: Env): Promise<string> {
   const result = await log.sync(from, base, ops);
   if (!result.ok) throw new HttpError(409, "log_mismatch", result.message);
   return result.body;
+}
+
+/**
+ * GET /v1/events: 405 for another method, 426 without `Upgrade: websocket`, 401 for a bad token (the
+ * same constant-time check as /v1/sync), then the upgrade goes to the DO, which accepts the socket.
+ * A WebSocket upgrade can't go through RPC, so it's the DO's `fetch`.
+ */
+async function events(request: Request, env: Env): Promise<Response> {
+  if (request.method !== "GET") throw new HttpError(405, "method_not_allowed", `Use GET for ${EVENTS}.`);
+  if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
+    throw new HttpError(426, "upgrade_required", `${EVENTS} is a WebSocket: send Upgrade: websocket.`);
+  }
+  if (!authorized(request.headers.get("Authorization"), env.API_TOKEN)) {
+    throw new HttpError(401, "bad_token", "Missing or invalid bearer token.");
+  }
+  return env.LOG.get(env.LOG.idFromName("me")).fetch(request);
 }
 
 const sha256 = (s: string) => createHash("sha256").update(s).digest();
