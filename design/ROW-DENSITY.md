@@ -319,3 +319,30 @@ each as installed next to the column, wide (940) and narrow (520).
 - **Narrow:** the title keeps 120pt; then the short names go, all at once; the tile and the day never go.
 - **Today:** only the Completed group's rows carry a mark; they line up the same way. Open rows don't change.
 - **Unchanged:** a deleted list's row in Trash ("11 tasks") and the tasks under it carry no mark.
+
+### 7.6 Views grouped by list: the mark in the group's label
+
+The user, 2026-11-08, on Undated in the installed build: "also, undated has the listnames twice here? is this
+expected?", then "can we experiment in design to show the mark in those kinds of lists, like in the today sections and
+upcoming".
+
+Not expected: the spec puts no mark on rows in views grouped by list (§22 "The list mark"). The build showed it in
+Undated; c3b5a19 on `coord/title-design/rowc` has since dropped it, leaving the plain label. Today's open groups were
+already right (a plain label, no marks); only its Completed group's rows carry marks.
+
+Boards: **Grouped by list · Undated** and **Grouped by list · Today**, each as installed, then three options, wide
+(940) and narrow (520). Undated uses the user's screenshot's lists; Today the demo build's.
+
+- **1 · Tile and full name:** the label gets the 16×13 tile, 6pt, then the full name in the label's type (11/14
+  semibold `ink-tertiary`). Rows carry nothing.
+- **2 · Tile, short name, the rest quiet (recommended):** the tile, the short name in the label's semibold, then the
+  rest of the name in 400 `ink-quiet`, the day labels' pattern ("Thursday  Nov 12"). The short name matches the marks
+  in Upcoming, Completed and Trash; narrow, the quiet rest fades first. A name with no separator shows whole.
+- **3 · As a heading:** B's month look (13/16 semibold `ink` on a rule) with the tile. Too heavy for Today's
+  one-task groups, and in a list that look means the user's own headings (§23).
+- **Not drawn:** the tile alone (letters and colours repeat).
+- **Keeps:** the label's slot, its + on hover and its drop target.
+
+Spec change if 2 is picked: §22, the group label in Undated and Today (and any later view grouped by list): the tile,
+6, the short name (11/14 semibold `ink-tertiary`), then the rest of the name after the separator (400 `ink-quiet`),
+cut off by fading the rest first.
