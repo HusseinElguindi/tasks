@@ -1,6 +1,10 @@
 # Push sync's connection: in Settings and in the sync indicator
 
-Status: **proposed, 2026-11-08** (coord tasks-ios-sc T49). Design only: nothing here is built. The user's words: "it
+Status: **decided, 2026-11-08; built** (coord tasks-ios-sc T53). The user, on §4: "all the recommended are good for sync
+indicator", so every decision below is its recommendation: A (a row of its own), C (the bolt cloud under the pointer),
+green, hidden until sync is set up, Sync Now reconnects, "Last one 2 min ago" kept, the iPhone's B, "Live updates".
+The words and states are TasksCore's `LiveStatus` (tested in `LiveStatusTests`); the Mac's §26 is updated. What the
+build found for §5 is at its end. (Proposed T49; design only until then.) The user's words: "it
 would be cool to have in the settings, an indication of the websocket connection. maybe also in the sync indicator or
 something. idk, use claude design."
 
@@ -162,3 +166,17 @@ stopped, waiting) keep `icloud`, since the line's words already say what's wrong
   `bolt.horizontal.icloud.fill` or `icloud` with a 1pt-larger weight.
 - **Windowless Mac with the toggle on**: the socket holds with no window. Nothing in this design shows then except the
   Settings row, which is right.
+
+What the build found (T53):
+
+- **Settings counts as a window.** SwiftUI's Settings window is an `AppKitWindow` with `canBecomeMain` true, so
+  `hasVisibleWindow` is true while it's open, even with every main window ordered out (checked with the Debug app's
+  `-debugScript "settings;hidemain;windows:…"`). Opening Settings holds the socket and the 30 s pace. So the Mac's Off
+  is only VoiceOver's (and a sleep's moment), and Live's "until you close the last window" carries the message, as
+  above. `hasVisibleWindow` is unchanged: leaving Settings out would change when the widgets' feed is written too.
+- **The bolt reads** at 14pt regular and 12pt medium, at 2x and 3x, in both appearances' `ink-quiet` and
+  `ink-tertiary`: the outline `bolt.horizontal.icloud` stays, no `.fill`.
+- **A failed first try** (the socket never opened since the last start, so nothing was "lost"): Reconnecting's detail
+  reads "Couldn't connect. Checking every 30 s meanwhile."
+- **Times** are the system's short time ("9:38 AM" in English), so an old server's detail can wrap to two lines at
+  600pt; the row lets it. A wait past midnight reads "tomorrow at 12:20 AM".

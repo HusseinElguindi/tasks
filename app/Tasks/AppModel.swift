@@ -128,7 +128,12 @@ final class AppModel {
     /// The CLI's nudge: sync at once after `tasks` pushed (feedback item 14). The socket's pokes go through it too.
     @ObservationIgnored private var nudges: SyncNudgeListener?
     /// The server's poke socket (design/PUSH-SYNC.md): a change made on another device syncs here within a second or two.
-    @ObservationIgnored private var socket: SyncSocket?
+    /// Settings ▸ Sync ▸ Live updates and the windows' sync clouds show what it's doing (design/SYNC-STATUS.md); it's
+    /// observable itself. Nil until the store is open, and with `-debugNoSocket`.
+    @ObservationIgnored private(set) var socket: SyncSocket?
+
+    /// The app's one model, for what has only a store: the windows' sync clouds and ⌘R reach the socket through it.
+    @ObservationIgnored private(set) static weak var current: AppModel?
     /// Writes the widgets' feed into the group container (Widgets/WidgetFeedWriter.swift).
     @ObservationIgnored private(set) var widgetFeed: WidgetFeedWriter?
 
@@ -172,6 +177,7 @@ final class AppModel {
             }
         }
         updatePalette()
+        Self.current = self
         Task { await load() }
     }
 
@@ -248,6 +254,27 @@ final class AppModel {
     /// every tick; repeating it costs nothing.
     private func updateSocket() {
         socket?.update(config: store?.config, hold: SocketPolicy.holds(presence))
+    }
+
+    /// How often the periodic sync runs while the socket is down, for Live updates' words: 30 s with a window, a
+    /// minute with none.
+    var livePace: Double { LiveStatus.pace(for: presence == .windowless ? .windowless : .front) }
+
+    /// What Settings ▸ Sync ▸ Live updates shows; nil (the row hidden) until sync is set up (design/SYNC-STATUS.md
+    /// decision 4), or without a socket.
+    var liveInput: LiveStatus.Input? {
+        #if DEBUG
+        if let d = DebugLive.input() { return d }
+        #endif
+        guard store?.config != nil, let socket else { return nil }
+        return socket.liveInput
+    }
+
+    /// Sync Now (Settings' button, ⌘R, a click on the cloud): a sync at once, and the socket connects now if it was
+    /// waiting out a backoff or an old server's hour (design/SYNC-STATUS.md decision 5).
+    func syncNow() {
+        store?.requestSync(force: true)
+        socket?.retryNow()
     }
 
     // MARK: Open at login

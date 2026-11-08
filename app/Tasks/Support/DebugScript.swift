@@ -28,6 +28,8 @@ import TasksCore
 ///     ncaret:A[,B]   (the notes take the keys with A..B selected)   nbox:OFFSET   (toggles the checklist box there)
 ///     nboxclick:OFFSET   ntextclick:OFFSET   (a real click on that box, or that character, through the window)   nscroll:Y | nscroll:box:OFFSET   (scrolls the notes)
 ///     nlog:/path.txt   (appends the notes' text, selection, hidden marks, session and the task's stored notes)
+///     settings   (opens Settings)   hidemain   (orders the main windows out)   windows:/path.txt   (appends each window,
+///     whether it can become main, and `AppModel.hasVisibleWindow`)
 ///     watch:MS:/path.txt   (for MS ms, checks the traffic lights on every turn of the run loop, before each commit,
 ///     and appends how many turns they were out of place)
 @MainActor
@@ -307,6 +309,18 @@ enum DebugScript {
                     watchLights(w, ms: ms, path: a[1])
                 case "chrome":
                     let line = chrome(w) + "\n"
+                    if let h = FileHandle(forWritingAtPath: arg) { h.seekToEndOfFile(); h.write(Data(line.utf8)); h.closeFile() }
+                    else { try? line.write(toFile: arg, atomically: true, encoding: .utf8) }
+                case "settings":
+                    // Settings (⌘,), through the scene's `openSettings`.
+                    window.openSettings?()
+                case "hidemain":
+                    // The main windows out of sight (ordered out, not closed), leaving Settings.
+                    for m in NSApp.windows where m.contentView != nil && m.identifier?.rawValue.hasPrefix("main") == true { m.orderOut(nil) }
+                case "windows":
+                    // Each window and whether it counts as one for the periodic sync and the socket (AppModel.hasVisibleWindow).
+                    let line = NSApp.windows.map { "\($0.identifier?.rawValue ?? "-") \(type(of: $0)) visible=\($0.isVisible) canBecomeMain=\($0.canBecomeMain)" }
+                        .joined(separator: "; ") + " | hasVisibleWindow=\(AppModel.hasVisibleWindow)\n"
                     if let h = FileHandle(forWritingAtPath: arg) { h.seekToEndOfFile(); h.write(Data(line.utf8)); h.closeFile() }
                     else { try? line.write(toFile: arg, atomically: true, encoding: .utf8) }
                 case "log":

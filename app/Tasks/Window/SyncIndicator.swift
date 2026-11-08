@@ -11,6 +11,10 @@ import TasksCore
 /// (§26 Timing): a sync shows after 300 ms and then for at least 600 ms, with "Syncing…" after 3 s; offline after 5 s
 /// of retrying without a success, until the next one; the waiting dot after 3 s of changes waiting; stopped and a bad
 /// token at once. One per window.
+///
+/// It also follows the poke socket (design/SYNC-STATUS.md §3, option C): under the pointer the Synced cloud carries a
+/// bolt while push is live (`live`, with `LiveGlyph`'s 5 s rule), and its tooltip a second line, "Live" or how often it
+/// checks instead.
 @MainActor
 @Observable
 final class SyncIndicator {
@@ -21,8 +25,16 @@ final class SyncIndicator {
     private(set) var phase: Phase = .synced
     /// The dot: changes have waited more than 3 s (on the syncing, offline or stopped cloud only).
     private(set) var waiting = false
+    /// Push is live: the Synced cloud is `bolt.horizontal.icloud` and its tooltip says "Live".
+    private(set) var live = false
 
     @ObservationIgnored let store: Store
+    /// The poke socket; nil without one (`-debugNoSocket`, tests): then the tooltip has no line for it.
+    @ObservationIgnored let socket: SyncSocket?
+    /// How often the periodic sync runs while the socket is down (`AppModel.livePace`).
+    @ObservationIgnored private let pace: () -> Double
+    @ObservationIgnored private var glyph = LiveGlyph()
+    @ObservationIgnored private var liveTimer: Timer?
     @ObservationIgnored private var syncingSince: Date?
     @ObservationIgnored private var troubleSince: Date?
     @ObservationIgnored private var waitingSince: Date?
@@ -35,10 +47,53 @@ final class SyncIndicator {
     static let offlineAfter: TimeInterval = 5
     static let waitingAfter: TimeInterval = 3
 
-    init(store: Store) {
+    init(store: Store, socket: SyncSocket? = nil, pace: @escaping () -> Double = { 30 }) {
         self.store = store
+        self.socket = socket
+        self.pace = pace
         inputsChanged()
         observe()
+        socketChanged()
+        observeSocket()
+    }
+
+    private func observeSocket() {
+        guard let socket else { return }
+        withObservationTracking {
+            _ = socket.state
+        } onChange: { [weak self] in
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    self?.socketChanged()
+                    self?.observeSocket()
+                }
+            }
+        }
+    }
+
+    /// The bolt once connected; the plain cloud once down for 5 s (a reconnect inside them doesn't flip it).
+    private func socketChanged() {
+        liveTimer?.invalidate()
+        liveTimer = nil
+        var connected = socket?.isConnected ?? false
+        #if DEBUG
+        if let d = DebugLive.input() { connected = d.state == .connected }
+        #endif
+        let now = ProcessInfo.processInfo.systemUptime
+        if let again = glyph.update(connected: connected, now: now) {
+            liveTimer = Timer.scheduledTimer(withTimeInterval: again - now + 0.005, repeats: false) { [weak self] _ in
+                MainActor.assumeIsolated { self?.socketChanged() }
+            }
+        }
+        if glyph.live != live { live = glyph.live }
+    }
+
+    /// Whether the Synced tooltip has the push line: with a socket (or a debug one).
+    private var hasSocket: Bool {
+        #if DEBUG
+        if DebugLive.input() != nil { return true }
+        #endif
+        return socket != nil
     }
 
     private func observe() {
@@ -157,8 +212,9 @@ final class SyncIndicator {
         let changes = n == 1 ? "1 change" : "\(n.formatted()) changes"
         switch phase {
         case .synced:
-            if case .idle(let at?) = store.syncState { return Tip(title: "Synced " + Self.ago(at, now: now), keys: "⌘R") }
-            return Tip(title: "Synced", keys: "⌘R")
+            let line = hasSocket ? LiveStatus.tipLine(live: live, pace: pace()) : ""
+            if case .idle(let at?) = store.syncState { return Tip(title: "Synced " + Self.ago(at, now: now), detail: line, keys: "⌘R") }
+            return Tip(title: "Synced", detail: line, keys: "⌘R")
         case .syncing(let long):
             if long, let r = store.recovery { return Tip(title: "Restoring sync · \(r.confirmed.formatted()) of \(r.total.formatted())") }
             return Tip(title: waiting ? "Syncing · \(changes) waiting" : "Syncing…")
@@ -184,8 +240,9 @@ final class SyncIndicator {
         let changes = (n == 1 ? "1 change" : "\(n.formatted()) changes") + " waiting to send"
         switch phase {
         case .synced:
-            if case .idle(let at?) = store.syncState { return "Synced " + Self.ago(at, now: now, spoken: true) }
-            return "Synced"
+            let line = hasSocket ? ". " + LiveStatus.tipLine(live: live, pace: pace(), spoken: true) : ""
+            if case .idle(let at?) = store.syncState { return "Synced " + Self.ago(at, now: now, spoken: true) + line }
+            return "Synced" + line
         case .syncing(let long):
             if long, let r = store.recovery { return "Restoring sync, \(r.confirmed.formatted()) of \(r.total.formatted())" }
             return waiting ? "Syncing, " + changes : "Syncing"
@@ -214,14 +271,7 @@ final class SyncIndicator {
 
     /// "just now" under a minute, "N min ago" under an hour, then "at 9:41", then "yesterday at 9:41".
     static func ago(_ d: Date, now: Date, spoken: Bool = false) -> String {
-        let s = now.timeIntervalSince(d)
-        if s < 60 { return "just now" }
-        if s < 3600 { let m = Int(s / 60); return spoken ? (m == 1 ? "1 minute ago" : "\(m) minutes ago") : "\(m) min ago" }
-        let cal = Calendar.current
-        let time = d.formatted(date: .omitted, time: .shortened)
-        if cal.isDate(d, inSameDayAs: now) { return "at " + time }
-        if let y = cal.date(byAdding: .day, value: -1, to: now), cal.isDate(d, inSameDayAs: y) { return "yesterday at " + time }
-        return d.formatted(.dateTime.month(.abbreviated).day()) + " at " + time
+        LiveStatus.ago(d, now: now, spoken: spoken)
     }
 
     /// Going into stopped or a bad token says so once (§26 VoiceOver). Syncing never does.
@@ -235,7 +285,13 @@ final class SyncIndicator {
         #if DEBUG
         DebugSync.activations += 1
         #endif
-        if opensSettings { openSettings?() } else { store.requestSync(force: true) }
+        if opensSettings {
+            openSettings?()
+        } else {
+            // Sync Now: the socket connects now too if it was waiting (design/SYNC-STATUS.md decision 5).
+            store.requestSync(force: true)
+            socket?.retryNow()
+        }
     }
 }
 
@@ -275,7 +331,7 @@ struct SyncCloud: View {
                 if long, !round {
                     Text("Syncing…").font(.system(size: 11)).foregroundStyle(tk.inkTertiary.swiftUI).fixedSize()
                 }
-                CloudGlyph(symbol: Self.symbol(phase), color: color(phase), dot: indicator.waiting ? tk.accentText : nil,
+                CloudGlyph(symbol: Self.symbol(phase, live: indicator.live), color: color(phase), dot: indicator.waiting ? tk.accentText : nil,
                            size: round ? 16 : 14, pulsing: pulsing && shown, animated: active)
                     .frame(width: round ? 16 : 14, height: round ? 16 : 14)
         }
@@ -330,9 +386,11 @@ struct SyncCloud: View {
         }
     }
 
-    static func symbol(_ p: SyncIndicator.Phase) -> String {
+    /// The Synced cloud carries a bolt while push is live (design/SYNC-STATUS.md §3, C); every other state keeps §26's.
+    static func symbol(_ p: SyncIndicator.Phase, live: Bool = false) -> String {
         switch p {
-        case .synced, .syncing: "icloud"
+        case .synced: LiveStatus.symbol(live: live)
+        case .syncing: "icloud"
         case .offline, .off: "icloud.slash"
         case .stopped, .badToken: "exclamationmark.icloud.fill"
         }

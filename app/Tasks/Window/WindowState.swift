@@ -215,7 +215,7 @@ final class WindowState {
     /// The window's sync indicator (§26), made on first use.
     func sync(_ store: Store) -> SyncIndicator {
         if let s = syncIndicator { return s }
-        let s = SyncIndicator(store: store)
+        let s = SyncIndicator(store: store, socket: AppModel.current?.socket, pace: { AppModel.current?.livePace ?? 30 })
         syncIndicator = s
         return s
     }
