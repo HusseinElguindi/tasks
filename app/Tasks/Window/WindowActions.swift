@@ -59,12 +59,11 @@ struct WindowActions {
         let route = window.route
         let sel = before ?? window.selection
         guard let um = undo else { return body() }
-        um.beginUndoGrouping()
-        let did = body()
-        if did { Self.registerRestore(um, store: store, window: window, route: route, selection: sel, name: name) }
-        um.endUndoGrouping()
-        if did { um.setActionName(name) }
-        return did
+        return UndoStep.run(um, name: name) {
+            let did = body()
+            if did { Self.registerRestore(um, store: store, window: window, route: route, selection: sel, name: name) }
+            return did
+        }
     }
 
     private static func registerRestore(_ um: UndoManager, store: Store, window: WindowState, route: WindowState.Route,
