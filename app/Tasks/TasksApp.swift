@@ -163,7 +163,8 @@ struct TasksCommands: Commands {
             Button(window?.zoomed == true ? "Unzoom Pane" : "Zoom Pane") { actions?.toggleZoom() }
                 .keyboardShortcut(.return, modifiers: [.command, .shift])
                 .disabled(window?.zoomed != true && (actions?.canZoom != true || pickerOpen))
-            Button("Sync Now") { store?.requestSync(force: true) }
+            // It also reconnects the poke socket if it's waiting (design/SYNC-STATUS.md).
+            Button("Sync Now") { if let m = AppModel.current { m.syncNow() } else { store?.requestSync(force: true) } }
                 .keyboardShortcut("r")
                 .disabled(store == nil)
             Divider()

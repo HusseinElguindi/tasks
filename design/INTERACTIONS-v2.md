@@ -2094,6 +2094,11 @@ want a small indicator to show refreshing, like a quick cloud icon or something.
 on its own canvas: https://claude.ai/artifact/9mgrscG1x6wgwXtPSyGT5v. The boards are `Sync-*.dc.html` from the component
 `Sync.dc.html` and `sync.css` in `design/prototype-v2/`; the main prototype doesn't have it.
 
+**Push sync's connection (2026-11-08, design/SYNC-STATUS.md §3, option C):** the user, "all the recommended are good
+for sync indicator". Nothing new shows at rest. Under the pointer the Synced cloud carries a bolt while the poke socket
+is live, and its tooltip gets a second line, "Live" or how often it checks instead. Sync Now also reconnects the
+socket. The title band is unchanged: push being down never shows there. Settings ▸ Sync ▸ Live updates has the details.
+
 ### Where
 
 - **The sidebar's header row**, at its right end, opposite the mark and "Tasks": a 22pt hit area (radius 6) whose
@@ -2112,7 +2117,7 @@ The indicator reads the store's `SyncState` (`Store.swift:5–16`), `store.recov
 
 | State | From | Glyph (SF Symbol) | Colour | Tooltip | Click |
 |---|---|---|---|---|---|
-| Synced | `.idle`, nothing waiting | nothing; under the pointer, `icloud` | `ink-quiet` | "Synced 2 min ago" ⌘R | Sync now |
+| Synced | `.idle`, nothing waiting | nothing; under the pointer, `bolt.horizontal.icloud` while push is live, else `icloud` | `ink-quiet` | "Synced 2 min ago" ⌘R / "Live", or "Checking every 30 s" while push is down | Sync now |
 | Syncing | `.syncing`, past 300 ms | `icloud`, pulsing | `ink-tertiary` | "Syncing…" | Sync now |
 | Long sync | `.syncing` past 3 s, or `recovery` | `icloud`, pulsing, with "Syncing…" (11pt `ink-tertiary`) to its left | `ink-tertiary` | "Restoring sync · 1,500 of 12,000" (Settings' words), or "Syncing…" | Sync now |
 | Changes waiting | changes waiting more than 3 s | the current glyph with a 4pt dot at its top right, the cloud cut away 1.3pt around it | dot `accent-text` | "… · 3 changes waiting" | as the state |
@@ -2130,7 +2135,11 @@ The indicator reads the store's `SyncState` (`Store.swift:5–16`), `store.recov
 - **A server error** (5xx, timeouts) is `.retrying` and fixes itself, so it reads as offline (grey), not amber. The
   tooltip gives `reason` when it isn't the network's ("The server isn't answering (503)").
 - The tooltip is the app's (11pt on `popover`): the state, then a second line in `ink-tertiary` when there's more to
-  say, and ⌘R where a click syncs. "Synced" counts in words: "just now" under a minute, "N min ago" under an hour, then
+  say, and ⌘R where a click syncs. Synced's second line is push's: "Live" while the socket is live, "Checking every
+  30 s" while it isn't ("every minute" on a windowless Mac; an old server, a backoff and a refused socket token all
+  read so). Without a socket (`-debugNoSocket`) there's no second line.
+- **The live cloud** changes only the hovered Synced glyph. Syncing, offline, stopped, a bad token and off keep their
+  glyphs. "Synced" counts in words: "just now" under a minute, "N min ago" under an hour, then
   "at 9:41", then "yesterday at 9:41".
 
 ### Timing
@@ -2144,6 +2153,8 @@ The indicator reads the store's `SyncState` (`Store.swift:5–16`), `store.recov
 | …and goes | at the first success | By itself, no action |
 | Changes waiting, after | 3 s from the first unsent change | |
 | Stopped, bad token | at once, until the state changes | Saving a token, or a ⌘R that works |
+| The live cloud (bolt) | once the socket is connected | |
+| …and the plain cloud | after 5 s of the socket down; until then the last one | A wake or a network change reconnects within a second or two and doesn't flip it; at launch it's the plain cloud |
 
 **Motion:**
 - **Appearing:** it fades in over 100 ms (`--icon`).
@@ -2156,8 +2167,9 @@ The indicator reads the store's `SyncState` (`Store.swift:5–16`), `store.recov
 
 ### VoiceOver
 
-- **What it is:** one button, "Sync", whose value is the tooltip's text ("Synced 2 minutes ago", "Offline. Trying
-  again in 30 seconds"). It's there even when nothing shows at rest.
+- **What it is:** one button, "Sync", whose value is the tooltip's text ("Synced 2 minutes ago. Live", "Synced 2
+  minutes ago. Checking every 30 seconds", "Offline. Trying again in 30 seconds"). It's there even when nothing shows
+  at rest.
 - **Announcements:** going into stopped or bad token posts one announcement (`.announcementRequested`, medium
   priority). Syncing never does.
 - **Activating it** does what a click does.
@@ -2174,8 +2186,10 @@ The indicator reads the store's `SyncState` (`Store.swift:5–16`), `store.recov
   The dot is drawn over the symbol, and the symbol is masked 1.3pt around it. The pulse is an opacity animation, not a
   symbol effect, so Reduce Motion and the inactive rule are one check each
   (`NSWorkspace.shared.accessibilityDisplayShouldReduceMotion`, `NSApp.isActive`).
-- **Clicking** calls `store.requestSync(force: true)`, as ⌘R does (`TasksApp.swift:158`). For off and bad token, it
-  opens Settings instead, where the server and token are.
+- **Clicking** calls `store.requestSync(force: true)`, as ⌘R does (`TasksApp.swift:158`), and `SyncSocket.retryNow()`,
+  which connects the poke socket at once if it was waiting out a backoff or an old server's hour (a live socket is
+  left alone). Settings' Sync Now does both too. For off and bad token, it opens Settings instead, where the server and
+  token are.
 - **The tooltip** is the app's tooltip, not `.help`, so it can have two lines and the ⌘R key.
 
 ### Choices for the user

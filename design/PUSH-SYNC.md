@@ -1,6 +1,7 @@
 # Push sync: a WebSocket poke instead of polling
 
 Status: design study, 2026-11-08 (coord title-design T20). Nothing here is built.
+How the connection shows in Settings and in the sync indicator: design/SYNC-STATUS.md (decided and built, 2026-11-08).
 
 The question (the user, 2026-11-08): "what do you think about push notifs (websocket or sse) for the clients? how
 expensive is that and what benefits over what we have now?"
