@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Tasks app icon, round 2</title>
+<title>Tasks app icon, rounds 2 and 3</title>
 <script src="./support.js"></script>
 </head>
 <body>
@@ -26,13 +26,67 @@ body{margin:0}
 <stop offset="0" stop-color="#FFFFFF"></stop>
 <stop offset="1" stop-color="#ECECEC"></stop>
 </linearGradient>
+<!-- The app's lit finish (TasksCore TileArt.swift; docs/feedback/reference-tile.svg): radial from the top middle, radii 1.4 × width and 1.1 × height; white 0.216 × (1 − s(d / 0.58)) out to 0.58, then black 0.072 × s((d − 0.58) / 0.42), s = smootherstep. -->
+<radialGradient id="tk-light" cx="0.5" cy="0" r="1" gradientTransform="translate(0.5 0) scale(1.4 1.1) translate(-0.5 0)">
+<stop offset="0" stop-color="#FFFFFF" stop-opacity="0.216"></stop>
+<stop offset="0.0725" stop-color="#FFFFFF" stop-opacity="0.2125"></stop>
+<stop offset="0.145" stop-color="#FFFFFF" stop-opacity="0.1936"></stop>
+<stop offset="0.2175" stop-color="#FFFFFF" stop-opacity="0.1566"></stop>
+<stop offset="0.29" stop-color="#FFFFFF" stop-opacity="0.108"></stop>
+<stop offset="0.3625" stop-color="#FFFFFF" stop-opacity="0.0594"></stop>
+<stop offset="0.435" stop-color="#FFFFFF" stop-opacity="0.0224"></stop>
+<stop offset="0.5075" stop-color="#FFFFFF" stop-opacity="0.0035"></stop>
+<stop offset="0.58" stop-color="#FFFFFF" stop-opacity="0"></stop>
+<stop offset="0.58" stop-color="#000000" stop-opacity="0"></stop>
+<stop offset="0.65" stop-color="#000000" stop-opacity="0.0026"></stop>
+<stop offset="0.72" stop-color="#000000" stop-opacity="0.0151"></stop>
+<stop offset="0.79" stop-color="#000000" stop-opacity="0.036"></stop>
+<stop offset="0.86" stop-color="#000000" stop-opacity="0.0569"></stop>
+<stop offset="0.93" stop-color="#000000" stop-opacity="0.0694"></stop>
+<stop offset="1" stop-color="#000000" stop-opacity="0.072"></stop>
+</radialGradient>
+<!-- The specular strip along the top edge, white, at the source's 1-unit amounts (TileArt's specularHalf × 1.44; the app's 0.25 is for a 0.5pt hairline). -->
+<linearGradient id="tk-spec" x1="0" y1="0" x2="1" y2="0">
+<stop offset="0" stop-color="#FFFFFF" stop-opacity="0"></stop>
+<stop offset="0.0625" stop-color="#FFFFFF" stop-opacity="0.0043"></stop>
+<stop offset="0.125" stop-color="#FFFFFF" stop-opacity="0.0835"></stop>
+<stop offset="0.1875" stop-color="#FFFFFF" stop-opacity="0.16"></stop>
+<stop offset="0.25" stop-color="#FFFFFF" stop-opacity="0.226"></stop>
+<stop offset="0.3125" stop-color="#FFFFFF" stop-opacity="0.282"></stop>
+<stop offset="0.375" stop-color="#FFFFFF" stop-opacity="0.325"></stop>
+<stop offset="0.4375" stop-color="#FFFFFF" stop-opacity="0.351"></stop>
+<stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.36"></stop>
+<stop offset="0.5625" stop-color="#FFFFFF" stop-opacity="0.351"></stop>
+<stop offset="0.625" stop-color="#FFFFFF" stop-opacity="0.325"></stop>
+<stop offset="0.6875" stop-color="#FFFFFF" stop-opacity="0.282"></stop>
+<stop offset="0.75" stop-color="#FFFFFF" stop-opacity="0.226"></stop>
+<stop offset="0.8125" stop-color="#FFFFFF" stop-opacity="0.16"></stop>
+<stop offset="0.875" stop-color="#FFFFFF" stop-opacity="0.0835"></stop>
+<stop offset="0.9375" stop-color="#FFFFFF" stop-opacity="0.0043"></stop>
+<stop offset="1" stop-color="#FFFFFF" stop-opacity="0"></stop>
+</linearGradient>
 </defs>
 
-<!-- Body: the macOS squircle (824 on the 1024 grid, continuous corners) or the full-bleed iOS rounded square. -->
-<path display="{{macShow}}" d="M383.4 100H640.6C722.2 100 763 100 806.9 113.9C854.9 131.3 892.7 169.1 910.1 217.1C924 261 924 301.8 924 383.4V640.6C924 722.2 924 763 910.1 806.9C892.7 854.9 854.9 892.7 806.9 910.1C763 924 722.2 924 640.6 924H383.4C301.8 924 261 924 217.1 910.1C169.1 892.7 131.3 854.9 113.9 806.9C100 763 100 722.2 100 640.6V383.4C100 301.8 100 261 113.9 217.1C131.3 169.1 169.1 131.3 217.1 113.9C261 100 301.8 100 383.4 100Z" fill="{{bodyFill}}" stroke="{{rim}}" stroke-width="4"></path>
-<rect display="{{iosShow}}" x="0" y="0" width="1024" height="1024" rx="230" fill="{{bodyFill}}"></rect>
+<!-- Body: the macOS squircle (824 on the 1024 grid, continuous corners) or the full-bleed iOS rounded square. A lit body takes the tile finish: halo (the rim), fill, light, specular strip, inner ring. -->
+<g display="{{macShow}}">
+<path d="M383.4 100H640.6C722.2 100 763 100 806.9 113.9C854.9 131.3 892.7 169.1 910.1 217.1C924 261 924 301.8 924 383.4V640.6C924 722.2 924 763 910.1 806.9C892.7 854.9 854.9 892.7 806.9 910.1C763 924 722.2 924 640.6 924H383.4C301.8 924 261 924 217.1 910.1C169.1 892.7 131.3 854.9 113.9 806.9C100 763 100 722.2 100 640.6V383.4C100 301.8 100 261 113.9 217.1C131.3 169.1 169.1 131.3 217.1 113.9C261 100 301.8 100 383.4 100Z" fill="none" stroke="{{rim}}" stroke-width="{{rimW}}"></path>
+<path d="M383.4 100H640.6C722.2 100 763 100 806.9 113.9C854.9 131.3 892.7 169.1 910.1 217.1C924 261 924 301.8 924 383.4V640.6C924 722.2 924 763 910.1 806.9C892.7 854.9 854.9 892.7 806.9 910.1C763 924 722.2 924 640.6 924H383.4C301.8 924 261 924 217.1 910.1C169.1 892.7 131.3 854.9 113.9 806.9C100 763 100 722.2 100 640.6V383.4C100 301.8 100 261 113.9 217.1C131.3 169.1 169.1 131.3 217.1 113.9C261 100 301.8 100 383.4 100Z" fill="{{bodyFill}}"></path>
+<g display="{{litShow}}">
+<path d="M383.4 100H640.6C722.2 100 763 100 806.9 113.9C854.9 131.3 892.7 169.1 910.1 217.1C924 261 924 301.8 924 383.4V640.6C924 722.2 924 763 910.1 806.9C892.7 854.9 854.9 892.7 806.9 910.1C763 924 722.2 924 640.6 924H383.4C301.8 924 261 924 217.1 910.1C169.1 892.7 131.3 854.9 113.9 806.9C100 763 100 722.2 100 640.6V383.4C100 301.8 100 261 113.9 217.1C131.3 169.1 169.1 131.3 217.1 113.9C261 100 301.8 100 383.4 100Z" fill="url(#tk-light)"></path>
+<rect x="226" y="100" width="572" height="18" rx="9" fill="url(#tk-spec)"></rect>
+<path d="M383.4 100H640.6C722.2 100 763 100 806.9 113.9C854.9 131.3 892.7 169.1 910.1 217.1C924 261 924 301.8 924 383.4V640.6C924 722.2 924 763 910.1 806.9C892.7 854.9 854.9 892.7 806.9 910.1C763 924 722.2 924 640.6 924H383.4C301.8 924 261 924 217.1 910.1C169.1 892.7 131.3 854.9 113.9 806.9C100 763 100 722.2 100 640.6V383.4C100 301.8 100 261 113.9 217.1C131.3 169.1 169.1 131.3 217.1 113.9C261 100 301.8 100 383.4 100Z" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="18.5" transform="translate(512 512) scale(0.9782) translate(-512 -512)"></path>
+</g>
+</g>
+<g display="{{iosShow}}">
+<rect x="0" y="0" width="1024" height="1024" rx="230" fill="{{bodyFill}}"></rect>
+<g display="{{litShow}}">
+<rect x="0" y="0" width="1024" height="1024" rx="230" fill="url(#tk-light)"></rect>
+<rect x="160" y="0" width="704" height="22.5" rx="11.25" fill="url(#tk-spec)"></rect>
+<rect x="11.25" y="11.25" width="1001.5" height="1001.5" rx="218.75" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="22.5"></rect>
+</g>
+</g>
 
-<!-- The mark: up to fourteen shapes, drawn in 1024 units for the macOS grid; iOS scales them to its full-bleed body. -->
+<!-- The mark: up to 24 shapes in 1024 units on the macOS grid; iOS scales them to its full-bleed body. -->
 <g transform="{{gt}}">
 <path d="{{p0.d}}" fill="{{p0.f}}" stroke="{{p0.s}}" stroke-width="{{p0.w}}" stroke-linecap="{{p0.c}}" stroke-linejoin="round" transform="{{p0.t}}"></path>
 <path d="{{p1.d}}" fill="{{p1.f}}" stroke="{{p1.s}}" stroke-width="{{p1.w}}" stroke-linecap="{{p1.c}}" stroke-linejoin="round" transform="{{p1.t}}"></path>
@@ -48,32 +102,74 @@ body{margin:0}
 <path d="{{p11.d}}" fill="{{p11.f}}" stroke="{{p11.s}}" stroke-width="{{p11.w}}" stroke-linecap="{{p11.c}}" stroke-linejoin="round" transform="{{p11.t}}"></path>
 <path d="{{p12.d}}" fill="{{p12.f}}" stroke="{{p12.s}}" stroke-width="{{p12.w}}" stroke-linecap="{{p12.c}}" stroke-linejoin="round" transform="{{p12.t}}"></path>
 <path d="{{p13.d}}" fill="{{p13.f}}" stroke="{{p13.s}}" stroke-width="{{p13.w}}" stroke-linecap="{{p13.c}}" stroke-linejoin="round" transform="{{p13.t}}"></path>
+<path d="{{p14.d}}" fill="{{p14.f}}" stroke="{{p14.s}}" stroke-width="{{p14.w}}" stroke-linecap="{{p14.c}}" stroke-linejoin="round" transform="{{p14.t}}"></path>
+<path d="{{p15.d}}" fill="{{p15.f}}" stroke="{{p15.s}}" stroke-width="{{p15.w}}" stroke-linecap="{{p15.c}}" stroke-linejoin="round" transform="{{p15.t}}"></path>
+<path d="{{p16.d}}" fill="{{p16.f}}" stroke="{{p16.s}}" stroke-width="{{p16.w}}" stroke-linecap="{{p16.c}}" stroke-linejoin="round" transform="{{p16.t}}"></path>
+<path d="{{p17.d}}" fill="{{p17.f}}" stroke="{{p17.s}}" stroke-width="{{p17.w}}" stroke-linecap="{{p17.c}}" stroke-linejoin="round" transform="{{p17.t}}"></path>
+<path d="{{p18.d}}" fill="{{p18.f}}" stroke="{{p18.s}}" stroke-width="{{p18.w}}" stroke-linecap="{{p18.c}}" stroke-linejoin="round" transform="{{p18.t}}"></path>
+<path d="{{p19.d}}" fill="{{p19.f}}" stroke="{{p19.s}}" stroke-width="{{p19.w}}" stroke-linecap="{{p19.c}}" stroke-linejoin="round" transform="{{p19.t}}"></path>
+<path d="{{p20.d}}" fill="{{p20.f}}" stroke="{{p20.s}}" stroke-width="{{p20.w}}" stroke-linecap="{{p20.c}}" stroke-linejoin="round" transform="{{p20.t}}"></path>
+<path d="{{p21.d}}" fill="{{p21.f}}" stroke="{{p21.s}}" stroke-width="{{p21.w}}" stroke-linecap="{{p21.c}}" stroke-linejoin="round" transform="{{p21.t}}"></path>
+<path d="{{p22.d}}" fill="{{p22.f}}" stroke="{{p22.s}}" stroke-width="{{p22.w}}" stroke-linecap="{{p22.c}}" stroke-linejoin="round" transform="{{p22.t}}"></path>
+<path d="{{p23.d}}" fill="{{p23.f}}" stroke="{{p23.s}}" stroke-width="{{p23.w}}" stroke-linecap="{{p23.c}}" stroke-linejoin="round" transform="{{p23.t}}"></path>
 </g>
 </svg>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"mark":{"editor":"enum","options":["log","spark","ember","fan","steps","letter","breakout","daybreak","cursor","chain","tick","blank"],"default":"letter"},"look":{"editor":"enum","options":["dark","light"],"default":"dark"},"shape":{"editor":"enum","options":["mac","ios"],"default":"mac"},"size":{"editor":"int","min":16,"max":1024,"default":512},"$preview":{"width":512,"height":512}}'>
+<script type="text/x-dc" data-dc-script data-props='{"mark":{"editor":"enum","options":["log","spark","ember","fan","steps","letter","breakout","daybreak","cursor","chain","tick","ember-lit","ember-mark","ember-mix","fan-lit","fan-tight","fan-today","spark-box","spark-round","spark-ring","tick-refined","tick-lit","tick-body","blank"],"default":"ember-mark"},"look":{"editor":"enum","options":["dark","light","tinted","clear"],"default":"dark"},"shape":{"editor":"enum","options":["mac","ios"],"default":"mac"},"size":{"editor":"int","min":16,"max":1024,"default":512},"tint":{"editor":"color","default":"#8FB3FF"},"$preview":{"width":512,"height":512}}'>
 class Component extends DCLogic {
 renderVals() {
-const mark = this.props.mark ?? 'letter';
+const mark = this.props.mark ?? 'ember-mark';
 const shape = this.props.shape ?? 'mac';
 const size = Number(this.props.size ?? 512);
+const tint = this.props.tint ?? '#8FB3FF';
 let look = this.props.look ?? 'dark';
 if (mark === 'log') look = 'dark'; // the shipped icon is dark only, in every appearance
 const sm = size < 60; // the small cut: fewer, thicker parts below 60px
-const EM = 'url(#tk-em)';
+const mono = look === 'tinted' || look === 'clear';
+const EM = 'url(#tk-em)', EMBER = '#E6683D';
 const L = {
-dark: { ink: '#F2F3F4', ink2: '#9A9DA0', cut: '#1E1E1E', spark: '#E68565', body: 'url(#tk-bd)', rim: 'rgba(255,255,255,0.10)', blank: '#3A3B3D' },
-light: { ink: '#1C1C1C', ink2: '#8C8F92', cut: '#FFFFFF', spark: '#E6683D', body: 'url(#tk-bl)', rim: 'rgba(0,0,0,0.10)', blank: '#C9CACC' }
+dark: { ink: '#F2F3F4', cut: '#1E1E1E', spark: '#E68565', body: 'url(#tk-bd)', rim: 'rgba(255,255,255,0.10)', blank: '#3A3B3D', halo: 'rgba(0,0,0,0.35)' },
+light: { ink: '#1C1C1C', cut: '#FFFFFF', spark: '#E6683D', body: 'url(#tk-bl)', rim: 'rgba(0,0,0,0.10)', blank: '#C9CACC', halo: 'rgba(0,0,0,0.18)' },
+tinted: { ink: '#F2F3F4', cut: '#1E1E1E', spark: tint, body: 'url(#tk-bd)', rim: 'rgba(255,255,255,0.10)', blank: '#3A3B3D', halo: 'rgba(0,0,0,0.35)' },
+clear: { ink: 'rgba(255,255,255,0.92)', cut: 'rgba(40,44,52,0.55)', spark: 'rgba(255,255,255,0.6)', body: 'rgba(255,255,255,0.14)', rim: 'rgba(255,255,255,0.42)', blank: 'rgba(255,255,255,0.2)', halo: 'rgba(0,0,0,0.12)' }
 }[look];
+// A hue in this look: as it is in dark and light; tinted takes the tint, clear takes white, stepping down by depth.
+const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+const hue = (hex, depth) => look === 'tinted' ? hexA(tint, [1, 0.62, 0.38][depth || 0]) : look === 'clear' ? `rgba(255,255,255,${[0.42, 0.26, 0.16][depth || 0]})` : hex;
 const r1 = (n) => Math.round(n * 10) / 10;
 const rr = (x, y, w, h, r) => `M${r1(x + r)} ${r1(y)}H${r1(x + w - r)}A${r1(r)} ${r1(r)} 0 0 1 ${r1(x + w)} ${r1(y + r)}V${r1(y + h - r)}A${r1(r)} ${r1(r)} 0 0 1 ${r1(x + w - r)} ${r1(y + h)}H${r1(x + r)}A${r1(r)} ${r1(r)} 0 0 1 ${r1(x)} ${r1(y + h - r)}V${r1(y + r)}A${r1(r)} ${r1(r)} 0 0 1 ${r1(x + r)} ${r1(y)}Z`;
 const ci = (cx, cy, r) => `M${r1(cx - r)} ${r1(cy)}A${r1(r)} ${r1(r)} 0 1 0 ${r1(cx + r)} ${r1(cy)}A${r1(r)} ${r1(r)} 0 1 0 ${r1(cx - r)} ${r1(cy)}Z`;
 const pol = (cx, cy, r, a) => { const t = a * Math.PI / 180; return [r1(cx + r * Math.cos(t)), r1(cy + r * Math.sin(t))]; };
 const F = (d, f, t) => ({ d, f, s: 'none', w: 0, c: 'round', t: t || '' });
-const S = (d, s, w, c) => ({ d, f: 'none', s, w, c: c || 'round', t: '' });
+const S = (d, s, w, c, t) => ({ d, f: 'none', s, w, c: c || 'round', t: t || '' });
 const ray = (cx, cy, a, ra, rb, w, col) => { const p = pol(cx, cy, ra, a), q = pol(cx, cy, rb, a); return S(`M${p[0]} ${p[1]}L${q[0]} ${q[1]}`, col, w); };
+// A check through three points, scaled by k about (cx, cy) and moved to (ox, oy).
+const chk = (pts, k, ox, oy) => 'M' + pts.map(([x, y]) => `${r1(ox + x * k)} ${r1(oy + y * k)}`).join('L');
+// The lit finish on a rounded rectangle (TileArt.draw, bottom to top), at the source's scale: one unit is the tile's
+// height / 45.54. Halo: the outer half of a 1-unit stroke (0.5 unit, black 35% dark / 18% light). Fill: the flat hue.
+// Light: tk-light. Specular: a 1-unit strip along the top edge. Ring: a 1-unit ring inside the edge, white 10%.
+const litRR = (x, y, w, h, r, fill, t, gap) => {
+const u = h / 45.54, out = [];
+if (gap) out.push(S(rr(x, y, w, h, r), L.cut, gap * 2, 'round', t));
+out.push(S(rr(x, y, w, h, r), L.halo, u, 'round', t));
+out.push(F(rr(x, y, w, h, r), fill, t));
+out.push(F(rr(x, y, w, h, r), 'url(#tk-light)', t));
+out.push(F(rr(x + r * 0.7, y, w - r * 1.4, u, u / 2), 'url(#tk-spec)', t));
+out.push(S(rr(x + u / 2, y + u / 2, w - u, h - u, r - u / 2), 'rgba(255,255,255,0.10)', u, 'round', t));
+return out;
+};
+// The round one, as TileArt draws the brand mark's head: no specular.
+const litCircle = (cx, cy, r, fill) => {
+const u = 2 * r / 45.54;
+return [S(ci(cx, cy, r), L.halo, u), F(ci(cx, cy, r), fill), F(ci(cx, cy, r), 'url(#tk-light)'), S(ci(cx, cy, r - u / 2), 'rgba(255,255,255,0.10)', u)];
+};
+// Today's sun (Draw.swift Glyph.sun, a 16-unit box stroked 1.5), as the app draws it on Today's tile: 0.75 of the tile's height.
+const sun = (cx, cy, box, col) => {
+const k = box / 16, t = `translate(${r1(cx - 8 * k)} ${r1(cy - 8 * k)}) scale(${r1(k * 100) / 100})`, w = sm ? 2.2 : 1.5;
+return [S('M8 1.9v1.3M8 12.8v1.3M1.9 8h1.3M12.8 8h1.3M3.7 3.7l.9.9M11.4 11.4l.9.9M3.7 12.3l.9-.9M11.4 4.6l.9-.9', col, w, 'round', t), S(ci(8, 8, 2.6), col, w, 'round', t)];
+};
 let shapes = [];
-let bodyFill = L.body;
+let bodyFill = L.body, bodyLit = false;
 
 if (mark === 'log') {
 // 00 Current: the shipped 04 Log, from ios/Tools/MakeIcon.swift (mark viewBox 150..874 drawn 640 wide).
@@ -88,7 +184,7 @@ F(rr(X(462), X(296), U(340), U(80), U(40)), ink), F(ci(X(322), X(336), U(90)), h
 S(`M${r1(X(282))} ${r1(X(338))}L${r1(X(310))} ${r1(X(366))}L${r1(X(362))} ${r1(X(306))}`, cut, U(26))
 ];
 } else if (mark === 'spark') {
-// 01 Spark: the Ember checkbox with the completion spark's eight rays.
+// 01 Spark (round 2): the Ember checkbox with the completion spark's eight rays.
 const box = sm ? 440 : 380, o = 512 - box / 2;
 shapes.push(F(rr(o, o, box, box, box * 0.26), EM));
 for (let a = 0; a < 360; a += 45) {
@@ -96,12 +192,38 @@ const diag = a % 90 !== 0;
 shapes.push(ray(512, 512, a, diag ? (sm ? 300 : 268) : (sm ? 262 : 236), diag ? (sm ? 372 : 336) : (sm ? 352 : 318), sm ? 60 : 40, L.spark));
 }
 shapes.push(S('M418 520L488 590L614 446', '#FFFFFF', sm ? 70 : 56));
+} else if (mark === 'spark-box' || mark === 'spark-ring') {
+// 01a Lit box: the checked box with the rays gone and the list mark's finish. 01c keeps the spark's ring.
+const ring = mark === 'spark-ring';
+const box = ring ? (sm ? 470 : 420) : (sm ? 560 : 500), o = 512 - box / 2, k = box / 380;
+if (ring) shapes.push(S(ci(512, 512, sm ? 338 : 318), mono ? hue(EMBER, 1) : L.spark, sm ? 52 : 30));
+shapes.push(...litRR(o, o, box, box, box * 0.26, hue(EMBER)));
+shapes.push(S(chk([[-94, 8], [-24, 78], [102, -66]], k, 512, 512), '#FFFFFF', (sm ? 66 : 56) * k));
+} else if (mark === 'spark-round') {
+// 01b Lit round: the app's own checked box, which is round, lit as the brand mark's head (no specular).
+const r = sm ? 300 : 270, k = r / 190;
+shapes.push(...litCircle(512, 512, r, hue(EMBER)));
+shapes.push(S(chk([[-94, 8], [-24, 78], [102, -66]], k, 506, 508), '#FFFFFF', (sm ? 64 : 54) * k));
 } else if (mark === 'ember') {
-// 02 Ember tile: light is the lit Ember tile with a white check; dark keeps the dark body and the check goes Ember.
+// 02 Ember tile (round 2): light is the Ember tile with a white check; dark keeps the dark body and the check goes Ember.
 if (look === 'light') bodyFill = EM;
-shapes = [S('M318 530L448 660L712 380', look === 'light' ? '#FFFFFF' : EM, sm ? 120 : 100)];
+shapes = [S('M318 530L448 660L712 380', look === 'light' ? '#FFFFFF' : mono ? hue(EMBER) : EM, sm ? 120 : 100)];
+} else if (mark === 'ember-lit' || mark === 'ember-mark' || mark === 'ember-mix') {
+// 02a Lit body: the whole body is the lit tile, in both appearances (tiles don't change with it; only the halo does).
+// 02b List mark: a 20×16 list mark (radius 4 of 20) on the plain body. 02c: 02a in light, 02b in dark.
+const whole = mark === 'ember-lit' || (mark === 'ember-mix' && look === 'light');
+if (whole && !mono) {
+bodyFill = EMBER; bodyLit = true;
+shapes = [S('M318 530L448 660L712 380', '#FFFFFF', sm ? 120 : 100)];
+} else if (whole) {
+shapes = [S('M318 530L448 660L712 380', hue(EMBER), sm ? 120 : 100)];
+} else {
+const w = sm ? 700 : 640, h = w * 0.8, k = w / 640;
+shapes.push(...litRR(512 - w / 2, 512 - h / 2, w, h, w * 0.2, hue(EMBER)));
+shapes.push(S(chk([[-130, 8], [-34, 104], [146, -92]], k, 512, 506), '#FFFFFF', (sm ? 96 : 84) * k));
+}
 } else if (mark === 'fan') {
-// 03 Fan: three list tiles fanned from one corner; the top one is Ember and checked.
+// 03 Fan (round 2): three list tiles fanned from one corner; the top one is Ember and checked.
 const x = 332, y = 425, w = 440, h = 352;
 shapes = [
 { ...F(rr(x, y, w, h, 96), '#7C5CD6', 'rotate(-26 290 777)'), s: L.cut, w: 16 },
@@ -109,46 +231,70 @@ shapes = [
 { ...F(rr(x, y, w, h, 96), EM), s: L.cut, w: 16 },
 S('M470 601L534 665L652 539', '#FFFFFF', sm ? 64 : 52)
 ];
+} else if (mark === 'fan-lit') {
+// 03a Lit fan: round 2's geometry, each tile a list mark (20×16, radius 4 of 20) in the app's own tile hues.
+const x = 332, y = 425, w = 440, h = 352, r = 88;
+shapes.push(...litRR(x, y, w, h, r, hue('#6B4FB8', 2), 'rotate(-26 290 777)'));
+shapes.push(...litRR(x, y, w, h, r, hue('#146E77', 1), 'rotate(-13 290 777)'));
+shapes.push(...litRR(x, y, w, h, r, hue(EMBER)));
+shapes.push(S('M470 601L534 665L652 539', '#FFFFFF', sm ? 64 : 52));
+} else if (mark === 'fan-tight' || mark === 'fan-today') {
+// 03b Tight fan: bigger tiles at half the angles, each parted from the next by a body-coloured gap, so the stack
+// still reads at 16. 03c puts Today's tile on top: the sun in place of the check, as the sidebar draws it.
+const x = 324, y = 379, w = 500, h = 400, r = 100, gap = sm ? 22 : 14;
+shapes.push(...litRR(x, y, w, h, r, hue('#6B4FB8', 2), 'rotate(-18 324 779)', gap));
+shapes.push(...litRR(x, y, w, h, r, hue('#146E77', 1), 'rotate(-9 324 779)', gap));
+shapes.push(...litRR(x, y, w, h, r, hue(EMBER), '', gap));
+if (mark === 'fan-today') shapes.push(...sun(574, 579, h * 0.75, '#FFFFFF'));
+else shapes.push(S('M502 579L560 637L668 521', '#FFFFFF', sm ? 72 : 60));
+} else if (mark === 'tick') {
+// 10 Tick (round 2): one heavy check, the short stroke Ember.
+const w = sm ? 150 : 132;
+shapes = [S('M262 520L432 690', EM, w), S('M432 690L772 330', L.ink, w)];
+} else if (mark === 'tick-refined') {
+// 10a Refined: optically centred, a step heavier, flat Ember, and the long stroke parted from the short one by a cut.
+const w = sm ? 156 : 140;
+shapes = [S('M267 529L429 691', mono ? hue(EMBER) : EMBER, w), S('M429 691L757 333', L.cut, w + 28), S('M429 691L757 333', L.ink, w)];
+} else if (mark === 'tick-lit') {
+// 10b Lit check: the whole check in Ember, with the finish's halo and light on the stroke (no edges, so no ring or strip).
+const w = sm ? 156 : 140, d = 'M267 529L429 691L757 333', u = w / 45.54;
+shapes = [S(d, L.halo, w + u), S(d, hue(EMBER), w), S(d, 'url(#tk-light)', w)];
+} else if (mark === 'tick-body') {
+// 10c On a lit body: 02a's lit Ember body, the tick in white with its short stroke at 60%.
+const w = sm ? 156 : 140;
+if (!mono) { bodyFill = EMBER; bodyLit = true; }
+const a = mono ? hue(EMBER) : 'rgba(255,255,255,0.6)', b = mono ? L.ink : '#FFFFFF';
+shapes = [S('M267 529L429 691', a, w), S('M429 691L757 333', mono ? L.cut : EMBER, w + 28), S('M429 691L757 333', b, w)];
 } else if (mark === 'steps') {
-// 04 Steps: a check made of five tiles, light Ember to deep.
 const u = 136, t = sm ? 128 : 122, ox = 512 - 2.5 * u, oy = 512 - 2 * u + 20;
 const cells = [[0, 2, '#F29A76'], [1, 3, EM], [2, 2, '#D45A31'], [3, 1, '#BC4F2B'], [4, 0, '#A04325']];
 shapes = cells.map(([i, j, col]) => F(rr(ox + i * u + (u - t) / 2, oy + j * u + (u - t) / 2, t, t, t * 0.27), col));
 } else if (mark === 'letter') {
-// 05 t: the stem in ink, the crossbar an Ember task row.
 const w = sm ? 136 : 120;
 shapes = [S('M500 250V640Q500 772 632 772H700', L.ink, w), F(rr(262, 360 - w / 2, 500, w, w / 2), EM)];
 } else if (mark === 'breakout') {
-// 06 Breakout: an open ring and a check whose long stroke leaves through the gap.
 const r = 236, w = sm ? 92 : 76, a = pol(512, 512, r, -12), b = pol(512, 512, r, -78);
 shapes = [S(`M${a[0]} ${a[1]}A${r} ${r} 0 1 1 ${b[0]} ${b[1]}`, L.ink, w), S('M372 520L474 622L760 300', EM, w + 8)];
 } else if (mark === 'daybreak') {
-// 07 Daybreak: Today's sun rising behind a checked box.
 shapes.push(F(ci(512, 500, sm ? 190 : 176), EM));
 if (!sm) [-90, -130, -50, -168, -12].forEach((a) => shapes.push(ray(512, 500, a, 222, 290, 44, EM)));
 shapes.push({ ...F(rr(232, 482, 560, 330, 112), L.ink), s: L.cut, w: 28 });
 shapes.push(S('M418 650L488 720L616 584', L.cut, sm ? 70 : 58));
 } else if (mark === 'cursor') {
-// 08 Cursor: a check, then the block cursor waiting for the next task.
 shapes = [S('M222 548L338 664L556 410', L.ink, sm ? 104 : 88), F(rr(636, 400, sm ? 150 : 136, sm ? 300 : 290, 18), EM)];
 } else if (mark === 'chain') {
-// 09 Chain: two links of the sync log, over and under.
 const w = sm ? 84 : 72;
 shapes = [
 S(rr(222, 232, 400, 400, 128), L.ink, w), S(rr(402, 392, 400, 400, 128), EM, w),
 S('M622 322V462', L.cut, w + 36, 'butt'), S('M622 312V472', L.ink, w, 'butt')
 ];
-} else if (mark === 'tick') {
-// 10 Tick: one heavy check, the short stroke Ember.
-const w = sm ? 150 : 132;
-shapes = [S('M262 520L432 690', EM, w), S('M432 690L772 330', L.ink, w)];
 } else {
 bodyFill = L.blank; // a neutral neighbour in the Dock
 }
 
 const none = { d: 'M0 0', f: 'none', s: 'none', w: 0, c: 'round', t: '' };
 const vals = {};
-for (let i = 0; i < 14; i++) vals['p' + i] = shapes[i] || none;
+for (let i = 0; i < 24; i++) vals['p' + i] = shapes[i] || none;
 const ios = shape === 'ios';
 return {
 ...vals,
@@ -156,8 +302,10 @@ size,
 label: mark === 'blank' ? 'Another app' : 'Tasks app icon',
 macShow: ios ? 'none' : 'inline',
 iosShow: ios ? 'inline' : 'none',
+litShow: bodyLit ? 'inline' : 'none',
 bodyFill,
-rim: mark === 'ember' && look === 'light' ? 'rgba(0,0,0,0.06)' : L.rim,
+rim: bodyLit ? L.halo : (mark === 'ember' && look === 'light' ? 'rgba(0,0,0,0.06)' : L.rim),
+rimW: bodyLit ? 18 : 6,
 gt: ios ? 'translate(512 512) scale(1.2427) translate(-512 -512)' : '',
 svgStyle: 'display: block; overflow: visible;' + (!ios && size >= 64 ? ' filter: drop-shadow(0 ' + Math.round(size / 64) + 'px ' + Math.round(size / 32) + 'px rgba(0,0,0,0.28));' : '')
 };

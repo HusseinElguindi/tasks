@@ -105,7 +105,7 @@ body{margin:0}
 </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"mark":{"editor":"enum","options":["log","spark","ember","fan","steps","letter","breakout","daybreak","cursor","chain","tick"],"default":"letter"},"$preview":{"width":1640,"height":900}}'>
+<script type="text/x-dc" data-dc-script data-props='{"mark":{"editor":"enum","options":["log","spark","ember","fan","steps","letter","breakout","daybreak","cursor","chain","tick","ember-lit","ember-mark","ember-mix","fan-lit","fan-tight","fan-today","spark-box","spark-round","spark-ring","tick-refined","tick-lit","tick-body"],"default":"letter"},"$preview":{"width":1640,"height":900}}'>
 class Component extends DCLogic {
 renderVals() {
 const mark = this.props.mark ?? 'letter';
@@ -120,7 +120,19 @@ breakout: { num: '06', name: 'Breakout', line: 'A check breaking out of its ring
 daybreak: { num: '07', name: 'Daybreak', line: 'Today’s sun rising behind a checked box: the view you open first each morning. The rays drop below 60px.' },
 cursor: { num: '08', name: 'Cursor', line: 'A check, then the block cursor waiting for the next task. Round 1’s top pick, redone in Ember.' },
 chain: { num: '09', name: 'Chain', line: 'Two linked rounds of the append-only log, ink over Ember at one crossing and under at the other.' },
-tick: { num: '10', name: 'Tick', line: 'The plainest mark: one heavy check with an Ember short stroke. It survives 16 best.' }
+tick: { num: '10', name: 'Tick', line: 'The plainest mark: one heavy check with an Ember short stroke. It survives 16 best.' },
+'ember-lit': { num: '02a', name: 'Ember tile · lit body', line: 'The whole body is the lit tile, in light and in dark (tiles don’t change with the appearance; only the halo does).' },
+'ember-mark': { num: '02b', name: 'Ember tile · list mark', line: 'A list mark exactly: the 20×16 tile, radius 4 of 20, with the app’s finish and a white check, on the plain body.', top: true, topLabel: 'My pick' },
+'ember-mix': { num: '02c', name: 'Ember tile · mixed', line: 'The lit body in light, and the list mark on the dark body in dark.' },
+'fan-lit': { num: '03a', name: 'Fan · lit', line: 'Round 2’s fan, each tile a list mark in the app’s own tile hues (magenta #6B4FB8, cyan #146E77, Ember).' },
+'fan-tight': { num: '03b', name: 'Fan · tight', line: 'Bigger tiles at half the angle, parted by a body-coloured gap, so the stack still reads at 16.', top: true, topLabel: 'My pick' },
+'fan-today': { num: '03c', name: 'Fan · Today on top', line: '03b with Today’s tile on top: the sun in place of the check, as the sidebar draws it.' },
+'spark-box': { num: '01a', name: 'Spark · lit box', line: 'Round 2’s box with the rays gone and the list mark’s finish. Close to 02b; it’s square where 02b is 20×16.' },
+'spark-round': { num: '01b', name: 'Spark · lit round', line: 'The app’s own checked box, which is round, lit as the app lights its round marks (no specular strip).', top: true, topLabel: 'My pick' },
+'spark-ring': { num: '01c', name: 'Spark · lit box and ring', line: '01a with the one part of the spark that isn’t a ray: the ring that leaves the box.' },
+'tick-refined': { num: '10a', name: 'Tick · refined', line: 'Optically centred and a step heavier, flat Ember, with the long stroke cut cleanly from the short one.', top: true, topLabel: 'My pick' },
+'tick-lit': { num: '10b', name: 'Tick · lit check', line: 'The whole check in Ember with the finish’s halo and light. It’s one colour, so the two-tone idea goes.' },
+'tick-body': { num: '10c', name: 'Tick · on a lit body', line: '02a’s lit Ember body with the tick in white, its short stroke at 60%.' }
 };
 const info = INFO[mark] || INFO.letter;
 return {

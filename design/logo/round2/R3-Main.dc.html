@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Logo round 3 overview</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1848px; height: 1820px; box-sizing: border-box; padding: 40px 48px 48px; background: #111111; color: #E6EDF3; font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif; -webkit-font-smoothing: antialiased; display: flex; flex-direction: column; gap: 28px;">
+
+<header style="display: flex; flex-direction: column; gap: 6px;">
+<h1 style="margin: 0; font-size: 28px; line-height: 34px; font-weight: 600;">Lit like the list marks: four directions, each beside its round 2 flat version</h1>
+<p style="margin: 0; font-size: 15px; line-height: 20px; color: #A8ADB1;">The finish is the app’s own (TasksCore TileArt): a flat hue, a radial light from the top middle, a specular strip along the top, a white inner ring and a dark halo, scaled from the reference tile. Each row is one direction: round 2’s flat version first, then three lit tries. White glyphs stay flat, as they do in the app.</p>
+</header>
+
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px;">
+<sc-for list="{{cards}}" as="d" hint-placeholder-count="16">
+<section style="height: 380px; box-sizing: border-box; border-radius: 16px; background: #181818; box-shadow: inset 0 0 0 1px #262728; overflow: hidden; display: flex; flex-direction: column;">
+<div style="height: 92px; box-sizing: border-box; padding: 16px 18px 0; display: flex; flex-direction: column; gap: 6px;">
+<div style="display: flex; align-items: baseline; gap: 10px;">
+<span style="font: 600 12px/16px 'SF Mono', ui-monospace, Menlo, monospace; color: #7F8386;">{{d.num}}</span>
+<h2 style="margin: 0; font-size: 17px; line-height: 22px; font-weight: 600;">{{d.name}}</h2>
+<sc-if value="{{d.pick}}" hint-placeholder-val="{{false}}"><span style="margin-left: auto; align-self: center; height: 20px; padding: 0 9px; border-radius: 10px; background: #362620; color: #E68565; font-size: 11px; line-height: 20px; font-weight: 600;">My pick</span></sc-if>
+<sc-if value="{{d.flat}}" hint-placeholder-val="{{false}}"><span style="margin-left: auto; align-self: center; height: 20px; padding: 0 9px; border-radius: 10px; background: #2D2E2E; color: #A8ADB1; font-size: 11px; line-height: 20px; font-weight: 600;">Round 2, flat</span></sc-if>
+</div>
+<p style="margin: 0; font-size: 13px; line-height: 17px; color: #A8ADB1;">{{d.line}}</p>
+</div>
+<div style="flex-grow: 1; background: #E9E9EA; display: flex; align-items: center; justify-content: center; gap: 18px;">
+<dc-import name="Icon" mark="{{d.mark}}" look="light" shape="mac" size="{{n112}}" hint-size="112px,112px"></dc-import>
+<dc-import name="Icon" mark="{{d.mark}}" look="light" shape="ios" size="{{n90}}" hint-size="90px,90px"></dc-import>
+<dc-import name="Icon" mark="{{d.mark}}" look="light" shape="mac" size="{{n32}}" hint-size="32px,32px"></dc-import>
+<dc-import name="Icon" mark="{{d.mark}}" look="light" shape="mac" size="{{n16}}" hint-size="16px,16px"></dc-import>
+</div>
+<div style="flex-grow: 1; background: #1C1C1C; display: flex; align-items: center; justify-content: center; gap: 18px;">
+<dc-import name="Icon" mark="{{d.mark}}" look="dark" shape="mac" size="{{n112}}" hint-size="112px,112px"></dc-import>
+<dc-import name="Icon" mark="{{d.mark}}" look="dark" shape="ios" size="{{n90}}" hint-size="90px,90px"></dc-import>
+<dc-import name="Icon" mark="{{d.mark}}" look="dark" shape="mac" size="{{n32}}" hint-size="32px,32px"></dc-import>
+<dc-import name="Icon" mark="{{d.mark}}" look="dark" shape="mac" size="{{n16}}" hint-size="16px,16px"></dc-import>
+</div>
+</section>
+</sc-for>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1848,"height":1820}}'>
+class Component extends DCLogic {
+renderVals() {
+return {
+n16: 16, n32: 32, n90: 90, n112: 112,
+cards: [
+{ num: '02', name: 'Ember tile', mark: 'ember', flat: true, pick: false, line: 'An Ember body and a white check in light; the dark body and an Ember check in dark.' },
+{ num: '02a', name: 'Lit body', mark: 'ember-lit', flat: false, pick: false, line: 'The whole body is the lit tile, in both appearances; only the halo changes.' },
+{ num: '02b', name: 'List mark', mark: 'ember-mark', flat: false, pick: true, line: 'The app’s 20×16 list mark, lit, with a white check, on the plain body.' },
+{ num: '02c', name: 'Mixed', mark: 'ember-mix', flat: false, pick: false, line: 'The lit body in light, the list mark on the dark body in dark.' },
+{ num: '03', name: 'Fan', mark: 'fan', flat: true, pick: false, line: 'Three tiles fanned from one corner, the top one Ember and checked.' },
+{ num: '03a', name: 'Lit', mark: 'fan-lit', flat: false, pick: false, line: 'The same fan, each tile a lit list mark in the app’s tile hues.' },
+{ num: '03b', name: 'Tight', mark: 'fan-tight', flat: false, pick: true, line: 'Bigger tiles at half the angle, parted by a gap, so the stack holds at 16.' },
+{ num: '03c', name: 'Today on top', mark: 'fan-today', flat: false, pick: false, line: '03b with Today’s tile on top: the sun in place of the check.' },
+{ num: '01', name: 'Spark', mark: 'spark', flat: true, pick: false, line: 'The checked Ember box and the eight-ray completion spark.' },
+{ num: '01a', name: 'Lit box', mark: 'spark-box', flat: false, pick: false, line: 'The rays gone, the box lit. Square, so it sits close to 02b.' },
+{ num: '01b', name: 'Lit round', mark: 'spark-round', flat: false, pick: true, line: 'The app’s own checked box, which is round, lit with no specular strip.' },
+{ num: '01c', name: 'Lit box and ring', mark: 'spark-ring', flat: false, pick: false, line: '01a with the spark’s ring, the one part that isn’t a ray.' },
+{ num: '10', name: 'Tick', mark: 'tick', flat: true, pick: false, line: 'One heavy check, the short stroke Ember.' },
+{ num: '10a', name: 'Refined', mark: 'tick-refined', flat: false, pick: true, line: 'Centred, a step heavier, flat Ember, the strokes cut cleanly apart.' },
+{ num: '10b', name: 'Lit check', mark: 'tick-lit', flat: false, pick: false, line: 'The whole check Ember, with halo and light. One colour, so the two-tone goes.' },
+{ num: '10c', name: 'On a lit body', mark: 'tick-body', flat: false, pick: false, line: 'The lit Ember body, the tick in white with its short stroke at 60%.' }
+]
+};
+}
+}
+</script>
+</body>
+</html>
