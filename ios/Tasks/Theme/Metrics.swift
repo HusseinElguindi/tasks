@@ -61,9 +61,19 @@ enum Typo {
 
 /// Pane's three curves, and the moments' (COLOR.md §4). Reduce Motion turns them all off.
 enum Motion {
-    static var natural: Animation { .smooth(duration: 0.3) }
-    static var layout: Animation { .smooth(duration: 0.25) }
-    static var snappy: Animation { .snappy(duration: 0.2) }
+    static var natural: Animation { .smooth(duration: 0.3 * scale) }
+    static var layout: Animation { .smooth(duration: 0.25 * scale) }
+    static var snappy: Animation { .snappy(duration: 0.2 * scale) }
+    /// Debug only, for UI tests: `-motionScale <n>` makes these three curves n times as long, so a test can act inside
+    /// one (XCTest takes ~0.45 s to start any gesture, longer than most of them). 1 otherwise.
+    static let scale: Double = {
+        #if DEBUG
+        let n = UserDefaults.standard.double(forKey: "motionScale")
+        return n > 0 ? n : 1
+        #else
+        return 1
+        #endif
+    }()
     /// The spark's ring and rays and the all-done sun's turn: `cubic-bezier(0.2, 0.8, 0.2, 1)` (the Mac's `TK.CA.flight`).
     static let flight = UnitCurve.bezier(startControlPoint: UnitPoint(x: 0.2, y: 0.8), endControlPoint: UnitPoint(x: 0.2, y: 1))
 }

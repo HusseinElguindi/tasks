@@ -94,7 +94,13 @@ struct FloatingControls: View {
                     SelectBar(source: source)
                         .motionTransition(.move(edge: .bottom).combined(with: .opacity))
                 } else {
-                    if home && showBar { HomeBar() } else { Spacer() }
+                    if home && showBar {
+                        // Its fade as a list opens: the default one, but the leaving bar lets go of touches at once,
+                        // so a press on the list's bottom row in that 0.3 s goes to the row (T52).
+                        HomeBar().motionTransition(AnyTransition(LeavingFade()))
+                    } else {
+                        Spacer()
+                    }
                     if home || app.canAdd(source) {
                         AddButton { add() }
                             .motionTransition(.scale(scale: 0.6).combined(with: .opacity))
@@ -126,6 +132,15 @@ struct FloatingControls: View {
         } else if let s = source {
             if app.draft?.source == s, app.draft?.addsTask == true { app.submitDraft() } else { app.startDraft(s) }
         }
+    }
+}
+
+/// `.opacity`, except that the view takes no touches while it isn't fully in: SwiftUI keeps a leaving view hit-testable
+/// for the whole of its removal, so Home's bar, fading out over a list that has just come in, took the list's presses.
+/// The hit testing isn't animated: it switches off the moment the removal starts, and on as an insertion starts.
+private struct LeavingFade: Transition {
+    func body(content: Content, phase: TransitionPhase) -> some View {
+        content.opacity(phase.isIdentity ? 1 : 0).allowsHitTesting(phase.isIdentity)
     }
 }
 

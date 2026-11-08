@@ -3273,6 +3273,55 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(y(exam) < y(lab4) && y(lab4) < y(reading), "over the heading: in Exam prep too")
     }
 
+    /// A list's bottom row, pressed the moment it comes in, while Home's New List bar is still fading out over it (its
+    /// 0.3 s): the row's menu opens. The leaving bar used to take the press, and no menu opened (T51). Both ways in: a
+    /// launch to the list, and a tap on it from Home.
+    func testAPressAsAListComesInGoesToTheRow() {
+        // The app's curves 5 times as long (Debug's -motionScale): the fade's 1.5 s, so the press, which XCTest can't
+        // start sooner than ~0.45 s after the row is found, lands in it every time (unscaled, it was after the fade
+        // in 2 runs of 3).
+        app.launchArguments += ["-motionScale", "5"]
+        guard openAndPress(launch: true) else { return }
+        // Out of the menu by its New Heading Above, left empty (it leaves nothing); back to Home, where the bar is
+        // back and works.
+        app.buttons["New Heading Above"].firstMatch.tap()
+        app.settle()
+        app.typeText("\n")
+        app.settle()
+        back()
+        let newList = app.buttons["New List"].firstMatch
+        XCTAssertTrue(newList.appears(timeout: 3), "the bar is back on Home")
+        newList.tap()
+        XCTAssertTrue(app.alerts["New List"].appears(timeout: 3), "the bar's New List works")
+        app.alerts["New List"].buttons["Cancel"].tap()
+        XCTAssertTrue(app.alerts["New List"].vanishes(timeout: 3))
+        app.settle()
+        _ = openAndPress(launch: false)
+    }
+
+    /// Whether the row's menu opened.
+    private func openAndPress(launch: Bool) -> Bool {
+        let sheet = app.staticTexts["Make the midterm formula sheet"].firstMatch
+        // No waits for the screen to be still, from the way in to the press: they'd outlast the bar's fade.
+        var opened = false
+        menuOpen {
+            if launch {
+                app.launchArguments += ["-screen", "list:phys"]
+                app.launch()
+            } else {
+                app.buttons["PHYS 122"].firstMatch.tap()
+            }
+            XCTAssertTrue(sheet.appears(timeout: 10), "PHYS 122")
+            let y = sheet.frame.midY
+            XCTAssertGreaterThan(y, 760, "at the foot, under where the bar was")
+            // By coordinate, at the row's middle across (its text may still be sliding in).
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0)).withOffset(CGVector(dx: 0, dy: y)).press(forDuration: 1.0)
+            opened = app.buttons["New Heading Above"].firstMatch.appears(timeout: 3)
+            XCTAssertTrue(opened, "the row's menu opened (\(launch ? "launched" : "tapped") to the list)")
+        }
+        return opened
+    }
+
     /// The air above Today's next group is the end of this one (it used to refuse the drop).
     func testADropAtTheEndOfATodayGroup() {
         app.launchArguments += ["-screen", "today"]
