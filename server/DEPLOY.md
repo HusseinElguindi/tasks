@@ -78,6 +78,15 @@ curl -s -X POST "$URL" -d '{}'    # → 401 bad_token
 curl -s "$URL"                    # → 405 method_not_allowed
 ```
 
+The poke socket (`GET /v1/events`, design/PUSH-SYNC.md):
+
+```sh
+EV=https://tasks.<subdomain>.workers.dev/v1/events
+curl -s "$EV" -H "Authorization: Bearer $TOKEN"                          # → 426 upgrade_required
+curl -s "$EV" -H 'Upgrade: websocket' -H 'Connection: Upgrade' \
+  -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==' # → 401 bad_token
+```
+
 SPEC §10 suggests `curl --compressed -sI`. `-I` sends `HEAD`, which gets a `405` (with `Content-Encoding`
 still set), so the `POST` form above is the meaningful check.
 
@@ -87,7 +96,7 @@ Then enter the base URL (`https://tasks.<subdomain>.workers.dev`) and the token 
 
 | Task | Command | Note |
 |------|---------|------|
-| Redeploy after a code change | `npx wrangler deploy` | The secret and the log are kept. |
+| Redeploy after a code change | `npx wrangler deploy` | The secret and the log are kept. It closes every `/v1/events` socket; the apps reconnect within their backoff (1 s, doubling, ±20%) and poll meanwhile. |
 | Rotate the token | `npx wrangler secret put API_TOKEN` | Each Mac then shows "Check sync token" until it gets the new one. |
 | Roll back the code | `npx wrangler rollback` | Storage is untouched. Never to a version before `d5f33632` (2026-10-31): older ones reject `actor`/`batch`, headings or list notes, so a 409 recovery would discard those ops (SPEC §5). |
 | Tail logs | `npx wrangler tail` | |

@@ -3,6 +3,12 @@
 // Hot path: head and the last hash live in memory, the SQL strings are constants (workerd
 // caches a prepared statement per query string), and an append is one synchronous
 // transaction. Nothing in sync() awaits, so requests can't interleave.
+//
+// Push (design/PUSH-SYNC.md): clients hold a hibernatable WebSocket (ctx.acceptWebSocket, never
+// ws.accept()), so the object still sleeps between requests and the sockets stay connected. Each
+// socket gets {"head":N} when it connects and after every append that moves head. ws.send is
+// synchronous, so sync() still never awaits. Nothing about a socket lives in memory: after a wake
+// from hibernation ctx.getWebSockets() returns them all, and the handlers below need no state.
 
 import { DurableObject } from "cloudflare:workers";
 import { createHash } from "node:crypto";
@@ -51,8 +57,49 @@ export class UserLog extends DurableObject<Env> {
     if (from > 0 && base !== this.hashAt(from - 1)) {
       return { ok: false, message: `base does not match the log at seq ${from - 1}.` };
     }
-    if (ops.length > 0) this.append(ops);
+    if (ops.length > 0 && this.append(ops)) this.poke();
     return { ok: true, body: this.page(from) };
+  }
+
+  /** GET /v1/events, already authorized by the Worker: accept the socket and send it the head. */
+  async fetch(request: Request): Promise<Response> {
+    if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
+      return new Response("Expected Upgrade: websocket", { status: 426 });
+    }
+    const [client, server] = Object.values(new WebSocketPair());
+    this.ctx.acceptWebSocket(server);
+    server.send(this.headMessage());
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  // Clients send nothing; protocol pings are answered by the runtime and never reach these.
+  webSocketMessage(): void {}
+
+  /** Completes the close handshake. Where the runtime already answered the close frame, this throws; that's fine. */
+  webSocketClose(ws: WebSocket, code: number, reason: string): void {
+    try {
+      ws.close(code === 1005 || code === 1006 ? 1000 : code, reason);
+    } catch {
+      // already closed
+    }
+  }
+
+  webSocketError(): void {}
+
+  private headMessage(): string {
+    return `{"head":${this.head}}`;
+  }
+
+  /** Tells every connected socket the new head. A socket that's closing throws; it's skipped. */
+  private poke(): void {
+    const message = this.headMessage();
+    for (const ws of this.ctx.getWebSockets()) {
+      try {
+        ws.send(message);
+      } catch {
+        // closing or closed: the client reconnects and gets the head then
+      }
+    }
   }
 
   private hashAt(seq: number): string | undefined {
@@ -60,8 +107,8 @@ export class UserLog extends DurableObject<Env> {
     return this.sql.exec<{ hash: string }>(HASH_AT, seq).toArray()[0]?.hash;
   }
 
-  /** Appends ops contiguously in order, skipping op ids already in the log. One transaction. */
-  private append(ops: PreparedOp[]): void {
+  /** Appends ops contiguously in order, skipping op ids already in the log. One transaction. Whether head moved. */
+  private append(ops: PreparedOp[]): boolean {
     const received = Date.now();
     let head = this.head;
     let last = this.last;
@@ -75,8 +122,10 @@ export class UserLog extends DurableObject<Env> {
       }
     });
     // Only after commit: if the transaction threw, the cache still matches storage.
+    const moved = head !== this.head;
     this.head = head;
     this.last = last;
+    return moved;
   }
 
   /** The response body, built from the stored op text without re-parsing it. */
