@@ -36,6 +36,9 @@ struct TasksApp: App {
                 // The same AppModel a background refresh opens, if one came first.
                 let opened = await SharedApp.open()
                 app = opened
+                // A background launch (a refresh) may build the scene too: no socket and no periodic sync until it
+                // comes to the front (cameToFront). A launch in front is .inactive or .active here.
+                opened.inFront = UIApplication.shared.applicationState != .background
                 opened.startSync()
                 opened.startWidgetFeed()
                 if let link = pendingLink {
