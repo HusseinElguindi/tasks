@@ -6,6 +6,7 @@
 # list with notes) at 1100x760, then opens and closes the detail pane and hides and shows the sidebar, recording every
 # turn of the run loop (`act:wraptrace`, so it runs with the screen locked). Fails if, in any of the four, the notes
 # take more than two widths or two heights, or the first row's drawn place moves more than 12pt between two turns.
+# The large title wraps the same way (§23), so its field may take two widths and two heights too.
 #
 #   xcodebuild -project Tasks.xcodeproj -scheme Tasks -derivedDataPath .build/DerivedData build   # the Debug app
 #   app/Scripts/wrap-settle-check.sh            # KEEP=1 keeps the traces (the folder is printed)
@@ -36,7 +37,7 @@ for name in ["open", "close", "hide", "show"]:
     path = os.path.join(work, f"{name}.txt")
     if not os.path.exists(path):
         print(f"FAIL {name}: no frames"); ok = False; continue
-    panes, widths, heights, ys = [], [], [], []
+    panes, widths, heights, ys, titles = [], [], [], [], []
     for line in open(path):
         m = re.search(r"wrap pane=(\d+) notes=(\d+)x(\d+) settle=\S+ firstRow=([-\d.]+)", line)
         if not m:
@@ -46,13 +47,16 @@ for name in ["open", "close", "hide", "show"]:
         if not widths or widths[-1] != w: widths.append(w)
         if not heights or heights[-1] != h: heights.append(h)
         ys.append(y)
+        t = re.search(r"title=(\d+)x(\d+)", line)
+        if t and (not titles or titles[-1] != t.groups()): titles.append(t.groups())
     step = max((abs(b - a) for a, b in zip(ys, ys[1:])), default=0)
     moved = len(set(panes)) > 2
-    good = moved and len(widths) <= 2 and len(heights) <= 2 and step <= 12
+    tw, th = len({w for w, _ in titles}), len({h for _, h in titles})
+    good = moved and len(widths) <= 2 and len(heights) <= 2 and step <= 12 and 0 < tw <= 2 and th <= 2
     print(f"{'ok  ' if good else 'FAIL'} {name}: pane {panes[0] if panes else '-'}>{panes[-1] if panes else '-'} over"
           f" {len(set(panes))} widths; notes widths {widths[:8]}{'…' if len(widths) > 8 else ''} ({len(widths)}),"
-          f" heights {heights} ; first row's biggest step {step:.1f}pt")
+          f" heights {heights} ; first row's biggest step {step:.1f}pt; title {tw} widths, {th} heights")
     ok &= good
-print("ok: the notes wrap once and the rows glide" if ok else "FAIL")
+print("ok: the notes and the title wrap once and the rows glide" if ok else "FAIL")
 sys.exit(0 if ok else 1)
 PY

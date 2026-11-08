@@ -1962,6 +1962,7 @@ final class TaskListView: NSView {
         let first = rows.values.filter { !$0.isHidden && $0.model != nil }.min { $0.frame.minY < $1.frame.minY }
         let drawn = first.map { v in String(format: "%.1f", (v.layer?.presentation() ?? v.layer)?.frame.minY ?? v.frame.minY) } ?? "-"
         return "  wrap pane=\(Int(bounds.width)) notes=\(notes) settle=\(settle.map { "\(Int($0.from))>\(Int($0.to))" } ?? "-") firstRow=\(drawn)"
+            + " title=\(Int(titleView.field.frame.width))x\(Int(titleView.field.frame.height))"
     }
 
     /// Debug (§24): every row on screen, top to bottom, with what it shows of its dates.
