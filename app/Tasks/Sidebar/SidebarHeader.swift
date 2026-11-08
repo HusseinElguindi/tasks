@@ -2,87 +2,53 @@ import AppKit
 import QuartzCore
 import TasksTheme
 
-// The sidebar's brand header (v2 feedback 12): the bare 04 · Log mark and "Tasks", above Today. The logo canvas's
-// "Sidebar header" board (design/logo/Sheet.dc.html, around line 168).
+// The sidebar's brand header (v2 feedback 12): the app's mark and "Tasks", above Today.
+//
+// The user, 2026-11-08: "let's go with lit body (2a), but when the logo shows in the app, it's a list mark." So inside
+// the app the mark is a list mark: the lit tile every list wears (`TileLayer`, `TileArt`) in the accent, with the
+// check in white, the same 20×16 as the rows' tiles and on their column. The app icon is the same tile filling its
+// whole body (design/logo/final, 02a Lit body; design/logo/round2 has the canvas).
 
-/// The bare 04 · Log mark as vectors, from the shapes in `design/logo/final/gen.py` (`mark()`), in its 724-unit
-/// viewBox (150 150 724 724), y down. Four layers, back to front: the trail (spine and the two short bars), the rings,
-/// the head's bar, and the head with its check cut out. `small` is the cut the icon uses below 60px: the rings become
-/// dots and every stroke thickens; at 18pt it's the one that reads (the full cut's rings and check are hairlines).
-enum BrandMark {
-    enum Part: CaseIterable { case trail, rings, bar, head }
+/// The app's mark as a list mark: the tile's hue and glyph. The hue is Today's tile's, the accent as given: tiles don't
+/// change with the appearance, where `mark-head` is light's raised accent and would sit darker than every tile under it.
+enum ListMark {
+    static let glyph = Glyph.check
 
-    static let viewBox = CGRect(x: 150, y: 150, width: 724, height: 724)
-    /// The small cut's head, a circle in the viewBox (`paths(small: true)`).
-    static let head = (center: CGPoint(x: 322, y: 336), radius: CGFloat(100))
+    static func hue(_ p: TK.Palette) -> NSColor { p.tileToday }
 
-    static func paths(small: Bool) -> [(Part, CGPath)] {
-        func circle(_ x: CGFloat, _ y: CGFloat, _ r: CGFloat) -> CGPath {
-            CGPath(ellipseIn: CGRect(x: x - r, y: y - r, width: 2 * r, height: 2 * r), transform: nil)
-        }
-        func capsule(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> CGPath {
-            CGPath(roundedRect: CGRect(x: x, y: y, width: w, height: h), cornerWidth: h / 2, cornerHeight: h / 2, transform: nil)
-        }
-        func union(_ ps: [CGPath]) -> CGPath {
-            let m = CGMutablePath()
-            ps.forEach { m.addPath($0) }
-            return m
-        }
-        /// The check, a round-capped, round-joined stroke of width `2 × half` (gen.py `check`).
-        func check(_ cx: CGFloat, _ cy: CGFloat, _ s: CGFloat, _ half: CGFloat) -> CGPath {
-            let line = CGMutablePath()
-            line.addLines(between: [CGPoint(x: cx - 26 * s, y: cy + 2 * s), CGPoint(x: cx - 8 * s, y: cy + 20 * s),
-                                    CGPoint(x: cx + 26 * s, y: cy - 18 * s)])
-            return line.copy(strokingWithWidth: 2 * half, lineCap: .round, lineJoin: .round, miterLimit: 10)
-        }
-        let cx: CGFloat, headY: CGFloat, r1: CGFloat, r2: CGFloat, barX: CGFloat
-        let head, rings, bar, trail: CGPath
-        if small {
-            (cx, headY, r1, r2, barX) = (322, 336, 556, 732, 462)
-            head = circle(cx, headY, 100).subtracting(check(cx, headY, 1.75, 15))
-            rings = union([circle(cx, r1, 56), circle(cx, r2, 56)])
-            bar = capsule(barX, headY - 40, 340, 80)
-            trail = union([CGPath(rect: CGRect(x: cx - 18, y: headY + 100, width: 36, height: r1 - 56 - headY - 100), transform: nil),
-                           CGPath(rect: CGRect(x: cx - 18, y: r1 + 56, width: 36, height: r2 - 56 - r1 - 56), transform: nil),
-                           capsule(barX, r1 - 32, 280, 64), capsule(barX, r2 - 32, 220, 64)])
-        } else {
-            (cx, headY, r1, r2, barX) = (324, 314, 541, 739, 454)
-            head = circle(cx, headY, 84).subtracting(check(cx, headY, 1.45, 11))
-            rings = union([circle(cx, r1, 55).subtracting(circle(cx, r1, 33)), circle(cx, r2, 55).subtracting(circle(cx, r2, 33))])
-            bar = capsule(barX, headY - 24, 330, 48)
-            trail = union([CGPath(rect: CGRect(x: cx - 11, y: headY + 84, width: 22, height: r1 - 55 - headY - 84), transform: nil),
-                           CGPath(rect: CGRect(x: cx - 11, y: r1 + 55, width: 22, height: r2 - 55 - r1 - 55), transform: nil),
-                           capsule(barX, r1 - 18, 260, 36), capsule(barX, r2 - 18, 200, 36)])
-        }
-        return [(.trail, trail), (.rings, rings), (.bar, bar), (.head, head)]
-    }
-
-    /// The mark's colors, the `mark-*` tokens: in dark the icon's own layers (gen.py `COLORS['dark']`), and on the
-    /// light sidebar the light variant the final mark was designed with (commit 5568418), since the icon is dark only.
-    static func color(_ part: Part, _ p: TK.Palette) -> NSColor {
-        switch part {
-        case .trail: p.markTrail
-        case .rings: p.markRings
-        case .bar: p.markBar
-        case .head: p.markHead
+    /// The mark as an image `width` wide (20×16 in proportion, radius 4 of 20), centred in a square, for places that
+    /// take an `NSImage` (the About panel). Drawn by `TileArt` with the check as `TileLayer` draws a glyph: white, 12
+    /// of 20 wide.
+    static func image(width: CGFloat, palette p: TK.Palette) -> NSImage {
+        let k = width / TileLayer.dimensions(.regular).width
+        let d = CGSize(width: width, height: TileLayer.dimensions(.regular).height * k)
+        let radius = TileLayer.radius(.regular) * k, glyphSize = TileLayer.glyphSize(.regular) * k
+        let halo = TK.RGBA(ns: p.tileHalo), fill = TK.RGBA(ns: hue(p))
+        return NSImage(size: CGSize(width: width, height: width), flipped: true) { _ in
+            guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
+            let scale = abs(ctx.userSpaceToDeviceSpaceTransform.a)
+            let origin = CGPoint(x: 0, y: (width - d.height) / 2)
+            ctx.saveGState()
+            ctx.translateBy(x: origin.x, y: origin.y)
+            TileArt.draw(ctx, size: d, radius: radius, hue: fill, halo: halo, scale: scale > 0 ? scale : 2)
+            ctx.translateBy(x: (d.width - glyphSize) / 2, y: (d.height - glyphSize) / 2)
+            ctx.addPath(glyph.path(size: glyphSize))
+            ctx.setStrokeColor(TileLayer.ink.cgColor)
+            ctx.setLineWidth(glyph.lineWidth(size: glyphSize))
+            ctx.setLineCap(.round)
+            ctx.setLineJoin(.round)
+            ctx.strokePath()
+            ctx.restoreGState()
+            return true
         }
     }
 }
 
-/// The header row: 34 tall at the top of the sidebar's content, inset 10 like the rows; the mark at 18pt 10 in, then
-/// "Tasks" 8 after it in 13pt semibold `ink`. A label, not a control: no hover, no press, and it scrolls and collapses
-/// with the sidebar.
+/// The header row: 34 tall at the top of the sidebar's content. The mark is a 20×16 list mark on the rows' tile column
+/// (`SB.tileX`), and "Tasks" in 13pt semibold `ink` starts on their title column (`SB.titleX`). A label, not a
+/// control: no hover, no press, and it scrolls and collapses with the sidebar.
 final class SidebarHeaderLayer: CALayer {
-    static let markSize: CGFloat = 18
-    static let markX: CGFloat = 10
-    static let gap: CGFloat = 8
-
-    private let mark = CALayer()
-    private var shapes: [BrandMark.Part: CAShapeLayer] = [:]
-    /// The head lit like a tile (B, COLOR.md §2): the light, the inner ring and the halo, no specular, with the check
-    /// still cut out (`.mk-lit`, `.mk-hl`, `.mk-halo`).
-    private let headArt = CALayer()
-    private var headRect = CGRect.zero
+    private let mark = TileLayer()
     let title = TextLayer()
     private var palette: TK.Palette?
 
@@ -91,35 +57,7 @@ final class SidebarHeaderLayer: CALayer {
         anchorPoint = .zero
         bounds = CGRect(x: 0, y: 0, width: SB.rowWidth(sidebar: TK.M.sidebar), height: SB.headerHeight)
         actions = TaskRowView.noActions
-        let s = Self.markSize
-        mark.anchorPoint = .zero
-        mark.frame = CGRect(x: Self.markX, y: (SB.headerHeight - s) / 2, width: s, height: s)
         mark.actions = TaskRowView.noActions
-        let v = BrandMark.viewBox
-        var t = CGAffineTransform(scaleX: s / v.width, y: s / v.height).translatedBy(x: -v.minX, y: -v.minY)
-        var headPath = CGPath(rect: .zero, transform: nil)
-        for (part, path) in BrandMark.paths(small: true) {
-            let l = CAShapeLayer()
-            l.path = path.copy(using: &t)
-            l.actions = TaskRowView.noActions
-            mark.addSublayer(l)
-            shapes[part] = l
-            if part == .head, let p = l.path { headPath = p }
-        }
-        // The head's art reaches `outset` past the circle for its halo; its mask is that larger circle less the check.
-        let k = s / v.width, h = BrandMark.head
-        let r = h.radius * k, c = CGPoint(x: (h.center.x - v.minX) * k, y: (h.center.y - v.minY) * k)
-        headRect = CGRect(x: c.x - r, y: c.y - r, width: 2 * r, height: 2 * r)
-        let o = TileArt.outset
-        headArt.frame = headRect.insetBy(dx: -o, dy: -o)
-        headArt.actions = TaskRowView.noActions
-        var toArt = CGAffineTransform(translationX: -headArt.frame.minX, y: -headArt.frame.minY)
-        let circle = CGPath(ellipseIn: headRect, transform: nil)
-        let check = circle.subtracting(headPath)
-        let mask = CAShapeLayer()
-        mask.path = CGPath(ellipseIn: headArt.frame, transform: nil).subtracting(check).copy(using: &toArt)
-        headArt.mask = mask
-        mark.addSublayer(headArt)
         addSublayer(mark)
         addSublayer(title)
         title.actions = TaskRowView.noActions
@@ -128,25 +66,12 @@ final class SidebarHeaderLayer: CALayer {
     override init(layer: Any) { super.init(layer: layer) }
     required init?(coder: NSCoder) { fatalError() }
 
-    override var contentsScale: CGFloat {
-        didSet { if contentsScale != oldValue { drawHead() } }
-    }
-
-    private func drawHead() {
-        guard let p = palette else { return }
-        let scale = max(1, contentsScale)
-        headArt.contentsScale = scale
-        headArt.contents = TileArt.image(hue: p.markHead, halo: p.tileHalo, size: headRect.size, radius: headRect.width / 2,
-                                         scale: scale, specular: false)
-    }
-
     func setPalette(_ p: TK.Palette) {
         guard p != palette else { return }
         palette = p
-        for (part, l) in shapes { l.fillColor = BrandMark.color(part, p).cgColor }
-        drawHead()
-        let x = Self.markX + Self.markSize + Self.gap
+        mark.set(monogram: nil, hue: ListMark.hue(p), palette: p, glyph: ListMark.glyph)
+        mark.position = CGPoint(x: SB.tileX + mark.bounds.width / 2, y: SB.headerHeight / 2)
         title.set("Tasks", font: TK.Font.brand, color: p.ink)
-        title.place(x: x, lineTop: (SB.headerHeight - 16) / 2, lineHeight: 16, width: bounds.width - x)
+        title.place(x: SB.titleX, lineTop: (SB.headerHeight - 16) / 2, lineHeight: 16, width: bounds.width - SB.titleX)
     }
 }

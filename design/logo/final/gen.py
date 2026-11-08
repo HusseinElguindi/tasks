@@ -1,71 +1,69 @@
-"""Generates the 04 Log app icon masters from one set of geometry.
+"""Generates the app icon masters, 02a Lit body, from one set of geometry.
 
-    uv run --with shapely python design/logo/final/gen.py
+    python3 design/logo/final/gen.py          (export.sh runs it, then renders the PNGs)
 
-Writes, next to this file:
-  svg/icon-dark.svg                  1024 master: Big Sur grid, 824 body at 100, mark at full detail
-  svg/icon-dark-small.svg            the cut used below 60px: rings become dots, strokes thicken
-  svg/mark-dark[-small].svg          the bare mark, no body
-  AppIcon.icon/                      Icon Composer document (macOS 26+): background fill and four layers
+The user, 2026-11-08: "let's go with lit body (2a), but when the logo shows in the app, it's a list mark." So the
+icon's whole body is a lit Ember tile with a white check, in light and in dark; inside the app the mark is the list
+mark, drawn by TileArt itself (app/Tasks/Sidebar/SidebarHeader.swift), so nothing here feeds it.
 
-The icon is dark only: the dark colours are the default in every appearance, light included. Tinted (and clear, which
-follows it) has its own greys.
+The finish is the list marks' (app/TasksCore/Sources/TasksTheme/TileArt.swift), at the reference tile's own scale
+(docs/feedback/reference-tile.svg): one unit is 1/45.54 of the body's height. Bottom to top:
+  halo      0.5 unit just outside the edge, black at HALO (one PNG serves both appearances; see README)
+  fill      the flat accent, #E6683D
+  light     radial from the top middle, radii 1.4 × width and 1.1 × height, TileArt.light(d) at its 15 stops
+  specular  a 1-unit strip along the top, white, TileArt.specularHalf mirrored, at the source's 1-unit amounts (×1.44)
+  ring      1 unit just inside the edge, white 10%
+  check     white, flat, as a tile's glyph
+Below 60px (the small cut) the check is heavier and the ring and strip go, being under a pixel there.
 
-Geometry is in the 1024 canvas used on the design canvas (body 100..924). Everything is filled outlines (no strokes),
-so every renderer, Icon Composer included, draws the same thing.
+Writes, next to this file (geometry in the 1024 canvas, macOS body 100..924):
+  svg/icon.svg, svg/icon-small.svg      the macOS masters (Big Sur grid, 824 body at 100)
+  svg/ios.svg, svg/ios-tinted.svg       the iOS 1024 masters (full bleed; the system masks the corners)
+  AppIcon.icon/                         the Icon Composer document (macOS 26+): the Ember fill, the finish, the check
+No dependencies beyond Python 3: the check is two capsules, whose union a nonzero fill draws.
 """
 import json
+import math
 import os
-from shapely.geometry import LineString, Point, box
-from shapely.ops import unary_union
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-COLORS = {
-    'dark': {'top': '#2A2A2A', 'bot': '#161616', 'rim': 'rgba(255,255,255,0.10)', 'head': '#2F81F7', 'bar': '#E6EDF3', 'rings': '#A8ADB1', 'trail': '#6D7072'},
-}
+EMBER = '#E6683D'
+HALO = 0.18
+UNIT = 824 / 45.54          # one reference-tile unit on the macOS body
+# The check, on the macOS grid (the canvas's `ember-lit`), and its stroke width: full and the small cut.
+CHECK = [(318, 530), (448, 660), (712, 380)]
+CHECK_W = {False: 100, True: 120}
 
 
-MONO = {'head': '#FFFFFF', 'bar': '#FFFFFF', 'rings': '#B8B8B8', 'trail': '#7A7A7A'}
+def smootherstep(u):
+    u = min(max(u, 0), 1)
+    return u * u * u * (u * (u * 6 - 15) + 10)
 
 
-def capsule(x, y, w, h):
-    r = h / 2
-    return LineString([(x + r, y + r), (x + w - r, y + r)]).buffer(r, quad_segs=32)
+def light(d):
+    """TileArt.light: white while positive, black while negative."""
+    return 0.216 * (1 - smootherstep(d / 0.58)) if d <= 0.58 else -0.072 * smootherstep((d - 0.58) / 0.42)
 
 
-def check(cx, cy, s, half):
-    pts = [(cx - 26 * s, cy + 2 * s), (cx - 8 * s, cy + 20 * s), (cx + 26 * s, cy - 18 * s)]
-    return LineString(pts).buffer(half, quad_segs=32, cap_style='round', join_style='round')
+LIGHT_LOCATIONS = [0, 0.0725, 0.145, 0.2175, 0.29, 0.3625, 0.435, 0.5075, 0.58, 0.65, 0.72, 0.79, 0.86, 0.93, 1]
+SPECULAR_HALF = [0, 0.003, 0.058, 0.111, 0.157, 0.196, 0.226, 0.244, 0.25]
 
 
-def mark(small):
-    """The four layers: the head (accent, check cut out), its bar, the older ops' rings, and the trail."""
-    if not small:
-        # Node centres are spaced so the gaps between node edges are equal (88), and the whole mark is centred on
-        # the body both ways.
-        cx, head_y, r1, r2, bar_x = 324, 314, 541, 739, 454
-        head = Point(cx, head_y).buffer(84, quad_segs=64).difference(check(cx, head_y, 1.45, 11))
-        rings = unary_union([Point(cx, y).buffer(55, quad_segs=64).difference(Point(cx, y).buffer(33, quad_segs=64)) for y in (r1, r2)])
-        spine = [box(cx - 11, head_y + 84, cx + 11, r1 - 55), box(cx - 11, r1 + 55, cx + 11, r2 - 55)]
-        bar = capsule(bar_x, head_y - 24, 330, 48)
-        trail = unary_union(spine + [capsule(bar_x, r1 - 18, 260, 36), capsule(bar_x, r2 - 18, 200, 36)])
-    else:
-        cx, head_y, r1, r2, bar_x = 322, 336, 556, 732, 462
-        head = Point(cx, head_y).buffer(100, quad_segs=64).difference(check(cx, head_y, 1.75, 15))
-        rings = unary_union([Point(cx, y).buffer(56, quad_segs=64) for y in (r1, r2)])
-        spine = [box(cx - 18, head_y + 100, cx + 18, r1 - 56), box(cx - 18, r1 + 56, cx + 18, r2 - 56)]
-        bar = capsule(bar_x, head_y - 40, 340, 80)
-        trail = unary_union(spine + [capsule(bar_x, r1 - 32, 280, 64), capsule(bar_x, r2 - 32, 220, 64)])
-    return {'trail': trail, 'rings': rings, 'bar': bar, 'head': head}
+def light_stops():
+    out = []
+    for d in LIGHT_LOCATIONS:
+        if d == 0.58:
+            out += ['<stop offset="0.58" stop-color="#FFFFFF" stop-opacity="0"/>', '<stop offset="0.58" stop-color="#000000" stop-opacity="0"/>']
+        else:
+            a = light(d)
+            out.append('<stop offset="%g" stop-color="%s" stop-opacity="%.4f"/>' % (d, '#FFFFFF' if a >= 0 else '#000000', abs(a)))
+    return ''.join(out)
 
 
-def path_d(geom, xf=lambda x, y: (x, y)):
-    def ring(coords):
-        pts = [xf(x, y) for x, y in coords]
-        return 'M' + 'L'.join('%.2f %.2f' % p for p in pts[:-1]) + 'Z'
-    polys = getattr(geom, 'geoms', [geom])
-    return ''.join(ring(p.exterior.coords) + ''.join(ring(i.coords) for i in p.interiors) for p in polys)
+def specular_stops():
+    alphas = SPECULAR_HALF + SPECULAR_HALF[-2::-1]
+    return ''.join('<stop offset="%.4f" stop-color="#FFFFFF" stop-opacity="%.4f"/>' % (i / 16, a * 1.44) for i, a in enumerate(alphas))
 
 
 def squircle(x, y, w, h, r):
@@ -84,30 +82,78 @@ def squircle(x, y, w, h, r):
             'C' + f2(x + c, y, x + b, y, x + a, y) + 'Z')
 
 
-ORDER = ['trail', 'rings', 'bar', 'head']
+def body(inset=0):
+    """The macOS body (824 at 100, radius 185.4), grown or shrunk by `inset` on every side."""
+    w = 824 - 2 * inset
+    return squircle(100 + inset, 100 + inset, w, w, 185.4 * w / 824)
 
 
-def layers_svg(m, col):
-    return '\n'.join('<path fill="%s" fill-rule="evenodd" d="%s"/>' % (col[k], path_d(m[k])) for k in ORDER)
+def capsule(p, q, r):
+    """A segment's stadium: both ends round, so two of them meeting at a point make a round join."""
+    (x1, y1), (x2, y2) = p, q
+    L = math.hypot(x2 - x1, y2 - y1)
+    nx, ny = -(y2 - y1) / L * r, (x2 - x1) / L * r
+    f = lambda *v: ' '.join('%.2f' % n for n in v)
+    return ('M' + f(x1 + nx, y1 + ny) + 'L' + f(x2 + nx, y2 + ny) + 'A' + f(r, r) + ' 0 0 0 ' + f(x2 - nx, y2 - ny) +
+            'L' + f(x1 - nx, y1 - ny) + 'A' + f(r, r) + ' 0 0 0 ' + f(x1 + nx, y1 + ny) + 'Z')
 
 
-def icon_svg(m, col):
-    body = squircle(100, 100, 824, 824, 185.4)
-    rim = squircle(102, 102, 820, 820, 184.5)
-    return ('<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">\n'
-            '<defs><linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="%s"/><stop offset="1" stop-color="%s"/></linearGradient></defs>\n'
-            '<path fill="url(#b)" d="%s"/>\n<path fill="none" stroke="%s" stroke-width="4" d="%s"/>\n%s\n</svg>\n'
-            % (col['top'], col['bot'], body, col['rim'], rim, layers_svg(m, col)))
+def check_d(small, xf=lambda x, y: (x, y), k=1.0):
+    pts = [xf(*p) for p in CHECK]
+    r = CHECK_W[small] * k / 2
+    return capsule(pts[0], pts[1], r) + capsule(pts[1], pts[2], r)
 
 
-def mark_svg(m, col):
-    return ('<svg xmlns="http://www.w3.org/2000/svg" width="724" height="724" viewBox="150 150 724 724">\n%s\n</svg>\n'
-            % layers_svg(m, col))
+def defs(cx, top, w, h, sx, sw):
+    """The light (radial from the top middle of a body w × h) and the specular strip's gradient (sx .. sx + sw)."""
+    return ('<defs><radialGradient id="light" gradientUnits="userSpaceOnUse" cx="0" cy="0" r="1" '
+            'gradientTransform="translate(%.2f %.2f) scale(%.2f %.2f)">%s</radialGradient>'
+            '<linearGradient id="spec" gradientUnits="userSpaceOnUse" x1="%.2f" y1="0" x2="%.2f" y2="0">%s</linearGradient></defs>'
+            % (cx, top, 1.4 * w, 1.1 * h, light_stops(), sx, sx + sw, specular_stops()))
 
 
-def hex_to_ic(h):
+def svg(content):
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">\n%s\n</svg>\n' % content
+
+
+def mac_icon(small):
+    u = UNIT
+    parts = [defs(512, 100, 824, 824, 226, 572),
+             '<path fill="none" stroke="#000000" stroke-opacity="%.2f" stroke-width="%.2f" d="%s"/>' % (HALO, u / 2, body(-u / 4)),
+             '<path fill="%s" d="%s"/>' % (EMBER, body()),
+             '<path fill="url(#light)" d="%s"/>' % body()]
+    if not small:
+        parts += ['<rect x="226" y="100" width="572" height="%.2f" rx="%.2f" fill="url(#spec)"/>' % (u, u / 2),
+                  '<path fill="none" stroke="#FFFFFF" stroke-opacity="0.10" stroke-width="%.2f" d="%s"/>' % (u, body(u / 2))]
+    parts.append('<path fill="#FFFFFF" d="%s"/>' % check_d(small))
+    return svg('\n'.join(parts))
+
+
+# iOS and Icon Composer: the canvas is the body itself (full bleed), so the macOS geometry scales from 824 to 1024.
+S = 1024 / 824
+TO_BLEED = lambda x, y: ((x - 100) * S, (y - 100) * S)
+
+
+def ios_icon():
+    u = UNIT * S
+    return svg('\n'.join([
+        defs(512, 0, 1024, 1024, 160, 704),
+        '<rect width="1024" height="1024" fill="%s"/>' % EMBER,
+        '<rect width="1024" height="1024" fill="url(#light)"/>',
+        '<rect x="160" y="0" width="704" height="%.2f" rx="%.2f" fill="url(#spec)"/>' % (u, u / 2),
+        '<rect x="%.2f" y="%.2f" width="%.2f" height="%.2f" rx="%.2f" fill="none" stroke="#FFFFFF" stroke-opacity="0.10" stroke-width="%.2f"/>'
+        % (u / 2, u / 2, 1024 - u, 1024 - u, 230 - u / 2, u),
+        '<path fill="#FFFFFF" d="%s"/>' % check_d(False, TO_BLEED, S)]))
+
+
+def ios_tinted():
+    """iOS 18+ Tinted: a greyscale icon the system tints; the check is the bright part, on black."""
+    return svg('<rect width="1024" height="1024" fill="#000000"/>\n<path fill="#FFFFFF" d="%s"/>' % check_d(False, TO_BLEED, S))
+
+
+def hex_to_ic(h, a=1.0):
     r, g, b = (int(h[i:i + 2], 16) / 255 for i in (1, 3, 5))
-    return 'srgb:%.5f,%.5f,%.5f,1.00000' % (r, g, b)
+    return 'srgb:%.5f,%.5f,%.5f,%.5f' % (r, g, b, a)
 
 
 def write(path, text):
@@ -117,43 +163,34 @@ def write(path, text):
 
 
 def main():
-    for small in (False, True):
-        m = mark(small)
-        sfx = '-small' if small else ''
-        for look, col in COLORS.items():
-            write(os.path.join(HERE, 'svg', 'icon-%s%s.svg' % (look, sfx)), icon_svg(m, col))
-            write(os.path.join(HERE, 'svg', 'mark-%s%s.svg' % (look, sfx)), mark_svg(m, col))
+    write(os.path.join(HERE, 'svg', 'icon.svg'), mac_icon(False))
+    write(os.path.join(HERE, 'svg', 'icon-small.svg'), mac_icon(True))
+    write(os.path.join(HERE, 'svg', 'ios.svg'), ios_icon())
+    write(os.path.join(HERE, 'svg', 'ios-tinted.svg'), ios_tinted())
 
-    # Icon Composer: the canvas is the body itself (full bleed, the system draws the shape), so the mark is scaled
-    # from the 824 body to 1024. One layer per colour; each layer's fill is set per appearance in icon.json.
-    m = mark(False)
-    s = 1024 / 824
-    xf = lambda x, y: ((x - 100) * s, (y - 100) * s)
-    names = {'trail': 'trail', 'rings': 'rings', 'bar': 'head-bar', 'head': 'head'}
+    # Icon Composer. The system draws the shape, its edge and shadow; the document gives the fill and two layers.
     ic = os.path.join(HERE, 'AppIcon.icon')
-    for k in ORDER:
-        write(os.path.join(ic, 'Assets', names[k] + '.svg'),
-              '<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">\n'
-              '<path fill="#000000" fill-rule="evenodd" d="%s"/>\n</svg>\n' % path_d(m[k], xf))
-    D = COLORS['dark']
+    u = UNIT * S
+    write(os.path.join(ic, 'Assets', 'check.svg'), svg('<path fill="#FFFFFF" d="%s"/>' % check_d(False, TO_BLEED, S)))
+    write(os.path.join(ic, 'Assets', 'finish.svg'), svg('\n'.join([
+        defs(512, 0, 1024, 1024, 160, 704),
+        '<rect width="1024" height="1024" fill="url(#light)"/>',
+        '<rect x="160" y="0" width="704" height="%.2f" rx="%.2f" fill="url(#spec)"/>' % (u, u / 2)])))
     doc = {
-        'fill-specializations': [
-            {'value': {'linear-gradient': [hex_to_ic(D['top']), hex_to_ic(D['bot'])]}},
-        ],
+        # Dark is given explicitly: left out, the system draws its own dark (a dark body and an Ember check), and the
+        # user asked for the lit body in light and dark.
+        'fill-specializations': [{'value': {'solid': hex_to_ic(EMBER)}},
+                                 {'appearance': 'dark', 'value': {'solid': hex_to_ic(EMBER)}}],
         'groups': [{
-            # Icon Composer lists layers front to back.
-            'layers': [{
-                'fill-specializations': [
-                    {'value': {'solid': hex_to_ic(D[k])}},
-                    # Tinted is monochrome: the system reads each layer's lightness, so the head and its bar are white
-                    # and the history steps down, the same order as in colour. (Icon Composer has no "clear" key.)
-                    {'appearance': 'tinted', 'value': {'solid': hex_to_ic(MONO[k])}},
-                ],
-                'glass': False,
-                'hidden': False,
-                'image-name': names[k] + '.svg',
-                'name': names[k],
-            } for k in reversed(ORDER)],
+            # Icon Composer lists layers front to back. The finish keeps its own colours (no fill); in Tinted the
+            # check is white, the brightest part, as the system reads each layer's lightness.
+            'layers': [
+                {'fill-specializations': [{'value': {'solid': hex_to_ic('#FFFFFF')}},
+                                          {'appearance': 'dark', 'value': {'solid': hex_to_ic('#FFFFFF')}},
+                                          {'appearance': 'tinted', 'value': {'solid': hex_to_ic('#FFFFFF')}}],
+                 'glass': False, 'hidden': False, 'image-name': 'check.svg', 'name': 'check'},
+                {'glass': False, 'hidden': False, 'image-name': 'finish.svg', 'name': 'finish'},
+            ],
             'shadow': {'kind': 'neutral', 'opacity': 0.3},
             'translucency': {'enabled': False, 'value': 0},
         }],
