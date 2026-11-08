@@ -13,6 +13,7 @@ The SwiftUI client from `docs/SPEC.md` (§8–§9) in the A1 · Split design (`d
 | `Scripts/install-cli.sh` | Builds `tasks` in release, signs it, and copies it to `~/.local/bin` (`--prefix` to change). |
 | `Scripts/make-signing-identity.sh` | Makes the local signing identity once per Mac (see Signing). |
 | `Signing.xcconfig` | The signing identity: ad hoc, or the local one once the script has run. |
+| `Release.xcconfig` | Release on top of it: Apple silicon only (`TASKS_RELEASE_ARCHS`, the one switch back to universal) and stripped, symbols in the dSYM beside the app. |
 
 ## Build and run
 
