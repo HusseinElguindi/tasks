@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import Security
 import TasksCore
 
@@ -39,8 +40,13 @@ enum Keychain {
 
 /// Sync: TasksCore's Store syncs on its own once it has a `SyncConfig` (about a second after each change, with its
 /// backoff and recovery). This sets the config from Settings and triggers it the Mac's way: at launch, on coming to
-/// the front, every 30 s while in front, and on pull to refresh (the Mac's ⌘R). No background sync.
+/// the front, on pull to refresh (the Mac's ⌘R), and on a poke from the server's `/v1/events` socket, held while in
+/// front (design/PUSH-SYNC.md); the periodic sync is a safety net beside it, every 5 min while the socket is up and
+/// every 30 s while it's down (`SocketPolicy.pollDue`). In the background only the background refresh syncs, and it
+/// never opens the socket.
 extension AppModel {
+    nonisolated static let socketLogger = Logger(subsystem: "com.elguindi.Tasks", category: "sync-socket")
+
     /// The Worker the app syncs with unless Settings says otherwise.
     static let defaultServer = "https://tasks.elguindi.workers.dev"
 
@@ -76,13 +82,27 @@ extension AppModel {
         applyConfig()
     }
 
-    /// Hands the Store its config; a change (or the first one) syncs at once.
+    /// Hands the Store its config; a change (or the first one) syncs at once. The socket follows it, held while in
+    /// front (repeating that costs nothing; new settings reconnect).
     func applyConfig() {
         let config = syncConfig
         if store.config != config { store.config = config }
+        socket.update(config: store.config, hold: inFront)
     }
 
-    /// At launch: the config, then a sync every 30 s while the app is in front (spec §5).
+    /// Each head the socket hears goes to `pokes` (a sync if the store is behind); both log, for the simulator check.
+    func wireSocket() {
+        let pokes = pokes
+        socket.onHead = { head in
+            Self.socketLogger.notice("poke head \(head)")
+            pokes.poke(head: head)
+        }
+        socket.onState = { state in Self.socketLogger.notice("state \(String(describing: state), privacy: .public)") }
+        pokes.log = { what in Self.socketLogger.notice("\(what, privacy: .public)") }
+    }
+
+    /// At launch: the config (and the socket, if in front), then the periodic sync while the app is in front: every
+    /// 30 s while the socket is down, every 5 min while it's up (spec §5, design/PUSH-SYNC.md).
     func startSync() {
         applyConfig()
         store.requestSync(force: true)
@@ -90,25 +110,37 @@ extension AppModel {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(30))
                 guard let self else { return }
-                if self.inFront { self.store.requestSync() }
+                self.pollTick(now: ProcessInfo.processInfo.systemUptime)
             }
         }
     }
 
-    /// Coming to the front: the day may have changed, and the server may have news.
+    /// One tick of the periodic loop at `now` (system uptime): a sync if `SocketPolicy` says one is due.
+    func pollTick(now: Double) {
+        guard SocketPolicy.pollDue(inFront ? .front : .away, socketConnected: socket.isConnected, now: now,
+                                   lastPoll: lastPoll) else { return }
+        lastPoll = now
+        store.requestSync()
+    }
+
+    /// Coming to the front: the day may have changed, and the server may have news. The socket connects at once
+    /// (holding it again resets its backoff); its first head is a second check beside this sync.
     func cameToFront() {
         inFront = true
         store.refreshDay()
         store.requestSync(force: true)
+        socket.update(config: store.config, hold: true)
     }
 
-    /// Going to the background, where iOS may end the app without notice: no new-task row waits (a title is written,
+    /// Going to the background, where iOS may end the app without notice (and suspends it within seconds, which would
+    /// kill the socket anyway, so it's closed now, `.goingAway`): no new-task row waits (a title is written,
     /// an empty row goes), the snapshot is written now (TasksCore otherwise writes it only at a 500-entry tail or
     /// 10 min after the first entry it doesn't hold), and a feed write that's waiting goes out, so the home screen
     /// shows it.
     func wentToBackground() {
         endDraft()
         inFront = false
+        socket.update(config: store.config, hold: false)
         store.persistNow()
         widgetFeed?.flush()
     }

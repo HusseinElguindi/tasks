@@ -13,8 +13,13 @@ container on iOS, so they keep their data apart, as the Mac's two apps do).
 Settings ▸ Sync: the server URL (`https://tasks.elguindi.workers.dev` unless changed) and the token, the Worker's
 `API_TOKEN`, pasted once into a secure field and kept in the Keychain (service `com.elguindi.Tasks.sync`, account
 `API_TOKEN`, this device only); it's never shown again. TasksCore syncs about a second after each change; the app
-also syncs at launch, on coming to the front, every 30 s while in front, and on pull to refresh. Nothing syncs in
-the background. Home shows how it's going under the views; Settings shows the status and has Sync Now.
+also syncs at launch, on coming to the front, and on pull to refresh. While in front it holds the server's
+`/v1/events` socket (TasksCore's `SyncSocket`, design/PUSH-SYNC.md): each `{"head":N}` the server sends syncs if the
+phone is behind, so another device's edit shows in about half a second once it reaches the server. The periodic sync
+is a safety net beside it: every 5 min while the socket is up, every 30 s while it's down. Going to the background
+closes the socket; there, only the background refresh syncs (`BackgroundRefresh.swift`), and it never opens the
+socket. The socket's states and pokes are in the unified log (subsystem `com.elguindi.Tasks`, category
+`sync-socket`). Home shows how it's going under the views; Settings shows the status and has Sync Now.
 
 Debug builds only talk to a local `wrangler dev` (`localhost` or `127.0.0.1`), as the Mac's do, unless the
 `allowRemoteServer` default is set; the sample data never syncs. To try it against `server/` (`pnpm dev`, with a

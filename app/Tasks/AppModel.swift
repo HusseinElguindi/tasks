@@ -102,9 +102,13 @@ final class AppModel {
 
     /// Settings ▸ Sync with no window open (the user, 2026-11-06: "allow me to disable 1 in the settings"; on by
     /// default): keep syncing every minute while the app runs with no window on screen, so the widgets keep up with
-    /// other devices (`SyncSchedule`). Off: the periodic sync runs only while a window is open, as before.
+    /// other devices (`SyncSchedule`), and hold the poke socket then too, which makes that within a second or two.
+    /// Off: the periodic sync and the socket run only while a window is open, as before.
     var syncWithoutWindow: Bool {
-        didSet { UserDefaults.standard.set(syncWithoutWindow, forKey: Keys.syncWithoutWindow) }
+        didSet {
+            UserDefaults.standard.set(syncWithoutWindow, forKey: Keys.syncWithoutWindow)
+            updateSocket()
+        }
     }
 
     /// Settings ▸ Open at login: whether the app is registered to open at login (`SMAppService.mainApp`). macOS keeps
@@ -119,9 +123,12 @@ final class AppModel {
 
     @ObservationIgnored private var periodic: Task<Void, Never>?
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
+    @ObservationIgnored private var workspaceObservers: [NSObjectProtocol] = []
     @ObservationIgnored private var appearanceObservation: NSKeyValueObservation?
-    /// The CLI's nudge: sync at once after `tasks` pushed (feedback item 14).
+    /// The CLI's nudge: sync at once after `tasks` pushed (feedback item 14). The socket's pokes go through it too.
     @ObservationIgnored private var nudges: SyncNudgeListener?
+    /// The server's poke socket (design/PUSH-SYNC.md): a change made on another device syncs here within a second or two.
+    @ObservationIgnored private var socket: SyncSocket?
     /// Writes the widgets' feed into the group container (Widgets/WidgetFeedWriter.swift).
     @ObservationIgnored private(set) var widgetFeed: WidgetFeedWriter?
 
@@ -178,7 +185,20 @@ final class AppModel {
         let store = await Store.open(directory: dataDirectory)
         #endif
         self.store = store
-        nudges = SyncNudgeListener(store: store)
+        let nudges = SyncNudgeListener(store: store)
+        self.nudges = nudges
+        #if DEBUG
+        // `-debugNoSocket YES`: poll only, as before push (the end-to-end latency check's "before").
+        let wantsSocket = !UserDefaults.standard.bool(forKey: "debugNoSocket")
+        #else
+        let wantsSocket = true
+        #endif
+        if wantsSocket {
+            let socket = SyncSocket()
+            socket.onHead = { [weak nudges] in nudges?.poked(head: $0) }
+            socket.onState = { [weak nudges] in nudges?.log("socket \($0)") }
+            self.socket = socket
+        }
         applyConfig()
         startTriggers(store)
         widgetFeed = WidgetFeedWriter(store: store, windowVisible: { AppModel.hasVisibleWindow })
@@ -213,6 +233,21 @@ final class AppModel {
         let config = syncConfig
         store?.config = config
         nudges?.listen(server: config?.url)
+        updateSocket()
+    }
+
+    // MARK: The poke socket
+
+    /// Where the app is, for the periodic sync and the socket (`SyncSchedule.presence`).
+    private var presence: SocketPolicy.Presence {
+        SyncSchedule.presence(windowVisible: Self.hasVisibleWindow, syncWithoutWindow: syncWithoutWindow)
+    }
+
+    /// Holds the socket whenever some periodic sync runs: with a window, or without one while Settings ▸ Sync with no
+    /// window open is on (the user, 2026-11-08: no setting of its own). Called whenever either may have changed and on
+    /// every tick; repeating it costs nothing.
+    private func updateSocket() {
+        socket?.update(config: store?.config, hold: SocketPolicy.holds(presence))
     }
 
     // MARK: Open at login
@@ -242,14 +277,16 @@ final class AppModel {
     private func startTriggers(_ store: Store) {
         store.requestSync(force: true) // launch
         // Every 30 s while a window is open; every 60 s with none unless Settings turns it off (spec §5, SyncSchedule).
+        // With the poke socket up, every 5 and 10 min.
         periodic = Task { [weak self, weak store] in
             var lastTick: TimeInterval?
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(SyncSchedule.tick))
                 guard let self, let store else { return }
+                self.updateSocket() // a window shown or closed that no notification below caught
                 let now = ProcessInfo.processInfo.systemUptime
                 if SyncSchedule.tickSyncs(windowVisible: Self.hasVisibleWindow, syncWithoutWindow: self.syncWithoutWindow,
-                                          now: now, lastTick: lastTick) {
+                                          socketConnected: self.socket?.isConnected ?? false, now: now, lastTick: lastTick) {
                     lastTick = now
                     store.requestSync()
                 }
@@ -266,6 +303,7 @@ final class AppModel {
             MainActor.assumeIsolated {
                 store?.refreshDay()
                 store?.requestSync(force: true)
+                self?.updateSocket()
                 // A feed write held back while no window was open goes out now.
                 self?.widgetFeed?.flush()
             }
@@ -285,6 +323,28 @@ final class AppModel {
         observers.append(center.addObserver(forName: NSApplication.didHideNotification, object: nil, queue: .main, using: flushFeed))
         observers.append(center.addObserver(forName: NSWindow.willCloseNotification, object: nil, queue: .main, using: flushFeed))
         observers.append(center.addObserver(forName: NSWindow.didMiniaturizeNotification, object: nil, queue: .main, using: flushFeed))
+        // A window shown or gone: with Sync with no window open off, the socket follows it. On the next turn, once a
+        // closing window is no longer visible.
+        let windowsChanged: @Sendable (Notification) -> Void = { [weak self] _ in
+            DispatchQueue.main.async { MainActor.assumeIsolated { self?.updateSocket() } }
+        }
+        for name in [NSApplication.didHideNotification, NSApplication.didUnhideNotification, NSWindow.willCloseNotification,
+                     NSWindow.didMiniaturizeNotification, NSWindow.didDeminiaturizeNotification, NSWindow.didBecomeKeyNotification] {
+            observers.append(center.addObserver(forName: name, object: nil, queue: .main, using: windowsChanged))
+        }
+        // Sleep closes the socket (one that lived through it is usually dead without knowing it); waking reconnects at
+        // once and syncs, without waiting for the backoff or the next tick.
+        let workspace = NSWorkspace.shared.notificationCenter
+        workspaceObservers.append(workspace.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.socket?.suspend() }
+        })
+        workspaceObservers.append(workspace.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self, weak store] _ in
+            MainActor.assumeIsolated {
+                self?.updateSocket()
+                self?.socket?.reconnectNow()
+                store?.requestSync()
+            }
+        })
         observers.append(center.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak self, weak store] _ in
             MainActor.assumeIsolated {
                 guard let store else { return }

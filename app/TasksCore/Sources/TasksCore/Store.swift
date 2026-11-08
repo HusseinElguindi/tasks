@@ -284,6 +284,16 @@ public final class Store {
         }
     }
 
+    /// A poke (`SyncPokes`): the server's head is `head`, or nil for a nudge, which carries none. Waits for any sync in
+    /// flight, then asks for one unless the cursor is already at `head`. Whether it asked.
+    @discardableResult
+    public func syncIfBehind(head: Int?) async -> Bool {
+        if let running = currentSync { await running.value }
+        if let head, head == cursor { return false }
+        requestSync()
+        return true
+    }
+
     /// Cancels a scheduled sync (a debounce or a backoff timer). Tests drive `sync()` directly.
     public func cancelScheduledSync() {
         trigger?.cancel()

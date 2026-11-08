@@ -1,13 +1,14 @@
 # Sync server
 
 The append-only op log behind `POST /v1/sync`: one Cloudflare Worker and one SQLite-backed Durable Object
-(SPEC §5–§7). TypeScript, no framework, no runtime dependencies.
+(SPEC §5–§7). TypeScript, no framework, no runtime dependencies. `GET /v1/events` is a WebSocket that says
+`{"head":N}` when the log grows, so clients sync at once instead of at their next poll (design/PUSH-SYNC.md).
 
 | File | Role |
 |------|------|
-| `src/index.ts` | Worker: routing (404/405), bearer auth (401), body size (413), parsing and validation (400), the RPC to the DO (409), response encoding. |
+| `src/index.ts` | Worker: routing (404/405), bearer auth (401), body size (413), parsing and validation (400), the RPC to the DO (409), response encoding; for `/v1/events`, 405/426/401 and then the upgrade to the DO. |
 | `src/validate.ts` | Request parsing and op validation. Pure. Serializes each op as the log stores and hashes it. |
-| `src/log.ts` | `UserLog` DO: the `log` table, cached head and last hash, append with dedup and the hash chain in one transaction, page read. |
+| `src/log.ts` | `UserLog` DO: the `log` table, cached head and last hash, append with dedup and the hash chain in one transaction, page read; the hibernatable sockets and the head poke after an append. |
 | `scripts/make-fixtures.mjs` | Writes `../fixtures/sync/` (the shared wire contract). |
 
 ## Commands
@@ -39,3 +40,10 @@ resources. Deploying does: see `DEPLOY.md`.
   one entry. Without the second bound, 1,000 near-limit notes would exceed the 32 MiB RPC limit and that `from`
   would fail forever. Normal entries are ~250 characters, so in practice pages are exactly 1,000. Clients must
   advance by the entries they receive (`last seq + 1`), never by 1,000.
+- **The poke socket hibernates.** `UserLog.fetch` accepts with `ctx.acceptWebSocket` (never `ws.accept()`), so
+  the object still sleeps between requests, isn't billed for the time a socket is open, and the sockets stay
+  connected. The runtime answers protocol pings without waking it. `sync()` sends `{"head":N}` to
+  `ctx.getWebSockets()` after an append that moved head (a pull or a push of only duplicates sends nothing);
+  `ws.send` is synchronous, so `sync()` still never awaits. Every writer (the apps, the CLI, the remote MCP
+  through its service binding) goes through `sync()`, so every write pokes. A deploy disconnects every socket;
+  clients reconnect with backoff and jitter.
