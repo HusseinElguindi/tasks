@@ -110,7 +110,7 @@ Less than expected. **`@MainActor`, `@Observable` and `UndoManager` need no chan
   queue. So `Store`, `Projection` and the models run exactly as they do in the app.
 - Observation is in the standard library, not SwiftUI. Its registrars cost a few allocations that nobody observes.
 - `UndoManager` is Foundation and an optional parameter. The CLI passes none; its own undo works from the log (§4).
-- The timers (the ~1 s sync debounce, the 5 s snapshot) are plain `Task`s. The CLI calls `cancelScheduledSync()`,
+- The timers (the ~1 s sync debounce, the 10 min snapshot) are plain `Task`s. The CLI calls `cancelScheduledSync()`,
   `await sync()` and `persistNow()` itself, and all three are public today.
 
 **Spike (throwaway, in the scratchpad, not committed):**

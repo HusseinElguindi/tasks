@@ -826,7 +826,7 @@ Files in Application Support:
 |------|----------|---------|
 | `log.jsonl` | Confirmed entries exactly as the server sent them (`seq`, `received`, `hash`, `op`). Append-only. | Appended after each sync that returns entries. |
 | `pending.jsonl` | Pending ops. Append-only. | One append per local op. Rewritten atomically after a sync confirms some. |
-| `snapshot.json` | `{schema, cursor, hash, logOffset, state}`: the reduced confirmed state at `cursor`. | Debounced after syncs, and on quit (below). |
+| `snapshot.json` | `{schema, cursor, hash, logOffset, state}`: the reduced confirmed state at `cursor`. | On resign active and quit, at 500 unsnapshotted entries, or 10 min after the first (below). |
 | `log.jsonl.bak-<ms>` | A log moved aside by a `409` recovery (§5). Never read by the app. | Created on `409`; deleted when the recovery finishes. |
 
 **Pending ops are sent verbatim.** A request carries each pending op as its `pending.jsonl` line, unchanged. For a local op that's its JSON as the client wrote it; for an op recovered from the log (§5) it's the server's text, which may hold keys this client can't decode.
@@ -855,8 +855,13 @@ Files in Application Support:
 
 **When it's written:**
 
-- After any sync that applied entries, debounced 5 s.
-- When the app resigns active or quits.
+- When the app resigns active, goes to the background or quits.
+- As soon as the tail (log entries after the snapshot) reaches 500 entries.
+- 10 min after the first entry the snapshot doesn't hold, if it hasn't been written by then. Later syncs don't
+  restart the timer. It matters most on iOS, which can kill a suspended app without notice.
+- Not after every sync: a full rewrite per edit costs ~500 B per task (64 KB for 130 tasks, ~5 MB at 10k), while
+  replaying a 500-entry tail at launch costs a few ms. A crash between snapshots loses nothing (the log is the source
+  of truth); launch replays the longer tail.
 - It's skipped if the cursor hasn't moved since the last write.
 - The snapshot is encoded off the main thread from a value copy of the confirmed state, which is free thanks to copy-on-write.
 - It's written atomically: temp file, then rename.
