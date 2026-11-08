@@ -112,14 +112,16 @@ final class SnapshotPolicyTests: XCTestCase {
         XCTAssertEqual(store.snapshotCursor, firstTail)
 
         // Syncs that keep landing don't postpone it: it fires one interval after the first unsnapshotted entry, in
-        // the middle of this burst (a timer restarted by each sync would fire only after the last one).
+        // the middle of this burst. A timer restarted by each sync would fire only 200 ms after the last one, and the
+        // snapshot is read 60 ms after it, so it would still be at `firstTail`. (It may already hold the whole burst:
+        // the burst outlasts two intervals, so a second write can land just after the last edit. That's fine, and
+        // asserting it doesn't made this test flaky.)
         for i in 0..<8 {
             await edit(store, "edit \(i)")
             try await Task.sleep(for: .milliseconds(60))
         }
         let mid = try XCTUnwrap(snapshot(store)).cursor
         XCTAssertGreaterThan(mid, firstTail, "written during the burst")
-        XCTAssertLessThan(mid, store.cursor)
         let ok = try await waitForSnapshot(store, at: store.cursor)
         XCTAssertTrue(ok, "and again for the rest of the burst")
 
