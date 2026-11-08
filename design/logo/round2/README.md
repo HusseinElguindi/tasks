@@ -48,8 +48,8 @@ These are guesses for the user to confirm, not the user's stated reasons:
 
 ## Files
 
-- `Icon.dc.html` draws every mark as up to fourteen paths in 1024 units on the macOS grid. Its props are `mark`, `look`
-  (dark or light), `shape` (mac or ios) and `size`. Below 60px it uses a small cut. iOS scales the mark ×1.2427 onto
+- `Icon.dc.html` draws every mark as up to 24 paths in 1024 units on the macOS grid. Its props are `mark`, `look`
+  (dark, light, tinted, clear), `shape` (mac or ios), `size` and `tint`. Below 60px it uses a small cut. iOS scales the mark ×1.2427 onto
   the full-bleed body; its corners are a plain `rx` 230, not Apple's continuous curve.
 - `Sheet.dc.html` lays out one direction: macOS and iOS in light and dark, 128 to 16, the Dock and a Finder list.
   Each of `D00` … `D10` mounts it with one `mark`.
