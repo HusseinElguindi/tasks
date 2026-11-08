@@ -330,11 +330,19 @@ if let id = window.detailTaskID {
 ```
 
 The list pane narrows on the same spring while the detail slides in from the right and fades up; closing reverses it.
-Its wrapping text (the list's large title and notes, a heading's notes) wraps once, at the narrow end: as the pane starts to narrow, or
-once it has widened, with the rows under it moving on `layout` when the line count changes. It never re-wraps on every
-frame of the slide (the user, 2026-11-08: "the line wrapping is a bit distracting when it animates for the whole
-duration, and it's choppy when more lines are needed"). The same goes for the sidebar's slide and a divider's
-double-click; dragging a divider still re-wraps live (Resizing the panes, below). `TaskListView.settle`.
+Its wrapping text (the list's large title and notes, a heading's notes) wraps once, at the width the pane is going to,
+as the slide starts, in both directions. It never re-wraps on every frame of the slide (the user, 2026-11-08: "the line
+wrapping is a bit distracting when it animates for the whole duration, and it's choppy when more lines are needed"),
+and never waits for the slide to end and then snaps (the user, 2026-11-08: "there's definitely a delay in the wrap,
+which i dont quite like, it should be smooth").
+- Widening: the longer lines run under the pane's moving edge and show as it moves out, with the detail pane sliding
+  away over them.
+- Narrowing: lines it adds show as the rows under them move down on `layout`. The block is masked to a height on that
+  same spring, so a new line is never drawn over a row that hasn't moved yet. Lines it takes away go at once, as the
+  rows close up.
+
+The same goes for the sidebar's slide and a divider's double-click; dragging a divider still re-wraps live (Resizing
+the panes, below). `TaskListView.settle`, `revealGrowth`.
 The prototype copies this: the pane mounts its own width plus 8 to the right (+428 at the default width) and at opacity 0, and two frames later moves to 0 / 1 on `natural`
 while the list pane's right edge moves on the same curve; closing runs it backwards and removes the pane after 460 ms
 (`css:255–257`, `dc:1100–1114`).

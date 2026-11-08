@@ -17,6 +17,8 @@ import TasksCore
 ///                             then its rows by title)
 ///     act:day:+N   (the day turns over to N days from now, as at midnight; 0 puts it back)
 ///     act:dates:/path.txt   (appends every row's When, Deadline and ring as shown, §24)
+///     act:film:MS:/dir   (for MS ms, the window's top 360pt as drawn, every turn at most every 16 ms, written after as
+///                         /dir/NNN-<ms>.png)
 ///     act:trace:MS:/path.txt   (for MS ms, before each commit: the rows' and labels' on-screen y, the drag copy's
 ///                               origin and opacity, and the lit label; one line per turn that changed)
 ///     act:deletelist:<list>   act:restorelist:<list>   act:selectlist:<list>   act:expand:<list>   act:collapse-list:<list>
@@ -144,6 +146,9 @@ enum DebugViews {
         case "wraptrace":
             let t = rest.split(separator: ":", maxSplits: 1).map(String.init)
             if t.count == 2, let ms = Int(t[0]) { wrapTrace(w, ms: ms, path: t[1]) }
+        case "film":
+            let t = rest.split(separator: ":", maxSplits: 1).map(String.init)
+            if t.count == 2, let ms = Int(t[0]) { film(w, ms: ms, dir: t[1]) }
         default: print("act: unknown \(arg)")
         }
     }
@@ -234,6 +239,47 @@ enum DebugViews {
         CFRunLoopAddObserver(CFRunLoopGetMain(), observer, .commonModes)
         DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(ms)) {
             CFRunLoopRemoveObserver(CFRunLoopGetMain(), observer, .commonModes)
+        }
+    }
+
+    /// `act:film:MS:/dir` (T16): frames of a slide, as drawn (presentation layers), kept in memory while it runs and
+    /// written once it's over, since writing a PNG takes longer than the slide.
+    static func film(_ w: WindowState, ms: Int, dir: String) {
+        guard let win = w.taskList?.window, let view = win.contentView?.superview ?? win.contentView, let root = view.layer else { return }
+        var frames: [(CFTimeInterval, CGImage)] = []
+        let t0 = CACurrentMediaTime()
+        var last = -1.0
+        let scale: CGFloat = 2, size = CGSize(width: view.bounds.width, height: min(360, view.bounds.height))
+        let observer = CFRunLoopObserverCreateWithHandler(nil, CFRunLoopActivity.beforeWaiting.rawValue, true, 0) { _, _ in
+            MainActor.assumeIsolated {
+                let now = CACurrentMediaTime()
+                guard now - last >= 0.016, let ctx = CGContext(data: nil, width: Int(size.width * scale), height: Int(size.height * scale),
+                                                               bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                                               bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return }
+                last = now
+                ctx.scaleBy(x: scale, y: scale)
+                // The top of the window: flipped, or shifted down to it.
+                if root.isGeometryFlipped || view.isFlipped {
+                    ctx.translateBy(x: 0, y: size.height)
+                    ctx.scaleBy(x: 1, y: -1)
+                } else {
+                    ctx.translateBy(x: 0, y: size.height - view.bounds.height)
+                }
+                (root.presentation() ?? root).render(in: ctx)
+                if let img = ctx.makeImage() { frames.append((now - t0, img)) }
+            }
+        }
+        CFRunLoopAddObserver(CFRunLoopGetMain(), observer, .commonModes)
+        let wake = Timer(timeInterval: 0.004, repeats: true) { _ in }
+        RunLoop.main.add(wake, forMode: .common)
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(ms)) {
+            CFRunLoopRemoveObserver(CFRunLoopGetMain(), observer, .commonModes)
+            wake.invalidate()
+            try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+            for (i, f) in frames.enumerated() {
+                let url = URL(fileURLWithPath: dir).appendingPathComponent(String(format: "%03d-%04d.png", i, Int(f.0 * 1000)))
+                try? NSBitmapImageRep(cgImage: f.1).representation(using: .png, properties: [:])?.write(to: url)
+            }
         }
     }
 

@@ -62,11 +62,13 @@ final class TaskListView: NSView {
     private var firstRender = true
     private var lastWidth: CGFloat = 0
     /// The pane's width on an animation (the detail pane or the sidebar opening or closing, a divider springing back):
-    /// from what its text wraps at, to the width it settles at. Until it gets there the notes wrap at the narrower of
-    /// the two, so they re-wrap once, at the narrow end (as the pane starts to narrow, or once it has widened), and the
-    /// rows under them move on the `layout` spring. Before, they re-wrapped on every frame of the slide and the rows
-    /// jumped a line whenever the line count changed (the user, 2026-11-08: "the line wrapping is a bit distracting
-    /// when it animates for the whole duration, and it's choppy when more lines are needed").
+    /// from what its text wrapped at, to the width it settles at. The title and the notes re-wrap once, at the width
+    /// the pane is going to, as the slide starts, in both directions, and the rows under them move on the `layout`
+    /// spring. Widening, the wider lines run under the pane's edge and show as it moves out. Before, they re-wrapped on
+    /// every frame of the slide and the rows jumped a line whenever the line count changed (the user, 2026-11-08: "the
+    /// line wrapping is a bit distracting when it animates for the whole duration, and it's choppy when more lines are
+    /// needed"); then they waited at the narrow end until the pane had widened and snapped (the user, 2026-11-08:
+    /// "there's definitely a delay in the wrap, which i dont quite like, it should be smooth").
     private var settle: (from: CGFloat, to: CGFloat)?
     /// The width the pane settles at, as the window's layout last gave it (`TaskListRepresentable.settleWidth`).
     private var settleTarget: CGFloat?
@@ -169,8 +171,46 @@ final class TaskListView: NSView {
         settleTimer = Timer.scheduledTimer(withTimeInterval: 0.6, repeats: false) { [weak self] _ in
             MainActor.assumeIsolated { self?.endSettle() }
         }
-        // Narrowing: the one re-wrap is now, at the width the pane is going to.
+        // The one re-wrap is now, at the width the pane is going to. What it adds shows as the rows below make room.
+        let before = wrapHeights()
         render(animated: true)
+        revealGrowth(from: before)
+    }
+
+    /// The title block's height and each heading's notes' height, as laid out.
+    private func wrapHeights() -> (title: CGFloat?, notes: [NotesHost.Target: CGFloat]) {
+        var notes: [NotesHost.Target: CGFloat] = [:]
+        for (t, e) in paneEditors where e.shown { if case .task = t { notes[t] = e.view.frame.height } }
+        return (currentLayout?.titleHeight, notes)
+    }
+
+    /// A re-wrap that adds lines (the pane narrowing) would draw them over the rows below until those have moved down
+    /// on the `layout` spring. Instead the block shows down to where the rows have got to: a mask on the same spring,
+    /// from the old height to the new, dropped when it's done. Lines it takes away go at once, as the rows close up.
+    private func revealGrowth(from before: (title: CGFloat?, notes: [NotesHost.Target: CGFloat])) {
+        guard !TK.CA.reduce else { return }
+        if let h0 = before.title, let h1 = currentLayout?.titleHeight, h1 > h0 + 0.5 { reveal(titleView, from: h0, to: h1) }
+        for (t, h0) in before.notes {
+            guard let e = paneEditors[t], e.shown, e.view.frame.height > h0 + 0.5 else { continue }
+            reveal(e.view, from: h0, to: e.view.frame.height)
+        }
+    }
+
+    private func reveal(_ v: NSView, from h0: CGFloat, to h1: CGFloat) {
+        guard let layer = v.layer else { return }
+        let mask = CALayer()
+        mask.backgroundColor = NSColor.black.cgColor
+        mask.anchorPoint = .zero
+        // At rest it hides nothing: wide enough for lines that run past the pane's edge, and tall.
+        mask.frame = CGRect(x: -4000, y: 0, width: 12000, height: 100_000)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        CATransaction.setCompletionBlock { [weak layer] in
+            if layer?.mask === mask { layer?.mask = nil }
+        }
+        layer.mask = mask
+        mask.add(TK.CA.spring("bounds.size.height", TK.CA.layout, from: h0, to: h1), forKey: "reveal")
+        CATransaction.commit()
     }
 
     private func endSettle() {
@@ -181,10 +221,9 @@ final class TaskListView: NSView {
         render(animated: true)
     }
 
-    /// The pane's width as far as wrapping goes: the narrower end while it animates (`settle`).
+    /// The pane's width as far as wrapping goes: where it's going while it animates (`settle`).
     private var wrapBoundsWidth: CGFloat {
-        guard let s = settle else { return bounds.width }
-        return min(s.from, s.to, bounds.width)
+        settle?.to ?? bounds.width
     }
 
     override func viewDidMoveToWindow() {
@@ -744,14 +783,14 @@ final class TaskListView: NSView {
         }
     }
 
-    /// The width of the list pane's notes: from the checkbox's edge to 20 from the right, at the narrower end while the
-    /// pane's width animates (`settle`).
+    /// The width of the list pane's notes: from the checkbox's edge to 20 from the right, at the width the pane is
+    /// going to while it animates (`settle`).
     private var paneNotesWidth: CGFloat {
         max(40, wrapContentWidth - 2 * (TK.M.rowInset + TK.M.rowPadLeft))
     }
 
-    /// The width the pane's wrapping text is measured at: the scroll view's, or while the pane settles the narrower end
-    /// (`settle`), from the pane's own width, since mid-slide the scroll view's lags it by a fraction and would have
+    /// The width the pane's wrapping text is measured at: the scroll view's, or while the pane settles the width it's
+    /// going to (`settle`), from the pane's own width, since mid-slide the scroll view's lags it by a fraction and would have
     /// the text measured again on every frame.
     private var wrapContentWidth: CGFloat {
         settle == nil ? scroll.contentView.bounds.width : wrapBoundsWidth
@@ -931,8 +970,8 @@ final class TaskListView: NSView {
     }
 
     /// The title line's height, for the layout: a long name wraps onto a second line (§23), and while it's renamed
-    /// the line follows all of what's typed. Like the notes, it wraps at the narrower end while the pane's width
-    /// animates (`settle`), so it re-wraps once, not on every frame of the slide.
+    /// the line follows all of what's typed. Like the notes, it wraps at the width the pane is going to while it
+    /// animates (`settle`), so it re-wraps once, as the slide starts, not on every frame of it.
     private func measureTitle() {
         let c = titleContent()
         state.titleLine = ListTitleView.lineBox(c, text: titleTyping ?? c.title, width: wrapContentWidth,
