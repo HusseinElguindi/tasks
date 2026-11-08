@@ -29,6 +29,15 @@ final class NotesTextView: NSTextView {
         FieldUndo.validate(item, notesUndo) ?? super.validateMenuItem(item)
     }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    /// A press on a box, a link, a dot or a number takes neither the caret nor the keys (§5, §6 Pointer). NSWindow makes
+    /// the view under a press first responder before it calls `mouseDown`, which started the session with the caret
+    /// where it was left (the end of the notes) and scrolled there (the user, 2026-11-08), so that press is refused here.
+    override var acceptsFirstResponder: Bool {
+        guard super.acceptsFirstResponder else { return false }
+        guard window?.firstResponder !== self, let e = NSApp.currentEvent, e.type == .leftMouseDown, e.window === window,
+              let n = notes else { return true }
+        return !n.pressTakesNoCaret(at: convert(e.locationInWindow, from: nil))
+    }
     override func hitTest(_ point: NSPoint) -> NSView? { inert ? nil : super.hitTest(point) }
     override var acceptableDragTypes: [NSPasteboard.PasteboardType] { [] }
     override func dragSelection(with event: NSEvent, offset mouseOffset: NSSize, slideBack: Bool) -> Bool { false }
@@ -253,7 +262,7 @@ final class NotesTextView: NSTextView {
     enum EditKind { case typing, paste, structure }
 
     /// One undoable change: the notes' undo groups it, past 20,000 characters it's trimmed with a notice.
-    func replace(_ r: NSRange, _ s: String, kind: EditKind, select: NSRange? = nil) {
+    func replace(_ r: NSRange, _ s: String, kind: EditKind, select: NSRange? = nil, scroll: Bool = true) {
         var s = s
         let room = NotesStyle.maxLength - ((string as NSString).length - r.length)
         if (s as NSString).length > room {
@@ -267,7 +276,7 @@ final class NotesTextView: NSTextView {
         let caret = select ?? NSRange(location: r.location + (s as NSString).length, length: 0)
         setSelectedRange(caret)
         if kind != .typing { breakUndoCoalescing() }
-        scrollRangeToVisible(caret)
+        if scroll { scrollRangeToVisible(caret) }
     }
 
     /// The first `n` UTF-16 units, not splitting a surrogate pair.
@@ -897,6 +906,9 @@ struct NotesField: NSViewRepresentable {
             return r.contains(q) ? l.box : nil
         }
 
+        /// A press here toggles a box, opens a link or takes nothing (a dot or a number): never the caret (§6 Pointer).
+        func pressTakesNoCaret(at p: CGPoint) -> Bool { box(at: p) != nil || link(at: p) != nil || inGutter(p) }
+
         /// The gutter of a list item (a dot or a number): presses there take nothing.
         func inGutter(_ p: CGPoint) -> Bool {
             guard let (l, _) = listItem(at: p) else { return false }
@@ -982,8 +994,9 @@ struct NotesField: NSViewRepresentable {
                 boxes[at] = a
             }
             if session != nil, v.window?.firstResponder === v {
+                // The caret and the view stay where they are: the box may be far from the caret (§5).
                 let sel = v.selectedRange()
-                v.replace(NSRange(location: at, length: 1), checking ? "x" : " ", kind: .structure, select: sel)
+                v.replace(NSRange(location: at, length: 1), checking ? "x" : " ", kind: .structure, select: sel, scroll: false)
             } else {
                 let store = host.store
                 let notes = t.replacingCharacters(in: NSRange(location: at, length: 1), with: checking ? "x" : " ")

@@ -97,9 +97,10 @@ struct TaskLayout {
     /// Where a row's shape sits in its slot: 0, or a heading's air.
     func rowOffset(_ id: EntityID) -> CGFloat { headingIDs.contains(id) ? Self.headAir : 0 }
 
-    /// The title block: 4 above the 30pt title line, then a list's notes 4 below it, then 12 to the rows (css:439–445).
-    static func titleBlockHeight(notes: CGFloat?) -> CGFloat {
-        4 + 30 + (notes.map { 4 + max(19, $0) } ?? 0) + 12
+    /// The title block: 4 above the title line (30, and 26 more for each line a long name wraps onto), then a list's
+    /// notes 4 below it, then 12 to the rows (css:439–445).
+    static func titleBlockHeight(notes: CGFloat?, line: CGFloat = 30) -> CGFloat {
+        4 + max(30, line) + (notes.map { 4 + max(19, $0) } ?? 0) + 12
     }
     /// A deleted list's banner sits above the title block (§28: the large title starts at 60).
     static let bannerBlock: CGFloat = 60
@@ -144,6 +145,8 @@ struct TaskLayout {
         var collapsed: Set<EntityID> = []
         var noteHeights: [EntityID: CGFloat] = [:]
         var titleNotes: CGFloat?
+        /// The large title's line (`WindowState.titleLine`).
+        var titleLine: CGFloat = 30
         var newHeading: EntityID?
         var newHeadingBefore: EntityID?
         /// The list is deleted: its banner sits above the title (§28).
@@ -190,6 +193,7 @@ struct TaskLayout {
         if let title = draft?.title { draft?.title = title.isEmpty ? "" : "x" }
         var inputs = Inputs(route: window.route, lists: lists, deleted: deleted, expanded: expanded, completedOpen: completedOpen,
                             pins: window.pins, draft: draft, drag: window.drag, day: p.day.date, view: view)
+        inputs.titleLine = window.titleLine
         if case .list(let id) = window.route {
             let heads = lists[2]
             if !heads.isEmpty {
@@ -224,7 +228,7 @@ struct TaskLayout {
         case .list(let listID):
             var L = TaskLayout(key: listID, top: 0)
             L.headY = inputs.deleted ? bannerBlock : 0
-            L.titleHeight = titleBlockHeight(notes: inputs.titleNotes)
+            L.titleHeight = titleBlockHeight(notes: inputs.titleNotes, line: inputs.titleLine)
             L.top = L.headY + L.titleHeight
             var open = inputs.lists[0]
             var done = inputs.lists[1]
@@ -291,7 +295,7 @@ struct TaskLayout {
 
         case .today:
             // The title line, without notes (§23).
-            var L = TaskLayout(key: "today", top: titleBlockHeight(notes: nil))
+            var L = TaskLayout(key: "today", top: titleBlockHeight(notes: nil, line: inputs.titleLine))
             L.titleHeight = L.top
             var y = L.top
             let today = p.day.date

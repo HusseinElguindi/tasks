@@ -42,7 +42,6 @@ final class TaskListView: NSView {
     private var heads: [EntityID: HeadingRowView] = [:]
     private var headsLeaving: [EntityID: (view: HeadingRowView, until: CFTimeInterval)] = [:]
     let titleView = ListTitleView()
-    private var titleField: InlineField?
     private var titleFieldID: EntityID?
     /// The notes editors in the list pane: the list's (in the title block) and each heading's with notes.
     final class PaneEditor {
@@ -62,6 +61,18 @@ final class TaskListView: NSView {
     private var paletteChanged = true
     private var firstRender = true
     private var lastWidth: CGFloat = 0
+    /// The pane's width on an animation (the detail pane or the sidebar opening or closing, a divider springing back):
+    /// from what its text wrapped at, to the width it settles at. The title and the notes re-wrap once, at the width
+    /// the pane is going to, as the slide starts, in both directions, and the rows under them move on the `layout`
+    /// spring. Widening, the wider lines run under the pane's edge and show as it moves out. Before, they re-wrapped on
+    /// every frame of the slide and the rows jumped a line whenever the line count changed (the user, 2026-11-08: "the
+    /// line wrapping is a bit distracting when it animates for the whole duration, and it's choppy when more lines are
+    /// needed"); then they waited at the narrow end until the pane had widened and snapped (the user, 2026-11-08:
+    /// "there's definitely a delay in the wrap, which i dont quite like, it should be smooth").
+    private var settle: (from: CGFloat, to: CGFloat)?
+    /// The width the pane settles at, as the window's layout last gave it (`TaskListRepresentable.settleWidth`).
+    private var settleTarget: CGFloat?
+    private var settleTimer: Timer?
     private var pendingScroll: EntityID?
     private var cleanupTimer: Timer?
 
@@ -140,8 +151,79 @@ final class TaskListView: NSView {
         scroll.frame = bounds
         if abs(bounds.width - lastWidth) > 0.5 {
             lastWidth = bounds.width
-            render(animated: false)
+            if let s = settle, abs(bounds.width - s.to) <= 0.5 { endSettle() } else { render(animated: false) }
         }
+    }
+
+    /// The window's layout gives the pane a new width: on an animation, the text keeps one wrap the whole way
+    /// (`settle`); otherwise (a divider dragged, the window resized) it follows live, as before.
+    func paneWidth(to target: CGFloat?, animated: Bool) {
+        guard let target, target != settleTarget else { return }
+        let first = settleTarget == nil
+        settleTarget = target
+        guard animated, !first, window != nil, abs(target - bounds.width) > 0.5 else {
+            if settle != nil { endSettle() }
+            return
+        }
+        settle = (wrapBoundsWidth, target)
+        // A safety: the slide ends with the pane at `target`; should it stop short, the text settles anyway.
+        settleTimer?.invalidate()
+        settleTimer = Timer.scheduledTimer(withTimeInterval: 0.6, repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated { self?.endSettle() }
+        }
+        // The one re-wrap is now, at the width the pane is going to. What it adds shows as the rows below make room.
+        let before = wrapHeights()
+        render(animated: true)
+        revealGrowth(from: before)
+    }
+
+    /// The title block's height and each heading's notes' height, as laid out.
+    private func wrapHeights() -> (title: CGFloat?, notes: [NotesHost.Target: CGFloat]) {
+        var notes: [NotesHost.Target: CGFloat] = [:]
+        for (t, e) in paneEditors where e.shown { if case .task = t { notes[t] = e.view.frame.height } }
+        return (currentLayout?.titleHeight, notes)
+    }
+
+    /// A re-wrap that adds lines (the pane narrowing) would draw them over the rows below until those have moved down
+    /// on the `layout` spring. Instead the block shows down to where the rows have got to: a mask on the same spring,
+    /// from the old height to the new, dropped when it's done. Lines it takes away go at once, as the rows close up.
+    private func revealGrowth(from before: (title: CGFloat?, notes: [NotesHost.Target: CGFloat])) {
+        guard !TK.CA.reduce else { return }
+        if let h0 = before.title, let h1 = currentLayout?.titleHeight, h1 > h0 + 0.5 { reveal(titleView, from: h0, to: h1) }
+        for (t, h0) in before.notes {
+            guard let e = paneEditors[t], e.shown, e.view.frame.height > h0 + 0.5 else { continue }
+            reveal(e.view, from: h0, to: e.view.frame.height)
+        }
+    }
+
+    private func reveal(_ v: NSView, from h0: CGFloat, to h1: CGFloat) {
+        guard let layer = v.layer else { return }
+        let mask = CALayer()
+        mask.backgroundColor = NSColor.black.cgColor
+        mask.anchorPoint = .zero
+        // At rest it hides nothing: wide enough for lines that run past the pane's edge, and tall.
+        mask.frame = CGRect(x: -4000, y: 0, width: 12000, height: 100_000)
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        CATransaction.setCompletionBlock { [weak layer] in
+            if layer?.mask === mask { layer?.mask = nil }
+        }
+        layer.mask = mask
+        mask.add(TK.CA.spring("bounds.size.height", TK.CA.layout, from: h0, to: h1), forKey: "reveal")
+        CATransaction.commit()
+    }
+
+    private func endSettle() {
+        settleTimer?.invalidate()
+        settleTimer = nil
+        guard settle != nil else { return }
+        settle = nil
+        render(animated: true)
+    }
+
+    /// The pane's width as far as wrapping goes: where it's going while it animates (`settle`).
+    private var wrapBoundsWidth: CGFloat {
+        settle?.to ?? bounds.width
     }
 
     override func viewDidMoveToWindow() {
@@ -216,8 +298,9 @@ final class TaskListView: NSView {
         #endif
         guard window != nil else { return }
         let p = store.projection
-        // The list pane's notes are measured before the layout, which leaves room for them (§23).
+        // The list pane's notes and its title's lines are measured before the layout, which leaves room for them (§23).
         syncPaneEditors()
+        measureTitle()
         let L = TaskLayout.make(store: store, window: state)
         Self.phase()
         let now = CACurrentMediaTime()
@@ -700,9 +783,17 @@ final class TaskListView: NSView {
         }
     }
 
-    /// The width of the list pane's notes: from the checkbox's edge to 20 from the right.
+    /// The width of the list pane's notes: from the checkbox's edge to 20 from the right, at the width the pane is
+    /// going to while it animates (`settle`).
     private var paneNotesWidth: CGFloat {
-        max(40, scroll.contentView.bounds.width - 2 * (TK.M.rowInset + TK.M.rowPadLeft))
+        max(40, wrapContentWidth - 2 * (TK.M.rowInset + TK.M.rowPadLeft))
+    }
+
+    /// The width the pane's wrapping text is measured at: the scroll view's, or while the pane settles the width it's
+    /// going to (`settle`), from the pane's own width, since mid-slide the scroll view's lags it by a fraction and would have
+    /// the text measured again on every frame.
+    private var wrapContentWidth: CGFloat {
+        settle == nil ? scroll.contentView.bounds.width : wrapBoundsWidth
     }
 
     /// Makes (or updates) the list's and its headings' notes editors and measures them, before the layout: a heading
@@ -806,7 +897,7 @@ final class TaskListView: NSView {
             switch target {
             case .list:
                 let h = max(19, state.noteHeights[TaskLayout.listNotesKey(state.route.listID ?? "")] ?? 19)
-                let f = CGRect(x: TK.M.rowInset + TK.M.rowPadLeft, y: ListTitleView.notesTop, width: w, height: h)
+                let f = CGRect(x: TK.M.rowInset + TK.M.rowPadLeft, y: titleView.notesTop, width: w, height: h)
                 if e.view.frame != f { e.view.frame = f }
                 e.view.isHidden = false
             case .task(let hid):
@@ -854,27 +945,47 @@ final class TaskListView: NSView {
         }
     }
 
-    /// The title block: the large title, and a list's notes under it (their editor is its subview).
-    private func renderTitle(_ L: TaskLayout, width: CGFloat) {
+    /// What the title line shows for the window's view.
+    private func titleContent() -> ListTitleView.Content {
         let p = store.projection
         let today = p.day.date
-        var c: ListTitleView.Content
         let renaming = state.rename?.kind == .title
         switch state.route {
         case .list(let id):
             let m = p.listModel(id)
             let name = m?.name ?? ""
-            c = .init(mark: .tile(monogram: m?.monogram ?? "·", slot: m?.colorSlot ?? ListModel.slot(for: id)),
-                      title: name.isEmpty ? "New List" : name, sub: m?.isDeleted == true ? "In Trash" : nil, renaming: renaming)
+            return .init(mark: .tile(monogram: m?.monogram ?? "·", slot: m?.colorSlot ?? ListModel.slot(for: id)),
+                         title: name.isEmpty ? "New List" : name, sub: m?.isDeleted == true ? "In Trash" : nil, renaming: renaming)
         case .today:
-            c = .init(mark: .view(.today), title: "Today", sub: DateLabel.long(today, today: today))
+            return .init(mark: .view(.today), title: "Today", sub: DateLabel.long(today, today: today))
         default:
-            c = .init(mark: .view(state.route), title: state.route.viewName ?? "", sub: nil)
+            return .init(mark: .view(state.route), title: state.route.viewName ?? "", sub: nil)
         }
+    }
+
+    /// The name being typed into the large title, while it's renamed.
+    private var titleTyping: String? {
+        guard let r = state.rename, r.kind == .title else { return nil }
+        return r.text
+    }
+
+    /// The title line's height, for the layout: a long name wraps onto a second line (§23), and while it's renamed
+    /// the line follows all of what's typed. Like the notes, it wraps at the width the pane is going to while it
+    /// animates (`settle`), so it re-wraps once, as the slide starts, not on every frame of it.
+    private func measureTitle() {
+        let c = titleContent()
+        state.titleLine = ListTitleView.lineBox(c, text: titleTyping ?? c.title, width: wrapContentWidth,
+                                                renaming: titleTyping != nil)
+    }
+
+    /// The title block: the large title, and a list's notes under it (their editor is its subview).
+    private func renderTitle(_ L: TaskLayout, width: CGFloat) {
+        let c = titleContent()
         let f = CGRect(x: 0, y: L.headY, width: width, height: max(L.titleHeight, 46))
         if titleView.frame != f { titleView.frame = f }
-        titleView.configure(c, palette: palette, width: width)
-        updateTitleField(renaming ? state.rename : nil)
+        // The rename's end first, so the field shows the model's name, styled, in this same transaction.
+        updateTitleField(c.renaming ? state.rename : nil)
+        titleView.configure(c, palette: palette, width: wrapContentWidth, text: titleTyping)
         updateTitlePlaceholder(animated: false)
         updateTitleScrolled()
     }
@@ -908,62 +1019,68 @@ final class TaskListView: NSView {
     }
     private var titleScrolledRoute: WindowState.Route?
 
-    /// The list's title renames in place: 20/26, 30 tall, radius 6, `fill-control`, a 1.5pt `accent` ring (css:443).
+    /// The list's title renames in place as the text it is (§23 Renaming; design/TITLE-RENAME.md, direction B): the
+    /// field that draws the name becomes editable with the whole name selected, with no fill and no ring; the caret
+    /// and the Ember selection are the cue, as in the detail title (§7). Its text stays on the same pixels, and the
+    /// line wraps and grows with what's typed.
     private func updateTitleField(_ rename: WindowState.Rename?) {
+        let f = titleView.field
         guard let rename else {
-            if let f = titleField {
-                titleField = nil
-                titleFieldID = nil
-                let wasEditing = f.isEditing
-                f.onEnd = nil
-                f.removeFromSuperview()
-                if wasEditing { takeKeys() }
-            }
+            guard titleFieldID != nil else { return }
+            titleFieldID = nil
+            let wasEditing = f.isEditing
+            f.onEnd = nil
+            f.onKey = nil
+            f.onChange = nil
+            f.onFocus = nil
+            // Esc, or a commit from the keys: the field lets go here, and `configure` (next) shows the model's name.
+            if wasEditing { f.abortEditing() }
+            f.isEditable = false
+            f.isSelectable = false
+            if wasEditing { takeKeys() }
             return
         }
-        let f: InlineField
-        if let existing = titleField, titleFieldID == rename.id {
-            f = existing
-        } else {
-            titleField?.onEnd = nil
-            titleField?.removeFromSuperview()
-            f = InlineField(frame: .zero)
-            f.font = ListTitleView.font
-            f.placeholderString = "New List"
-            f.stringValue = rename.text
-            f.wantsLayer = true
-            f.layer?.cornerRadius = 6
-            f.layer?.borderWidth = 1.5
-            let a = actions
-            f.onChange = { a.setRenameText($0) }
-            f.onKey = { [weak self] key in
-                switch key {
-                case .returnKey, .commandReturn, .backtab:
-                    a.commitRename()
-                    self?.takeKeys()
-                case .tab:
-                    // Tab goes on to the list's notes.
-                    a.commitRename()
-                    a.editListNotes()
-                case .escape:
-                    a.cancelRename()
-                    self?.takeKeys()
-                }
-                return true
-            }
-            f.onEnd = { _ in if a.window.rename?.kind == .title { a.commitRename() } }
-            titleView.addSubview(f)
-            titleField = f
-            titleFieldID = rename.id
-            DispatchQueue.main.async { f.focus(.all) }
+        guard titleFieldID != rename.id else { return }
+        titleFieldID = rename.id
+        let a = actions
+        let view = titleView
+        f.isEditable = true
+        f.isSelectable = true
+        f.onFocus = { [weak view] in view?.styleEditor() }
+        f.onChange = { [weak view] text in
+            view?.styleEditor()
+            a.setRenameText(text)
         }
-        f.textColor = palette.ink
-        f.layer?.backgroundColor = palette.fillControl.cgColor
-        f.layer?.borderColor = palette.focus.cgColor
-        let x = titleView.titleX - 6
-        let w = min(360, max(120, titleView.bounds.width - x - TK.M.rowInset - TK.M.rowPadRight))
-        f.frame = CGRect(x: x, y: 4, width: w, height: 30)
-        f.displayIfNeeded()
+        f.onKey = { [weak self, weak view] key in
+            switch key {
+            case .returnKey, .commandReturn, .backtab:
+                a.commitRename()
+                self?.takeKeys()
+            case .tab:
+                // Tab goes on to the list's notes.
+                a.commitRename()
+                a.editListNotes()
+            case .escape:
+                // The old name back on the same pixels at once (the model's, which the next render shows anyway).
+                let original = a.window.rename?.original
+                a.cancelRename()
+                f.abortEditing()
+                if let original, !original.isEmpty { view?.restyle(original) }
+                self?.takeKeys()
+            }
+            // The field has let go: its plain text gets the title's attributes back before this frame draws.
+            view?.restyle()
+            return true
+        }
+        f.onEnd = { [weak view] _ in
+            if a.window.rename?.kind == .title { a.commitRename() }
+            DispatchQueue.main.async { view?.restyle() }
+            view?.restyle()
+        }
+        DispatchQueue.main.async { [weak view] in
+            f.focus(.all)
+            view?.styleEditor()
+        }
     }
 
     // MARK: - Rename in place (§7)
@@ -1025,6 +1142,8 @@ final class TaskListView: NSView {
             }
         }
         f.textColor = palette.ink
+        // Selected text in the theme's `text-selection` (Ember), as in every other field (§16), not AppKit's blue.
+        if f.selectionColor != palette.textSelection { f.selectionColor = palette.textSelection }
         // The field replaces the title in place: same font, origin and color (NSTextField draws its text 2pt in). Its
         // text lands on the title's pixels (measured frame by frame across the swap, v2 feedback 5).
         let t = (row as? TaskRowView)?.titleFrame ?? (row as? HeadingRowView)?.nameFrame ?? .zero
@@ -1871,7 +1990,18 @@ final class TaskListView: NSView {
     func debugFrameRows() -> String {
         let r: [(CGFloat, String)] = rows.values.filter { !$0.isHidden && $0.model != nil }.map { ($0.frame.minY, $0.debugFrameState) }
         let h: [(CGFloat, String)] = heads.values.filter { !$0.isHidden && $0.model != nil }.map { ($0.frame.minY, $0.debugFrameState) }
-        return "  title='\(titleView.debugTitle)'\n" + (r + h).sorted { $0.0 < $1.0 }.map { "  \(Int($0.0)) \($0.1)" }.joined(separator: "\n")
+        return "  title='\(titleView.debugTitle)'\n" + debugWrap() + "\n"
+            + (r + h).sorted { $0.0 < $1.0 }.map { "  \(Int($0.0)) \($0.1)" }.joined(separator: "\n")
+    }
+
+    /// Debug (the user, 2026-11-08): the pane's width, the list's notes as wrapped (width x height), the settle, and
+    /// the first row's place as drawn this frame (its spring included).
+    func debugWrap() -> String {
+        let notes = state.route.listID.flatMap { paneEditors[.list($0)] }.map { "\(Int($0.view.frame.width))x\(Int($0.view.frame.height))" } ?? "-"
+        let first = rows.values.filter { !$0.isHidden && $0.model != nil }.min { $0.frame.minY < $1.frame.minY }
+        let drawn = first.map { v in String(format: "%.1f", (v.layer?.presentation() ?? v.layer)?.frame.minY ?? v.frame.minY) } ?? "-"
+        return "  wrap pane=\(Int(bounds.width)) notes=\(notes) settle=\(settle.map { "\(Int($0.from))>\(Int($0.to))" } ?? "-") firstRow=\(drawn)"
+            + " title=\(Int(titleView.field.frame.width))x\(Int(titleView.field.frame.height))"
     }
 
     /// Debug (§24): every row on screen, top to bottom, with what it shows of its dates.
@@ -2000,6 +2130,9 @@ struct TaskListRepresentable: NSViewRepresentable {
     let store: Store
     let window: WindowState
     let palette: TK.Palette
+    /// The width the window's layout settles the pane at (`TaskListView.paneWidth(to:animated:)`); nil keeps the text
+    /// following every width live.
+    var settleWidth: CGFloat? = nil
 
     func makeNSView(context: Context) -> TaskListView {
         let v = TaskListView(store: store, window: window)
@@ -2011,5 +2144,7 @@ struct TaskListRepresentable: NSViewRepresentable {
     func updateNSView(_ nsView: TaskListView, context: Context) {
         nsView.palette = palette
         window.palette = palette
+        let t = context.transaction
+        nsView.paneWidth(to: settleWidth, animated: t.animation != nil && !t.disablesAnimations)
     }
 }

@@ -230,6 +230,9 @@ final class WindowState {
     /// The list pane's notes heights as last measured (§23): a heading's by its id, a list's by
     /// `TaskLayout.listNotesKey`. The list view measures its editors before each layout.
     @ObservationIgnored var noteHeights: [EntityID: CGFloat] = [:]
+    /// The large title's line as last measured (§23): 30 for one line of text, 26 more for each line a long name wraps
+    /// onto. The list view measures it before each layout.
+    @ObservationIgnored var titleLine: CGFloat = 30
     @ObservationIgnored var typeBuffer = ""
     @ObservationIgnored var typeAt: TimeInterval = 0
     /// The detail pane asks for the caret in its title (a new task, ⇧Tab from the notes, editing a task from the list):

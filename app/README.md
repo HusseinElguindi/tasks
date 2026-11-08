@@ -13,6 +13,7 @@ The SwiftUI client from `docs/SPEC.md` (§8–§9) in the A1 · Split design (`d
 | `Scripts/install-cli.sh` | Builds `tasks` in release, signs it, and copies it to `~/.local/bin` (`--prefix` to change). |
 | `Scripts/make-signing-identity.sh` | Makes the local signing identity once per Mac (see Signing). |
 | `Signing.xcconfig` | The signing identity: ad hoc, or the local one once the script has run. |
+| `Release.xcconfig` | Release on top of it: Apple silicon only (`TASKS_RELEASE_ARCHS`, the one switch back to universal) and stripped, symbols in the dSYM beside the app. |
 
 ## Build and run
 
@@ -98,7 +99,7 @@ swift test -c release -Xswiftc -enable-testing --filter BenchmarkTests  # §9 bu
 - `LiveServerTests` runs against a local `wrangler dev` (skipped unless `TASKS_LIVE_*` are set; refuses non-local
   URLs). See the file for the two phases.
 
-Benchmarks on an M5 Pro (release, 10k tasks / 100k ops): launch from snapshot 22 ms (budget 100), snapshot decode
+Benchmarks on an M5 Pro (release, 10k tasks / 100k ops): launch from snapshot 22 ms (budget 100; 25 ms with a 500-entry tail), snapshot decode
 18 ms (60), local edit 3 µs (1 ms), 1,000 interleaved remote ops 0.9 ms (10), reorder in a 2,000-task list
 0.2 ms (1), midnight rebuild 0.5 ms (5), full replay of 100k ops 0.32 s.
 

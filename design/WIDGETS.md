@@ -194,19 +194,25 @@ their data folders do):
   "schema": 1,
   "written": 1793938000000,
   "lists":  [ { "id": "…", "name": "School", "order": "a0", "slot": 0 } ],       // live lists, sidebar order
-  "tasks":  [ /* TaskItem values, the Codable model itself */ ],
+  "tasks":  [ /* TaskItem values, the Codable model itself, less notes and timestamps */ ],
   "listTops": { "<list id>": ["<task id>", …] }                                   // first 12 open, in order
 }
 ```
 
 - **Which tasks:** every live open task whose When or deadline is on or before **today + 14** (Today for the next two
   weeks of timeline entries, and Upcoming later), every task completed today, and each live list's first 12 open
-  tasks. That's a few hundred tasks at most, tens of KB.
+  tasks. That's a few hundred tasks at most, tens of KB. Each task leaves out its notes and `createdAt`/`updatedAt`
+  (`WidgetFeed.drawable`; coord title-design T8, 2026-11-08): no widget shows them, the notes were two-thirds of the
+  feed, and an edit to notes then changes nothing a widget draws.
 - **The widget computes the views itself** with TasksCore's pure code: `Today.contains` (`Today.swift:35`),
   `DeadlineStatus`, `DateLabel` and `ViewGroups`. So **midnight needs no app.** The provider returns entries for now and
-  for each of the next three local midnights, and Today rolls over on time even if the app hasn't run for days.
-- **Written by each app** after any change to visible state, debounced 1 s, and after a sync that applied entries. It's
-  written atomically (temp file, then rename), the way the snapshot is.
+  for the next local midnight; at its end (`.atEnd`) WidgetKit asks again and the provider computes the next day from
+  the feed, so Today rolls over on time even if the app hasn't run for days. (Three midnights until 2026-11-08: each
+  entry is a rendered copy, so three tripled the archive WidgetKit writes on every reload, ~400 KB for a large Today.)
+- **Written by each app** after any change to what a widget draws (`WidgetFeed.changes`), debounced 1 s, and after a
+  sync that applied entries; at most once per gap (`WidgetFeedPace`: 20 s while the Mac's window is on screen, 2 min
+  with none), and within a gap of the first change waiting. Hiding, closing, minimizing or leaving the window writes
+  what's waiting at once. It's written atomically (temp file, then rename), the way the snapshot is.
 
 ### 3.3 Writing: an inbox the app drains
 
@@ -235,7 +241,9 @@ the extension, a network call in a widget tap, and the feed carrying `cursor` an
 
 ### 3.4 Keeping it fresh
 
-- **From the app:** `WidgetCenter.shared.reloadAllTimelines()` after each feed write. That covers local edits, syncs
+- **From the app:** `WidgetCenter.shared.reloadTimelines(ofKind:)` after each feed write, for the kinds whose content
+  changed (`WidgetGroup.kinds`: Today's for a dated or completed task, the List widget's for a list's tops, both for the
+  lists). That covers local edits, syncs
   that brought other devices' changes, drains and day changes (`Store.refreshDay`). Reloads requested while the app is
   in front don't count against the widget's daily budget. Neither do the reloads the system does after a widget's own
   intent.
@@ -245,7 +253,8 @@ the extension, a network call in a widget tap, and the feed carrying `cursor` an
   background refresh (`BGAppRefreshTask`) could sync and rewrite the feed a few times a day. It's listed in §4 Q3.
 - **Mac:** the app runs most of the time, syncs every 30 s while a window is open, every 60 s with none (Settings ▸ Sync
   with no window open, on by default; 2026-11-06), and on the CLI's nudge, and rewrites the feed when it changed (at most
-  every 2 minutes with no window, for WidgetKit's reload budget). Settings ▸ Open at login keeps it running after a
+  every 20 s with a window on screen, since the desktop widgets are mostly under it, and every 2 minutes with none, for
+  WidgetKit's reload budget). Settings ▸ Open at login keeps it running after a
   restart. So Mac widgets stay current, and an agent's `tasks` CLI change reaches the desktop widget in about
   a second.
 

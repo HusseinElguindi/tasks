@@ -270,9 +270,21 @@ final class AppModel {
                 self?.widgetFeed?.flush()
             }
         })
-        observers.append(center.addObserver(forName: NSApplication.didResignActiveNotification, object: nil, queue: .main) { [weak store] _ in
-            MainActor.assumeIsolated { store?.persistNow() }
+        observers.append(center.addObserver(forName: NSApplication.didResignActiveNotification, object: nil, queue: .main) { [weak self, weak store] _ in
+            MainActor.assumeIsolated {
+                store?.persistNow()
+                // Leaving the app may uncover the desktop: what the feed writer is batching goes out now.
+                self?.widgetFeed?.flush()
+            }
         })
+        // The window hidden, closed or minimized: the desktop's widgets show, so a write held for the 20 s gap goes now
+        // (SyncSchedule). Any window's close or minimize does it; flushing with nothing waiting does nothing.
+        let flushFeed: @Sendable (Notification) -> Void = { [weak self] _ in
+            MainActor.assumeIsolated { self?.widgetFeed?.flush() }
+        }
+        observers.append(center.addObserver(forName: NSApplication.didHideNotification, object: nil, queue: .main, using: flushFeed))
+        observers.append(center.addObserver(forName: NSWindow.willCloseNotification, object: nil, queue: .main, using: flushFeed))
+        observers.append(center.addObserver(forName: NSWindow.didMiniaturizeNotification, object: nil, queue: .main, using: flushFeed))
         observers.append(center.addObserver(forName: NSApplication.willTerminateNotification, object: nil, queue: .main) { [weak self, weak store] _ in
             MainActor.assumeIsolated {
                 guard let store else { return }

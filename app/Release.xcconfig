@@ -1,0 +1,14 @@
+// Release builds, the ones installed on this Mac (coord title-design T8 finding 6; the user, 2026-11-08: "ok I approve
+// 1,2,3,6"): Apple silicon only, and stripped, with the symbols kept beside the app in its dSYM. The app went from
+// 17 MB (universal, unstripped) to about 6.5 MB. Signing is Signing.xcconfig's, as for Debug.
+#include "Signing.xcconfig"
+
+// The one switch: arm64 for the Macs we install on. Set it to $(ARCHS_STANDARD) to build universal (Intel too) again.
+TASKS_RELEASE_ARCHS = arm64
+ARCHS = $(TASKS_RELEASE_ARCHS)
+
+// `xcodebuild build` strips only with deployment postprocessing on (archives always do). Crash logs symbolicate with
+// the dSYM next to the .app in Build/Products/Release; keep it with each installed build.
+DEPLOYMENT_POSTPROCESSING = YES
+STRIP_INSTALLED_PRODUCT = YES
+DEBUG_INFORMATION_FORMAT = dwarf-with-dsym

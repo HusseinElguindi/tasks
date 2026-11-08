@@ -44,6 +44,23 @@ final class BenchmarkTests: XCTestCase {
         budget("launch to data ready", total, 100)
     }
 
+    /// The same launch with a 500-entry tail, the longest a crash leaves now that a sync no longer rewrites the
+    /// snapshot (`SnapshotPolicy`): within the same budgets.
+    func testLaunchFromSnapshotWithLongTail() throws {
+        let f = Self.fixture
+        var decode: [Double] = []
+        let total = median(5) {
+            let start = DispatchTime.now().uptimeNanoseconds
+            let loaded = Persistence(directory: f.longTailDirectory).loadSync()
+            decode.append(Double(DispatchTime.now().uptimeNanoseconds - start) / 1_000_000)
+            let p = Projection(confirmed: loaded.confirmed, pending: loaded.pending, day: f.day)
+            XCTAssertEqual(loaded.source, .snapshot(tail: f.longTail))
+            XCTAssertEqual(p.allTaskIDs.count, f.taskCount)
+        }
+        budget("snapshot decode + 500-entry tail + pending", decode.sorted()[decode.count / 2], 60)
+        budget("launch to data ready, 500-entry tail", total, 100)
+    }
+
     /// Local edit (op → visible): ≤ 1 ms of app work.
     func testLocalEdit() {
         let f = Self.fixture
@@ -136,7 +153,7 @@ final class BenchmarkTests: XCTestCase {
 }
 
 /// 20 lists and 10,000 tasks (85% completed) built by 100,000 ops, written to a data directory with a snapshot
-/// 20 entries before the end and a few pending ops.
+/// 20 entries before the end and a few pending ops; and a copy with the snapshot 500 entries before the end.
 final class BenchFixture: @unchecked Sendable {
     let directory: URL
     let state: AppState
@@ -144,6 +161,8 @@ final class BenchFixture: @unchecked Sendable {
     let nextDay: Day
     let taskCount = 10_000
     let tail = 20
+    let longTail = 500
+    let longTailDirectory: URL
     let bigList = "list-0"
     let openTaskIDs: [EntityID]
     let allTaskIDs: [EntityID]
@@ -189,15 +208,22 @@ final class BenchFixture: @unchecked Sendable {
         allTaskIDs = tasks
 
         directory = tempDirectory("BenchFixture")
-        let p = Persistence(directory: directory)
-        _ = p.loadSync()
-        let cut = ops.count - tail
-        p.appendLog(ops[..<cut].enumerated().map { entryLine(seq: $0.offset, op: $0.element) }, nextCursor: cut)
-        p.writeSnapshot(state: AppState.replay(ops[..<cut]), cursor: cut, hash: fakeHash(cut - 1))
-        p.appendLog(ops[cut...].enumerated().map { entryLine(seq: cut + $0.offset, op: $0.element) }, nextCursor: ops.count)
-        for _ in 0..<5 { p.appendPending(m.updateTask(tasks.randomElement(using: &rng)!, Patch(title: "pending")).jsonData) }
-        p.flush()
+        longTailDirectory = tempDirectory("BenchFixtureLongTail")
+        let pending = (0..<5).map { _ in m.updateTask(tasks.randomElement(using: &rng)!, Patch(title: "pending")).jsonData }
+        for (dir, tail) in [(directory, tail), (longTailDirectory, longTail)] {
+            let p = Persistence(directory: dir)
+            _ = p.loadSync()
+            let cut = ops.count - tail
+            p.appendLog(ops[..<cut].enumerated().map { entryLine(seq: $0.offset, op: $0.element) }, nextCursor: cut)
+            p.writeSnapshot(state: AppState.replay(ops[..<cut]), cursor: cut, hash: fakeHash(cut - 1))
+            p.appendLog(ops[cut...].enumerated().map { entryLine(seq: cut + $0.offset, op: $0.element) }, nextCursor: ops.count)
+            for op in pending { p.appendPending(op) }
+            p.flush()
+        }
     }
 
-    deinit { try? FileManager.default.removeItem(at: directory) }
+    deinit {
+        try? FileManager.default.removeItem(at: directory)
+        try? FileManager.default.removeItem(at: longTailDirectory)
+    }
 }

@@ -49,7 +49,7 @@ targets:
     # The signing identity: Apple Development, team F4AMC8FYKT (Signing.xcconfig).
     configFiles:
       Debug: Signing.xcconfig
-      Release: Signing.xcconfig
+      Release: Release.xcconfig # Signing.xcconfig, plus arm64 only and stripped
     settings:
       configs:
         # Debug builds are a separate app to macOS: their own defaults, saved state, Keychain item and data folder,
@@ -102,7 +102,7 @@ targets:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     configFiles:
       Debug: Signing.xcconfig
-      Release: Signing.xcconfig
+      Release: Release.xcconfig # Signing.xcconfig, plus arm64 only and stripped
     settings:
       configs:
         Debug:
@@ -129,6 +129,9 @@ targets:
       - path: Tasks/Theme/Theme.swift
       - path: Tasks/Theme/TK.swift
       - path: Tasks/Window/EditSession.swift
+      # The large title's type and measure, and the rename field (design/TITLE-RENAME.md).
+      - path: Tasks/TaskList/TitleLayout.swift
+      - path: Tasks/Theme/InlineField.swift
       # The widgets: the app's feed writer, and the extension's views and providers (drawn to images).
       - path: Tasks/Widgets/WidgetFeedWriter.swift
       - path: Tasks/Support/SyncSchedule.swift

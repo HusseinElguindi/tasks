@@ -16,6 +16,10 @@ final class InlineField: NSTextField, NSTextFieldDelegate {
     var onFocus: (() -> Void)?
     /// Pasted line breaks become spaces (§7).
     var singleLine = true
+    /// The selected text's background while the field has the keys (§16: `text-selection`); nil keeps AppKit's.
+    var selectionColor: NSColor? {
+        didSet { applySelectionColor() }
+    }
     private let fieldUndo = UndoManager()
 
     override class var cellClass: AnyClass? {
@@ -39,9 +43,11 @@ final class InlineField: NSTextField, NSTextFieldDelegate {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    /// Wrapping (the detail title): grows with its text. It replaces no label, so it keeps AppKit's own editor.
-    func makeWrapping() {
-        (cell as? InlineFieldCell)?.matchesLabel = false
+    /// Wrapping (the detail title, the list's large title): grows with its text. The detail title replaces no label,
+    /// so it keeps AppKit's own editor; the large title (`matchingLabels`) keeps the unsmoothed one, to draw at the
+    /// weight of the other titles in the list, which are `CATextLayer`s.
+    func makeWrapping(matchingLabels: Bool = false) {
+        (cell as? InlineFieldCell)?.matchesLabel = matchingLabels
         cell?.isScrollable = false
         cell?.wraps = true
         lineBreakMode = .byWordWrapping
@@ -70,8 +76,16 @@ final class InlineField: NSTextField, NSTextFieldDelegate {
 
     override func becomeFirstResponder() -> Bool {
         let ok = super.becomeFirstResponder()
-        if ok { onFocus?() }
+        if ok {
+            applySelectionColor()
+            onFocus?()
+        }
         return ok
+    }
+
+    private func applySelectionColor() {
+        guard let color = selectionColor, let editor = currentEditor() as? NSTextView else { return }
+        editor.selectedTextAttributes = [.backgroundColor: color]
     }
 
     // MARK: NSTextFieldDelegate
