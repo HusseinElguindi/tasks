@@ -4,6 +4,9 @@ The user, 2026-11-08, with two screenshots of the Mac's Upcoming (wide, and besi
 "another design task. there is quite a lot of information here. what can we do about that to make it more readable.
 this applies elsewhere too, not just upcoming, though it matters most here since it merges both: lists and dates."
 
+The user's pick, later that day: "Ok for the row readability, i like the C approach. [...] Also, how will we fix on
+iphone?" (with two iPhone screenshots). C is the Mac's direction; §6 is the iPhone.
+
 This is a design proposal. Nothing in `app/`, `ios/` or `widgets/` changed.
 
 **Mock-ups (Claude Design):** https://claude.ai/artifact/GRcqfVRJASqquUDWhjztFz (private, not shared). Seven boards:
@@ -100,9 +103,8 @@ If C is too much at once, **A first** is a safe step (it's part of C) and fixes 
   months: a logbook doesn't need a label per day.
 - **Undated and plain lists:** no change; they never show a list name. A list's rows keep §24's counts.
 - **Search:** the app has none yet. Its rows would mix lists, so they'd take the mark.
-- **iPhone:** the same rule set, with one difference: iPhone rows are already 48pt tall (`Metric.rowHeight`), so the
-  mark goes on a quiet second line under the 17pt title (17/22 + 12/15 fits) and the title gets the whole first line.
-  Upcoming gets the same day labels in months. The change is in `TaskRow.whereName` and the Upcoming grouping.
+- **iPhone:** see §6. The first idea here (the mark on a second line inside the 48pt row) fixes Upcoming only; the
+  iPhone's plain lists are cut too, so §6 recommends a title line and a detail line on every view.
 - **Widgets:** the medium Today widget's trailing tile becomes the mark (tile and short name), because the tile alone
   repeats colours. The large widget groups by list already. A future Upcoming widget would use C's rows.
 - **The CLI:** its rows could print the short name too; not drawn.
@@ -130,5 +132,114 @@ If C is too much at once, **A first** is a safe step (it's part of C) and fixes 
    but a new synced field, SPEC §2, and a field in the list's UI)?
 4. **Tile colours:** a list's colour is a hash of its id, so with 8 lists colours repeat. Pick the colour per list (a
    new field), or leave it, since the mark always carries the code too?
-5. **iPhone:** the mark on a second line under the title (fits the 48pt row), or at the right like the Mac?
+5. **iPhone:** see §6.5.
 6. **The notes glyph** on nearly every course row: leave it, or show it only on hover in mixed views?
+
+
+---
+
+## 6. The iPhone
+
+The user, 2026-11-08: "how will we fix on iphone?", with two screenshots: Upcoming, and the CS 489 list (today is Sun,
+Nov 8). Mock-ups: the iPhone boards at the end of the same canvas (https://claude.ai/artifact/GRcqfVRJASqquUDWhjztFz):
+the two screenshots as built, then options 1 to 4, each as Upcoming, the CS 489 list and Today at iPhone 15 width (393pt),
+dark theme, on the screenshots' data. Where a screenshot cuts a title off, its ending in the mock-ups is my guess
+("Assignment 3 — Prompting and evaluation"). Today's rows other than CS 489's come from the Mac boards' data.
+
+### 6.1 What the screenshots show
+
+The coordinator's reading is right: the iPhone is worse than the Mac, and not only in mixed views. One 48pt line
+(`Metric.rowHeight`) holds the title, the checklist count or notes glyph, the When, the list name in mixed views
+(`TaskRow.whereName`, up to 94pt, the Mac's 72 × 1.3) and the deadline capsule. Everything after the title is kept
+whole, so the title keeps only its 156pt (`Metric.titleKeep`) and the rest is cut:
+
+| View | What's cut | By what |
+|---|---|---|
+| Upcoming | "Lecture 13: Mechanistic", "Discussion 3 — initia", "Renew iOS signing on t" | the count or notes glyph, the list name (itself cut: "CS 489 — Intro", "EARTH 1") and the deadline |
+| CS 489 list | "Assignment 3 — Pro", "Lecture 11: Syntax and cont", "Lecture 12: Probing syntacti" | the count, the When ("Today", "in 5d") and the deadline |
+
+Three more things:
+
+- **Said twice in lists:** a blue ring already means "planned for today or earlier" (`RingCue.planned`, off in Today),
+  and the row also says "Today" (Assignment 3, Lectures 11 and 12).
+- **Mixed formats in Upcoming:** "5d left" next to "Dec 4" and "Nov 27" (§1, 3). C's rule (dates as dates) fixes it on
+  the phone too.
+- **The + button** covers the last visible row's deadline (Discussion 3 — replies). Not new, and not fixed by any
+  option; noted.
+
+### 6.2 How others do it on the iPhone
+
+From memory, not checked on a phone:
+
+- **Things 3:** the title is one line. In Today and Upcoming the project's name is small grey text under it. Notes and
+  a checklist show as small glyphs; the deadline is a flag with "n days left". Rows with a second line are taller.
+- **Reminders:** the title wraps, never cut. Under it, a grey line with the date (red when overdue), and the list's
+  name in Today and Scheduled; then the notes' first line. Rows are as tall as they need.
+
+Both put the details on a line under the title. Neither keeps title, list, date and deadline on one phone line.
+
+### 6.3 Options
+
+All four use C's rules from §4: the day labels inside months, dates as dates in Upcoming, "Due" on a group's own day,
+the mark (tile and short name) in mixed views, counts in lists and Today.
+
+| | Layout | Row height | Upcoming | CS 489 list | Today |
+|---|---|---|---|---|---|
+| **1. Mark under the title** (my first idea) | The mark on a quiet second line in mixed views; the rest stays on line 1 | 48 | Better: name whole, in colour | Unchanged: still cut | Unchanged |
+| **2. One line, condensed** | No notes glyph; the count only once one item is checked; no "Today" where the blue ring says it; the mark for the name | 48 | Still cut when a row has a mark and a deadline (title ~150pt) | Better: most lectures fit; assignments still cut | Better |
+| **3. Title line, detail line** (recommended) | Line 1: the title alone. Line 2, quiet: the mark, the When, the count, the notes glyph, and the deadline capsule at its right edge. One line when there's nothing for line 2 | 56 with details, 48 without | Titles get ~315pt, twice today's 156 | Same | Same |
+| **4. Wrapped titles** | As 3, but the title wraps to up to two lines | 48, 56 or 78 | Whole titles | Whole titles | Whole titles |
+
+- **1** keeps the height and fixes Upcoming's list name, but leaves every plain list and Today as they are, and 22 + 15pt
+  of text in 48pt leaves 5pt above and below.
+- **2** keeps the height and gains 40 to 90pt a row, which isn't enough: "Discussion 3 — initial post" with its mark
+  and deadline is still cut. It also drops things the user may use ("0/12" says not started; the notes hint).
+- **3** fixes every view and drops nothing. Deadlines line up in one column at the right of line 2. It costs 8pt on
+  rows with details: a screen holds about one row in seven fewer (12 instead of 14, with no labels).
+- **4** shows every title whole, but rows come in three heights, the details don't line up from row to row, and fewer
+  rows fit. It's Reminders' answer, and Reminders is a list you read, not one you drag much.
+
+### 6.4 Recommendation: 3, a title line and a detail line
+
+The rule, for the iPhone (not the Mac, and not the widgets):
+
+- **Line 1:** the title, 17/22, the whole width from the checkbox to the row's end (~315pt on a 393pt phone). Cut off,
+  it fades as now.
+- **Line 2:** 13pt `ink-tertiary`, 20pt tall, 2pt under line 1. In order: the mark (in views that mix lists), the When
+  (as each view words it, and hidden where its group says it: Today, an Upcoming day), the checklist count, the notes
+  glyph; then, at its right edge, the deadline capsule at 20pt. When it runs out of room, the mark's short name fades
+  first, then the When goes; the tile, the count and the deadline never go.
+- **Height:** 56pt when line 2 has anything, else one 48pt line (the notes glyph alone stays after the title on
+  line 1). In Upcoming every row has a mark, so every row is 56. Rows keep their minimum height and grow with
+  Dynamic Type, as now.
+- **iPad:** the same row in a narrow column; I'd keep the Mac's one-line row when the list column is wider than about
+  600pt (a decision below).
+
+What it means for:
+
+- **Row height:** two heights, 48 and 56. Upcoming, Today and most course lists are mostly 56: about one row in seven
+  fewer per screen.
+- **Drag:** rows already size themselves (Dynamic Type), and the drag gap already takes the lifted row's own height
+  (`TaskCollection+Drag.swift`, `State.height` from the row's frame), so mixed heights need no new drag model. One new
+  case: a row changes height when it gains or loses line 2 (a When set or cleared, a deadline added). It should resize
+  on the layout curve like a row being typed into (`CollectionEditing`), and while a drag holds updates, it waits like
+  any other resize (T27). Swipe actions and select mode's joined fills follow the row's height.
+- **Widgets:** no change from this. Widget rows stay one line (23pt medium, 24pt large): they show no count or notes
+  glyph, and a widget can't scroll, so density matters more there. T2's change stands: the medium Today widget's tile
+  gets the short name.
+- **The Mac:** unchanged; C's one-line row (§4) has the room.
+
+Spec changes if 3 is picked: §3 Metrics (the iPhone's 56pt two-line row), §24 (on the iPhone the When and the deadline
+are on line 2, the deadline at its right), and feedback 16's narrow order gets an iPhone line ("the title keeps its line;
+on line 2 the short name goes first, then the When").
+
+### 6.5 For the user to decide
+
+1. **Which option:** 1, 2, 3 (recommended) or 4?
+2. **One line when there's nothing to show,** or always two lines so every row is the same height? I'd keep one line:
+   in a list, a bare task shouldn't carry an empty line.
+3. **"Today" in lists:** hide the When when it's today or earlier, since the blue ring says it (as Today hides it)? I'd
+   do it on the iPhone; the Mac can follow if the user likes it.
+4. **Checklist count and notes glyph:** keep both on line 2 (they cost nothing there), or show the count only once an
+   item is checked?
+5. **iPad:** the one-line row when the list column is wide (over ~600pt), or the two-line row everywhere?
