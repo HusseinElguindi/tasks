@@ -23,7 +23,7 @@ struct HomeView: View {
                 if !sidebar {
                     ToolbarItem(placement: .principal) {
                         HStack(spacing: 7) {
-                            LogoMark(size: 20)
+                            LogoMark(scale: 0.8)
                             Text("Tasks").font(.system(size: 17, weight: .semibold)).foregroundStyle(p.ink)
                         }
                         .opacity(folded ? 1 : 0)
@@ -34,20 +34,21 @@ struct HomeView: View {
     }
 }
 
-/// Home's header: the mark and "Tasks", large on the phone.
+/// Home's header: the mark (a list mark, `LogoMark`) and "Tasks", large on the phone.
 struct HomeHeader: View {
     let sidebar: Bool
     @Environment(\.palette) private var p
 
     var body: some View {
         HStack(spacing: sidebar ? 9 : 11) {
-            LogoMark(size: sidebar ? 22 : 30)
+            LogoMark(scale: sidebar ? 1 : 1.2)
             Text("Tasks")
                 .font(sidebar ? .system(size: 20, weight: .semibold) : Typo.largeTitle)
                 .foregroundStyle(p.ink)
             Spacer()
         }
-        .padding(.leading, Metric.rowPad - 2)
+        // The mark on the rows' tile column, as the Mac's sidebar header puts it.
+        .padding(.leading, Metric.rowPad)
         .padding(.top, 4)
         .padding(.bottom, 14)
         .accessibilityElement(children: .ignore)

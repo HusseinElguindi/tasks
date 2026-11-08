@@ -10,7 +10,8 @@ import TasksTheme
 /// and at the other scales the nearest whole points (21×17 in the bar, 22×18 in a task's details, 31×25 under a large
 /// title), the radius a fifth of the width, so the finish's one-device-pixel hairlines land on pixels.
 struct ListTile: View {
-    enum Content { case mono(String), symbol(String) }
+    /// `check` is the Mac's tile check (`Glyph.check`), the app's mark (`LogoMark`).
+    enum Content { case mono(String), symbol(String), check }
     let content: Content
     let hue: RGBA
     var scale: CGFloat = 1
@@ -27,6 +28,12 @@ struct ListTile: View {
             case let .symbol(s):
                 Image(systemName: s)
                     .font(.system(size: 12.5 * scale, weight: .semibold))
+            case .check:
+                // The Mac's TileLayer glyph: a 12-of-20 box, centred, stroked round in white.
+                let box = w * 12 / 20
+                TileCheck()
+                    .stroke(style: StrokeStyle(lineWidth: box * TileCheck.stroke, lineCap: .round, lineJoin: .round))
+                    .frame(width: box, height: box)
             }
         }
         .foregroundStyle(.white)
@@ -652,50 +659,33 @@ struct GroupLabel: View {
     }
 }
 
-// MARK: - The 04 · Log mark
+// MARK: - The app's mark
 
-/// The app's mark, from the sidebar header's SVG (viewBox 150 150 724 724): an accent head with the check cut out,
-/// two rings and their trails, and the ink bar. The head is lit as the Mac's is (BrandMark): the tile's finish, round,
-/// with no specular strip.
+/// The app's mark inside the app is a list mark (the user, 2026-11-08: "let's go with lit body (2a), but when the logo
+/// shows in the app, it's a list mark."): the lit tile every list wears, in Today's hue (the accent, the same in both
+/// appearances), with the white check, as the Mac's sidebar header draws it (`ListMark`, app/Tasks/Sidebar/
+/// SidebarHeader.swift). It takes a list tile's scales, so it sits as a list's tile does: 0.8 in the bar, 1.2 under a
+/// large title. The app icon is the same tile filling its body (design/logo/final).
 struct LogoMark: View {
-    var size: CGFloat = 28
+    var scale: CGFloat = 1
     @Environment(\.palette) private var p
-    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
-        Canvas { ctx, sz in
-            let s = sz.width / 724
-            func r(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> CGRect {
-                CGRect(x: (x - 150) * s, y: (y - 150) * s, width: w * s, height: h * s)
-            }
-            func circle(_ cx: CGFloat, _ cy: CGFloat, _ rad: CGFloat) -> Path {
-                Path(ellipseIn: r(cx - rad, cy - rad, rad * 2, rad * 2))
-            }
-            ctx.fill(Path(r(304, 436, 36, 64)), with: .color(p.markTrail))
-            ctx.fill(Path(r(304, 612, 36, 64)), with: .color(p.markTrail))
-            ctx.fill(Path(roundedRect: r(462, 524, 280, 64), cornerRadius: 32 * s), with: .color(p.markTrail))
-            ctx.fill(Path(roundedRect: r(462, 700, 220, 64), cornerRadius: 32 * s), with: .color(p.markTrail))
-            ctx.fill(circle(322, 556, 56), with: .color(p.markRings))
-            ctx.fill(circle(322, 732, 56), with: .color(p.markRings))
-            ctx.fill(Path(roundedRect: r(462, 296, 340, 80), cornerRadius: 40 * s), with: .color(p.markBar))
-            ctx.drawLayer { l in
-                // The head's art reaches `outset` past the circle for its halo; the check is cut out of it.
-                let head = r(322 - 100, 336 - 100, 200, 200)
-                if let art = TileArt.image(hue: p.value(.markHead), halo: p.tileHalo, size: head.size,
-                                           radius: head.width / 2, scale: displayScale, specular: false) {
-                    let o = TileArt.outset
-                    l.draw(Image(decorative: art, scale: displayScale), in: head.insetBy(dx: -o, dy: -o))
-                }
-                l.blendMode = .destinationOut
-                var ck = Path()
-                ck.move(to: CGPoint(x: (276.5 - 150) * s, y: (339.5 - 150) * s))
-                ck.addLine(to: CGPoint(x: (308 - 150) * s, y: (371 - 150) * s))
-                ck.addLine(to: CGPoint(x: (367.5 - 150) * s, y: (304.5 - 150) * s))
-                l.stroke(ck, with: .color(.black), style: StrokeStyle(lineWidth: 30 * s, lineCap: .round, lineJoin: .round))
-            }
-        }
-        .frame(width: size, height: size)
-        .accessibilityHidden(true)
+        ListTile(content: .check, hue: p.tileToday, scale: scale)
+    }
+}
+
+/// The Mac's `Glyph.check` (M3.8 8.4l2.7 2.7 5.7-6.2 in a 16 box, a 2.2 stroke), in a unit box.
+struct TileCheck: Shape {
+    static let stroke: CGFloat = 2.2 / 16
+
+    func path(in r: CGRect) -> Path {
+        let s = r.width / 16
+        var p = Path()
+        p.move(to: CGPoint(x: r.minX + 3.8 * s, y: r.minY + 8.4 * s))
+        p.addLine(to: CGPoint(x: r.minX + 6.5 * s, y: r.minY + 11.1 * s))
+        p.addLine(to: CGPoint(x: r.minX + 12.2 * s, y: r.minY + 4.9 * s))
+        return p
     }
 }
 

@@ -106,8 +106,9 @@ With `-sampleData`, lists go by short names: `inbox` `school` `phys` `tasks` `ho
 
 - The theme is the Mac's, from the TasksTheme package (`app/TasksCore/Sources/TasksTheme`): Rex with the Ember accent,
   its tokens, and the lit tiles' finish (`TileArt`). `Tasks/Theme/Theme.swift` turns its values into SwiftUI colours;
-  `Tasks/Theme/Palette.swift` holds its tokens for one appearance, by the Mac's names. A list tile and the logo mark's
-  head are drawn by `TileArt`, as on the Mac (`ListTile` and `LogoMark` in `Tasks/Views/Components.swift`).
+  `Tasks/Theme/Palette.swift` holds its tokens for one appearance, by the Mac's names. A list tile and the app's mark (a
+  list mark: Today's lit tile with the check) are drawn by `TileArt`, as on the Mac (`ListTile` and `LogoMark` in
+  `Tasks/Views/Components.swift`).
 - `Tasks/Theme/Metrics.swift`: the phone's row grid (48pt rows, 22pt rings), type and motion.
 - `Tasks/Model/AppModel.swift`: the UI state next to TasksCore's `Store` (navigation, sheets, open disclosures, the
   notice and its Undo, the draft, the appearance, rows checked a moment ago) and the actions, each a Store action.
@@ -118,7 +119,8 @@ With `-sampleData`, lists go by short names: `inbox` `school` `phys` `tasks` `ho
 - `Tasks/Views/`: home, list screen, rows, task detail, the When and Deadline picker, settings, and the root (a stack
   on iPhone, three panes on iPad). `MarkdownView.swift` draws notes from TasksCore's Markdown reading.
 - `TasksUITests/FlowTests.swift`: adds tasks, completes and undoes, swipes, edits a date, deletes a list, changes the appearance.
-- `Tools/MakeIcon.swift`: renders the app icon from the 04 · Log mark.
+- `Tasks/Assets.xcassets/AppIcon.appiconset`: the app icon, 02a Lit body (any, dark and tinted), written by
+  `design/logo/final/export.sh`.
 - `Tools/shot.sh`, `Tools/screenshots.sh`: screenshots on a simulator from the launch arguments above.
 - `Tools/tailscale-bridge.py`: installs on the phone over Tailscale when it isn't on the Mac's network, by bridging
   Xcode's wireless connection (setup and usage in its header).

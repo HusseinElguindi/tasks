@@ -38,8 +38,8 @@ It needs python3, with no packages, and Xcode 26 or later for swiftc, iconutil a
 - `icon-1024-dark.png`, the same lit body (the user asked for it in light and dark);
 - `icon-1024-tinted.png`, a greyscale cut (white check on black) that the system tints.
 
-`ios/Tools/MakeIcon.swift` still draws the old 04 Log icon. Nothing runs it anymore, and it's left for the iPhone side
-to remove.
+`ios/Tools/MakeIcon.swift`, which drew the old 04 Log icon, is gone. Inside the iPhone app the mark is the list mark too
+(`LogoMark` in `ios/Tasks/Views/Components.swift`).
 
 ## The finish
 

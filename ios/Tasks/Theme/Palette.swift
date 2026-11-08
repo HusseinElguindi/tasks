@@ -34,11 +34,10 @@ struct Palette: Sendable {
     /// D's spark (COLOR.md §4): = accent-text.
     let spark: Color
     let danger, dangerTint, attention, attentionTint: Color
-    // Tiles, drag and the brand mark
+    // Tiles and drag
     /// The lit tile's halo, just outside its edge (COLOR.md §2). A value, as the tiles' hues are: TileArt draws them.
     let tileHalo: RGBA
     let liftChip: Color
-    let markHead, markBar, markRings, markTrail: Color
     // Shadows
     let shadowPopoverRing, shadowPopover, shadowLiftRing, shadowLift: Color
     /// B's solid tile hues, the same in both appearances: the seven slots, then Today's (the accent).
@@ -67,7 +66,6 @@ struct Palette: Sendable {
         focus = c(.focus); textSelection = c(.textSelection); plan = c(.plan); spark = c(.spark)
         danger = c(.danger); dangerTint = c(.dangerTint); attention = c(.attention); attentionTint = c(.attentionTint)
         tileHalo = v[Token.tileHalo.rawValue]; liftChip = c(.liftChip)
-        markHead = c(.markHead); markBar = c(.markBar); markRings = c(.markRings); markTrail = c(.markTrail)
         shadowPopoverRing = c(.shadowPopoverRing); shadowPopover = c(.shadowPopover)
         shadowLiftRing = c(.shadowLiftRing); shadowLift = c(.shadowLift)
         tiles = [Token.tileBlue, .tileMagenta, .tileGreen, .tileCyan, .tileYellow, .tileRed, .tileInk, .tileToday].map { v[$0.rawValue] }

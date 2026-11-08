@@ -569,6 +569,23 @@ final class FlowTests: XCTestCase {
         shot("flow-scrolled")
     }
 
+    /// Home folded: the large header's mark and name go under the bar, and the bar shows them small (the mark is a list
+    /// mark: Today's lit tile with the check). The sample's Home fits a phone at the default size, so it's scrolled at
+    /// the largest text size; the bar's mark and name don't grow with it. Shots only, in Dark and Light: the bar's name
+    /// is in the accessibility tree folded or not (it's the screen's title), so there's nothing to assert on.
+    func testHomeFoldsToTheMarkInTheBar() {
+        for appearance in ["dark", "light"] {
+            app.launchArguments = ["-sampleData", "YES", "-appearance", appearance, "-style", "classic",
+                                   "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+            app.launch()
+            app.settle()
+            app.swipeUp()
+            sleep(1)
+            shot("flow-home-folded-\(appearance)")
+            app.terminate()
+        }
+    }
+
     // MARK: A very long list name
 
     /// A few long words and one that can't break.
