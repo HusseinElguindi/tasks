@@ -2,10 +2,12 @@ import Foundation
 import notify
 import TasksCore
 
-/// The CLI's nudge (feedback item 14, spec §5 "Realtime"): after a command pushed ops, `tasks` posts a Darwin
-/// notification, and the app runs its normal sync at once instead of at its next 30 s tick. A burst of commands is one
-/// sync (`SyncNudge.Debounce`: 0.5 s after the last nudge, at most 5 s after the first); a nudge during a sync asks the
-/// store for one more pass after it (`Store.sync`). Nothing shows on screen; the changes come through `/v1/sync`.
+/// The CLI's nudge (feedback item 14, spec §5 "Realtime") and the server's pokes (design/PUSH-SYNC.md): after a
+/// command pushed ops, `tasks` posts a Darwin notification; after any device pushed, the server's `/v1/events` socket
+/// (`SyncSocket`, held by `AppModel`) says the new head. Both go through one debounce (`SyncPokes`: 0.5 s after the
+/// last, at most 5 s after the first), so a CLI command heard both ways, or a burst of them, is one sync. A poke at a
+/// head the store already has (its own push, mostly) syncs nothing. Nothing shows on screen; the changes come through
+/// `/v1/sync`.
 ///
 /// Release listens for "com.elguindi.Tasks.changed"; Debug ("Tasks Dev") for its server's own name, so a scratch run
 /// never pokes the installed app (`SyncNudge.name`).
@@ -14,11 +16,12 @@ final class SyncNudgeListener {
     private weak var store: Store?
     private var token: Int32 = NOTIFY_TOKEN_INVALID
     private(set) var name: String?
-    private var debounce = SyncNudge.Debounce()
-    private var pending: DispatchWorkItem?
+    private let pokes: SyncPokes
 
     init(store: Store) {
         self.store = store
+        pokes = SyncPokes(store: store)
+        pokes.log = { [weak self] in self?.log($0) }
         #if DEBUG
         watch()
         #endif
@@ -41,30 +44,23 @@ final class SyncNudgeListener {
     }
 
     private func nudged() {
-        let now = ProcessInfo.processInfo.systemUptime
-        let at = debounce.nudge(at: now)
-        pending?.cancel()
-        let work = DispatchWorkItem { [weak self] in
-            MainActor.assumeIsolated { self?.fire() }
-        }
-        pending = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + max(0, at - now), execute: work)
         log("nudge")
+        pokes.nudge()
     }
 
-    private func fire() {
-        pending = nil
-        debounce.fired()
-        log("sync requested")
-        store?.requestSync()
+    /// The socket's `{"head":N}`.
+    func poked(head: Int) {
+        log("poke head=\(head)")
+        pokes.poke(head: head)
     }
 
-    // MARK: Debug: `-debugNudgeLog <file>` appends each nudge, each request and each sync, with times.
+    // MARK: Debug: `-debugNudgeLog <file>` appends each nudge and poke, the socket's states, each request and each
+    // sync, with times.
 
     #if DEBUG
     private static let logURL: URL? = UserDefaults.standard.string(forKey: "debugNudgeLog").map { URL(fileURLWithPath: $0) }
 
-    private func log(_ s: String) {
+    func log(_ s: String) {
         guard let url = Self.logURL else { return }
         let line = String(format: "%.3f %@\n", Date().timeIntervalSince1970, s)
         if let h = try? FileHandle(forWritingTo: url) {
@@ -100,6 +96,6 @@ final class SyncNudgeListener {
         }
     }
     #else
-    private func log(_ s: String) {}
+    func log(_ s: String) {}
     #endif
 }

@@ -288,7 +288,7 @@ Each entry also carries a chain `hash` (§6), so a client can prove its cursor p
 
 ### API contract
 
-There's exactly one endpoint: `POST /v1/sync`. Pushing and pulling are the same call; a pull is a push with no ops. There is **no `GET /v1/health`**, because a pull with empty `ops` already proves the Worker, the token and the DO all work, so a health route would add a second thing to keep working without telling us anything new.
+There's one sync endpoint: `POST /v1/sync`. (`GET /v1/events`, the poke socket in §5 Realtime, carries no data; the user agreed to it as a second route, 2026-11-08.) Pushing and pulling are the same call; a pull is a push with no ops. There is **no `GET /v1/health`**, because a pull with empty `ops` already proves the Worker, the token and the DO all work, so a health route would add a second thing to keep working without telling us anything new.
 
 #### HTTP
 
@@ -605,7 +605,7 @@ Several Macs recovering at once is fine: each re-pushes its own ops, and whateve
 
 **Deleting the server no longer erases data.** A wiped or deleted-and-redeployed server is rebuilt by the first Mac that syncs. Starting over for real also means deleting each Mac's Application Support data before it syncs again.
 
-### Realtime: polling, no WebSocket
+### Realtime: a WebSocket poke, with polling as the safety net
 
 Sync triggers:
 
@@ -630,7 +630,24 @@ Sync triggers:
     (`scheme://host:port`), so a test run against a `wrangler dev` reaches only Debug apps syncing with that server
     and never the installed app (`SyncNudge` in TasksCore).
 
-**Pushback:** a WebSocket (DO hibernation API) would cut sync latency from up to 30s (60s with no window) to near-instant. For one person's Macs, 30s is fine. If it's ever wanted, the socket only needs to send "head is now N" and clients keep using `/v1/sync`, so the protocol doesn't change.
+- **The server's poke** (design/PUSH-SYNC.md; built 2026-11-08, the Mac first, the iPhone later). `GET /v1/events`
+  is a WebSocket on the `UserLog` DO, accepted with the hibernation API (`ctx.acceptWebSocket`), so the object still
+  sleeps between requests. The Worker checks it like `/v1/sync`: 404, then 405 for anything but `GET`, 426 without
+  `Upgrade: websocket`, 401 for a bad token. The DO sends `{"head":N}` at once and after every append that moved
+  head, from every writer (the apps, the CLI, the remote MCP); a pull or a push of only duplicates sends nothing.
+  Clients send nothing but protocol pings. `/v1/sync` and the format are unchanged, so old clients keep polling.
+  - The app (`SyncSocket`, `SocketPolicy` and `SyncPokes` in TasksCore) hands each head to the CLI nudge's debounce
+    (0.5s quiet, 5s cap), waits for any sync in flight, then syncs unless its cursor is already there. Another
+    device's change shows in about 1.5s: the writer's ~1s edit debounce, then ~0.5s.
+  - The Mac holds the socket whenever it syncs periodically: with a window, or without one while Sync with no window
+    open is on (the user, 2026-11-08: no setting of its own). Sleep closes it; waking reconnects and syncs. A network
+    change reconnects at once. While it's connected the periodic sync slows to every 5 min with a window and 10 min
+    without, a safety net for a lost poke or a half-open socket; while it's down, the 30s and 60s above.
+  - Reconnecting: 1s, doubling to 5 min, ±20% jitter (a deploy closes every socket at once); a minute connected resets
+    it. 401 stops it until the token changes; 404, 405 or 426 (a server without the route) retries hourly. A ping every
+    30s; no pong within 10s is a drop.
+  - The iPhone would hold it only in front; there's no background push (no APNs; the user, 2026-11-08). The desktop
+    widgets still redraw at most every 2 min with no window open (above): the data is fresh, the redraw waits.
 
 ### Compaction and server snapshots: not yet
 
@@ -762,7 +779,7 @@ CREATE TABLE log (
 
 The append never awaits: SHA-256 comes from `node:crypto` (the `nodejs_compat` flag), which is synchronous, and the inserts run in one `transactionSync`. So requests can't interleave inside `sync()`. Web Crypto's `digest()` is async and would open a window between reading `head` and appending. The cached `head` and hash are updated only after the transaction commits.
 
-The Worker has one route, `POST /v1/sync`. The split of work:
+The Worker has two routes: `POST /v1/sync`, and `GET /v1/events`, the poke socket (§5 Realtime), which it authorizes and hands to the DO's `fetch`. The split of work:
 
 - **Worker:** routing, auth, size limits, parsing and op validation (`404`, `405`, `401`, `413`, `400`), then the response encoding.
 - **DO, via RPC:** `sync(from, base, ops)`, where each op arrives as its id and its stored text, serialized by the Worker. It does the log check (`409`), the append and the page read, and returns the response body (built by concatenating the stored op text, never re-parsing it) or a mismatch.
@@ -807,8 +824,8 @@ One macOS app target, **macOS 14+**, the minimum `design/PaneTheme.swift` alread
 
 Per Mac, in UserDefaults (the token in the Keychain), never synced:
 
-- **Sync:** Server URL, Token, **Sync with no window open** (on: every 60s while the app runs with no window, §5
-  Realtime; off: only while a window is open, and on the CLI's nudge), Status and Sync Now.
+- **Sync:** Server URL, Token, **Sync with no window open** (on: the poke socket, or every 60s without it, while the
+  app runs with no window, §5 Realtime; off: only while a window is open, and on the CLI's nudge), Status and Sync Now.
 - **Appearance:** Theme, Interface style, Highlight focused pane (design/INTERACTIONS-v2.md).
 - **Behavior:** Edit tasks, and **Open at login** (off by default; `SMAppService.mainApp`, so macOS keeps it and System
   Settings ▸ General ▸ Login Items shows it; if macOS needs it approved there, the row says so and links to it). With
@@ -1105,7 +1122,8 @@ Deferred on purpose. Each is additive and needs no change to what v1 stores.
   - Every Mac's `base` then mismatches, so each gets a `409`. But `409` recovery (§5) re-pushes every op a Mac knows, which would put the purged ops straight back. A purge therefore needs its own signal, e.g. a distinct error that tells Macs to drop ops for the purged ids before recovering.
   - The other open design work is producing the rewritten log on the server, which needs reduced state there (a server snapshot).
 - **Server snapshots / compaction:** for faster first sync on a new Mac (§5, §6).
-- **Realtime:** a WebSocket "head is now N" poke from the DO (§5).
+- ~~**Realtime:** a WebSocket "head is now N" poke from the DO (§5).~~ Built for the Mac (design/PUSH-SYNC.md); the
+  iPhone next.
 - **Per-task history view** (§6).
 - ~~**Block Markdown rendering** for notes (§2).~~ Built (`design/MARKDOWN.md`).
 - **Multiple users, Sign in with Apple** (§7).
