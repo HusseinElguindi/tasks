@@ -173,8 +173,11 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
     private(set) var wanted: [String] = []
     /// Items the current `update`'s apply inserted (configured with their new signatures, so not resized by it).
     private(set) var justInserted: Set<String> = []
-    /// Each resizable row's height signature as last configured (`CollectionEditing`).
+    /// Each resizable row's height signature as last configured (`CollectionEditing`), a task's resolved to "1" or "2"
+    /// (`resolve`).
     var sizes: [String: String] = [:]
+    /// The latest signatures as `TaskCollection.signatures` gave them, before `resolve`.
+    private var given: [String: String] = [:]
     var onFold: (Bool) -> Void = { _ in }
 
     // The areas (the files above). Each holds its own state.
@@ -243,7 +246,8 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
         }
         NotificationCenter.default.addObserver(self, selector: #selector(keyboard(_:)),
                                                name: UIResponder.keyboardWillChangeFrameNotification, object: nil)
-        registerForTraitChanges([UITraitPreferredContentSizeCategory.self]) { (self: Self, _) in self.reconfigureAll() }
+        // A new text size: every row configured again, at once, its fit too.
+        registerForTraitChanges([UITraitPreferredContentSizeCategory.self]) { (self: Self, _) in self.refit(animated: false) }
         view = cv
         fold.install()
         editor.install()
@@ -267,13 +271,13 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
         cell.owner = self
         cell.backgroundConfiguration = .clear()
         // Nothing here holds the controller: the cells are its view's.
-        let app = app, source = source, rows = rows, state = sizes[id], wide = wide
+        let app = app, source = source, rows = rows, state = sizes[id]
         // A row being typed into is cut at its cell as drawn: a line it gains is under the row's top (`CellTop`) before
         // the cell grows on the spring, and shows as the cell opens, not over the next row.
         cell.clipsToBounds = state?.hasPrefix(TaskCollection.editingMark) == true
         weak let owner = self
         cell.contentConfiguration = UIHostingConfiguration {
-            CollectionLine(id: id, source: source, rows: rows, state: state, wide: wide, owner: owner).modifier(CellTheme(app: app))
+            CollectionLine(id: id, source: source, rows: rows, state: state, owner: owner).modifier(CellTheme(app: app))
                 // One identity per task, so a reused cell starts fresh: its box sees no "change" and gives no haptic.
                 .id(id)
         }
@@ -283,16 +287,46 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
         drag.configured(cell)
     }
 
-    /// The list column is wider than `Metric.wideColumn` (iPad): task rows are one line. Rows are configured again as it
-    /// crosses (`viewDidLayoutSubviews`).
-    private var wide = false
+    // MARK: Fitting (RowFit)
 
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        let now = cv.bounds.width - 2 * Metric.rowInset > Metric.wideColumn
-        guard now != wide else { return }
-        wide = now
-        if dataSource.snapshot().numberOfItems > 0 { reconfigureAll() }
+    /// A row's width, from its fill's edge to edge, that the fits were resolved at: the collection's, less the safe
+    /// area at the sides (a list section keeps its cells' content inside it) and the cells' margins.
+    private(set) var rowWidth: CGFloat = 0
+
+    /// The signatures with each task's fit resolved to "1" or "2" at the row's width and the text size.
+    private func resolve(_ given: [String: String]) -> [String: String] {
+        let w = rowWidth, c = traitCollection.preferredContentSizeCategory
+        return given.mapValues { s in RowFit.resolve(s, width: w, category: c) ?? s }
+    }
+
+    /// iPad's rotation, columns and sidebar (the iPhone is portrait only): the rows' width changes before they're laid
+    /// out at it. A row whose shape changes is resized just after this layout pass, not inside it.
+    override func viewWillLayoutSubviews() {
+        super.viewWillLayoutSubviews()
+        let b = cv.bounds.inset(by: UIEdgeInsets(top: 0, left: cv.safeAreaInsets.left, bottom: 0, right: cv.safeAreaInsets.right))
+        let w = (b.width - 2 * Metric.rowInset).rounded()
+        guard w != rowWidth, w > 0 else { return }
+        let first = rowWidth == 0
+        rowWidth = w
+        // The first width: the rows weren't drawn at any other (they're laid out after this).
+        if first { refit(animated: false) } else { DispatchQueue.main.async { [weak self] in self?.refit(animated: true) } }
+    }
+
+    /// The rows' fits again, at the width and text size now; the rows whose shape changed resized on the layout spring
+    /// (`animated`) or at once. While a drag holds updates they wait, like any resize (`applyHeld`).
+    func refit(animated: Bool) {
+        let before = sizes
+        let now = resolve(given)
+        let changed = now.keys.filter { now[$0] != before[$0] && before[$0] != nil && current.contains($0) }
+        sizes = now
+        guard dataSource.snapshot().numberOfItems > 0 else { return }
+        if !animated {
+            reconfigureAll()
+        } else if drag.holdsUpdates {
+            for k in changed where heldSizes[k] == nil { heldSizes[k] = before[k] }
+        } else if !changed.isEmpty {
+            editor.resize(changed.sorted(), from: before)
+        }
     }
 
     /// Every shown row configured again, e.g. for a new text size.
@@ -314,11 +348,13 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
 
     // MARK: Applying
 
-    func update(_ lines: [Line], sizes new: [String: String], animation: Animation?) {
+    func update(_ lines: [Line], sizes asked: [String: String], animation: Animation?) {
         let made = TaskCollection.items(lines, banner: app.deletedList(source) != nil)
         // A row that goes keeps drawing its line while it leaves.
         rows.merge(made.lines)
         // New cells are configured with the new signatures; those already shown keep theirs until they're resized.
+        given = asked
+        let new = resolve(asked)
         let before = sizes
         sizes = before.merging(new.filter { !current.contains($0.key) }) { _, n in n }
         wanted = made.ids

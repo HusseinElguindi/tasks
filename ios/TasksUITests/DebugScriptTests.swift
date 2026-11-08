@@ -68,8 +68,9 @@ final class DebugScriptTests: XCTestCase {
             XCTAssertGreaterThan(points.count, 20, "\(name): the frames")
             guard let first = points.first, let last = points.last else { continue }
             let y0 = first.y, y1 = last.y
-            // Its three rows: the chapter (When "Today", 56), the worked examples (48) and the recording ("Tomorrow", 56).
-            XCTAssertEqual(abs(y1 - y0), 160, accuracy: 2, "\(name): Labs moved by Lectures' section")
+            // Its three rows: the chapter (When "Today", which fits on its line: 48), the worked examples (48) and the
+            // recording ("Tomorrow", which doesn't: 56).
+            XCTAssertEqual(abs(y1 - y0), 152, accuracy: 2, "\(name): Labs moved by Lectures' section")
             // The start that fits the spring best, and how well it fits.
             var best = (error: Double.infinity, t0: 0.0)
             for k in 0...3000 {

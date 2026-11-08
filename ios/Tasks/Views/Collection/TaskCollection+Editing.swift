@@ -147,10 +147,11 @@ extension TaskCollection {
             case let .headingNotes(h): out["n:" + h.id] = notesSignature(h, d, typed)
             case .draft: out["draft"] = d.map { "\($0.kind)" } ?? ""
             case let .empty(title, message, _): out["empty"] = title + message
-            // A task's row gains or loses its line 2 (a date set or cleared, a checklist added, a check settling): it
-            // resizes on the spring, like a row typed into (ROW-DENSITY.md §6.4).
+            // A task's row gains or loses its line 2 (a date set or cleared, a checklist added, a check settling, a
+            // rename that no longer fits on one line): it resizes on the spring, like a row typed into (ROW-DENSITY.md
+            // §6.4). Its words here; the controller resolves them to "1" or "2" at its width (`RowFit`, T55).
             case let .task(t, indent, groupDay, day):
-                out["t:" + t.id] = app.rowDetails(t, source: source, indent: indent, groupDay: groupDay, day: day).twoLine ? "2" : "1"
+                out["t:" + t.id] = app.rowFit(t, source: source, indent: indent, groupDay: groupDay, day: day).signature
             default: break
             }
         }

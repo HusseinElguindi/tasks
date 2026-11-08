@@ -429,10 +429,16 @@ struct DeadlineChip: View {
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
 
+    /// Its words and tone, as a row's measure reads them too (`RowFit`).
+    static func label(_ date: CalendarDate, today: CalendarDate, groupDay: CalendarDate?, upcoming: Bool) -> (text: String, tone: DateLabel.Tone) {
+        let c = upcoming ? DateLabel.upcomingDeadline(date, today: today, groupDay: groupDay)
+            : DateLabel.deadlineChip(date, today: today)
+        return (!upcoming && date == groupDay ? "Due" : c.text, c.tone)
+    }
+
     var body: some View {
-        let c = upcoming ? DateLabel.upcomingDeadline(date, today: app.today, groupDay: groupDay)
-            : DateLabel.deadlineChip(date, today: app.today)
-        let text = !upcoming && date == groupDay ? "Due" : c.text
+        let (text, tone) = Self.label(date, today: app.today, groupDay: groupDay, upcoming: upcoming)
+        let c = (text: text, tone: tone)
         HStack(spacing: 4) {
             Image(systemName: "flag.fill")
                 .font(.system(size: 9.5, weight: .semibold))

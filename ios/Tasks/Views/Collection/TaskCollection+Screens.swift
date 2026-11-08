@@ -13,10 +13,9 @@ struct CollectionLine: View {
     let id: String
     let source: Source
     let rows: CollectionRows
-    /// The row's height signature when it was configured (`TaskCollection.signatures`).
+    /// The row's height signature when it was configured (`TaskCollection.signatures`; a task's resolved to "1" or "2"
+    /// by `RowFit`).
     var state: String? = nil
-    /// The list column is wider than `Metric.wideColumn`: task rows are one line (TaskRow).
-    var wide = false
     weak var owner: TaskCollectionController?
     @Environment(AppModel.self) private var app
 
@@ -68,7 +67,7 @@ struct CollectionLine: View {
                               selected: app.flashed.contains(t.id) || (app.isSplit ? app.selectedTask == t.id : app.detailTask == t.id),
                               picked: pick.picked, joinTop: pick.joinTop, joinBottom: pick.joinBottom,
                               // The state it was configured with (its signature): line 2 shows only as it's resized.
-                              twoLineOverride: state.map { $0 == "2" }, wide: wide)
+                              twoLineOverride: state.map { $0 == "2" })
             // A deleted list's rows are deaf, as on the Mac (§28).
             if app.deletedList(source) != nil {
                 row.disabled(true)
