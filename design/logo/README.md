@@ -2,6 +2,8 @@
 
 Canvas: https://claude.ai/artifact/ScTE29QmxCwxJxfRdnrNPd (private until shared from its Share menu). Brief: `docs/TASK-logo.md`.
 
+**Superseded (2026-11-08):** the app icon is now round 3's 02a Lit body, and the mark inside the app is the 02b list mark (`final/README.md`, `round2/README.md`). The rest of this page is round 1, kept for the record.
+
 **Decision (2026-10-31): 04 Log is the app icon.** The others are kept on the canvas for reference. The final mark,
 its exports and the Icon Composer document are in `final/` (see `final/README.md`) and on the canvas's Final board
 (`Final.dc.html`).
