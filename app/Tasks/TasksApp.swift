@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import TasksCore
 
@@ -12,7 +13,7 @@ struct TasksApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1200, height: 760)
-        .commands { TasksCommands() }
+        .commands { TasksCommands(model: model) }
 
         Settings {
             ThemedRoot(model: model) { SettingsView() }
@@ -43,6 +44,7 @@ struct ThemedRoot<Content: View>: View {
 /// The menu bar (§17). Commands that need a task are disabled while there's none (an untitled draft isn't one); the
 /// ones that work from a task's text fields end the edit first, the way a press elsewhere would.
 struct TasksCommands: Commands {
+    let model: AppModel
     @FocusedValue(\.windowState) private var window
     @FocusedValue(\.store) private var store
 
@@ -88,6 +90,13 @@ struct TasksCommands: Commands {
     }
 
     var body: some Commands {
+        // The About panel shows the app's mark as the app shows it everywhere inside: the list mark (SidebarHeader.swift),
+        // not the icon (the user, 2026-11-08: "when the logo shows in the app, it's a list mark").
+        CommandGroup(replacing: .appInfo) {
+            Button("About \(ProcessInfo.processInfo.processName)") {
+                NSApp.orderFrontStandardAboutPanel(options: [.applicationIcon: ListMark.image(width: 64, palette: model.palette)])
+            }
+        }
         CommandGroup(replacing: .newItem) {
             Button("New Task") { actions?.newTask() }
                 .keyboardShortcut("n")
