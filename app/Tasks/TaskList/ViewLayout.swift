@@ -304,7 +304,11 @@ extension TaskLayout {
                 let g = ViewGroups.past(v.days[i], today: today)
                 if index[g.id] == nil {
                     index[g.id] = buckets.count
-                    buckets.append((g.id, g.kind == .day ? .day : .month, LabelInfo(name: g.name, sub: g.sub), []))
+                    // A month has Upcoming's month look (B), as everywhere months are labels (the user, 2026-11-08:
+                    // "we need to be consistent everywhere").
+                    var info = LabelInfo(name: g.name, sub: g.sub)
+                    info.month = g.kind == .month
+                    buckets.append((g.id, g.kind == .day ? .day : .month, info, []))
                 }
                 buckets[index[g.id]!].ids.append(id)
             }
@@ -331,10 +335,10 @@ extension TaskLayout {
             }
             for b in buckets { group(b.id, b.info, b.ids, kind: b.kind) }
             // The columns (round 2b): the lists of the task rows (a deleted list's row and the tasks under it carry no
-            // mark), and the widest day of a month row.
+            // mark), and the widest day of a month row, a deleted list's included (§7.7, one grid).
             var seen = Set<EntityID>()
-            for (i, id) in v.ids.enumerated() where p.list(id) == nil {
-                if let l = p.task(id)?.list, seen.insert(l).inserted { L.markLists.append(l) }
+            for (i, id) in v.ids.enumerated() {
+                if p.list(id) == nil, let l = p.task(id)?.list, seen.insert(l).inserted { L.markLists.append(l) }
                 if ViewGroups.past(v.days[i], today: today).kind == .month {
                     L.dayColumn = max(L.dayColumn, ceil(TextLayer.width(DateLabel.monthDay(v.days[i]), font: TaskRowView.dayFont)))
                 }
@@ -349,11 +353,12 @@ extension TaskLayout {
     /// A day's label inside one of Upcoming's months: 24pt, under the month's 32pt one (ROW-DENSITY.md direction C).
     static let dayInMonthLabel: CGFloat = 24
 
-    /// An Upcoming month's label: a list heading's look, 13/16 semibold `ink` on a 1pt `line-separator` rule, in a 44pt
-    /// slot, so the months stand apart from the days (the user, 2026-11-08: "the months need to be more clear").
+    /// A month's label, in every view that groups by month (Upcoming, Completed, Trash): a list heading's look, 13/16
+    /// semibold `ink` on a 1pt `line-separator` rule, in a 44pt slot, so the months stand apart from the days (the
+    /// user, 2026-11-08: "the months need to be more clear", then "we need to be consistent everywhere").
     static let monthLabel: CGFloat = 44
 
-    /// A group label's slot: 32, 24 for a day inside a month, 44 for an Upcoming month.
+    /// A group label's slot: 32, 24 for a day inside an Upcoming month, 44 for a month.
     func labelHeight(_ key: EntityID) -> CGFloat {
         guard let info = labelInfo[key] else { return Self.pitch }
         return info.inMonth ? Self.dayInMonthLabel : info.month ? Self.monthLabel : Self.pitch

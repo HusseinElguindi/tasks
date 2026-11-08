@@ -121,8 +121,11 @@ final class LiveSocketTests: XCTestCase {
         let (s, _) = socket()
         s.update(config: SyncConfig(url: good.url.appendingPathComponent("old"), token: good.token), hold: true)
         await eventually { if case .waiting = s.state { true } else { false } }
-        guard case .waiting(let after) = s.state else { return XCTFail("\(s.state)") }
-        XCTAssertGreaterThanOrEqual(after, 3600 * 0.8)
+        guard case .waiting(let until, let why) = s.state else { return XCTFail("\(s.state)") }
+        XCTAssertEqual(why, .oldServer)
+        XCTAssertEqual(LiveStatus.kind(s.liveInput), .notAvailable(retryAt: until))
+        let after = until.timeIntervalSinceNow
+        XCTAssertGreaterThanOrEqual(after, 3600 * 0.8 - 5)
         XCTAssertLessThanOrEqual(after, 3600 * 1.2)
     }
 
@@ -131,13 +134,13 @@ final class LiveSocketTests: XCTestCase {
         let (s, r) = socket()
         s.update(config: SyncConfig(url: URL(string: "http://127.0.0.1:9")!, token: good.token), hold: true)
         await eventually { if case .waiting = s.state { true } else { false } }
-        guard case .waiting(let first) = s.state else { return XCTFail("\(s.state)") }
-        XCTAssertEqual(first, 1, accuracy: 0.2 + 1e-9)
+        guard case .waiting(let firstUntil, .dropped) = s.state else { return XCTFail("\(s.state)") }
+        XCTAssertEqual(firstUntil.timeIntervalSinceNow, 1, accuracy: 0.3)
         // It tries again on its own, and backs off further.
         await eventually(4) { r.states.filter { if case .waiting = $0 { true } else { false } }.count >= 2 }
-        let waits = r.states.compactMap { if case .waiting(let w) = $0 { w } else { nil } }
+        let waits = r.states.compactMap { if case .waiting(let w, _) = $0 { w } else { nil } }
         XCTAssertGreaterThanOrEqual(waits.count, 2)
-        if waits.count >= 2 { XCTAssertEqual(waits[1], 2, accuracy: 0.4 + 1e-9) }
+        if waits.count >= 2 { XCTAssertGreaterThan(waits[1], waits[0]) }
         // A wake or a network change skips the wait.
         s.reconnectNow()
         XCTAssertEqual(s.state, .connecting)

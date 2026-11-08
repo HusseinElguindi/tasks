@@ -41,9 +41,14 @@ struct SettingsView: View {
                 }
                 PaneRowDivider()
                 PaneRow("Status", description: status) {
-                    Button("Sync Now") { model.store?.requestSync(force: true) }
+                    Button("Sync Now") { model.syncNow() }
                         .buttonStyle(.pane())
                         .disabled(model.store == nil)
+                }
+                // The poke socket (design/SYNC-STATUS.md): hidden until sync is set up.
+                if let live = model.liveInput {
+                    PaneRowDivider()
+                    LiveUpdatesRow(input: live)
                 }
             }
             PaneSection("Appearance") {
@@ -160,5 +165,56 @@ struct SettingsView: View {
         case .checkToken: return "The server rejected the token. Check it and save again."
         case .failed(let message): return "Sync stopped: \(message)"
         }
+    }
+}
+
+/// Settings ▸ Sync ▸ Live updates (design/SYNC-STATUS.md §2, A): the title, the detail under it, and a dot and a word on
+/// the right. The countdown ticks once a second; nothing else moves. One element for VoiceOver.
+struct LiveUpdatesRow: View {
+    let input: LiveStatus.Input
+    @Environment(AppModel.self) private var model
+    @Environment(\.tk) private var tk
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let row = LiveStatus(input, device: .mac(syncWithoutWindow: model.syncWithoutWindow), pace: model.livePace,
+                                 now: context.date)
+            PaneRow(LiveStatus.title, description: row.detail) {
+                HStack(spacing: 6) {
+                    LiveDot(dot: row.dot, size: 7)
+                    Text(row.word)
+                        .font(.system(size: 13).monospacedDigit())
+                        .foregroundStyle((row.dot == .attention ? tk.attention : tk.inkSecondary).swiftUI)
+                        .fixedSize()
+                }
+            }
+            // A long detail (an old server's retry time) wraps rather than truncating inside the timeline.
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(LiveStatus.title)
+            .accessibilityValue(row.spoken)
+        }
+    }
+}
+
+/// The row's dot: filled `list-green` while live, a 1.5pt ring while trying, filled `ink-quiet` offline or with an old
+/// server, `attention` for a refused token, a quiet ring when off.
+struct LiveDot: View {
+    let dot: LiveStatus.Dot
+    let size: CGFloat
+    @Environment(\.tk) private var tk
+
+    var body: some View {
+        Group {
+            switch dot {
+            case .live: Circle().fill(tk.list(.green).swiftUI)
+            case .ring: Circle().strokeBorder(tk.inkTertiary.swiftUI, lineWidth: 1.5)
+            case .quietRing: Circle().strokeBorder(tk.inkQuiet.swiftUI, lineWidth: 1.5)
+            case .quiet: Circle().fill(tk.inkQuiet.swiftUI)
+            case .attention: Circle().fill(tk.attention.swiftUI)
+            }
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
     }
 }

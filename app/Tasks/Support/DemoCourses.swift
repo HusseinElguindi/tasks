@@ -75,6 +75,18 @@ enum DemoCourses {
         t(inbox, "Old reading list", notes: "Moved to notes.", del: 2)
         t(earth, "Field trip waiver", notes: notes, del: 11)
         t(se490, "Proposal draft v1", notes: notes, del: 15)
+        // Deleted lists among them (ROW-DENSITY.md §7.7): one this week, three in the month before (one empty, one with
+        // only completed tasks), so their rows sit next to task rows in both kinds of group.
+        func deletedList(_ name: String, open: Int, done: Int = 0, on d: Int) {
+            let l = store.createList(name: name)
+            for i in 0..<open { t(l, "\(name) task \(i + 1)") }
+            for i in 0..<done { t(l, "\(name) done \(i + 1)", done: d + 1) }
+            store.perform([Op(id: store.newID(), at: now, type: .listUpdate, target: l, set: Patch(archivedAt: .some(doneAt(d))))])
+        }
+        deletedList("Groceries", open: 5, on: 1)
+        deletedList("Summer trip", open: 0, on: 11)
+        deletedList("Thesis — Literature review", open: 12, on: 12)
+        deletedList("Old errands", open: 0, done: 3, on: 16)
     }
 }
 #endif
