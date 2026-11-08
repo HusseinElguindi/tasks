@@ -346,3 +346,29 @@ Boards: **Grouped by list · Undated** and **Grouped by list · Today**, each as
 Spec change if 2 is picked: §22, the group label in Undated and Today (and any later view grouped by list): the tile,
 6, the short name (11/14 semibold `ink-tertiary`), then the rest of the name after the separator (400 `ink-quiet`),
 cut off by fading the rest first.
+
+### 7.7 Trash: deleted lists next to task rows
+
+The user, 2026-11-08, on Trash in the installed build (main 6a819f1): "this looks a bit wierd.", then "oh that pic is
+from the trash completed". The screenshot is the **Trash** view's month groups: deleted lists show only in Trash (§28),
+its rows have unchecked rings at 60%, and Trash has no Completed section of its own (Completed never shows lists).
+
+Board: **Trash: deleted lists next to task rows**, the user's own Trash, as installed and three fixes, wide and
+narrow.
+
+What's odd as installed:
+- A deleted list's "5 tasks · Nov 1" is right-aligned against its ›, so its date sits in neither of the task rows'
+  columns (right of the date column, under the marks' names).
+- Its 20×16 tile sits in the checkbox's place, so a run of deleted lists (six in October) is a stack of loud tiles
+  among quiet rings.
+- Only list rows show a ›, so their text ends 26pt further in. The rows read as two layouts mixed.
+
+Fixes:
+- **1 · One grid (recommended):** the tile shrinks to the mark's 16×13, centred in the checkbox's column; the date goes
+  in the date column; "5 tasks" or "Empty" goes in the mark column's place (12pt `ink-tertiary`); the › stays. Narrow:
+  the short names go, and a list's count becomes its number ("5", "0").
+- **2 · Their own section:** as 1, with deleted lists together under a "Deleted lists" label at the top. Tidier when
+  there are many, but Trash is no longer one logbook in deletion order (SPEC §28).
+- **3 · Aligned only:** the date and count move into the columns; the big tile stays. Fixes the first point only.
+
+Unchanged: a deleted list's click (opens it read-only), its › (expands it), its tasks with no mark, Restore.
