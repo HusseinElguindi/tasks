@@ -33,7 +33,8 @@ public struct LoadedState: Sendable {
 /// The three files in the data directory, and all I/O on them, on one background serial queue (spec §8, §9).
 ///
 /// - `log.jsonl`: confirmed entries exactly as the server sent them. Append-only; the source of truth.
-/// - `pending.jsonl`: local ops not yet confirmed. One append per op; rewritten atomically after a sync.
+/// - `pending.jsonl`: local ops not yet confirmed. One append per op; rewritten atomically after a sync that leaves
+///   some pending, emptied in place after one that confirms them all.
 /// - `snapshot.json`: `{schema, cursor, hash, logOffset, state}`, a cache of the reduced state at `cursor`.
 /// - `log.jsonl.bak-<ms>`: a log moved aside by a 409 recovery. Never read; deleted when the recovery finishes.
 ///
@@ -286,12 +287,14 @@ public final class Persistence: @unchecked Sendable {
         }
     }
 
-    /// Replaces pending.jsonl atomically (temp file, then rename) with the given ops.
+    /// Replaces pending.jsonl with the given ops: atomically (temp file, then rename), or with no ops by emptying it
+    /// in place.
     public func rewritePending(_ ops: [Data]) {
         queue.async { self.rewritePendingOnQueue(ops) }
     }
 
     private func rewritePendingOnQueue(_ ops: [Data]) {
+        if ops.isEmpty, emptyPendingOnQueue() { return }
         var data = Data()
         for op in ops {
             data.append(op)
@@ -300,6 +303,30 @@ public final class Persistence: @unchecked Sendable {
         try? pendingHandle?.close()
         pendingHandle = nil // the rename replaces the inode; reopen on the next append
         try? data.write(to: pendingURL, options: .atomic)
+    }
+
+    /// Every pending op was confirmed: truncate pending.jsonl to 0 bytes in place, and skip it entirely when it's
+    /// already empty (the usual case: most syncs confirm the one edit that started them). False if the truncation
+    /// failed, and the caller falls back to the atomic rewrite.
+    ///
+    /// Crash-safe because:
+    /// - Truncating to 0 is one change of the file's length. A crash leaves the old file whole or the file empty,
+    ///   never part of a line. (A torn last line is dropped at launch anyway.)
+    /// - The old file holds only confirmed ops. Each is in log.jsonl, appended earlier on this queue, so if it
+    ///   survives a crash launch finds it in the log tail and drops it from pending (`loadOnQueue`).
+    /// - No unconfirmed op can be in it: every append and rewrite runs on this serial queue in the order the main
+    ///   actor issued them. An op made after the sync's page was applied is appended after this; one made before is
+    ///   still in `projection.pending`, so the caller passes it and the atomic rewrite runs instead.
+    private func emptyPendingOnQueue() -> Bool {
+        let size = (try? FileManager.default.attributesOfItem(atPath: pendingURL.path)[.size] as? Int) ?? 0
+        guard size > 0 else { return true } // missing or already empty: nothing to write
+        guard let h = handle(&pendingHandle, pendingURL), (try? h.truncate(atOffset: 0)) != nil,
+              (try? h.seek(toOffset: 0)) != nil else {
+            try? pendingHandle?.close()
+            pendingHandle = nil
+            return false
+        }
+        return true
     }
 
     /// An op the server rejected (`invalid_op`), kept verbatim for debugging.

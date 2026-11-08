@@ -33,6 +33,23 @@ public struct StoreClock: Sendable {
     public static let system = StoreClock(now: { Date() }, calendar: .autoupdatingCurrent)
 }
 
+/// When the snapshot (`snapshot.json`, a cache of confirmed state) is rewritten (spec §8). Not after every sync:
+/// launch replays the log entries after the snapshot (the tail), which costs milliseconds for hundreds, and the log
+/// is the source of truth, so a crash between snapshots loses nothing. It's written when the app resigns active or
+/// quits (`persistNow`), as soon as the tail reaches `tailLimit` entries, and `interval` after the first entry the
+/// snapshot doesn't hold. The timer matters on iOS, which can kill a suspended app without notice.
+public struct SnapshotPolicy: Sendable {
+    public var tailLimit: Int
+    public var interval: Duration
+
+    public init(tailLimit: Int, interval: Duration) {
+        self.tailLimit = tailLimit
+        self.interval = interval
+    }
+
+    public static let standard = SnapshotPolicy(tailLimit: 500, interval: .seconds(600))
+}
+
 /// Who is making changes, and the change they belong to (spec §5 `actor`, `batch`).
 public struct Attribution: Hashable, Sendable {
     public var actor: String
@@ -94,20 +111,30 @@ public final class Store {
     @ObservationIgnored private var syncAgain = false
     @ObservationIgnored private var trigger: Task<Void, Never>?
     @ObservationIgnored private var snapshotTask: Task<Void, Never>?
+    @ObservationIgnored let snapshotPolicy: SnapshotPolicy
+    /// The cursor of the last snapshot written or asked for: entries from here to `cursor` are the tail.
+    @ObservationIgnored private(set) var snapshotCursor: Int
 
-    public init(loaded: LoadedState, persistence: Persistence, transport: SyncTransport, clock: StoreClock = .system) {
+    public init(loaded: LoadedState, persistence: Persistence, transport: SyncTransport, clock: StoreClock = .system,
+                snapshotPolicy: SnapshotPolicy = .standard) {
         self.persistence = persistence
         self.transport = transport
         self.clock = clock
+        self.snapshotPolicy = snapshotPolicy
         cursor = loaded.cursor
         base = loaded.hash
+        if case .snapshot(let tail) = loaded.source {
+            snapshotCursor = loaded.cursor - tail
+        } else {
+            snapshotCursor = loaded.cursor // empty, or a full replay that writes one just below
+        }
         projection = Projection(confirmed: loaded.confirmed, pending: loaded.pending,
                                 day: Day(containing: clock.now(), calendar: clock.calendar))
         if loaded.recovering {
             recoveryIDs = Set(loaded.pending.map(\.op.id))
             recovery = RecoveryProgress(confirmed: 0, total: recoveryIDs.count)
         }
-        if case .fullReplay = loaded.source { writeSnapshot() }
+        if case .fullReplay = loaded.source { writeSnapshot() } else { snapshotIfDue() }
         seedInboxIfMissing()
         countPending()
     }
@@ -198,22 +225,35 @@ public final class Store {
 
     // MARK: - Snapshot
 
+    /// Writes the snapshot at the current cursor (off the main thread; `Persistence` skips it if the cursor hasn't
+    /// moved) and stops the timer.
     public func writeSnapshot() {
+        snapshotTask?.cancel()
+        snapshotTask = nil
         persistence.writeSnapshot(state: projection.confirmed, cursor: cursor, hash: base)
+        snapshotCursor = cursor
     }
 
-    private func scheduleSnapshot() {
-        snapshotTask?.cancel()
-        snapshotTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(5))
-            guard !Task.isCancelled else { return }
-            self?.writeSnapshot()
+    /// After entries land (`SnapshotPolicy`): write now if the tail has reached the limit, otherwise make sure the
+    /// timer is running while there's a tail. The timer isn't restarted by later syncs, so steady traffic can't
+    /// postpone it.
+    private func snapshotIfDue() {
+        let tail = cursor - snapshotCursor
+        if tail >= snapshotPolicy.tailLimit {
+            writeSnapshot()
+        } else if tail > 0, snapshotTask == nil {
+            let interval = snapshotPolicy.interval
+            snapshotTask = Task { [weak self] in
+                try? await Task.sleep(for: interval)
+                guard !Task.isCancelled, let self else { return }
+                self.snapshotTask = nil
+                if self.cursor != self.snapshotCursor { self.writeSnapshot() }
+            }
         }
     }
 
-    /// Resign active / quit: write the snapshot now and wait for queued writes.
+    /// Resign active / quit / background: write the snapshot now and wait for queued writes.
     public func persistNow() {
-        snapshotTask?.cancel()
         writeSnapshot()
         persistence.flush()
     }
@@ -371,7 +411,7 @@ public final class Store {
             for e in page.entries where recoveryIDs.remove(e.op.id) != nil { r.confirmed += 1 }
             recovery = r
         }
-        scheduleSnapshot()
+        snapshotIfDue()
         return true
     }
 
@@ -389,6 +429,7 @@ public final class Store {
     /// pending, the snapshot goes, the log is moved aside, and the next request starts from 0.
     private func recoverFrom409() async {
         snapshotTask?.cancel()
+        snapshotTask = nil
         let before = projection.pending
         let queue = await persistence.beginRecovery(pending: before, now: nowMs)
         // Edits made while the files were being rewritten queue behind the recovery queue.
@@ -398,6 +439,7 @@ public final class Store {
         countPending()
         cursor = 0
         base = nil
+        snapshotCursor = 0 // the recovery deleted the snapshot
         inServerLog = []
         batchLimit = Self.maxOpsPerRequest
         recoveryIDs = Set(projection.pending.map(\.op.id))

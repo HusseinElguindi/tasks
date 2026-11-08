@@ -184,6 +184,67 @@ final class PersistenceTests: XCTestCase {
         XCTAssertEqual(loaded.confirmed, AppState.replay(ops))
     }
 
+    /// A sync that confirms everything empties pending.jsonl in place (same file, no rename), skips it when it's
+    /// already empty, and the next append starts at byte 0, with no hole before it.
+    func testPendingEmptiedInPlace() throws {
+        let ops = someOps(6)
+        let p = Persistence(directory: dir)
+        _ = p.loadSync()
+        for op in ops { p.appendPending(op.jsonData) }
+        p.flush()
+        let inode = { (try FileManager.default.attributesOfItem(atPath: p.pendingURL.path)[.systemFileNumber] as? Int) }
+        let before = try inode()
+        appendLog(p, ops)
+        p.rewritePending([])
+        p.flush()
+        XCTAssertEqual(try Data(contentsOf: p.pendingURL), Data())
+        XCTAssertEqual(try inode(), before, "truncated in place, not replaced")
+
+        // Already empty: not written at all.
+        let mtime = try XCTUnwrap(FileManager.default.attributesOfItem(atPath: p.pendingURL.path)[.modificationDate] as? Date)
+        Thread.sleep(forTimeInterval: 0.02)
+        p.rewritePending([])
+        p.flush()
+        XCTAssertEqual(try FileManager.default.attributesOfItem(atPath: p.pendingURL.path)[.modificationDate] as? Date, mtime)
+
+        // The next op lands at the start of the file, through the same handle.
+        let next = m.updateTask("t0", Patch(title: "after"))
+        p.appendPending(next.jsonData)
+        p.flush()
+        XCTAssertEqual(try Data(contentsOf: p.pendingURL), next.jsonData + Data("\n".utf8))
+        XCTAssertEqual(try inode(), before)
+        let loaded = Persistence(directory: dir).loadSync()
+        XCTAssertEqual(loaded.pending.map(\.op), [next])
+        XCTAssertEqual(loaded.confirmed, AppState.replay(ops))
+    }
+
+    /// No op made after the sync's page can be lost to the truncation: the queue runs the empty-out before any append
+    /// issued after it. And a crash before the truncation (the old, whole file) replays to the same pending set as one
+    /// after it, because every line in the old file is in the log tail.
+    func testPendingTruncationNeverLosesAnOpOrReplaysAConfirmedOne() throws {
+        let ops = someOps(9)
+        let p = Persistence(directory: dir)
+        _ = p.loadSync()
+        for op in ops { p.appendPending(op.jsonData) }
+        appendLog(p, ops)
+        p.flush()
+        // A crash right before the truncation: launch drops the confirmed ops.
+        let whole = Persistence(directory: dir).loadSync()
+        XCTAssertEqual(whole.pending, [])
+        XCTAssertEqual(whole.confirmed, AppState.replay(ops))
+
+        let p2 = Persistence(directory: dir)
+        _ = p2.loadSync() // rewrote pending.jsonl without the confirmed lines: now empty
+        let late = m.updateTask("t0", Patch(title: "made during the sync"))
+        for op in ops.prefix(3) { p2.appendPending(op.jsonData) } // confirmed in the log already
+        p2.rewritePending([])        // the sync confirmed everything it knew of…
+        p2.appendPending(late.jsonData) // …and an edit came right after
+        p2.flush()
+        let after = Persistence(directory: dir).loadSync()
+        XCTAssertEqual(after.pending.map(\.op), [late])
+        XCTAssertEqual(after.confirmed, AppState.replay(ops))
+    }
+
     func testSnapshotSkippedWhenCursorUnchangedOrLogBehind() throws {
         let ops = someOps(10)
         let p = Persistence(directory: dir)
