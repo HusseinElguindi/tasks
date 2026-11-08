@@ -170,7 +170,7 @@ enum DebugViews {
             let flags = (t?.completedAt != nil ? " done" : "") + (t?.deleted == true ? " deleted" : "")
                 + (L.isHeading(id) ? " #heading" + (w.collapsed.contains(id) ? " collapsed" : "") + ((L.noteH[id] ?? 0) > 0 ? " notes=\(Int(L.noteH[id]!))" : "") : "")
             if L.listRows.contains(id), let l = p.list(id) {
-                return (L.yList[L.index[id]!], "  \(Int(L.yList[L.index[id]!])) [list] \(l.name) \(TaskListView.deletedListCount(p, id))\(w.trashExpanded.contains(id) ? " expanded" : "")")
+                return (L.yList[L.index[id]!], "  \(Int(L.yList[L.index[id]!])) [list] \(l.name) \(TaskListView.deletedListCount(p, id).text)\(w.trashExpanded.contains(id) ? " expanded" : "")")
             }
             let child = L.childOf[id].map { " under=" + a.listName($0) } ?? ""
             return (L.yList[L.index[id]!], "  \(Int(L.yList[L.index[id]!])) \(t?.title ?? (id == w.draft?.id ? "<draft>" : id))\(flags)\(child) when=\(t?.when?.string ?? "-") dl=\(t?.deadline?.string ?? "-") list=\(t.map { a.listName($0.list) } ?? "-")")

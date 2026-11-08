@@ -393,7 +393,7 @@ final class TaskListView: NSView {
 
         let inUpcoming = state.route == .upcoming
         // The marks' column (Upcoming 1a; Completed, Trash and Today's Completed group, round 2b).
-        let markColumn: CGFloat? = L.markLists.isEmpty ? nil : markColumnWidth(L)
+        let (markColumn, compactMark) = markColumnWidth(L)
         let dayColumn: CGFloat? = (state.route == .completed || state.route == .trash) && L.dayColumn > 0 ? L.dayColumn : nil
         var headNeeded: [EntityID] = []
         for id in needed {
@@ -418,12 +418,16 @@ final class TaskListView: NSView {
                 if let when = draft.when, !(inToday && when <= today), when != groupDay { m.when = .when(when, today: today, dates: inUpcoming) }
                 if inUpcoming { m.mark = viewMark(L, id: id, list: draft.list, column: markColumn); m.deadlineColumn = L.deadlineColumn }
             } else if L.listRows.contains(id), let l = p.listModel(id) {
-                // A deleted list in Trash: one row, with "11 tasks" in the list-name slot (§28).
+                // A deleted list in Trash: one row on the task rows' grid, "11 tasks" in the mark's column and, in a
+                // month, its day in the day column (§28, ROW-DENSITY.md §7.7).
                 m = RowModel(id: id, title: l.name, untitled: false, done: false, draft: false)
                 m.trashed = true
-                m.deletedList = .init(monogram: l.monogram, slot: l.colorSlot, expanded: state.trashExpanded.contains(id))
-                m.whereText = Self.deletedListCount(p, id)
-                if L.groupKind(id) == .month, let at = l.archivedAt { m.whereSuffix = " · " + Self.monthDay(at) }
+                let count = Self.deletedListCount(p, id)
+                m.deletedList = .init(monogram: l.monogram, slot: l.colorSlot, expanded: state.trashExpanded.contains(id),
+                                      count: count.text, number: count.number,
+                                      day: L.groupKind(id) == .month ? l.archivedAt.map(Self.monthDay) : nil, column: markColumn)
+                m.dayColumn = dayColumn
+                m.compactMark = compactMark
             } else if let t = p.taskModel(id) {
                 m = RowModel(id: id, title: t.title, untitled: t.title.isEmpty, done: t.isDone, draft: false)
                 m.notes = t.notesSummary
@@ -440,6 +444,7 @@ final class TaskListView: NSView {
                 if (inToday && L.isDone(id)) || state.route.isView { m.mark = viewMark(L, id: id, list: t.list, column: markColumn) }
                 if inUpcoming { m.deadlineColumn = L.deadlineColumn }
                 m.dayColumn = dayColumn
+                m.compactMark = compactMark
                 m.trashed = trashed
                 // Under its deleted list's row: indented, and no list mark (§28).
                 if L.childOf[id] != nil {
@@ -703,12 +708,13 @@ final class TaskListView: NSView {
         }
     }
 
-    /// "11 tasks", "1 task"; with none open "4 completed"; an empty list "Empty" (§28).
-    static func deletedListCount(_ p: Projection, _ id: EntityID) -> String {
+    /// "11 tasks", "1 task"; with none open "4 completed"; an empty list "Empty" (§28). `number`, for a narrow row
+    /// (§7.7): the text's number, "0" for "Empty".
+    static func deletedListCount(_ p: Projection, _ id: EntityID) -> (text: String, number: String) {
         let open = p.openTaskCount(in: id)
-        if open > 0 { return open == 1 ? "1 task" : "\(open) tasks" }
+        if open > 0 { return (open == 1 ? "1 task" : "\(open) tasks", String(open)) }
         let done = p.completedTasks(in: id).count
-        return done > 0 ? "\(done) completed" : "Empty"
+        return done > 0 ? ("\(done) completed", String(done)) : ("Empty", "0")
     }
 
     /// "Nov 1", from epoch ms.
@@ -747,9 +753,21 @@ final class TaskListView: NSView {
         return s.isEmpty ? "Untitled" : s
     }
 
-    /// The names column: as wide as the widest short name of the lists the view's rows are in (direction C).
-    private func markColumnWidth(_ L: TaskLayout) -> CGFloat {
-        L.markLists.reduce(0) { max($0, ceil(TextLayer.width(Self.shortName(actions.listName($1)), font: TK.Font.small))) }
+    /// The names column: as wide as the widest short name of the lists the view's rows are in (direction C), and in
+    /// Trash wide enough for a deleted list's count, which starts where the tiles do (§7.7). nil: no row has a mark or
+    /// a count. `compact`: the column once the names have gone, past the tile's 16 only for a deleted list's number.
+    private func markColumnWidth(_ L: TaskLayout) -> (column: CGFloat?, compact: CGFloat) {
+        guard !L.markLists.isEmpty || !L.listRows.isEmpty else { return (nil, 0) }
+        let p = store.projection
+        let tileW = TileLayer.dimensions(.small).width
+        var column = L.markLists.reduce(0) { max($0, ceil(TextLayer.width(Self.shortName(actions.listName($1)), font: TK.Font.small))) }
+        var compact: CGFloat = 0
+        for id in L.listRows {
+            let c = Self.deletedListCount(p, id)
+            column = max(column, ceil(TextLayer.width(c.text, font: TaskRowView.dayFont)) - tileW - 6)
+            compact = max(compact, ceil(TextLayer.width(c.number, font: TaskRowView.dayFont)))
+        }
+        return (column, compact)
     }
 
     // MARK: - Headings, the title block and the list pane's notes (§23)

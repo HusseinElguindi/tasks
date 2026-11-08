@@ -33,7 +33,7 @@ struct TaskLayout {
         var day: CalendarDate?
         /// A day inside one of Upcoming's months: a 24pt label (`dayInMonthLabel`).
         var inMonth = false
-        /// One of Upcoming's months: a list heading's look in a 44pt slot (`monthLabel`, round 2: B).
+        /// A month (Upcoming, Completed, Trash): a list heading's look in a 44pt slot (`monthLabel`, round 2: B).
         var month = false
     }
 
@@ -67,8 +67,8 @@ struct TaskLayout {
     /// the Deadline's column, as wide as its widest date (0: no row has one). Both stay put through a drag.
     var markLists: [EntityID] = []
     var deadlineColumn: CGFloat = 0
-    /// Completed and Trash (round 2b): the month rows' day column, as wide as the view's widest day ("Oct 30"); 0 when
-    /// no row is in a month group. Today's Completed group and Completed and Trash fill `markLists` too.
+    /// Completed and Trash (round 2b): the month rows' day column, as wide as the view's widest day ("Oct 30"), a
+    /// deleted list's row's included; 0 when no row is in a month group. Today's Completed group and Completed and Trash fill `markLists` too.
     var dayColumn: CGFloat = 0
 
     // Headings and the title block (design/INTERACTIONS-v2.md §23).
