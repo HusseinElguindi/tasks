@@ -124,8 +124,9 @@ struct RowFit: Equatable {
 
 extension AppModel {
     /// A task's fit in `source` (`RowFit`), from its row details.
-    func rowFit(_ t: TaskModel, source: Source, indent: Bool, groupDay: CalendarDate?, day: CalendarDate?) -> RowFit {
-        let d = rowDetails(t, source: source, indent: indent, groupDay: groupDay, day: day)
+    func rowFit(_ t: TaskModel, source: Source, indent: Bool, groupDay: CalendarDate?, day: CalendarDate?,
+                when: CalendarDate? = nil) -> RowFit {
+        let d = rowDetails(t, source: source, indent: indent, groupDay: groupDay, day: day, when: when)
         var f = RowFit(title: t.title.isEmpty ? "New Task" : t.title, indent: indent)
         if let l = d.mark { f.mark = l.shortName.isEmpty ? "Untitled" : l.shortName }
         f.day = d.day.map(DateLabel.monthDay)

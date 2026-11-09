@@ -329,6 +329,23 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
         }
     }
 
+    /// A task's fit ("1" or "2", `RowFit`) for its signature, at the row's width and the text size now.
+    func fit(_ signature: String) -> String { resolve(["": signature])[""] ?? signature }
+
+    /// The row's height signature as the app's state gives it now, applied at once (no spring): a drop that changes it
+    /// (Upcoming: line 2 comes or goes with the day) lands at its new height, the one its gap had (CollectionDrag
+    /// `write`), rather than resizing after the copy has set down. The app's update after it finds nothing to resize.
+    func refitNow(_ id: String) {
+        guard let s = TaskCollection.signatures(app, source, app.lines(source))[id] else { return }
+        given[id] = s
+        let r = fit(s)
+        guard sizes[id] != r, dataSource.snapshot().indexOfItem(id) != nil else { return }
+        sizes[id] = r
+        var snap = dataSource.snapshot()
+        snap.reconfigureItems([id])
+        dataSource.apply(snap, animatingDifferences: false)
+    }
+
     /// Every shown row configured again, e.g. for a new text size.
     func reconfigureAll() {
         var snap = dataSource.snapshot()

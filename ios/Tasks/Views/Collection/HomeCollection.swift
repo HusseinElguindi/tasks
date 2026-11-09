@@ -782,3 +782,88 @@ extension HomeCollectionController: ScriptScreen {
     }
 }
 #endif
+
+#if DEBUG
+/// The drop landing check on Home's lists (`CollectionDrag.debugDropCheck`, TaskCollection+Drag.swift, has the rule):
+/// each list onto each slot of `slotTops`, the gap's preview against the layout the landing renders, then undone.
+extension HomeCollectionController {
+    func debugDropCheck() async -> [String] {
+        guard !holds else { return ["dropcheck home: FAIL a drag is under way"] }
+        var out: [String] = []
+        var checks = 0, fails = 0
+        func turn() async {
+            try? await Task.sleep(for: .milliseconds(30))
+            cv.layoutIfNeeded()
+        }
+        func tops() -> [String: CGFloat] {
+            var t: [String: CGFloat] = [:]
+            for (i, id) in current.enumerated() { if let f = layout.modelFrame(i) { t[id] = f.minY } }
+            return t
+        }
+        func name(_ id: String) -> String { (app.list(String(id.dropFirst(2)))?.name).map { "'\($0)'" } ?? id }
+        func diff(_ pre: [String: CGFloat], _ post: [String: CGFloat], _ dragged: String) -> [String] {
+            pre.sorted { $0.value < $1.value }.compactMap { id, y0 in
+                guard let y1 = post[id] else { return "\(name(id)) preview y \(Int(y0)), landed not shown" }
+                return abs(y0 - y1) > 0.5 ? "\(name(id))\(id == dragged ? " (dragged)" : "") preview y \(y0), landed \(y1)" : nil
+            }
+        }
+        await turn()
+        let base = current
+        let start = tops()
+        for id in base where id.hasPrefix("l:") {
+            guard let at = current.firstIndex(of: id), let f = layout.modelFrame(at) else { continue }
+            let slots = slotTops(DragState(id: id, height: f.height, grab: .zero, slot: at, ticked: at)).map(\.slot)
+            for s in slots {
+                guard let from = current.firstIndex(of: id), let fr = layout.modelFrame(from) else { break }
+                let d = DragState(id: id, height: fr.height, grab: .zero, slot: s, ticked: s)
+                drag = d
+                moveGap(animated: false)
+                let others = current.filter { $0 != id }
+                guard let y = slotY(d, s, others: others, from: from) else { continue }
+                var pre: [String: CGFloat] = [:]
+                for (i, item) in current.enumerated() {
+                    guard let r = layout.modelFrame(i) else { continue }
+                    pre[item] = item == id ? y : r.minY + (gapShift(item)?.dy ?? 0)
+                }
+                let wrote = moves(d)
+                if wrote {
+                    _ = write(d)
+                } else {
+                    drag = nil
+                    landing = id
+                    moveGap(animated: false)
+                }
+                cv.layoutIfNeeded()
+                let post = tops()
+                await turn()
+                landing = nil
+                moveGap(animated: false)
+                settle()
+                cv.layoutIfNeeded()
+                let after = tops()
+                var bad = diff(pre, post, id)
+                if bad.isEmpty { bad = diff(pre, after, id).map { "after the landing: " + $0 } }
+                checks += 1
+                if !bad.isEmpty {
+                    fails += 1
+                    out.append("FAIL home \(name(id)) to slot \(s): " + bad.prefix(6).joined(separator: "; "))
+                }
+                if wrote { app.undo.undo() }
+                var back = false
+                for _ in 0..<40 {
+                    await turn()
+                    settle()
+                    if current == base, tops().allSatisfy({ y in start[y.key].map { abs($0 - y.value) <= 0.5 } == true }) { back = true; break }
+                }
+                if !back {
+                    out.append("FAIL home: the undo didn't put the lists back after \(name(id)) to slot \(s); stopping")
+                    out.append("dropcheck home: FAIL \(checks) checks, \(fails + 1) failed")
+                    return out
+                }
+            }
+        }
+        out.append("dropcheck home: \(fails == 0 ? "ok" : "FAIL") \(checks) checks, \(fails) failed")
+        return out
+    }
+}
+#endif

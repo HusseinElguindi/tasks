@@ -177,12 +177,15 @@ extension AppModel {
     ///   (the user, 2026-11-08: "no keep \"Today\"").
     /// - The mark (§22 "The list mark"): in Upcoming, Completed and Trash, and on Today's Completed rows; not under a
     ///   deleted list's row (§28), nor under a label that names the list.
-    func rowDetails(_ t: TaskModel, source: Source, indent: Bool, groupDay: CalendarDate?, day: CalendarDate?) -> RowDetails {
+    /// `when`: the task's When as a drop will write it (Upcoming's drag lays the row out on the day it's over), in place
+    /// of its own.
+    func rowDetails(_ t: TaskModel, source: Source, indent: Bool, groupDay: CalendarDate?, day: CalendarDate?,
+                    when: CalendarDate? = nil) -> RowDetails {
         let trashed = isTrashed(t)
         let settled = t.isDone && !completing.contains(t.id)
         let dates = !settled && !trashed
         var d = RowDetails()
-        if dates, let w = t.when {
+        if dates, let w = when ?? t.when {
             switch source {
             case .upcoming: d.when = DateLabel.upcomingWhen(w, today: today, groupDay: groupDay)
             case .today: d.when = w <= today ? nil : DateLabel.whenChip(w, today: today)
