@@ -54,6 +54,9 @@ final class CollectionRows {
     /// An item's line (observed: the row redraws when it changes).
     func line(_ id: String) -> Line? { boxes[id]?.line }
 
+    /// An item's box, for a cell to hold from its configuration on (read without observing its line).
+    func box(_ id: String) -> Box? { boxes[id] }
+
     /// New lines over the old: the old stay, for rows that are leaving.
     func merge(_ new: [String: Line]) {
         for (id, line) in new {
@@ -271,13 +274,13 @@ final class TaskCollectionController: UIViewController, UICollectionViewDelegate
         cell.owner = self
         cell.backgroundConfiguration = .clear()
         // Nothing here holds the controller: the cells are its view's.
-        let app = app, source = source, rows = rows, state = sizes[id]
+        let app = app, source = source, rows = rows, state = sizes[id], box = rows.box(id)
         // A row being typed into is cut at its cell as drawn: a line it gains is under the row's top (`CellTop`) before
         // the cell grows on the spring, and shows as the cell opens, not over the next row.
         cell.clipsToBounds = state?.hasPrefix(TaskCollection.editingMark) == true
         weak let owner = self
         cell.contentConfiguration = UIHostingConfiguration {
-            CollectionLine(id: id, source: source, rows: rows, state: state, owner: owner).modifier(CellTheme(app: app))
+            CollectionLine(id: id, source: source, rows: rows, box: box, state: state, owner: owner).modifier(CellTheme(app: app))
                 // One identity per task, so a reused cell starts fresh: its box sees no "change" and gives no haptic.
                 .id(id)
         }

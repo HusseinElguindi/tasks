@@ -13,6 +13,12 @@ struct CollectionLine: View {
     let id: String
     let source: Source
     let rows: CollectionRows
+    /// The item's box when the cell was configured. The row draws from it, not from a lookup in `rows`: a row that
+    /// leaves keeps drawing its line after `rows` drops it, and a row put back in the cell that drew it before (an
+    /// undo in Upcoming brings back a day's label, or a month's and its day's) is a new box, so the row is drawn again.
+    /// From a lookup, the cell's inputs were the same as when it left, so SwiftUI kept the body it drew once its line
+    /// was dropped, empty, and the label came back at no height (T58).
+    var box: CollectionRows.Box? = nil
     /// The row's height signature when it was configured (`TaskCollection.signatures`; a task's resolved to "1" or "2"
     /// by `RowFit`).
     var state: String? = nil
@@ -37,7 +43,7 @@ struct CollectionLine: View {
         case "header": CollectionHeader(source: source, editingOverride: state.map { $0.hasPrefix(TaskCollection.editingMark) })
         case "banner": BannerLine(source: source)
         default:
-            if let line = rows.line(id) { row(line) }
+            if let line = box?.line ?? rows.line(id) { row(line) }
         }
     }
 

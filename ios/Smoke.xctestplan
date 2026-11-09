@@ -40,6 +40,7 @@
         "FlowTests/testALongPressAddsToTheSelection()",
         "FlowTests/testUndoAndRedoFromTheMenu()",
         "FlowTests/testSyncedTitleStandsAfterAnUntouchedEdit()",
+        "DebugScriptTests/testAnUndoneUpcomingDragBringsItsLabelsBackAtTheirHeight()",
         "HomeDragTests/testBackToBackFastDragsOnHome()",
         "WidgetLinkTests/testATaskLinkOpensItsListWithTheRowHighlighted()",
         "WidgetLinkTests/testANewTaskLinkStartsATaskInTheList()"

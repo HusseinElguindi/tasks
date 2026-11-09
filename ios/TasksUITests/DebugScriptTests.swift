@@ -154,4 +154,50 @@ final class DebugScriptTests: XCTestCase {
             app.terminate()
         }
     }
+
+    /// In Upcoming, "ECE 358 final exam" (alone on Dec 9, alone in December) is dragged up through our press onto an
+    /// earlier day, so its day's label and its month's go; the undo brings both back, each at its own height (T58).
+    /// They came back at no height, the rows below too high: put back in the cells that drew them before, whose rows had
+    /// been drawn empty once their lines were dropped, with the same inputs, so never drawn again. Which cell an item
+    /// gets back is up to UIKit (2 runs in 3 with longer waits; every time with these, before the fix), so it's 2
+    /// launches of 3 drags and undos each.
+    func testAnUndoneUpcomingDragBringsItsLabelsBackAtTheirHeight() throws {
+        let cycle = "drag:ECE 358 final exam,-420,20,16;wait:700;undo;wait:900;log:after;"
+        for run in 1...2 {
+            let app = XCUIApplication()
+            app.launchArguments = ["-sampleData", "YES", "-appearance", "dark", "-style", "classic", "-screen", "upcoming",
+                                   "-dragProbe", "YES", "-debugScriptToken", "uitest", "-debugScript",
+                                   "wait:800;down:ECE 358 final exam;cancel;wait:600;" + String(repeating: cycle, count: 3)]
+            app.launch()
+            // Nothing asked of the app while it runs (about 8 s): a query starves its display link, which the drags use.
+            Thread.sleep(forTimeInterval: 8)
+            let marker = app.descendants(matching: .any)["debugScript"].firstMatch
+            XCTAssertTrue(marker.appears(timeout: 30), "run \(run): the script ran to its end")
+            XCTAssertEqual(marker.value as? String, "uitest ok", "run \(run): with no errors")
+            let log = try String(contentsOfFile: marker.label + "/after.txt", encoding: .utf8)
+            let logs = log.components(separatedBy: "== ").filter { !$0.isEmpty }
+            XCTAssertEqual(logs.count, 3, "run \(run): a log after each undo")
+            for (k, entry) in logs.enumerated() {
+                XCTAssertTrue(entry.contains("drops=1"), "run \(run), undo \(k + 1): the drag dropped: \(entry)")
+                // "  <item> x,y,w,h", the shown rows in order.
+                let rows: [(id: String, h: Double)] = entry.split(separator: "\n").compactMap { line in
+                    let parts = line.split(separator: " ")
+                    guard line.hasPrefix("  "), parts.count >= 2 else { return nil }
+                    let f = parts[1].split(separator: ",").compactMap { Double($0) }
+                    return f.count == 4 ? (String(parts[0]), f[3]) : nil
+                }
+                guard let exam = rows.firstIndex(where: { $0.id == "t:s11" }) else {
+                    XCTFail("run \(run), undo \(k + 1): the exam is shown again: \(entry)")
+                    continue
+                }
+                for row in rows where row.id.hasPrefix("g:") || row.id.hasPrefix("t:") {
+                    XCTAssertGreaterThan(row.h, 20, "run \(run), undo \(k + 1): \(row.id) at its height: \(entry)")
+                }
+                // Its day's label right above it (and, while Dec 9 is over a week away, December's above that).
+                XCTAssertTrue(exam >= 1 && rows[exam - 1].id.hasPrefix("g:d:"),
+                              "run \(run), undo \(k + 1): the exam's day label is back above it: \(entry)")
+            }
+            app.terminate()
+        }
+    }
 }

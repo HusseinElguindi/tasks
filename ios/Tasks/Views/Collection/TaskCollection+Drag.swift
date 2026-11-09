@@ -1532,29 +1532,22 @@ extension CollectionDrag {
                 bad = checkDiff(shown, [:], after, dragged: id, above: above, folded: folded).map { "after the landing: " + $0 }
             }
             record(what, bad)
-            // Undone through the app's undo (the drop is one step), and back as it was.
-            // (The undo manager's own undo, not the menu's, which animates the rows back in: a group it brings back while
-            // off screen can come in at no height, a separate bug, which would stop the check.)
+            // Undone through the undo manager (the drop is one step; not the menu's undo, which animates the rows back
+            // in: the check reads layouts, not motion), and back as it was, every row at its own height: a label the
+            // undo brings back at no height (a row put back in the cell that drew it before, T58) fails it.
             if wrote { app.undo.undo() }
             var back = false
             var why = ""
-            var zero: [String] = []
             for _ in 0..<40 {
                 await checkTurn()
                 settle()
                 checkLayout()
-                // A row the undo brought back at no height (a separate bug: an Upcoming label removed and put back can
-                // measure nothing, and keep it): noted once, and reloaded so the check goes on.
                 let none = owner.current.enumerated().compactMap { i, item in
                     item.hasPrefix("g:") || item.hasPrefix("t:") ? (owner.layout.modelFrame(i)?.height ?? 1) < 1 ? item : nil : nil
                 }
-                if !none.isEmpty {
-                    if zero.isEmpty { out.append("NOTE \(view): the undo after \(what) brought back \(none.map(checkName).joined(separator: ", ")) at no height") }
-                    zero = none
-                    var snap = owner.dataSource.snapshot()
-                    snap.reloadItems(none)
-                    owner.dataSource.apply(snap, animatingDifferences: false, completion: nil)
-                    checkLayout()
+                guard none.isEmpty else {
+                    why = none.map(checkName).joined(separator: ", ") + " at no height"
+                    continue
                 }
                 // The app's update has come (the rows' heights are the state's), not only the items `settle` applied.
                 let sigs = TaskCollection.signatures(app, source, app.lines(source))
@@ -1569,12 +1562,6 @@ extension CollectionDrag {
                 } else {
                     why = "items \(owner.current.count) of \(base.count): " + Set(owner.current).symmetricDifference(base).sorted().joined(separator: ",")
                 }
-            }
-            // Only rows the undo left at no height are out of place: the separate bug above, not the drop's. The cases
-            // after this one compare their previews and landings in the same layout, so the check goes on.
-            if !back, !zero.isEmpty, owner.current == base {
-                out.append("NOTE \(view): \(zero.map(checkName).joined(separator: ", ")) stayed at no height after \(what); going on")
-                back = true
             }
             if !back {
                 out.append("FAIL \(view): the undo didn't put the list back after \(what) (\(why)); stopping")

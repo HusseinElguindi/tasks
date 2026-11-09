@@ -74,8 +74,8 @@ folder's path. `TasksUITests/DebugScriptTests.swift` runs a scripted heading dra
 `drop-landing-check.sh [--sim UDID] [--app Tasks.app] [--out DIR]` runs the `dropcheck` step on the sample data in
 Today, Upcoming, Undated, every list (PHYS 122 also with Labs, then Lectures, collapsed) and Home's lists: about 790
 drops in about 90 s, each written, compared with its preview and undone (`CollectionDrag.debugDropCheck`; the Mac's is
-app/Scripts/drop-landing-check.sh). It exits 1 on any failure. `NOTE` lines are not failures: they name rows an undo
-brought back at no height, a separate bug the check works around. Hold the sim lease while it runs.
+app/Scripts/drop-landing-check.sh). It exits 1 on any failure, an undo that brings a row back at no height too. Hold the
+sim lease while it runs.
 
 ## Examples
 
