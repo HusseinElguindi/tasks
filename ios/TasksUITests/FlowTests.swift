@@ -1755,8 +1755,9 @@ final class FlowTests: XCTestCase {
     /// ~0.6 s the menu took to close the box's top stroke was a hairline. The row's height (the distance between the
     /// rows either side) is the same renaming as at rest, as Rename starts and as it ends: the cause, caught whatever
     /// the screenshots' timing. Screenshots are taken on another thread from the tap on Rename (XCTest's idle wait off,
-    /// so the tap returns at once); in each that shows the box, a column through its straight part has two stroke runs,
-    /// the top one no thinner than the bottom one (less a pixel for rounding). Three renames a look. Dark and Light.
+    /// so the tap returns at once); in each that shows the box, wherever the keyboard's scroll has it, a column through
+    /// its straight part has two stroke runs as far apart as the settled box's, the top one no thinner than the bottom
+    /// one (less a pixel for rounding). Three renames a look. Dark and Light.
     func testARenamedHeadingsTopEdgeIsWholeAsTheMenuCloses() {
         final class Film: @unchecked Sendable {
             let lock = NSLock()
@@ -1792,16 +1793,23 @@ final class FlowTests: XCTestCase {
                 XCTAssertTrue(field.appears(timeout: 3), "\(what): renaming in place")
                 sleep(1)
                 XCTAssertEqual(span(), rest, accuracy: 0.5, "\(what): the row as tall renaming as at rest")
-                // Through the box's straight part: clear of its rounded corners, the caret and the chevron.
-                let x = field.frame.maxX - 60, from = field.frame.minY - 16, to = field.frame.maxY + 14
+                // Through the box's straight part: clear of its rounded corners, the caret and the chevron. From just
+                // over the settled box to the screen's foot, so the column follows the box wherever it is in a frame:
+                // as the keyboard comes up the list scrolls Labs up to it (on the first rename, ~97 pt in ~0.2 s), and
+                // a column cut off under the settled box took a frame mid-scroll for a box missing its bottom edge
+                // (T56: it was there, under the cut). Nothing else in this column is coloured on this screen.
+                let x = field.frame.maxX - 60, from = field.frame.minY - 16, to = app.frame.height
                 let settled = strokeRuns(XCUIScreen.main.screenshot().image.cgImage!, x: x, from: from, to: to)
                 XCTAssertEqual(settled.count, 2, "\(what): settled, the box's top and bottom edges (\(settled))")
+                let gap = settled.count == 2 ? settled[1].top - settled[0].top : 0
                 for (i, cg) in film.frames.enumerated() {
                     let runs = strokeRuns(cg, x: x, from: from, to: to)
                     guard !runs.isEmpty else { continue }
                     seen += 1
                     XCTAssertEqual(runs.count, 2, "\(what), frame \(i): the box's top and bottom edges (\(runs))")
                     guard runs.count == 2 else { continue }
+                    XCTAssertEqual(runs[1].top - runs[0].top, gap, accuracy: 1,
+                                   "\(what), frame \(i): the box whole, its edges as far apart as settled (\(runs), \(settled))")
                     XCTAssertGreaterThanOrEqual(runs[0].height, runs[1].height - 1,
                                                 "\(what), frame \(i): its top edge as thick as its bottom (\(runs), px)")
                 }
