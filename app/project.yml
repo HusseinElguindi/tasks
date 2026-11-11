@@ -137,6 +137,8 @@ targets:
       - path: Tasks/Support/SyncSchedule.swift
       # An undo step's group and name (WindowActions.undoable).
       - path: Tasks/Window/UndoStep.swift
+      # Which panes exist and where each is drawn (T50).
+      - path: Tasks/Window/PaneLayout.swift
       - path: ../widgets/Shared
     dependencies:
       - package: TasksCore

@@ -128,7 +128,9 @@ final class TitleFieldView: NSView {
 
     /// Puts the caret in the title: at the end (a new task) or with the text selected (⇧Tab from the notes).
     func takeCaret(_ selection: WindowState.TitleFocus.Selection) {
-        guard window != nil else { return }
+        // A request taken a turn late (`DetailRefs.titleAttached`) may no longer apply: Esc dropped the new task, the
+        // pane closed, or another task was selected meanwhile (T50).
+        guard window != nil, state.detailOpen, let id = taskID, state.selection == [id] else { return }
         field.focus(selection == .all ? .all : .end)
     }
 

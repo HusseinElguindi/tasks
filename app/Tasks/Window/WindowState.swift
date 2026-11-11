@@ -108,9 +108,33 @@ final class WindowState {
         // The sidebar stays on screen through a zoom, so it can have them.
         didSet { if zoomed, focus == .list { withAnimation(TK.Motion.natural) { zoomed = false } } }
     }
-    var detailOpen = false {
+    /// The window's panes (`PaneLayout`): which exist, open or closing, left to right. `MainLayout` draws exactly
+    /// these, so a pane can't stay on screen after its close (the stuck detail pane, T50).
+    private(set) var panes = PaneLayout()
+
+    /// Opens a pane (a closing one opens again where it is).
+    func openPane(_ id: PaneLayout.ID, kind: PaneLayout.Kind, after: PaneLayout.ID? = nil) {
+        panes.open(id, kind: kind, after: after)
+    }
+
+    /// Closes a pane: closed at once for everything that asks (`isOpen`), it slides off and is taken out once that has
+    /// played (`TK.Timer.detailClose`), unless it opened again meanwhile.
+    func closePane(_ id: PaneLayout.ID) {
+        guard let token = panes.close(id) else { return }
         // The detail pane closing (×, ⌘D, a dropped draft, the last task deleted) takes its zoom with it (§29).
-        didSet { if !detailOpen, zoomed { zoomed = false } }
+        if id == .detail, zoomed { zoomed = false }
+        DispatchQueue.main.asyncAfter(deadline: .now() + TK.Timer.detailClose) { [weak self] in
+            // Out with no transition: it's already off screen and clear.
+            var t = Transaction()
+            t.disablesAnimations = true
+            withTransaction(t) { _ = self?.panes.unmount(id, token: token) }
+        }
+    }
+
+    /// The detail pane is open (not closing): today's one second pane, by its fixed id. Setting it opens or closes it.
+    var detailOpen: Bool {
+        get { panes.isOpen(.detail) }
+        set { if newValue { openPane(.detail, kind: .detail, after: .list) } else { closePane(.detail) } }
     }
     /// The detail pane is zoomed (§29, the user 2026-11-01): it takes the list pane's room too, and the list hides, until
     /// ⇧⌘↩, the zoom button or Esc puts it back as it was. The sidebar stays as it is, open or hidden, and keeps its
