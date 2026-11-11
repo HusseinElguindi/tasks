@@ -30,6 +30,8 @@ import TasksCore
 ///     nlog:/path.txt   (appends the notes' text, selection, hidden marks, session and the task's stored notes)
 ///     settings   (opens Settings)   hidemain   (orders the main windows out)   windows:/path.txt   (appends each window,
 ///     whether it can become main, and `AppModel.hasVisibleWindow`)
+///     newesc:MS   (+, then Esc MS ms later)   close   (the detail pane's ×: `closeDetail`)   focusdetail   (a press in the
+///     detail pane before its button acts)
 ///     watch:MS:/path.txt   (for MS ms, checks the traffic lights on every turn of the run loop, before each commit,
 ///     and appends how many turns they were out of place)
 @MainActor
@@ -155,6 +157,22 @@ enum DebugScript {
                         }
                     } else {
                         await DebugSync.step(arg, window: window, store: store)
+                    }
+                case "close":
+                    // close — what the detail pane's × and its Esc do (`closeDetail`), for when a click can't reach a
+                    // SwiftUI button (the window isn't key).
+                    if let store = model.store { WindowActions(store: store, window: window).closeDetail() }
+                case "focusdetail":
+                    // focusdetail — what a press in the detail pane does before its button acts (DetailPane.press).
+                    if window.focus != .detail { window.focus = .detail }
+                    window.detailKeySink?.takeKeys()
+                case "newesc":
+                    // newesc:MS — + (a new task), then Esc MS ms later, without the 150 ms between steps
+                    // (the detail pane left on screen after it closed: Scripts/repro-stuck-detail.sh).
+                    if let store = model.store, let d = Int(arg) {
+                        WindowActions(store: store, window: window).newTask()
+                        try? await Task.sleep(for: .milliseconds(d))
+                        key(w, code: 53, flags: [])
                     }
                 case "act":
                     // The four views' actions and traces (Support/DebugViews.swift).
