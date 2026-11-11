@@ -124,7 +124,9 @@ struct WindowActions {
     func focus(_ f: WindowState.Focus) {
         if window.focus != f { window.focus = f }
         switch f {
-        case .list: window.taskList?.takeKeys()
+        // A narrow window's drill-in hides the list under the detail pane (`PaneFrames`): the keys stay where they
+        // are, as when the list wasn't there.
+        case .list: if !(window.narrow && window.detailOpen) { window.taskList?.takeKeys() }
         case .sidebar: window.sidebarView?.takeKeys()
         case .detail: window.detailKeySink?.takeKeys()
         }

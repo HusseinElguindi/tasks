@@ -96,41 +96,43 @@ struct MainLayout: View {
                     .frame(maxHeight: .infinity, alignment: .top)
                     // In Glass the panes would show it through their fills: it fades as they slide over it.
                     .opacity(style == .glass && !window.sidebarVisible ? 0 : 1)
-                HStack(spacing: 0) {
-                    if !(narrow && window.detailOpen) {
-                        // The band's title makes room for the cloud on the sidebar's curve.
-                        // Where its width settles (beside the detail pane, under a zoom, or alone), so its notes wrap
-                        // once as the detail pane or the sidebar slides, not on every frame.
-                        let settle = zoomed || (window.detailOpen && !narrow) ? g.listWidth : geo.size.width - g.lead - TK.M.gutter
-                        ListPane(store: store, window: window, leadingInset: window.sidebarVisible ? TK.M.headerInset : collapsedInset,
-                                 settleWidth: settle)
-                            .animation(TK.Motion.sidebar, value: collapsedInset)
-                            // Zoomed (§29): it keeps its width and its place, and its room closes up to nothing, so the
-                            // detail pane (drawn after it) slides over it while it fades. Nothing reflows or scrolls.
-                            .frame(width: zoomed ? g.listWidth : nil)
-                            .padding(.trailing, window.detailOpen && !narrow ? TK.M.gutter : 0)
-                            .frame(width: zoomed ? 0 : nil, alignment: .leading)
-                            .zoomedAway(zoomed)
-                    }
-                    if window.detailOpen {
-                        // v1's transition, kept exactly (§4).
-                        DetailPane(store: store, window: window, single: narrow || zoomed,
-                                   leadingInset: zoomed && !window.sidebarVisible ? collapsedInset : TK.M.headerInset)
-                            .animation(TK.Motion.sidebar, value: collapsedInset)
-                            .frame(width: narrow || zoomed ? nil : g.detail)
-                            // The list pane, which shows notices, is covered: they show here (§29).
-                            .overlay(alignment: .bottomTrailing) {
-                                if zoomed {
-                                    NoticeView(overlays: window.overlays, actions: WindowActions(store: store, window: window)).padding(12)
-                                }
+                // The panes as `window.panes` has them, each placed by its frame (`PaneFrames`). Nothing leaves with a
+                // removal transition: a closing pane slides off and fades in place, and is taken out a moment later with
+                // no transition, so it can't stay on screen after it closed (T50).
+                let frames = PaneFrames(layout: window.panes, width: geo.size.width, height: geo.size.height, lead: g.lead,
+                                        detailWidth: g.detail, gutter: TK.M.gutter, narrow: narrow, zoomed: window.zoomed)
+                ZStack(alignment: .topLeading) {
+                    ForEach(window.panes.panes) { pane in
+                        switch pane.kind {
+                        case .list:
+                            // The band's title makes room for the cloud on the sidebar's curve. Its width settles where
+                            // the frame says (beside the detail pane, under a zoom, or alone), so its notes wrap once as
+                            // the detail pane or the sidebar slides, not on every frame.
+                            ListPane(store: store, window: window, leadingInset: window.sidebarVisible ? TK.M.headerInset : collapsedInset,
+                                     settleWidth: frames.list.rect.width)
+                                .animation(TK.Motion.sidebar, value: collapsedInset)
+                                .placed(frames.list)
+                        case .detail:
+                            if let f = frames.detail {
+                                // v1's open and close (§4): in from the trailing edge, fading, on `natural`.
+                                DetailPane(store: store, window: window, single: narrow || zoomed,
+                                           leadingInset: zoomed && !window.sidebarVisible ? collapsedInset : TK.M.headerInset)
+                                    .animation(TK.Motion.sidebar, value: collapsedInset)
+                                    // The list pane, which shows notices, is covered: they show here (§29).
+                                    .overlay(alignment: .bottomTrailing) {
+                                        if zoomed {
+                                            NoticeView(overlays: window.overlays, actions: WindowActions(store: store, window: window)).padding(12)
+                                        }
+                                    }
+                                    .placed(f)
+                                    .transition(.asymmetric(insertion: .offset(x: frames.detailSlide).combined(with: .opacity),
+                                                            removal: .identity))
                             }
-                            .transition(.move(edge: .trailing).combined(with: .opacity))
+                        }
                     }
                 }
                 .animation(TK.Motion.natural, value: window.detailOpen)
                 .animation(TK.Motion.natural, value: window.zoomed)
-                .padding([.top, .bottom, .trailing], TK.M.gutter)
-                .padding(.leading, g.lead)
                 if window.sidebarVisible {
                     PaneDividerRepresentable(kind: .sidebar, window: window, geometry: g)
                         .frame(width: TK.M.dividerHit, height: paneHeight)
@@ -202,10 +204,14 @@ private struct CircleToolbarStyle: ButtonStyle {
 }
 
 extension View {
-    /// The pane a zoom covers (§29): it fades under the zoomed one, takes no presses and leaves VoiceOver.
-    func zoomedAway(_ away: Bool) -> some View {
-        opacity(away ? 0 : 1)
-            .allowsHitTesting(!away)
-            .accessibilityHidden(away)
+    /// A pane at its frame in the panes' layer (`PaneFrames`): sized, moved there by layout (so its AppKit views move
+    /// with it), faded, and out of presses and VoiceOver when it's hidden or closing.
+    func placed(_ f: PaneFrames.Frame) -> some View {
+        frame(width: f.rect.width, height: f.rect.height)
+            .opacity(f.opacity)
+            .allowsHitTesting(f.interactive)
+            .accessibilityHidden(!f.interactive)
+            .padding(.leading, f.rect.minX)
+            .padding(.top, f.rect.minY)
     }
 }

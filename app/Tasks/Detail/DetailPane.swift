@@ -138,7 +138,8 @@ struct DetailPane: View {
     /// Every press in the pane focuses it. One outside the title and the notes ends their editing (they commit as they
     /// resign), except under an untitled new task: there, anything but the × leaves the caret in the title.
     private func press(_ e: NSEvent, actions a: WindowActions) -> NSEvent? {
-        guard window.overlays.picker == nil else { return e }
+        // A closing pane is on its way out: a press where it was is the list's.
+        guard window.overlays.picker == nil, window.detailOpen else { return e }
         let inTitle = refs.title?.contains(e) == true
         let inNotes = refs.notes?.view.map { v in
             v.window != nil && !v.inert && v.visibleRect.contains(v.convert(e.locationInWindow, from: nil))
@@ -158,6 +159,7 @@ struct DetailPane: View {
 
     /// Keys the pane takes before the menu bar's key equivalents.
     private func keyEquivalent(_ e: NSEvent, actions a: WindowActions) -> Bool {
+        guard window.detailOpen else { return false }
         let mods = e.modifierFlags.intersection([.command, .shift, .option, .control])
         guard mods == .command else { return false }
         // ⌘Return in the title: commit, keys to the list (§6, §7). AppKit binds no command to it, so the field editor
