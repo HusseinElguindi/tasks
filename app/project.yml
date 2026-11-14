@@ -139,6 +139,8 @@ targets:
       - path: Tasks/Window/UndoStep.swift
       # Which panes exist and where each is drawn (T50).
       - path: Tasks/Window/PaneLayout.swift
+      # A pane's wrapping text while its width animates (T53).
+      - path: Tasks/Window/WrapSettle.swift
       - path: ../widgets/Shared
     dependencies:
       - package: TasksCore

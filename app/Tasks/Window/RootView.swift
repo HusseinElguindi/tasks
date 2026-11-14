@@ -105,11 +105,8 @@ struct MainLayout: View {
                     ForEach(window.panes.panes) { pane in
                         switch pane.kind {
                         case .list:
-                            // The band's title makes room for the cloud on the sidebar's curve. Its width settles where
-                            // the frame says (beside the detail pane, under a zoom, or alone), so its notes wrap once as
-                            // the detail pane or the sidebar slides, not on every frame.
-                            ListPane(store: store, window: window, leadingInset: window.sidebarVisible ? TK.M.headerInset : collapsedInset,
-                                     settleWidth: frames.list.rect.width)
+                            // The band's title makes room for the cloud on the sidebar's curve.
+                            ListPane(store: store, window: window, leadingInset: window.sidebarVisible ? TK.M.headerInset : collapsedInset)
                                 .animation(TK.Motion.sidebar, value: collapsedInset)
                                 .placed(frames.list)
                         case .detail:
@@ -205,9 +202,12 @@ private struct CircleToolbarStyle: ButtonStyle {
 
 extension View {
     /// A pane at its frame in the panes' layer (`PaneFrames`): sized, moved there by layout (so its AppKit views move
-    /// with it), faded, and out of presses and VoiceOver when it's hidden or closing.
+    /// with it), faded, and out of presses and VoiceOver when it's hidden or closing. Whatever wraps inside it is
+    /// told the width the frame settles at (beside another pane, under a zoom, or alone), so its text wraps once as
+    /// a pane or the sidebar slides, not on every frame (`PaneSettle`).
     func placed(_ f: PaneFrames.Frame) -> some View {
-        frame(width: f.rect.width, height: f.rect.height)
+        environment(\.paneSettle, PaneSettle(width: f.rect.width, leaving: f.leaving))
+            .frame(width: f.rect.width, height: f.rect.height)
             .opacity(f.opacity)
             .allowsHitTesting(f.interactive)
             .accessibilityHidden(!f.interactive)

@@ -25,7 +25,7 @@ import TasksCore
 ///     mktask:TITLE|NOTES   (a new task with notes, in the open list or Inbox)
 ///     menukey:z|Z|ret|RET:/path.txt   (the main menu's ⌘z, or ⇧⌘z for Z, ⇧⌘↩ for RET, sent as with the window key; appends the item and
 ///     who took it)   event   (a pass of NSApp's event loop, as real input makes: it closes undo groups)
-///     ncaret:A[,B]   (the notes take the keys with A..B selected)   nbox:OFFSET   (toggles the checklist box there)
+///     ncaret:A[,B]   (the notes take the keys with A..B selected; dcaret:A[,B] the detail pane's notes)   nbox:OFFSET   (toggles the checklist box there)
 ///     nboxclick:OFFSET   ntextclick:OFFSET   (a real click on that box, or that character, through the window)   nscroll:Y | nscroll:box:OFFSET   (scrolls the notes)
 ///     nlog:/path.txt   (appends the notes' text, selection, hidden marks, session and the task's stored notes)
 ///     settings   (opens Settings)   hidemain   (orders the main windows out)   windows:/path.txt   (appends each window,
@@ -187,6 +187,12 @@ enum DebugScript {
                 case "ncaret":
                     let v = arg.split(separator: ",").compactMap { Int($0) }
                     guard let n = notesView(w), let a = v.first else { continue }
+                    w.makeFirstResponder(n)
+                    n.setSelectedRange(NSRange(location: a, length: (v.count > 1 ? v[1] : a) - a))
+                case "dcaret":
+                    // dcaret:A[,B] — the same in the detail pane's notes, whatever notes the list pane shows.
+                    let v = arg.split(separator: ",").compactMap { Int($0) }
+                    guard let n = detailNotesView(w), let a = v.first else { continue }
                     w.makeFirstResponder(n)
                     n.setSelectedRange(NSRange(location: a, length: (v.count > 1 ? v[1] : a) - a))
                 case "mktask":
@@ -455,6 +461,17 @@ enum DebugScript {
         guard let f = lm.fragment(l, first: true) else { return nil }
         return NSPoint(x: n.textContainerOrigin.x + CGFloat(l.level) * NotesStyle.column + 2 + 6,
                        y: n.textContainerOrigin.y + f.minY + 3.5 + 6)
+    }
+
+    /// The detail pane's notes: the one editor that isn't in a list.
+    private static func detailNotesView(_ w: NSWindow) -> NotesTextView? {
+        func find(_ v: NSView) -> NotesTextView? {
+            if v is TaskListView { return nil }
+            if let n = v as? NotesTextView { return n }
+            for s in v.subviews { if let n = find(s) { return n } }
+            return nil
+        }
+        return w.contentView.flatMap(find)
     }
 
     private static func notesView(_ w: NSWindow) -> NotesTextView? {

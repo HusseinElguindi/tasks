@@ -343,6 +343,24 @@ which i dont quite like, it should be smooth").
 
 The same goes for the sidebar's slide and a divider's double-click; dragging a divider still re-wraps live (Resizing
 the panes, below). `TaskListView.settle`, `revealGrowth`.
+
+**The detail pane's text keeps the same rule** (the user, 2026-11-14: "we need to do the same on detail"). Its width
+changes on an animation when it zooms or unzooms (§29), when the sidebar slides under a zoomed pane or a narrow
+window's drill-in, and when its divider's double-click springs it back. Before, the title and the notes re-wrapped on
+every frame of those and the rows under the title jumped a line each time its line count changed. Now:
+- The title and the notes (Markdown and checklists included) re-wrap once, at the width they're going to, as the
+  slide starts. Widening, the longer lines run past the pane's edge and show as it moves out. Narrowing, the lines
+  the title gains show as the rows under it move down.
+- What's under them (the List, When and Deadline rows, the separator, the notes, the footer) glides on the pane's own
+  motion: the title's and the notes' heights go from the old to the new as the pane's width does.
+- The caret, a selection and typing carry on through the slide, in the title and in the notes.
+- A deleted list shown in the pane (§28) wraps as the list pane does: it's the same view.
+- A zoomed pane that closes keeps the wrap it has while it slides off, rather than re-wrapping on its way out.
+- Dragging the divider and resizing the window still re-wrap live.
+
+Every pane is told the width its frame settles at (`PaneSettle`, given by `placed`), and each view that wraps keeps a
+`WrapSettle`: the list (`TaskListView`), the detail title (`TitleFieldView`) and the detail notes (`NotesTextView`).
+`app/Scripts/wrap-settle-check.sh` holds both panes to it.
 The prototype copies this: the pane mounts its own width plus 8 to the right (+428 at the default width) and at opacity 0, and two frames later moves to 0 / 1 on `natural`
 while the list pane's right edge moves on the same curve; closing runs it backwards and removes the pane after 460 ms
 (`css:255–257`, `dc:1100–1114`).
@@ -2562,6 +2580,8 @@ can collapse it if they want afterwards."
 - **Unzoom** puts the list back as it was: the same widths (a zoom never writes them), the same selection, the same
   scroll, and the keys where they are. The list keeps its width and its place under the zoomed pane, so its rows
   never reflow or scroll.
+- **The pane's text wraps once** as it zooms or unzooms, at the width it's going to, and what's under it glides (§4,
+  Detail pane).
 - **Only the detail pane zooms.** Rex zooms any pane, but with the sidebar staying, zooming the list would only hide
   the detail pane, which ⌘D already does. So ⇧⌘↩ zooms the detail pane from the list or the sidebar as well, and gives
   it the keys (a caret already in the pane stays put).

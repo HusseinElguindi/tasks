@@ -83,6 +83,8 @@ struct PaneFrames: Equatable {
         var rect: CGRect
         var opacity: Double
         var interactive: Bool
+        /// Closing: sliding off, about to be taken out. Its text keeps the wrap it has (`PaneSettle`).
+        var leaving = false
     }
 
     let list: Frame
@@ -117,6 +119,6 @@ struct PaneFrames: Equatable {
         detailSlide = rect.width
         var shown = rect
         if !pane.isOpen { shown.origin.x += rect.width }
-        detail = Frame(rect: shown, opacity: pane.isOpen ? 1 : 0, interactive: pane.isOpen)
+        detail = Frame(rect: shown, opacity: pane.isOpen ? 1 : 0, interactive: pane.isOpen, leaving: !pane.isOpen)
     }
 }
