@@ -8,8 +8,6 @@ struct ListPane: View {
     @Bindable var window: WindowState
     /// 12, or 124 with the sidebar hidden so the title clears the traffic lights and the toggle (§4).
     let leadingInset: CGFloat
-    /// The width the window's layout settles the pane at, so its notes re-wrap once while it animates.
-    var settleWidth: CGFloat? = nil
     @Environment(\.tk) private var tk
 
     var body: some View {
@@ -18,7 +16,7 @@ struct ListPane: View {
         let actions = WindowActions(store: store, window: window)
         VStack(spacing: 0) {
             ListPaneHeader(store: store, window: window, look: look, leadingInset: leadingInset, actions: actions)
-            TaskListRepresentable(store: store, window: window, palette: tk, settleWidth: settleWidth)
+            TaskListRepresentable(store: store, window: window, palette: tk)
         }
         // Today all done: D's sunrise at the top of the pane, behind the band (COLOR.md §4).
         .background(alignment: .top) { Sunrise(shown: window.allDone) }

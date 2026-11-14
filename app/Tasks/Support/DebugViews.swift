@@ -1,6 +1,7 @@
 #if DEBUG
 import AppKit
 import QuartzCore
+import SwiftUI
 import TasksCore
 
 /// Debug aid for the four views (§22): `-debugScript` step `act:<what>[:<arg>]` runs a window action by name, so a
@@ -23,6 +24,9 @@ import TasksCore
 ///                               origin and opacity, and the lit label; one line per turn that changed)
 ///     act:deletelist:<list>   act:restorelist:<list>   act:selectlist:<list>   act:expand:<list>   act:collapse-list:<list>
 ///     act:dropcheck:/path.txt   (every drag in the open view: its preview against its landing, `DebugDropCheck`)
+///     act:wraptrace:MS:/path.txt   act:detailtrace:MS:/path.txt   (for MS ms, every turn: the list pane's, or the
+///                               detail pane's, text as wrapped: Scripts/wrap-settle-check.sh)
+///     act:zoom   (Zoom Pane)   act:springwidth:N   (the detail pane's width springs to N, as a divider's double-click)
 ///     act:openlist:<list>   (in the detail pane)   act:takeout   (⌘⌫ in Trash)   act:leave   (Esc out of a list deleted
 ///     while open in the list pane)   (§28)
 @MainActor
@@ -49,6 +53,9 @@ enum DebugViews {
         // delay (its 26pt button sits 2 left of the ×, 8 in from the pane's right edge, on the y = 25 line); `tipoff`
         // is the pointer leaving.
         case "zoom": a.toggleZoom()
+        // The detail pane's width springing to N, as its divider's double-click springs it back to the default
+        // (`PaneDividerView.mouseDown`), without writing the width to the defaults.
+        case "springwidth": if let n = Double(rest) { withAnimation(TK.Motion.natural) { w.detailWidth = CGFloat(n) } }
         case "tipoff": w.overlays.hideTip()
         case "tip":
             let width = w.nsWindow?.contentView?.bounds.width ?? 0
@@ -148,6 +155,9 @@ enum DebugViews {
         case "wraptrace":
             let t = rest.split(separator: ":", maxSplits: 1).map(String.init)
             if t.count == 2, let ms = Int(t[0]) { wrapTrace(w, ms: ms, path: t[1]) }
+        case "detailtrace":
+            let t = rest.split(separator: ":", maxSplits: 1).map(String.init)
+            if t.count == 2, let ms = Int(t[0]) { detailTrace(w, ms: ms, path: t[1]) }
         case "film":
             let t = rest.split(separator: ":", maxSplits: 1).map(String.init)
             if t.count == 2, let ms = Int(t[0]) { film(w, ms: ms, dir: t[1]) }
@@ -290,11 +300,56 @@ enum DebugViews {
     /// (`TaskListView.debugWrap`), whenever they change.
     static func wrapTrace(_ w: WindowState, ms: Int, path: String) {
         guard let list = w.taskList else { return }
+        everyTurn(ms: ms, path: path) { list.debugWrap() }
+    }
+
+    /// `act:detailtrace:MS:/path` (the user, 2026-11-14: "we need to do the same on detail"): the same for the detail
+    /// pane: its width as drawn, its title and notes as wrapped (the width the text is laid out at x its height), the
+    /// notes' top in the window (what's under the title glides), and a deleted list shown in it (`debugWrap`).
+    static func detailTrace(_ w: WindowState, ms: Int, path: String) {
+        everyTurn(ms: ms, path: path) { debugDetailWrap(w) }
+    }
+
+    static func debugDetailWrap(_ w: WindowState) -> String {
+        guard let content = w.nsWindow?.contentView else { return "  detail -" }
+        var pane: NSView?, title: TitleFieldView?, notes: NotesTextView?
+        func find(_ v: NSView) {
+            if v is TaskListView { return }
+            if let t = v as? TitleFieldView { title = t }
+            if let n = v as? NotesTextView { notes = n }
+            if String(describing: type(of: v)) == "MonitorView" { pane = v }
+            v.subviews.forEach(find)
+        }
+        find(content)
+        func size(_ w: CGFloat, _ h: CGFloat) -> String { "\(Int(w.rounded()))x\(Int(h.rounded()))" }
+        var out = "  detail pane=\(pane.map { "\(Int($0.frame.width.rounded()))" } ?? "-")"
+        if let t = title {
+            let wrap = t.debugWrap
+            out += " title=" + size(wrap.width, wrap.height) + " titleBox=" + size(t.frame.width, t.frame.height)
+            if let e = t.field.currentEditor() as? NSTextView {
+                out += " editor=" + size(e.textContainer?.containerSize.width ?? 0, e.frame.height) + " sel=\(e.selectedRange().location)+\(e.selectedRange().length)"
+            }
+        }
+        if let n = notes, let lm = n.layoutManager, let tc = n.textContainer {
+            lm.ensureLayout(for: tc)
+            let top = n.convert(NSPoint.zero, to: nil).y
+            out += " notes=" + size(tc.containerSize.width, lm.usedRect(for: tc).height)
+                + " notesBox=" + size(n.frame.width, n.frame.height)
+                + String(format: " notesTop=%.1f", (n.window?.contentView?.bounds.height ?? 0) - top)
+            if n.window?.firstResponder === n { out += " caret=\(n.selectedRange().location)+\(n.selectedRange().length)" }
+        }
+        if let l = w.detailList?.taskList { out += " hosted:" + l.debugWrap() }
+        return out
+    }
+
+    /// Appends `line()` to `path` on every turn of the run loop for `ms` (woken every 4 ms, so it works with the screen
+    /// locked), whenever it changes.
+    private static func everyTurn(ms: Int, path: String, _ line: @escaping @MainActor () -> String) {
         var last = ""
         let t0 = CACurrentMediaTime()
         let observer = CFRunLoopObserverCreateWithHandler(nil, CFRunLoopActivity.beforeWaiting.rawValue, true, 0) { _, _ in
             MainActor.assumeIsolated {
-                let line = list.debugWrap()
+                let line = line()
                 guard line != last else { return }
                 last = line
                 append(String(format: "%.3f", CACurrentMediaTime() - t0) + line, to: path)

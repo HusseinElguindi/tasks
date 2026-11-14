@@ -21,6 +21,9 @@ final class TitleFieldView: NSView {
         var original: String
     }
     private var session: Session?
+    /// The pane's width on an animation (a zoom, the sidebar's slide, the divider springing back): the title wraps
+    /// once, at the width it's going to, as the slide starts (`WrapSettle`, as the list pane's text does).
+    private let settle = WrapSettle()
 
     override var isFlipped: Bool { true }
 
@@ -37,6 +40,7 @@ final class TitleFieldView: NSView {
             self?.finish()
             self?.restyle()
         }
+        settle.onEnd = { [weak self] in self?.needsLayout = true }
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -87,10 +91,49 @@ final class TitleFieldView: NSView {
         return max(lineHeight, (r.height / lineHeight).rounded(.up) * lineHeight)
     }
 
+    /// What's in the field now: what's being typed, else what it shows.
+    private var shownText: String { field.currentEditor()?.string ?? field.stringValue }
+
+    /// The field is as wide as the title wraps, which while the pane's width animates is the width the view is going
+    /// to, not the one it has this frame, and then as tall as its lines. Widening, the longer lines run past the view
+    /// and show as the pane's edge moves out; narrowing, the lines the wrap adds show as the view grows, which is as
+    /// the rows under it make room (`fittedHeight`).
     override func layout() {
         super.layout()
-        field.frame = NSRect(x: -Self.inset, y: 0, width: bounds.width + 2 * Self.inset, height: bounds.height)
+        settle.arrived(bounds.width)
+        guard let to = settle.to else {
+            field.frame = NSRect(x: -Self.inset, y: 0, width: bounds.width + 2 * Self.inset, height: bounds.height)
+            clipsToBounds = false
+            return
+        }
+        let h = max(bounds.height, Self.height(shownText, width: to, attributes: attributes(palette.ink)))
+        field.frame = NSRect(x: -Self.inset, y: 0, width: to + 2 * Self.inset, height: h)
+        clipsToBounds = h > bounds.height + 0.5
     }
+
+    /// The pane's settle from this update (`PaneSettle`): on an animated change of the pane's width the title re-wraps
+    /// now, once.
+    func paneSettle(_ p: PaneSettle?, animated: Bool) {
+        if settle.pane(p, animated: animated, wrap: settle.to ?? bounds.width, inWindow: window != nil) { needsLayout = true }
+    }
+
+    /// The height SwiftUI gives the title at `width`: its lines there. While the pane's width animates the lines are
+    /// already those of the width it's going to, and the height goes from the old to the new as the width does, so
+    /// the rows under the title glide on the pane's own motion instead of jumping a line.
+    func fittedHeight(_ text: String, width: CGFloat) -> CGFloat {
+        let a = attributes(palette.ink)
+        guard let s = settle.span else { return Self.height(text, width: width, attributes: a) }
+        let h0 = Self.height(text, width: s.from, attributes: a), h1 = Self.height(text, width: s.to, attributes: a)
+        return h0 + (h1 - h0) * settle.progress(at: width)
+    }
+
+    #if DEBUG
+    /// Debug: the width the title is wrapped at and its height there.
+    var debugWrap: (width: CGFloat, height: CGFloat) {
+        let w = field.frame.width - 2 * Self.inset
+        return (w, Self.height(shownText, width: w, attributes: attributes(palette.ink)))
+    }
+    #endif
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
@@ -270,6 +313,7 @@ struct TitleField: NSViewRepresentable {
     let measure: String
     let palette: TK.Palette
     let onLiveText: (String?) -> Void
+    @Environment(\.paneSettle) private var paneSettle
 
     func makeNSView(context: Context) -> TitleFieldView {
         let v = TitleFieldView(frame: NSRect(x: 0, y: 0, width: 358, height: 20))
@@ -289,10 +333,12 @@ struct TitleField: NSViewRepresentable {
         v.onLiveText = onLiveText
         v.bind(id: id, text: text, palette: palette)
         if refs.title !== v { refs.title = v }
+        let t = context.transaction
+        v.paneSettle(paneSettle, animated: t.animation != nil && !t.disablesAnimations)
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView v: TitleFieldView, context: Context) -> CGSize? {
         let w = proposal.width ?? 358
-        return CGSize(width: w, height: TitleFieldView.height(measure, width: w, attributes: v.attributes(palette.ink)))
+        return CGSize(width: w, height: v.fittedHeight(measure, width: w))
     }
 }

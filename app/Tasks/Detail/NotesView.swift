@@ -20,6 +20,12 @@ final class NotesTextView: NSTextView {
     private let notesUndo = UndoManager()
     private var lastTyping: TimeInterval = 0
     private var tracking: NSTrackingArea?
+    /// In the detail pane: the pane's width on an animation (a zoom, the sidebar's slide, the divider springing back).
+    /// The notes wrap once, at the width they're going to, as the slide starts (`WrapSettle`, as the list pane's text
+    /// does). In the list pane the list lays its editors out itself.
+    private(set) var settle: WrapSettle?
+    /// The notes' height as they were wrapped when the slide began.
+    private var settleFromHeight: CGFloat = 0
 
     override var undoManager: UndoManager? { notesUndo }
     /// ⌘Z and ⇧⌘Z are the notes' own (`FieldUndo`), never the window's.
@@ -70,6 +76,58 @@ final class NotesTextView: NSTextView {
             placeholder.draw(with: NSRect(x: textContainerOrigin.x, y: textContainerOrigin.y, width: bounds.width, height: NotesStyle.lineHeight),
                              options: [.usesLineFragmentOrigin])
         }
+    }
+
+    // MARK: The pane's width animating (the detail pane)
+
+    func followPaneSettle() {
+        guard settle == nil else { return }
+        let s = WrapSettle()
+        // Over: the container tracks the view again.
+        s.onEnd = { [weak self] in
+            guard let self, let tc = self.textContainer else { return }
+            tc.widthTracksTextView = true
+            tc.containerSize = NSSize(width: max(1, self.bounds.width), height: .greatestFiniteMagnitude)
+            self.clipsToBounds = false
+            self.needsDisplay = true
+        }
+        settle = s
+    }
+
+    /// The width the notes wrap at: the view's, or while the pane's width animates the width it's going to.
+    var wrapWidth: CGFloat { settle?.to ?? bounds.width }
+
+    /// The pane's settle from this update (`PaneSettle`): on an animated change of the pane's width the notes re-wrap
+    /// now, once. The text container stops tracking the view, which SwiftUI gives every width on the way, and takes
+    /// the width it's going to: widening, the longer lines show as the view's edge moves out; narrowing, the lines the
+    /// wrap adds have the view's own room, or show as it grows.
+    func paneSettle(_ p: PaneSettle?, animated: Bool) {
+        guard let settle, let tc = textContainer else { return }
+        let wrap = wrapWidth
+        let from = fittingHeight(width: wrap)
+        let began = settle.pane(p, animated: animated, wrap: wrap, inWindow: window != nil)
+        // Began, or the pane is leaving and the notes keep the wrap they have.
+        guard let to = settle.to, began || tc.widthTracksTextView else { return }
+        settleFromHeight = from
+        tc.widthTracksTextView = false
+        _ = fittingHeight(width: to)
+        // Narrowing, lines the wrap adds past the view's end wait for it to grow, as what's under it moves down.
+        clipsToBounds = to < wrap
+        needsDisplay = true
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        settle?.arrived(newSize.width)
+    }
+
+    /// The height SwiftUI gives the notes at `width`: their lines there. While the pane's width animates the lines are
+    /// already those of the width it's going to, and the height goes from the old to the new as the width does, so
+    /// what's under the notes glides on the pane's own motion instead of jumping a line.
+    func fittedHeight(width: CGFloat) -> CGFloat {
+        guard let settle, let s = settle.span else { return fittingHeight(width: width) }
+        let h1 = fittingHeight(width: s.to)
+        return settleFromHeight + (h1 - settleFromHeight) * settle.progress(at: width)
     }
 
     /// The text's height at `width`: whole lines, at least one.
@@ -475,6 +533,7 @@ struct NotesField: NSViewRepresentable {
     let onLayoutChange: () -> Void
     /// The text's length while it's being edited (the footer's count), nil at rest.
     let onLength: (Int?) -> Void
+    @Environment(\.paneSettle) private var paneSettle
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
@@ -487,6 +546,7 @@ struct NotesField: NSViewRepresentable {
     func makeNSView(context: Context) -> NotesTextView {
         let c = context.coordinator
         let v = Self.makeEditor(c, host: host)
+        v.followPaneSettle()
         refs.notes = c
         return v
     }
@@ -541,11 +601,13 @@ struct NotesField: NSViewRepresentable {
         refs.notes = c
         v.inert = inert
         c.apply(force: false)
+        let t = context.transaction
+        v.paneSettle(paneSettle, animated: t.animation != nil && !t.disablesAnimations)
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView v: NotesTextView, context: Context) -> CGSize? {
         let w = proposal.width ?? 340
-        let h = v.fittingHeight(width: w)
+        let h = v.fittedHeight(width: w)
         return CGSize(width: w, height: max(h, proposal.height ?? 0))
     }
 
@@ -858,7 +920,7 @@ struct NotesField: NSViewRepresentable {
             guard let v = view else { return }
             reportLength(v)
             // SwiftUI measures the notes again only when their height changed, not on every keystroke.
-            let h = v.fittingHeight(width: v.bounds.width)
+            let h = v.fittingHeight(width: v.wrapWidth)
             if h != lastHeight {
                 lastHeight = h
                 host.onLayoutChange()
@@ -1113,7 +1175,7 @@ struct NotesField: NSViewRepresentable {
                 styles.append(ms(r0))
                 loops.append(lastRestyle.loop)
                 let l0 = DispatchTime.now().uptimeNanoseconds
-                _ = v.fittingHeight(width: v.bounds.width)
+                _ = v.fittingHeight(width: v.wrapWidth)
                 layouts.append(ms(l0))
                 opens.append(ms(t0))
             }

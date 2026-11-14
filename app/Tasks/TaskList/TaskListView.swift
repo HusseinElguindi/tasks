@@ -62,17 +62,10 @@ final class TaskListView: NSView {
     private var firstRender = true
     private var lastWidth: CGFloat = 0
     /// The pane's width on an animation (the detail pane or the sidebar opening or closing, a divider springing back):
-    /// from what its text wrapped at, to the width it settles at. The title and the notes re-wrap once, at the width
-    /// the pane is going to, as the slide starts, in both directions, and the rows under them move on the `layout`
-    /// spring. Widening, the wider lines run under the pane's edge and show as it moves out. Before, they re-wrapped on
-    /// every frame of the slide and the rows jumped a line whenever the line count changed (the user, 2026-11-08: "the
-    /// line wrapping is a bit distracting when it animates for the whole duration, and it's choppy when more lines are
-    /// needed"); then they waited at the narrow end until the pane had widened and snapped (the user, 2026-11-08:
-    /// "there's definitely a delay in the wrap, which i dont quite like, it should be smooth").
-    private var settle: (from: CGFloat, to: CGFloat)?
-    /// The width the pane settles at, as the window's layout last gave it (`TaskListRepresentable.settleWidth`).
-    private var settleTarget: CGFloat?
-    private var settleTimer: Timer?
+    /// the title and the notes re-wrap once, at the width the pane is going to, as the slide starts, in both
+    /// directions (`WrapSettle`), and the rows under them move on the `layout` spring. Widening, the wider lines run
+    /// under the pane's edge and show as it moves out.
+    private let settle = WrapSettle()
     private var pendingScroll: EntityID?
     private var cleanupTimer: Timer?
 
@@ -115,6 +108,7 @@ final class TaskListView: NSView {
         scroll.automaticallyAdjustsContentInsets = false
         addSubview(scroll)
         doc.owner = self
+        settle.onEnd = { [weak self] in self?.render(animated: true) }
         doc.addSubview(completedRow)
         doc.addSubview(empty)
         doc.addSubview(banner)
@@ -149,30 +143,21 @@ final class TaskListView: NSView {
     override func layout() {
         super.layout()
         scroll.frame = bounds
-        if abs(bounds.width - lastWidth) > 0.5 {
+        // At the width it was going to, the settle's end renders.
+        if settle.arrived(bounds.width) {
             lastWidth = bounds.width
-            if let s = settle, abs(bounds.width - s.to) <= 0.5 { endSettle() } else { render(animated: false) }
+        } else if abs(bounds.width - lastWidth) > 0.5 {
+            lastWidth = bounds.width
+            render(animated: false)
         }
     }
 
-    /// The window's layout gives the pane a new width: on an animation, the text keeps one wrap the whole way
-    /// (`settle`); otherwise (a divider dragged, the window resized) it follows live, as before.
-    func paneWidth(to target: CGFloat?, animated: Bool) {
-        guard let target, target != settleTarget else { return }
-        let first = settleTarget == nil
-        settleTarget = target
-        guard animated, !first, window != nil, abs(target - bounds.width) > 0.5 else {
-            if settle != nil { endSettle() }
-            return
-        }
-        settle = (wrapBoundsWidth, target)
-        // A safety: the slide ends with the pane at `target`; should it stop short, the text settles anyway.
-        settleTimer?.invalidate()
-        settleTimer = Timer.scheduledTimer(withTimeInterval: 0.6, repeats: false) { [weak self] _ in
-            MainActor.assumeIsolated { self?.endSettle() }
-        }
-        // The one re-wrap is now, at the width the pane is going to. What it adds shows as the rows below make room.
+    /// The window's layout gives the pane a new width (`PaneSettle`): on an animation, the text keeps one wrap the
+    /// whole way (`settle`); otherwise (a divider dragged, the window resized) it follows live, as before.
+    func paneSettle(_ p: PaneSettle?, animated: Bool) {
         let before = wrapHeights()
+        guard settle.pane(p, animated: animated, wrap: wrapBoundsWidth, inWindow: window != nil) else { return }
+        // The one re-wrap is now, at the width the pane is going to. What it adds shows as the rows below make room.
         render(animated: true)
         revealGrowth(from: before)
     }
@@ -213,17 +198,9 @@ final class TaskListView: NSView {
         CATransaction.commit()
     }
 
-    private func endSettle() {
-        settleTimer?.invalidate()
-        settleTimer = nil
-        guard settle != nil else { return }
-        settle = nil
-        render(animated: true)
-    }
-
     /// The pane's width as far as wrapping goes: where it's going while it animates (`settle`).
     private var wrapBoundsWidth: CGFloat {
-        settle?.to ?? bounds.width
+        settle.to ?? bounds.width
     }
 
     override func viewDidMoveToWindow() {
@@ -849,7 +826,7 @@ final class TaskListView: NSView {
     /// going to (`settle`), from the pane's own width, since mid-slide the scroll view's lags it by a fraction and would have
     /// the text measured again on every frame.
     private var wrapContentWidth: CGFloat {
-        settle == nil ? scroll.contentView.bounds.width : wrapBoundsWidth
+        settle.span == nil ? scroll.contentView.bounds.width : wrapBoundsWidth
     }
 
     /// Makes (or updates) the list's and its headings' notes editors and measures them, before the layout: a heading
@@ -2066,7 +2043,7 @@ final class TaskListView: NSView {
         let notes = state.route.listID.flatMap { paneEditors[.list($0)] }.map { "\(Int($0.view.frame.width))x\(Int($0.view.frame.height))" } ?? "-"
         let first = rows.values.filter { !$0.isHidden && $0.model != nil }.min { $0.frame.minY < $1.frame.minY }
         let drawn = first.map { v in String(format: "%.1f", (v.layer?.presentation() ?? v.layer)?.frame.minY ?? v.frame.minY) } ?? "-"
-        return "  wrap pane=\(Int(bounds.width)) notes=\(notes) settle=\(settle.map { "\(Int($0.from))>\(Int($0.to))" } ?? "-") firstRow=\(drawn)"
+        return "  wrap pane=\(Int(bounds.width)) notes=\(notes) settle=\(settle.span.map { "\(Int($0.from))>\(Int($0.to))" } ?? "-") firstRow=\(drawn)"
             + " title=\(Int(titleView.field.frame.width))x\(Int(titleView.field.frame.height))"
     }
 
@@ -2196,9 +2173,9 @@ struct TaskListRepresentable: NSViewRepresentable {
     let store: Store
     let window: WindowState
     let palette: TK.Palette
-    /// The width the window's layout settles the pane at (`TaskListView.paneWidth(to:animated:)`); nil keeps the text
-    /// following every width live.
-    var settleWidth: CGFloat? = nil
+    /// The width the window's layout settles the pane at (`TaskListView.paneSettle`), from the pane it's in: the list
+    /// pane, or the detail pane showing a deleted list.
+    @Environment(\.paneSettle) private var paneSettle
 
     func makeNSView(context: Context) -> TaskListView {
         let v = TaskListView(store: store, window: window)
@@ -2211,6 +2188,6 @@ struct TaskListRepresentable: NSViewRepresentable {
         nsView.palette = palette
         window.palette = palette
         let t = context.transaction
-        nsView.paneWidth(to: settleWidth, animated: t.animation != nil && !t.disablesAnimations)
+        nsView.paneSettle(paneSettle, animated: t.animation != nil && !t.disablesAnimations)
     }
 }
