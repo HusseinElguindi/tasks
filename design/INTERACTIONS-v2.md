@@ -1458,7 +1458,42 @@ The app: `ViewLayout.buildView` makes a month a label-only group followed by a 2
 Upcoming, the days they left keep their labels, empty, so the labels under the pointer don't jump up (a month whose
 only task moved used to lose its label mid-drag). The medium Today widget's mark is Mac only (`#if os(macOS)` in
 `widgets/Shared/TodayViews.swift`). Debug: `-demoData YES -demoCourses YES` seeds the screenshots' data
-(`Support/DemoCourses.swift`). The iPhone is unchanged.
+(`Support/DemoCourses.swift`). The iPhone: below.
+
+**On the iPhone: a title line and a detail line (2026-11-08;** the user: "let's go with 3", "no keep \"Today\"", "yea
+sure"; design/ROW-DENSITY.md §6, option 3). One 48pt line left the title 156pt, in every view; the phone's row is two
+lines instead:
+- **Line 1:** the title alone, 17/22, from the checkbox to the row's end (about 315pt on a 393pt phone); cut off, it
+  fades.
+- **Line 2:** 13pt `ink-tertiary`, 20pt tall, 2 under line 1, 9 between its parts: the list mark (a 16×13 tile, 6,
+  the short name; where the views above give one), a Completed or Trash month row's day ("Oct 30"), the When (as each
+  view words it: dates in Upcoming, counts elsewhere; in lists "Today" too, though the blue ring says it), the checklist
+  count or the notes glyph; then, at its right edge, the deadline capsule at 20pt. Short of room, the short name fades,
+  and goes under 30pt; then the When goes. The tile, the count and the deadline never go.
+- **Height:** 56pt (6 + 22 + 2 + 20 + 6) when line 2 has anything, else one 48pt line; the notes glyph alone stays
+  after the title on line 1 and doesn't make a second line. Rows keep their minimum height and grow with Dynamic Type.
+  A checked row keeps its line 2 until it settles, so it doesn't shrink while it sparks.
+- **One line whenever it all fits** (T55; the user, 2026-11-08: "the quiz 2 task could fit on one line without any
+  truncation. what if we made those cases fit on one line?", "yes on the design question, we love consistency"): when
+  the title and everything line 2 would hold fit on one line with nothing cut, the row is one 48pt line: the title, 8,
+  line 2's parts in its order and look, 9 apart, and the deadline capsule (20pt) at the trailing edge, at least 8 after
+  them. It needs 2pt to spare, so a row right at the edge takes two lines rather than fade by a fraction of a point.
+  The same in every view, on the phone and the iPad (where it replaces the wide column's own one-line row and its
+  order; the user: "The new iPad order is fine."). `RowFit` (`ios/Tasks/Views/RowFit.swift`) measures the title and
+  the parts with UIKit's fonts for the rows' text styles (`RowFitTests` holds them to SwiftUI's sizes) against the
+  row's width: the collection's, less the side safe area and the cells' 10pt insets; less the checkbox's 44pt column,
+  the 12pt trailing pad and a heading's 30pt indent. Its words are the row's height signature, and the collection
+  resolves them at its width and text size, again on rotation, Dynamic Type and iPad's columns; a change of shape
+  resizes on the layout spring like any other. A title is written only when its edit ends, so a row never changes shape
+  while it's typed into.
+- **A row that gains or loses line 2** (a date set or cleared, a checklist added, a check settling) resizes on the
+  layout spring, as a row being typed into does: its height signature (`TaskCollection.signatures`) changes, the cell
+  is reconfigured inside the spring, and the row draws the state it was configured with (`TaskRow.twoLineOverride`),
+  the title moving and line 2 fading on the same curve. While a drag holds updates it waits like any resize (T27).
+- **Groups:** Upcoming's months are headings on a rule (round 2 B) and list their days, each day's label with 12pt of
+  air (not 18) under its month; a drop on such a day sets the When to it. Today's and Undated's labels show the tile,
+  the short name and the rest of the name quiet (round 2c).
+- **Widgets** are unchanged: one line each.
 
 ### What you can do in each
 

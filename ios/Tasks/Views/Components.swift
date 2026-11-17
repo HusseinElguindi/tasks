@@ -10,7 +10,8 @@ import TasksTheme
 /// and at the other scales the nearest whole points (21×17 in the bar, 22×18 in a task's details, 31×25 under a large
 /// title), the radius a fifth of the width, so the finish's one-device-pixel hairlines land on pixels.
 struct ListTile: View {
-    enum Content { case mono(String), symbol(String) }
+    /// `check` is the Mac's tile check (`Glyph.check`), the app's mark (`LogoMark`).
+    enum Content { case mono(String), symbol(String), check }
     let content: Content
     let hue: RGBA
     var scale: CGFloat = 1
@@ -27,6 +28,12 @@ struct ListTile: View {
             case let .symbol(s):
                 Image(systemName: s)
                     .font(.system(size: 12.5 * scale, weight: .semibold))
+            case .check:
+                // The Mac's TileLayer glyph: a 12-of-20 box, centred, stroked round in white.
+                let box = w * 12 / 20
+                TileCheck()
+                    .stroke(style: StrokeStyle(lineWidth: box * TileCheck.stroke, lineCap: .round, lineJoin: .round))
+                    .frame(width: box, height: box)
             }
         }
         .foregroundStyle(.white)
@@ -393,13 +400,12 @@ private struct Spark: View {
 
 // MARK: - Dates on a row
 
-/// The quiet When: glyph and date in ink-tertiary, no capsule (`DateLabel.whenChip`: "Today", "Tomorrow", "in 2d"…).
+/// The quiet When: glyph and words in ink-tertiary, no capsule (`DateLabel.whenChip`: "Today", "Tomorrow", "in 2d"…; in
+/// Upcoming `DateLabel.upcomingWhen`: "Nov 16").
 struct QuietWhen: View {
-    let date: CalendarDate
-    @Environment(AppModel.self) private var app
+    let text: String
     @Environment(\.palette) private var p
     var body: some View {
-        let text = DateLabel.whenChip(date, today: app.today)
         HStack(spacing: 3) {
             Image(systemName: "calendar")
                 .font(.system(size: 10.5, weight: .medium))
@@ -413,16 +419,26 @@ struct QuietWhen: View {
 }
 
 /// The deadline: the one capsule on a row, so a capsule always means something is due (`DateLabel.deadlineChip`:
-/// "2d ago", "Due today", "3d left"…). In Upcoming, on its own day's group, "Due", as on the Mac.
+/// "2d ago", "Due today", "3d left"…). In Upcoming, a date ("Nov 16"), and "Due" on its own day's group
+/// (`DateLabel.upcomingDeadline`, §24 "In Upcoming"). `compact`: on a row's line 2, 20pt tall (ROW-DENSITY.md §6.4).
 struct DeadlineChip: View {
     let date: CalendarDate
     var groupDay: CalendarDate? = nil
+    var upcoming = false
+    var compact = false
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
 
+    /// Its words and tone, as a row's measure reads them too (`RowFit`).
+    static func label(_ date: CalendarDate, today: CalendarDate, groupDay: CalendarDate?, upcoming: Bool) -> (text: String, tone: DateLabel.Tone) {
+        let c = upcoming ? DateLabel.upcomingDeadline(date, today: today, groupDay: groupDay)
+            : DateLabel.deadlineChip(date, today: today)
+        return (!upcoming && date == groupDay ? "Due" : c.text, c.tone)
+    }
+
     var body: some View {
-        let c = DateLabel.deadlineChip(date, today: app.today)
-        let text = date == groupDay ? "Due" : c.text
+        let (text, tone) = Self.label(date, today: app.today, groupDay: groupDay, upcoming: upcoming)
+        let c = (text: text, tone: tone)
         HStack(spacing: 4) {
             Image(systemName: "flag.fill")
                 .font(.system(size: 9.5, weight: .semibold))
@@ -432,8 +448,8 @@ struct DeadlineChip: View {
                 .monospacedDigit()
         }
         .foregroundStyle(fg(c.tone))
-        .padding(.horizontal, 8)
-        .frame(height: 22)
+        .padding(.horizontal, compact ? 7 : 8)
+        .frame(height: compact ? Metric.detailLine : 22)
         .background(bg(c.tone), in: Capsule())
         .fixedSize()
         .accessibilityElement(children: .combine)
@@ -573,78 +589,109 @@ extension View {
 // MARK: - Group label
 
 struct GroupLabel: View {
+    enum Style {
+        case plain
+        /// Upcoming's month (§22, round 2 B): a heading's look, 15 semibold `ink` on a hairline.
+        case month
+        /// A day inside an Upcoming month: a day's label with less air, under its month.
+        case inMonth
+    }
     let title: String
     var sub: String? = nil
     var quiet = false
     /// A drag in Upcoming is over its day (the Mac's `dayTarget`): the name in accent-text.
     var hot = false
+    var style = Style.plain
+    /// A label that names its list (Today, Undated): the tile, then the short name, then the rest of the name quiet
+    /// (§22 "The list mark", round 2c, `ListName.split`).
+    var list: ListModel? = nil
     /// The air above it: none when an edge row (`Line.edge`) holds it.
     var top: CGFloat = GroupLabel.air
     var bottom: CGFloat = 6
     static let air: CGFloat = 18
+    static let inMonthAir: CGFloat = 12
     @Environment(\.palette) private var p
     var body: some View {
-        // Cut off, the name and the day's date fade out at their ends, as a title does (the Mac's GroupLabelView).
+        switch style {
+        case .month: month
+        case .plain, .inMonth: label
+        }
+    }
+
+    private var label: some View {
+        // Cut off, the name and the day's date fade out at their ends, as a title does (the Mac's GroupLabelView). A
+        // list's label: the quiet rest of its name fades first, then the short name.
         HStack(spacing: 6) {
-            Text(title).font(Typo.label).foregroundStyle(hot ? p.accentText : quiet ? p.inkQuiet : p.inkTertiary)
-                .fadeTruncation(Metric.titleFade, text: title)
-            if let sub {
-                Text(sub).font(Typo.quiet).foregroundStyle(p.inkQuiet).fadeTruncation(Metric.titleFade, text: sub)
+            if let list {
+                ListMarkTile(list: list)
+                let split = ListName.split(title)
+                // VoiceOver reads the list's name whole, on the short name.
+                Text(split.short).font(Typo.label).foregroundStyle(p.inkTertiary)
+                    .fadeTruncation(Metric.titleFade, text: split.short)
+                    .layoutPriority(1)
+                    .accessibilityLabel(title)
+                if let rest = split.rest {
+                    Text(rest).font(Typo.quiet).foregroundStyle(p.inkQuiet).fadeTruncation(Metric.titleFade, text: rest)
+                        .accessibilityHidden(true)
+                }
+            } else {
+                Text(title).font(Typo.label).foregroundStyle(hot ? p.accentText : quiet ? p.inkQuiet : p.inkTertiary)
+                    .fadeTruncation(Metric.titleFade, text: title)
+                if let sub {
+                    Text(sub).font(Typo.quiet).foregroundStyle(p.inkQuiet).fadeTruncation(Metric.titleFade, text: sub)
+                }
             }
             Spacer(minLength: 0)
         }
         .lineLimit(1)
         .padding(.leading, Metric.rowPad + 2)
-        .padding(.top, top)
+        .padding(.top, style == .inMonth ? Self.inMonthAir : top)
         .padding(.bottom, bottom)
+        .accessibilityAddTraits(.isHeader)
+    }
+
+    /// A list heading's look (HeadingRow's name, with no chevron): its name at the checkbox's edge on a hairline.
+    private var month: some View {
+        HStack(spacing: 0) {
+            Text(title).font(Typo.heading).foregroundStyle(p.ink).fadeTruncation(Metric.titleFade, text: title)
+            Spacer(minLength: 0)
+        }
+        .lineLimit(1)
+        .padding(.leading, Metric.rowPad)
+        .padding(.vertical, 9)
+        .hairline(p.lineSeparator, leading: Metric.rowPad, trailing: Metric.rowPad)
+        .padding(.top, top)
         .accessibilityAddTraits(.isHeader)
     }
 }
 
-// MARK: - The 04 · Log mark
+// MARK: - The app's mark
 
-/// The app's mark, from the sidebar header's SVG (viewBox 150 150 724 724): an accent head with the check cut out,
-/// two rings and their trails, and the ink bar. The head is lit as the Mac's is (BrandMark): the tile's finish, round,
-/// with no specular strip.
+/// The app's mark inside the app is a list mark (the user, 2026-11-08: "let's go with lit body (2a), but when the logo
+/// shows in the app, it's a list mark."): the lit tile every list wears, in Today's hue (the accent, the same in both
+/// appearances), with the white check, as the Mac's sidebar header draws it (`ListMark`, app/Tasks/Sidebar/
+/// SidebarHeader.swift). It takes a list tile's scales, so it sits as a list's tile does: 0.8 in the bar, 1.2 under a
+/// large title. The app icon is the same tile filling its body (design/logo/final).
 struct LogoMark: View {
-    var size: CGFloat = 28
+    var scale: CGFloat = 1
     @Environment(\.palette) private var p
-    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
-        Canvas { ctx, sz in
-            let s = sz.width / 724
-            func r(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) -> CGRect {
-                CGRect(x: (x - 150) * s, y: (y - 150) * s, width: w * s, height: h * s)
-            }
-            func circle(_ cx: CGFloat, _ cy: CGFloat, _ rad: CGFloat) -> Path {
-                Path(ellipseIn: r(cx - rad, cy - rad, rad * 2, rad * 2))
-            }
-            ctx.fill(Path(r(304, 436, 36, 64)), with: .color(p.markTrail))
-            ctx.fill(Path(r(304, 612, 36, 64)), with: .color(p.markTrail))
-            ctx.fill(Path(roundedRect: r(462, 524, 280, 64), cornerRadius: 32 * s), with: .color(p.markTrail))
-            ctx.fill(Path(roundedRect: r(462, 700, 220, 64), cornerRadius: 32 * s), with: .color(p.markTrail))
-            ctx.fill(circle(322, 556, 56), with: .color(p.markRings))
-            ctx.fill(circle(322, 732, 56), with: .color(p.markRings))
-            ctx.fill(Path(roundedRect: r(462, 296, 340, 80), cornerRadius: 40 * s), with: .color(p.markBar))
-            ctx.drawLayer { l in
-                // The head's art reaches `outset` past the circle for its halo; the check is cut out of it.
-                let head = r(322 - 100, 336 - 100, 200, 200)
-                if let art = TileArt.image(hue: p.value(.markHead), halo: p.tileHalo, size: head.size,
-                                           radius: head.width / 2, scale: displayScale, specular: false) {
-                    let o = TileArt.outset
-                    l.draw(Image(decorative: art, scale: displayScale), in: head.insetBy(dx: -o, dy: -o))
-                }
-                l.blendMode = .destinationOut
-                var ck = Path()
-                ck.move(to: CGPoint(x: (276.5 - 150) * s, y: (339.5 - 150) * s))
-                ck.addLine(to: CGPoint(x: (308 - 150) * s, y: (371 - 150) * s))
-                ck.addLine(to: CGPoint(x: (367.5 - 150) * s, y: (304.5 - 150) * s))
-                l.stroke(ck, with: .color(.black), style: StrokeStyle(lineWidth: 30 * s, lineCap: .round, lineJoin: .round))
-            }
-        }
-        .frame(width: size, height: size)
-        .accessibilityHidden(true)
+        ListTile(content: .check, hue: p.tileToday, scale: scale)
+    }
+}
+
+/// The Mac's `Glyph.check` (M3.8 8.4l2.7 2.7 5.7-6.2 in a 16 box, a 2.2 stroke), in a unit box.
+struct TileCheck: Shape {
+    static let stroke: CGFloat = 2.2 / 16
+
+    func path(in r: CGRect) -> Path {
+        let s = r.width / 16
+        var p = Path()
+        p.move(to: CGPoint(x: r.minX + 3.8 * s, y: r.minY + 8.4 * s))
+        p.addLine(to: CGPoint(x: r.minX + 6.5 * s, y: r.minY + 11.1 * s))
+        p.addLine(to: CGPoint(x: r.minX + 12.2 * s, y: r.minY + 4.9 * s))
+        return p
     }
 }
 

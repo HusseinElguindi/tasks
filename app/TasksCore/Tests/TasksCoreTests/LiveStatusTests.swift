@@ -138,4 +138,17 @@ final class LiveStatusTests: XCTestCase {
         XCTAssertNil(g.update(connected: false, now: 25))
         XCTAssertFalse(g.live, "5 s down: the plain cloud")
     }
+
+    /// The iPhone in the background: the count stops, and coming back starts it again.
+    func testPausingForgetsTheDownTime() {
+        var g = LiveGlyph()
+        g.update(connected: true, now: 0)
+        XCTAssertEqual(g.update(connected: false, now: 1), 6)
+        g.pause()
+        XCTAssertTrue(g.live, "kept")
+        XCTAssertEqual(g.update(connected: false, now: 600), 605, "an hour later: 5 s from now, not from then")
+        XCTAssertTrue(g.live)
+        XCTAssertNil(g.update(connected: true, now: 601.5))
+        XCTAssertTrue(g.live, "reconnected inside them: never flipped")
+    }
 }

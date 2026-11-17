@@ -13,8 +13,15 @@ container on iOS, so they keep their data apart, as the Mac's two apps do).
 Settings ▸ Sync: the server URL (`https://tasks.elguindi.workers.dev` unless changed) and the token, the Worker's
 `API_TOKEN`, pasted once into a secure field and kept in the Keychain (service `com.elguindi.Tasks.sync`, account
 `API_TOKEN`, this device only); it's never shown again. TasksCore syncs about a second after each change; the app
-also syncs at launch, on coming to the front, every 30 s while in front, and on pull to refresh. Nothing syncs in
-the background. Home shows how it's going under the views; Settings shows the status and has Sync Now.
+also syncs at launch, on coming to the front, and on pull to refresh. While in front it holds the server's
+`/v1/events` socket (TasksCore's `SyncSocket`, design/PUSH-SYNC.md): each `{"head":N}` the server sends syncs if the
+phone is behind, so another device's edit shows in about half a second once it reaches the server. The periodic sync
+is a safety net beside it: every 5 min while the socket is up, every 30 s while it's down. Going to the background
+closes the socket; there, only the background refresh syncs (`BackgroundRefresh.swift`), and it never opens the
+socket. The socket's states and pokes are in the unified log (subsystem `com.elguindi.Tasks`, category
+`sync-socket`). Home shows how it's going under the views, with a bolt in the cloud while the socket is live;
+Settings shows the status and has Sync Now (which also connects a waiting socket at once), and Live updates says what
+the socket is doing (design/SYNC-STATUS.md; hidden until sync is set up).
 
 Debug builds only talk to a local `wrangler dev` (`localhost` or `127.0.0.1`), as the Mac's do, unless the
 `allowRemoteServer` default is set; the sample data never syncs. To try it against `server/` (`pnpm dev`, with a
@@ -88,6 +95,7 @@ Mac-only CLI, and building there writes `.swiftpm/` into `app/TasksCore`. (The `
 | `-style` | `classic` `glass` |
 | `-expand <listID>` | opens a deleted list in Trash (`w26`, `move`) |
 | `-completed <listID>` | opens a list's Completed |
+| `-debugLive` | Debug only: `live` `connecting` `reconnecting` `offline` `unavailable` `rejected` `off` stands in for the poke socket in Settings ▸ Sync ▸ Live updates (design/SYNC-STATUS.md), even on the sample data, whose row is otherwise hidden |
 | `-hold YES` | keeps notices and just-checked rows on screen |
 | `-remoteTask <taskID>` with `-remoteTitle <text>` and/or `-remoteNotes <text>`; `-remoteList <listID>` with `-remoteName <text>` | Debug only, for UI tests: that change, as if another device made it, each time the test posts the Darwin notification `com.elguindi.Tasks.test.remote-edit` (`Tasks/App/RemoteEdit.swift`) |
 
@@ -98,8 +106,9 @@ With `-sampleData`, lists go by short names: `inbox` `school` `phys` `tasks` `ho
 
 - The theme is the Mac's, from the TasksTheme package (`app/TasksCore/Sources/TasksTheme`): Rex with the Ember accent,
   its tokens, and the lit tiles' finish (`TileArt`). `Tasks/Theme/Theme.swift` turns its values into SwiftUI colours;
-  `Tasks/Theme/Palette.swift` holds its tokens for one appearance, by the Mac's names. A list tile and the logo mark's
-  head are drawn by `TileArt`, as on the Mac (`ListTile` and `LogoMark` in `Tasks/Views/Components.swift`).
+  `Tasks/Theme/Palette.swift` holds its tokens for one appearance, by the Mac's names. A list tile and the app's mark (a
+  list mark: Today's lit tile with the check) are drawn by `TileArt`, as on the Mac (`ListTile` and `LogoMark` in
+  `Tasks/Views/Components.swift`).
 - `Tasks/Theme/Metrics.swift`: the phone's row grid (48pt rows, 22pt rings), type and motion.
 - `Tasks/Model/AppModel.swift`: the UI state next to TasksCore's `Store` (navigation, sheets, open disclosures, the
   notice and its Undo, the draft, the appearance, rows checked a moment ago) and the actions, each a Store action.
@@ -110,7 +119,8 @@ With `-sampleData`, lists go by short names: `inbox` `school` `phys` `tasks` `ho
 - `Tasks/Views/`: home, list screen, rows, task detail, the When and Deadline picker, settings, and the root (a stack
   on iPhone, three panes on iPad). `MarkdownView.swift` draws notes from TasksCore's Markdown reading.
 - `TasksUITests/FlowTests.swift`: adds tasks, completes and undoes, swipes, edits a date, deletes a list, changes the appearance.
-- `Tools/MakeIcon.swift`: renders the app icon from the 04 · Log mark.
+- `Tasks/Assets.xcassets/AppIcon.appiconset`: the app icon, 02a Lit body (any, dark and tinted), written by
+  `design/logo/final/export.sh`.
 - `Tools/shot.sh`, `Tools/screenshots.sh`: screenshots on a simulator from the launch arguments above.
 - `Tools/tailscale-bridge.py`: installs on the phone over Tailscale when it isn't on the Mac's network, by bridging
   Xcode's wireless connection (setup and usage in its header).

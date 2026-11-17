@@ -44,6 +44,11 @@ import UIKit
 //   into the row's exact frame (160 ms, `Motion.flight`'s curve), the row shows under it in that frame, and the copy
 //   fades out over it (150 ms ease-out). One at the row's own place is refused and flies home the same way; nothing is
 //   written. A touch taken from us mid-drag (the system's) goes home too.
+// - The preview is the layout of the drop's state (design/DECLARATIVE-DRAGGING.md, borrow 1): the gap is where the row
+//   lands, every other row already where it will be. In Upcoming the gap is the row's height on that day (`lands`: line
+//   2 comes or goes with the day), applied at the write (`refitNow`); the labels of the day it left stay while the
+//   finger is down and close up at the release, the rows under them easing up (`easeIn`). `debugDropCheck` (Debug,
+//   ios/Tools/script/drop-landing-check.sh) checks every drop.
 // - VoiceOver: its double-tap-and-hold passes the touch through, so the same press drags; "Move Up" and "Move Down"
 //   (`voiceOverMove`, a task row's accessibility actions in +Screens) drop it at the slot before or after its own.
 // - Drops write through AppModel.drop (dropOnDay in Upcoming), Reorder.swift.
@@ -76,6 +81,11 @@ final class CollectionDrag {
         /// In Today and Undated, the items of the dragged row's run (`AppModel.dragRuns`: its list's group, the label
         /// first; the last group also has the Completed row and its done tasks). Nil elsewhere: one run.
         var run: Set<String>?
+        /// The row's height where the gap is, when it isn't `height`: in Upcoming, on a day that gives it line 2 or
+        /// takes it away (a deadline chip, `RowFit`), so the gap is the row as the drop will lay it out.
+        var lands: CGFloat? = nil
+        /// The gap's height.
+        var gap: CGFloat { lands ?? height }
     }
 
     unowned let owner: TaskCollectionController
@@ -105,6 +115,8 @@ final class CollectionDrag {
     private var link: CADisplayLink?
     /// Items whose cells the gap has moved or hidden, put back when it closes.
     private var placed: Set<String> = []
+    /// Items whose cells are easing from the gap's place to the landing's (`write`): the gap leaves them alone.
+    private var easing: Set<String> = []
 
     init(owner: TaskCollectionController) { self.owner = owner }
 
@@ -123,7 +135,7 @@ final class CollectionDrag {
 
     /// From the lift (a sync between the lift and the begin moved rows under the still copy: T28) to the landing's end.
     var holdsUpdates: Bool { held != nil || state != nil || landing != nil || lifted != nil }
-    var layoutPad: CGFloat { state.map { $0.height + 8 } ?? 0 }
+    var layoutPad: CGFloat { state.map { max($0.height, $0.gap) + 8 } ?? 0 }
     private var gapOn: Bool { state != nil || landing != nil }
 
     // MARK: Cells
@@ -150,7 +162,7 @@ final class CollectionDrag {
         if i == from { return (true, 0) }
         let o = i > from ? i - 1 : i
         var dy: CGFloat = i > from ? -d.height : 0
-        if let s = d.slot, o >= s { dy += d.height }
+        if let s = d.slot, o >= s { dy += d.gap }
         return (false, dy)
     }
 
@@ -158,7 +170,7 @@ final class CollectionDrag {
     private func place(_ c: TaskCell) {
         guard let id = c.itemID else { return }
         guard let s = shift(id) else {
-            if placed.contains(id) {
+            if placed.contains(id), !easing.contains(id) {
                 c.transform = .identity
                 c.contentView.alpha = 1
             }
@@ -233,24 +245,20 @@ final class CollectionDrag {
     }
 
     /// Upcoming (IX §22, the Mac's `dayTarget`): the day is the group whose label is the last one drawn above the
-    /// copy's middle (above them all, the first). On a day the task may take (not a month, not past its deadline, not its own
-    /// day), the gap opens where the drop puts it, by list order among that day's tasks, and the label lights;
+    /// copy's middle (above them all, the first). On a day the task may take (a day inside a month too; not a month's own
+    /// label, not past its deadline, not its own day), the gap opens where the drop puts it, by list order among that
+    /// day's tasks, and the label lights;
     /// elsewhere the gap stays at its own place (the drop writes nothing and it goes back).
     private func upcomingTarget(_ d: State, _ copyTop: CGFloat) -> (slot: Int, hot: String?) {
         let app = owner.app, current = owner.current
         guard let from = current.firstIndex(of: d.id), let t = app.task(String(d.id.dropFirst(2))) else { return (0, nil) }
         let others = current.filter { $0 != d.id }
-        // Where each row is drawn now: without the dragged row, and a row lower from the gap on. (The gap's own day
-        // keeps its label above the gap, so the target doesn't flicker at a label: it has the gap's height of give.)
-        func top(_ s: Int) -> CGFloat {
-            guard let i = current.firstIndex(of: others[s]), let f = owner.layout.modelFrame(i) else { return 0 }
-            return f.minY - (i > from ? d.height : 0) + (d.slot.map { s >= $0 } == true ? d.height : 0)
-        }
+        func top(_ s: Int) -> CGFloat { drawnTop(d, s, others: others, from: from) }
         let mid = copyTop + d.height / 2
         let labels = others.indices.filter { others[$0].hasPrefix("g:") }
         guard let label = labels.last(where: { top($0) <= mid }) ?? labels.first else { return (from, nil) }
         let today = app.today
-        guard let day = ViewGroups.upcomingDays(today: today).first(where: { "g:" + ViewGroups.upcoming($0, today: today).id == others[label] }),
+        guard let day = AppModel.upcomingDay(ofLabel: others[label]), day > today,
               t.deadline.map({ day <= $0 }) ?? true,
               ViewGroups.upDay(when: t.when, deadline: t.deadline) != day else { return (from, nil) }
         let ranks = app.projection.activeLists.ids
@@ -261,6 +269,24 @@ final class CollectionDrag {
         while s < others.count, others[s].hasPrefix("t:"), let m = app.task(String(others[s].dropFirst(2))),
               ViewGroups.upcomingPrecedes(key(m), key(t)) { s += 1 }
         return (s, others[label])
+    }
+
+    /// Where the item `others[s]` is drawn now: without the dragged row, and a row lower from the gap on. (The gap's own
+    /// day keeps its label above the gap, so the target doesn't flicker at a label: it has the gap's height of give.)
+    private func drawnTop(_ d: State, _ s: Int, others: [String], from: Int) -> CGFloat {
+        guard let i = owner.current.firstIndex(of: others[s]), let f = owner.layout.modelFrame(i) else { return 0 }
+        return f.minY - (i > from ? d.height : 0) + (d.slot.map { s >= $0 } == true ? d.gap : 0)
+    }
+
+    /// The row's height on the day `hot` (an Upcoming label), its When set to it as the drop sets it, when its line 2
+    /// comes or goes there (nil: as it is).
+    private func lands(_ d: State, on hot: String?) -> CGFloat? {
+        guard let hot, let day = AppModel.upcomingDay(ofLabel: hot), let t = owner.app.task(String(d.id.dropFirst(2))),
+              let now = owner.sizes[d.id] else { return nil }
+        let next = owner.fit(owner.app.rowFit(t, source: .upcoming, indent: false, groupDay: day, day: nil, when: day).signature)
+        func h(_ fit: String) -> CGFloat { fit == "2" ? Metric.twoLineHeight : Metric.rowHeight }
+        guard next != now, now == "1" || now == "2" else { return nil }
+        return d.height + h(next) - h(now)
     }
 
     /// Each frame from the lift: the copy follows the finger in x and y, keeping the grab offset; its y is held within
@@ -294,6 +320,12 @@ final class CollectionDrag {
         if owner.source == .upcoming {
             let target = upcomingTarget(d, copyTop)
             s = target.slot
+            let h = lands(d, on: target.hot)
+            if h != d.lands {
+                d.lands = h
+                state = d
+                if s == d.slot { moveGap(animated: true) }
+            }
             if hover.key != target.hot {
                 hover.key = target.hot
                 lit = target.hot != nil
@@ -698,19 +730,48 @@ final class CollectionDrag {
         // `.onMove`'s offset in the items before the move: the slot among the others, as an index among them all.
         let to = at < from ? at : at + 1
         let lines = scope.map { owner.rows.line($0) ?? .edge(key: $0, height: 0) }
+        // Where each row is drawn now, the gap open.
+        var drawn: [String: CGFloat] = [:]
+        for (i, id) in current.enumerated() where id != d.id {
+            if let f = owner.layout.modelFrame(i) { drawn[id] = f.minY + (shift(id)?.dy ?? 0) }
+        }
         if app.drop(IndexSet(integer: from), to, in: lines, source: source) { feel.dropped() }
         landing = d.id
         state = nil
         let items = shown(latest())
-        // The new order, at once: every row's drawn place is the same (the gap was the dropped row's place). The
-        // transforms go back to none directly; the dropped row stays hidden under the copy.
+        // The new order, at once: every row's drawn place is the same (the gap was the dropped row's place, at its new
+        // height: `refitNow`). The transforms go back to none directly; the dropped row stays hidden under the copy.
         UIView.performWithoutAnimation {
             owner.apply(items, animation: nil)
+            owner.refitNow(d.id)
             owner.cv.layoutIfNeeded()
             moveGap(animated: false)
         }
+        easeIn(from: drawn)
         guard let ip = owner.dataSource.indexPath(for: d.id) else { return nil }
         return owner.layout.modelFrame(ip.item)
+    }
+
+    /// Rows whose landing isn't where the gap drew them (in Upcoming, below a day the row left: its label goes, and a
+    /// month's when the month empties) move there from where they were drawn, on the gap's spring, rather than jumping
+    /// (the Mac closes them up at the release too, and its copy flies into the drop's state, as ours does). The copy
+    /// waits for them (`gap.left`).
+    private func easeIn(from drawn: [String: CGFloat]) {
+        var moves: [(TaskCell, CGFloat)] = []
+        for case let c as TaskCell in owner.cv.subviews where !c.isHidden {
+            guard let id = c.itemID, id != landing, let y = drawn[id], let f = owner.modelFrame(id), abs(y - f.minY) > 0.25 else { continue }
+            moves.append((c, y - f.minY))
+        }
+        guard !moves.isEmpty, !UIAccessibility.isReduceMotionEnabled else { return }
+        let ids = Set(moves.compactMap(\.0.itemID))
+        easing.formUnion(ids)
+        UIView.performWithoutAnimation { for (c, dy) in moves { c.transform = CGAffineTransform(translationX: 0, y: dy) } }
+        gap.moved()
+        UIView.animate(springDuration: DragGap.spring, bounce: 0, delay: 0, options: [.allowUserInteraction]) {
+            for (c, _) in moves { c.transform = .identity }
+        } completion: { [weak self] _ in
+            self?.easing.subtract(ids)
+        }
     }
 }
 
@@ -1201,6 +1262,315 @@ extension CollectionDrag {
         let d = state ?? held
         return "drag=\(state != nil ? "on" : held != nil ? "held" : "off") id=\(d?.id ?? "-") slot=\(d?.slot.map(String.init) ?? "-")"
             + " landing=\(landing ?? "-") copy=\(copy.map { ScriptFormat.rect($0.frame) } ?? "-")"
+    }
+}
+#endif
+
+#if DEBUG
+// MARK: - The drop landing check
+
+/// The drop rule (design/DECLARATIVE-DRAGGING.md, borrow 2; design/DROP-LANDING-CHECK.md): a drag's preview is the
+/// layout of the state its drop writes, so the dropped row lands where the gap was and nothing else moves. DebugScript's
+/// `dropcheck` step runs it on the list shown, with no touch and no frames: for every row that lifts (a task, a heading
+/// with its section folded into it) and every place it can drop (each slot of `slotTops`, or in Upcoming each day
+/// label, through `upcomingTarget` as `follow` reaches it), it opens the gap there (`moveGap`) and reads each shown row's
+/// drawn top, writes the drop as the finger's lift does (`write`, then `unfold`), reads the layout the landing renders,
+/// lets the app's update through (`landed`, `settle`) and reads it again, then undoes (the undo manager's undo). Within
+/// 0.5 pt: every shown row lands where the preview drew it, the dropped row at its slot's top; the release starts
+/// every row from where the preview drew it (its transform, or its animation's start: `easeIn`); and nothing moves
+/// once the copy has set down. It prints a line per disagreement and "dropcheck <view>: ok|FAIL <n> checks, <m> failed".
+///
+/// What it allows, by design (as the Mac's, app/Tasks/Support/DebugDropCheck.swift): a heading's section is folded into
+/// its copy until it lands (§23), so for a heading only it and the rows above its gap are compared; a task dropped
+/// right under a collapsed heading folds into its section (the copy falls into the heading's row, `drop`), so only the
+/// rows above its gap are; in Upcoming, the labels of the day the row left (and of its month, when that empties) go at
+/// the release, as the Mac's do, so the rows under them land that much higher, eased there from the preview.
+///
+/// Only the rows shown (and the gap's reach past them) are compared: the rows far off screen have their estimated
+/// heights until they're drawn. Each case scrolls its slot into view first, as a drag's edge autoscroll would.
+extension CollectionDrag {
+    /// Each item's top in the layout (no gap's transforms).
+    private func checkTops() -> [String: CGFloat] {
+        var out: [String: CGFloat] = [:]
+        for (i, id) in owner.current.enumerated() { if let f = owner.layout.modelFrame(i) { out[id] = f.minY } }
+        return out
+    }
+
+    /// The shown rows' tops, with the gap's reach.
+    private func checkShown(_ t: [String: CGFloat]) -> [String: CGFloat] {
+        let r = owner.cv.bounds.insetBy(dx: 0, dy: -max(layoutPad, 64))
+        return t.filter { $0.value >= r.minY && $0.value <= r.maxY }
+    }
+
+    /// Laid out till the tops hold: rows that come into view are sized in a pass after the one that shows them.
+    private func checkLayout() {
+        owner.cv.layoutIfNeeded()
+        var last = checkTops()
+        for _ in 0..<6 {
+            owner.cv.setNeedsLayout()
+            owner.cv.layoutIfNeeded()
+            let now = checkTops()
+            if now == last { return }
+            last = now
+        }
+    }
+
+    /// The list scrolled so `y` (in its content) is in the middle of what's shown, its rows laid out.
+    private func checkShow(_ y: CGFloat) {
+        let cv = owner.cv!
+        let inset = cv.adjustedContentInset
+        let lo = -inset.top, hi = max(lo, cv.contentSize.height + inset.bottom - cv.bounds.height)
+        cv.layer.removeAllAnimations()
+        cv.contentOffset.y = min(max(y - inset.top - (cv.bounds.height - inset.top - inset.bottom) / 2, lo), hi)
+        checkLayout()
+    }
+
+    /// A turn for the app's update (SwiftUI's, into `update`).
+    private func checkTurn() async {
+        try? await Task.sleep(for: .milliseconds(30))
+        checkLayout()
+    }
+
+    private func checkName(_ id: String) -> String {
+        let app = owner.app
+        if id.hasPrefix("t:") || id.hasPrefix("h:") || id.hasPrefix("n:"), let t = app.task(String(id.dropFirst(2))) {
+            return "'\(t.title)'" + (id.hasPrefix("n:") ? " notes" : "")
+        }
+        if case let .group(_, title, sub, _)? = owner.rows.line(id) { return "label '\(title)\(sub.map { " " + $0 } ?? "")'" }
+        return id
+    }
+
+    /// The lift and the drag's begin, as `lift` and `begin` make them: the gap at the row's own place, a heading's
+    /// section folded into it (here at once).
+    private func checkLift(_ id: String) -> State? {
+        guard let at = owner.current.firstIndex(of: id), let f = owner.layout.modelFrame(at) else { return nil }
+        var d = State(id: id, height: f.height, grab: .zero, slot: at, ticked: at, run: run(of: id))
+        if id.hasPrefix("h:") {
+            lifted = id
+            let all = owner.current
+            let items = shown(all)
+            d.slot = items.firstIndex(of: id)
+            d.ticked = d.slot
+            state = d
+            owner.apply(items, fold: CollectionFold.Plan(heading: id, items: Set(CollectionFold.section(of: id, in: all)), collapse: true),
+                        animation: nil)
+            checkLayout()
+        }
+        state = d
+        moveGap(animated: false)
+        return d
+    }
+
+    /// A lift let go where it lifted: nothing written.
+    private func checkCancel() {
+        state = nil
+        hover.key = nil
+        if let h = lifted {
+            lifted = nil
+            let items = latest()
+            owner.apply(items, fold: CollectionFold.Plan(heading: h, items: Set(CollectionFold.section(of: h, in: items)), collapse: false),
+                        animation: nil)
+        }
+        landing = nil
+        moveGap(animated: false)
+        settle()
+        checkLayout()
+    }
+
+    /// Where a row's cell starts at the release: its transform as the release's animation starts from (`easeIn`), or as
+    /// set.
+    private func checkStart(_ c: UIView) -> CGFloat {
+        for k in c.layer.animationKeys() ?? [] {
+            if let a = c.layer.animation(forKey: k) as? CABasicAnimation, a.keyPath == "transform", let v = a.fromValue as? NSValue {
+                return v.caTransform3DValue.m42
+            }
+        }
+        return c.transform.ty
+    }
+
+    /// The disagreements between the preview `pre` (each row's drawn top, `preH` its height) and the landing `post`.
+    /// The landing the preview predicts: every row where it was drawn, the dragged row at its slot's top, less the
+    /// labels that go at the release above it (Upcoming: the day the row left, and its month if that empties; they
+    /// close up then, `easeIn`). Any other row gone is a disagreement. `above`: only the rows above it are compared
+    /// (and the dragged one).
+    private func checkDiff(_ pre: [String: CGFloat], _ preH: [String: CGFloat], _ post: [String: CGFloat], dragged: String,
+                           above: CGFloat?, folded: Bool) -> [String] {
+        var bad: [String] = []
+        var closes: [(y: CGFloat, h: CGFloat)] = []
+        for (id, y0) in pre.sorted(by: { $0.value < $1.value }) where post[id] == nil {
+            if id == dragged, folded { continue }
+            if owner.source == .upcoming, id.hasPrefix("g:") { closes.append((y0, preH[id] ?? 0)) } else if above.map({ y0 < $0 - 0.5 }) ?? true {
+                bad.append("\(checkName(id)) preview y \(f(y0)), landed not shown")
+            }
+        }
+        for (id, y0) in pre.sorted(by: { $0.value < $1.value }) {
+            if let above, y0 >= above - 0.5, id != dragged { continue }
+            guard let y1 = post[id] else { continue }
+            let want = y0 - closes.filter { $0.y < y0 - 0.25 }.reduce(0) { $0 + $1.h }
+            if abs(want - y1) > 0.5 {
+                bad.append("\(checkName(id))\(id == dragged ? " (dragged)" : "") preview y \(f(y0))\(want != y0 ? " (\(f(want)) once the labels it left close)" : ""), landed \(f(y1))")
+            }
+        }
+        return bad
+    }
+
+    /// The check on this list: a line per disagreement, then "dropcheck <view>: ok|FAIL <n> checks, <m> failed".
+    func debugDropCheck() async -> [String] {
+        let app = owner.app, source = owner.source
+        let heads = app.collapsed.compactMap { app.task($0)?.title }.sorted()
+        let view = source.id + (heads.isEmpty ? "" : " collapsed=\(heads)")
+        guard !holdsUpdates else { return ["dropcheck \(view): FAIL a drag is under way"] }
+        guard app.dragRuns([], source) != nil else { return ["dropcheck \(view): nothing drags here"] }
+        var out: [String] = []
+        var checks = 0, fails = 0
+        func record(_ what: String, _ bad: [String]) {
+            checks += 1
+            guard !bad.isEmpty else { return }
+            fails += 1
+            out.append("FAIL \(view) \(what): " + bad.prefix(6).joined(separator: "; ") + (bad.count > 6 ? "; +\(bad.count - 6) more" : ""))
+        }
+        await checkTurn()
+        let base = owner.current
+        let upcoming = source == .upcoming
+        // Each lifting row and the places it can drop: slots, or in Upcoming the day labels (among the others).
+        var cases: [(id: String, at: Int)] = []
+        for id in base where canLift(id) {
+            guard let d = checkLift(id) else { continue }
+            let others = owner.current.filter { $0 != id }
+            let places = upcoming ? others.indices.filter { others[$0].hasPrefix("g:") } : slotTops(d).map(\.slot)
+            cases += places.map { (id, $0) }
+            checkCancel()
+        }
+        outer: for c in cases {
+            let id = c.id
+            // The row in view first, as a press finds it (a row changed off screen keeps its old height till it's drawn),
+            // then its place (as the edge autoscroll brings it), from the layout before the lift.
+            if let y = owner.modelFrame(id)?.midY { checkShow(y) }
+            let othersBefore = owner.current.filter { $0 != id }
+            if c.at >= 1, c.at <= othersBefore.count, let y = owner.modelFrame(othersBefore[c.at - 1])?.maxY { checkShow(y) }
+            let offset = owner.cv.contentOffset.y
+            let before = checkShown(checkTops())
+            guard var d = checkLift(id), let from = owner.current.firstIndex(of: id) else { continue }
+            let others = owner.current.filter { $0 != id }
+            var what: String
+            if upcoming {
+                // The copy's middle just under the day's label, as drawn with the gap where it is; the gap then opens where
+                // `upcomingTarget` puts it (which may move the label: again, till it holds).
+                var hot: String?
+                for _ in 0..<4 {
+                    let copyTop = drawnTop(d, c.at, others: others, from: from) + 1 - d.height / 2
+                    let t = upcomingTarget(d, copyTop)
+                    hot = t.hot
+                    let h = lands(d, on: t.hot)
+                    if t.slot == d.slot, h == d.lands { break }
+                    d.slot = t.slot
+                    d.lands = h
+                    state = d
+                }
+                hover.key = hot
+                what = "\(checkName(id)) onto \(checkName(others[c.at]))"
+            } else {
+                d.slot = c.at
+                what = "\(checkName(id)) to slot \(c.at)"
+            }
+            if let s = d.slot, s >= 1, s <= others.count, let y = owner.modelFrame(others[s - 1])?.maxY {
+                checkShow(y)
+            }
+            state = d
+            moveGap(animated: false)
+            guard let s = d.slot, let slotY = slotY(d, s, others: others, from: from) ?? (s == 0 ? 0 : nil) else {
+                record(what, ["no slot top"])
+                checkCancel()
+                continue
+            }
+            // What the last case left moving (its undo, a heading's fold) ends now: the preview is the gap's places.
+            for case let cell as TaskCell in owner.cv.subviews {
+                cell.layer.removeAllAnimations()
+                cell.contentView.layer.removeAllAnimations()
+            }
+            // The preview: each shown row's drawn top with the gap open; the dragged row's is its slot's.
+            var pre: [String: CGFloat] = [:], preH: [String: CGFloat] = [:]
+            for (i, item) in owner.current.enumerated() {
+                guard let fr = owner.layout.modelFrame(i) else { continue }
+                pre[item] = item == id ? slotY : fr.minY + (shift(item)?.dy ?? 0)
+                preH[item] = item == id ? d.gap : fr.height
+            }
+            pre = checkShown(pre).merging([id: slotY]) { _, n in n }
+            // The release: written and the landing's layout, as `release` and `drop` make them.
+            let wrote = moves(d)
+            var folded = false
+            if wrote {
+                let landed = write(d)
+                folded = landed == nil && foldedInto(id) != nil
+            } else {
+                state = nil
+                landing = id
+                moveGap(animated: false)
+            }
+            // The release starts where the preview drew each row: a row that isn't there eases from there, never jumps.
+            var snaps: [String] = []
+            for case let cell as TaskCell in owner.cv.subviews where !cell.isHidden {
+                guard let item = cell.itemID, item != id, let y0 = pre[item], let fr = owner.modelFrame(item) else { continue }
+                if id.hasPrefix("h:") || folded, y0 >= slotY - 0.5 { continue }
+                let start = fr.minY + checkStart(cell)
+                if abs(start - y0) > 0.5 { snaps.append("\(checkName(item)) drawn at y \(f(start)) as the release starts, preview \(f(y0))") }
+            }
+            checkLayout()
+            let post = checkTops()
+            unfold()
+            // The copy's set-down ends a moment later; what the app changed meanwhile is let through then.
+            await checkTurn()
+            landed()
+            checkLayout()
+            let after = checkTops()
+            let above: CGFloat? = id.hasPrefix("h:") || folded ? slotY : nil
+            if folded { what += ", folded" }
+            var bad = checkDiff(pre, preH, post, dragged: id, above: above, folded: folded) + snaps
+            if bad.isEmpty {
+                // Nothing moves once the copy has set down.
+                let shown = post.filter { pre[$0.key] != nil }
+                bad = checkDiff(shown, [:], after, dragged: id, above: above, folded: folded).map { "after the landing: " + $0 }
+            }
+            record(what, bad)
+            // Undone through the undo manager (the drop is one step; not the menu's undo, which animates the rows back
+            // in: the check reads layouts, not motion), and back as it was, every row at its own height: a label the
+            // undo brings back at no height (a row put back in the cell that drew it before, T58) fails it.
+            if wrote { app.undo.undo() }
+            var back = false
+            var why = ""
+            for _ in 0..<40 {
+                await checkTurn()
+                settle()
+                checkLayout()
+                let none = owner.current.enumerated().compactMap { i, item in
+                    item.hasPrefix("g:") || item.hasPrefix("t:") ? (owner.layout.modelFrame(i)?.height ?? 1) < 1 ? item : nil : nil
+                }
+                guard none.isEmpty else {
+                    why = none.map(checkName).joined(separator: ", ") + " at no height"
+                    continue
+                }
+                // The app's update has come (the rows' heights are the state's), not only the items `settle` applied.
+                let sigs = TaskCollection.signatures(app, source, app.lines(source))
+                guard sigs.allSatisfy({ k, sig in owner.sizes[k].map { $0 == owner.fit(sig) } ?? true }) else { continue }
+                if owner.current == base {
+                    owner.cv.contentOffset.y = offset
+                    checkLayout()
+                    let now = checkTops()
+                    if before.allSatisfy({ y in now[y.key].map { abs($0 - y.value) <= 0.5 } == true }) { back = true; break }
+                    why = before.sorted { $0.value < $1.value }.map { y in "\(y.key)=\(f(y.value))>\(f(now[y.key] ?? -1))" }.joined(separator: " ")
+                        + " off=\(f(offset)) size=\(f(owner.cv.contentSize.height))"
+                } else {
+                    why = "items \(owner.current.count) of \(base.count): " + Set(owner.current).symmetricDifference(base).sorted().joined(separator: ",")
+                }
+            }
+            if !back {
+                out.append("FAIL \(view): the undo didn't put the list back after \(what) (\(why)); stopping")
+                fails += 1
+                break outer
+            }
+        }
+        out.append("dropcheck \(view): \(fails == 0 ? "ok" : "FAIL") \(checks) checks, \(fails) failed")
+        return out
     }
 }
 #endif

@@ -3,6 +3,13 @@ import SwiftUI
 /// The iPhone's row grid and type, scaled up from the Mac's 13/16 on a 32pt pitch (tasks-v2.css) to 17/22 on 48.
 enum Metric {
     static let rowHeight: CGFloat = 48
+    /// A row with a detail line (ROW-DENSITY.md §6.4): 6 + the title's 22 + 2 + line 2's 20 + 6.
+    static let twoLineHeight: CGFloat = 56
+    static let twoLinePad: CGFloat = 6
+    static let lineGap: CGFloat = 2
+    static let detailLine: CGFloat = 20
+    /// The list mark's tile (§22): the sidebar's small tile, 16×13.
+    static let markTileW: CGFloat = 16
     static let rowInset: CGFloat = 10          // screen edge to the row's pressed fill
     static let rowPad: CGFloat = 10            // fill edge to the checkbox / tile
     static let rowRadius: CGFloat = 12
@@ -14,13 +21,6 @@ enum Metric {
     static let barHeight: CGFloat = 52
     /// Space under the last row so nothing hides behind the floating bar and the + button.
     static let bottomClearance: CGFloat = 104
-    /// A row's title keeps this much (all of a shorter one) before the When, or a list's name after it, gives way
-    /// (the Mac's 120 × 1.3, `TaskRowView.titleKeep`).
-    static let titleKeep: CGFloat = 156
-    /// A list's name after a task's title keeps this much before it's cut (the Mac's 72 × 1.3, `whereKeep`), and goes
-    /// rather than show less than this much (the Mac's 32 × 1.3, `whereMin`).
-    static let listNameKeep: CGFloat = 94
-    static let listNameMin: CGFloat = 42
     /// How far a cut-off name or title fades out at its end, instead of an ellipsis (`fadeTruncation`), the Mac's × 1.3:
     /// a row's title, a list's name on a row, a group label, a deleted list's name (the Mac's 24, `TK.M.titleFade`)…
     static let titleFade: CGFloat = 31
@@ -52,9 +52,19 @@ enum Typo {
 
 /// Pane's three curves, and the moments' (COLOR.md §4). Reduce Motion turns them all off.
 enum Motion {
-    static var natural: Animation { .smooth(duration: 0.3) }
-    static var layout: Animation { .smooth(duration: 0.25) }
-    static var snappy: Animation { .snappy(duration: 0.2) }
+    static var natural: Animation { .smooth(duration: 0.3 * scale) }
+    static var layout: Animation { .smooth(duration: 0.25 * scale) }
+    static var snappy: Animation { .snappy(duration: 0.2 * scale) }
+    /// Debug only, for UI tests: `-motionScale <n>` makes these three curves n times as long, so a test can act inside
+    /// one (XCTest takes ~0.45 s to start any gesture, longer than most of them). 1 otherwise.
+    static let scale: Double = {
+        #if DEBUG
+        let n = UserDefaults.standard.double(forKey: "motionScale")
+        return n > 0 ? n : 1
+        #else
+        return 1
+        #endif
+    }()
     /// The spark's ring and rays and the all-done sun's turn: `cubic-bezier(0.2, 0.8, 0.2, 1)` (the Mac's `TK.CA.flight`).
     static let flight = UnitCurve.bezier(startControlPoint: UnitPoint(x: 0.2, y: 0.8), endControlPoint: UnitPoint(x: 0.2, y: 1))
 }

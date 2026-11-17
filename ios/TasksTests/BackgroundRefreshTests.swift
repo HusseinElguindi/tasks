@@ -45,11 +45,19 @@ final class BackgroundRefreshTests: XCTestCase {
         let app = AppModel(store: await store("phone", server), isSample: isSample)
         let url = feedURL
         let events = events!
-        app.widgetFeed = WidgetFeedWriter(store: app.store, url: url) {
+        app.widgetFeed = WidgetFeedWriter(store: app.store, url: url) { _ in
             let has = id.map { id in WidgetFeed.read(at: url)?.tasks.contains { $0.id == id } ?? false } ?? false
             events.add(has ? "reload (feed has the Mac's task)" : "reload")
         }
         return app
+    }
+
+    /// The cursor of the phone's snapshot on disk; nil when there's none yet.
+    private func snapshotCursor() -> Int? {
+        let url = dir.appendingPathComponent("phone/snapshot.json")
+        guard let data = try? Data(contentsOf: url),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        return json["cursor"] as? Int
     }
 
     private func refresh(_ app: AppModel, scheduler: FakeScheduler, config: SyncConfig?, now: Date = Date()) -> BackgroundRefresh {
@@ -87,7 +95,9 @@ final class BackgroundRefreshTests: XCTestCase {
         XCTAssertEqual(request.identifier, BackgroundRefresh.identifier)
         XCTAssertEqual(try XCTUnwrap(request.earliestBeginDate).timeIntervalSince(now), 15 * 60, accuracy: 0.001)
 
-        // Persisted: a fresh open of the folder has it (the snapshot, written by persistNow).
+        // Persisted: the snapshot is at the cursor the sync reached (persistNow; TasksCore alone would wait for a
+        // 500-entry tail or 10 min), and a fresh open of the folder has the task.
+        XCTAssertEqual(snapshotCursor(), app.store.cursor, "the snapshot written before the task ended")
         let reopened = await store("phone", DeadTransport())
         XCTAssertNotNil(reopened.projection.taskModel(id), "saved before the task ended")
 
@@ -100,6 +110,26 @@ final class BackgroundRefreshTests: XCTestCase {
         let log = try String(contentsOf: r.history.logURL, encoding: .utf8)
         XCTAssertEqual(log.split(separator: "\n").count, 1)
         XCTAssertTrue(log.contains("  ok  entries \(last.entries)  feed changed"), log)
+    }
+
+    /// iOS can end a backgrounded app without notice, and TasksCore writes the snapshot only at a 500-entry tail or
+    /// 10 min after the first entry it doesn't hold (coord title-design T11): going to the background writes it.
+    func testGoingToTheBackgroundWritesTheSnapshot() async throws {
+        let server = MiniServer(events: events)
+        let id = try await macAddsATask(server)
+        let app = await phone(server)
+        app.store.config = config
+        app.store.cancelScheduledSync()
+        await app.store.sync()
+        guard case .idle = app.store.syncState else { throw XCTSkip("the phone's sync didn't finish: \(app.store.syncState)") }
+        XCTAssertNotNil(app.task(id))
+        let cursor = app.store.cursor
+        XCTAssertGreaterThan(cursor, 0)
+        XCTAssertNotEqual(snapshotCursor(), cursor, "a sync in front doesn't write the snapshot")
+
+        app.wentToBackground()
+        XCTAssertEqual(snapshotCursor(), cursor, "going to the background does")
+        XCTAssertFalse(app.inFront)
     }
 
     func testANothingNewRunDoesntReloadTheWidgets() async throws {

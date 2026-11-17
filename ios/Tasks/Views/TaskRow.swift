@@ -1,20 +1,28 @@
 import SwiftUI
 import TasksCore
 
-/// A task on the row grid: checkbox, title, the notes hint, the quiet When after it, the list's name where the view
-/// mixes lists, and the deadline capsule at the end.
+/// A task on the row grid (ROW-DENSITY.md §6, option 3; the user, 2026-11-08: "let's go with 3"): the checkbox, then the
+/// title alone on line 1, across the row; on a quiet line 2, the list mark (in views that mix lists), the When, the
+/// checklist count and the notes glyph, with the deadline capsule at its right edge; 56pt. When the title and all of
+/// those fit on one line, nothing cut (`RowFit`, T55), the row is one 48pt line: the title, then the same parts in the
+/// same order, the capsule at the trailing edge. A row with nothing for line 2 is one line too (the notes glyph alone
+/// stays after the title), in every view, on the phone and the iPad.
 struct TaskRow: View {
     let task: TaskModel
     let source: Source
     var indent = false
     var groupDay: CalendarDate? = nil
-    /// In a month group of Completed or Trash: the day, after the list's name.
+    /// In a month group of Completed or Trash: the day, after the list mark.
     var day: CalendarDate? = nil
     var selected = false
     /// In select mode (§3): selected, and joined to the selected row above or below.
     var picked = false
     var joinTop = false
     var joinBottom = false
+    /// On the collection view: whether the row had line 2 when its cell was configured (its height signature, fitted
+    /// to the row's width: `RowFit`), so it gains or loses the line only as the collection view resizes it, on the
+    /// layout spring (CollectionEditing). Nil: whenever its details have anything for line 2.
+    var twoLineOverride: Bool? = nil
     @Environment(AppModel.self) private var app
     @Environment(\.palette) private var p
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -28,6 +36,12 @@ struct TaskRow: View {
     private var sparks: Bool { done && app.completing.contains(task.id) }
     /// In select mode a tap anywhere on the row, its box too, selects it: no sheet, no haptic (§3).
     private var selecting: Bool { app.isSelecting(source) }
+
+    private var details: RowDetails {
+        app.rowDetails(task, source: source, indent: indent, groupDay: groupDay, day: day)
+    }
+    /// Line 2 is drawn: the state the cell was configured with, else the details'.
+    private var twoLine: Bool { twoLineOverride ?? details.twoLine }
 
     var body: some View {
         Button { guard PressGate.allows else { return }; if selecting { app.toggleSelected(task.id) } else { open() } } label: {
@@ -49,7 +63,9 @@ struct TaskRow: View {
     }
 
     private func label(heat: Double) -> some View {
-        HStack(spacing: 0) {
+        let d = details
+        let two = twoLine
+        return HStack(spacing: 0) {
             Checkbox(checked: done, title: title, cue: app.cue(task, in: source), readOnly: trashed, sparks: sparks,
                      quiet: app.quietChecks.contains(task.id)) {
                 if PressGate.allows { app.toggle(task.id) }
@@ -60,39 +76,66 @@ struct TaskRow: View {
             .padding(.leading, Metric.rowPad - 11)   // the 44pt hit area centres the 22pt ring
             .padding(.trailing, Metric.titleGap - 11)
 
-            TitleThenName(after: task.deadline != nil && showsDates ? 8 : 0) {
-                TitleSlot {
-                    HStack(spacing: 8) {
-                        // Cut off, its last 31pt fade out (§24); the notes hint after it stays whole.
-                        Text(title)
-                            .font(Typo.row)
-                            // Checked here, it goes from the spark to ink-tertiary (700 ms ease-out); unchecked,
-                            // back in 200 ms. Struck at once, as on the Mac; the row moves when the checks settle (§8).
-                            .foregroundStyle(heat > 0 ? p.spark.mix(with: titleColor, by: 1 - heat) : titleColor)
-                            .strikethrough(done, color: p.inkQuiet)
-                            .motion(done ? nil : .easeOut(duration: 0.2), value: done)
-                            .fadeTruncation(Metric.titleFade, text: title)
-                        if !settled { NotesHint(summary: task.notesSummary).fixedSize() }
-                    }
-                    if let w = task.when, shows(when: w) { QuietWhen(date: w) }
+            // The title keeps its place in both shapes, so it moves with the cell as the row changes shape, and the
+            // parts fade out of one line and into the other.
+            VStack(alignment: .leading, spacing: Metric.lineGap) {
+                HStack(spacing: 0) {
+                    titleText(heat: heat)
+                    if !two { inlineParts(d) }
                 }
-                if let name = whereName {
-                    Text(name)
-                        .font(Typo.quiet)
-                        .foregroundStyle(p.inkTertiary)
-                        .fadeTruncation(Metric.titleFade, text: name)
-                }
+                if two { DetailLine(details: d, groupDay: groupDay, upcoming: source == .upcoming) }
             }
-            if let d = task.deadline, showsDates { DeadlineChip(date: d, groupDay: groupDay) }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.trailing, 12)
         .padding(.leading, indent ? 30 : 0)
-        .frame(minHeight: Metric.rowHeight)
+        .padding(.vertical, two ? Metric.twoLinePad : 0)
+        .frame(minHeight: two ? Metric.twoLineHeight : Metric.rowHeight)
         .background {
             // The row's warm flash as it's checked: its rounded fill, the spark at 14% settling to clear.
             if heat > 0 {
                 RoundedRectangle(cornerRadius: Metric.rowRadius, style: .continuous).fill(p.spark.opacity(0.14 * heat))
             }
+        }
+        // Line 2 comes and goes as the cell is resized, on the same spring (CollectionEditing): the title moves up or
+        // down with the cell's growth, and the line fades in or out.
+        .motion(Motion.layout, value: two)
+    }
+
+    /// Cut off, its last 31pt fade out (§24).
+    private func titleText(heat: Double) -> some View {
+        Text(title)
+            .font(Typo.row)
+            // Checked here, it goes from the spark to ink-tertiary (700 ms ease-out); unchecked, back in 200 ms. Struck at
+            // once, as on the Mac; the row moves when the checks settle (§8).
+            .foregroundStyle(heat > 0 ? p.spark.mix(with: titleColor, by: 1 - heat) : titleColor)
+            .strikethrough(done, color: p.inkQuiet)
+            .motion(done ? nil : .easeOut(duration: 0.2), value: done)
+            .fadeTruncation(Metric.titleFade, text: title)
+    }
+
+    /// The one-line row's parts after the title (`RowFit`): 8, line 2's parts in its order, 9 apart (the mark's tile
+    /// and name 6), and the capsule at the trailing edge, at least 8 after them. It's chosen when they all fit; a title
+    /// that's cut here anyway (the notes glyph alone, which keeps one line) fades, and its parts stay whole.
+    @ViewBuilder private func inlineParts(_ d: RowDetails) -> some View {
+        HStack(spacing: RowFit.gap) {
+            if let l = d.mark {
+                HStack(spacing: RowFit.markGap) {
+                    ListMarkTile(list: l)
+                    ListMarkName(list: l)
+                }
+            }
+            if let day = d.day {
+                Text(DateLabel.monthDay(day)).font(Typo.quiet).monospacedDigit().foregroundStyle(p.inkTertiary)
+            }
+            if let w = d.when { QuietWhen(text: w) }
+            if let s = d.summary { NotesHint(summary: s) }
+        }
+        .fixedSize()
+        .padding(.leading, d.mark != nil || d.day != nil || d.when != nil || d.summary != nil ? RowFit.titleGap : 0)
+        if let dl = d.deadline {
+            Spacer(minLength: RowFit.chipGap)
+            DeadlineChip(date: dl, groupDay: groupDay, upcoming: source == .upcoming, compact: true)
         }
     }
 
@@ -104,29 +147,194 @@ struct TaskRow: View {
         return task.title.isEmpty ? p.inkTertiary : p.ink
     }
 
-    /// Done and trashed rows show no dates (§24, §22).
-    private var showsDates: Bool { !done && !trashed }
-
-    /// Only the date that places the row is hidden: in Today a When on or before today, in Upcoming its group's own
-    /// day (the Mac's `TaskListView.swift:345`).
-    private func shows(when w: CalendarDate) -> Bool {
-        showsDates && !(source == .today && w <= app.today) && w != groupDay
-    }
-
-    /// Where each task lives, in views that mix lists: Upcoming, Completed and Trash, with the day in a month group
-    /// ("School · Oct 22"); Today's Completed group. Not under a deleted list's row (§28). The Mac's `whereText`.
-    private var whereName: String? {
-        guard !indent else { return nil }
-        let name = app.listName(task.list)
-        switch source {
-        case .upcoming, .completed, .trash: return name + (day.map { " · " + DateLabel.monthDay($0) } ?? "")
-        case .today: return settled ? name : nil
-        default: return nil
-        }
-    }
-
     private func open() {
         if app.isSplit { app.selectedTask = task.id } else { app.detailTask = task.id }
+    }
+}
+
+/// What a task's row shows besides its title, in a view (§22, §24): the source of both the row and its height signature
+/// (`TaskCollection.signatures`), so the two never disagree.
+struct RowDetails {
+    /// The list mark's list, in views that mix lists.
+    var mark: ListModel?
+    /// In a month group of Completed or Trash: the day, after the mark.
+    var day: CalendarDate?
+    /// The When's words, where the view shows it.
+    var when: String?
+    /// The notes hint (none once a checked row has settled).
+    var summary: NotesSummary?
+    var deadline: CalendarDate?
+
+    /// Line 2 has something: the notes glyph alone doesn't count, it stays on line 1 (ROW-DENSITY.md §6.4).
+    var twoLine: Bool { mark != nil || when != nil || deadline != nil || (summary?.total ?? 0) > 0 }
+}
+
+extension AppModel {
+    /// A task's row details in `source`.
+    /// - The dates: none on done or trashed rows (§24, §22), except while a check made here settles, so the row keeps
+    ///   its height until it moves. In Upcoming both dates read as dates, and the group's own day isn't repeated
+    ///   (`DateLabel.upcomingWhen`); in Today a When on or before today isn't shown; in lists every When is, "Today" too
+    ///   (the user, 2026-11-08: "no keep \"Today\"").
+    /// - The mark (§22 "The list mark"): in Upcoming, Completed and Trash, and on Today's Completed rows; not under a
+    ///   deleted list's row (§28), nor under a label that names the list.
+    /// `when`: the task's When as a drop will write it (Upcoming's drag lays the row out on the day it's over), in place
+    /// of its own.
+    func rowDetails(_ t: TaskModel, source: Source, indent: Bool, groupDay: CalendarDate?, day: CalendarDate?,
+                    when: CalendarDate? = nil) -> RowDetails {
+        let trashed = isTrashed(t)
+        let settled = t.isDone && !completing.contains(t.id)
+        let dates = !settled && !trashed
+        var d = RowDetails()
+        if dates, let w = when ?? t.when {
+            switch source {
+            case .upcoming: d.when = DateLabel.upcomingWhen(w, today: today, groupDay: groupDay)
+            case .today: d.when = w <= today ? nil : DateLabel.whenChip(w, today: today)
+            default: d.when = w == groupDay ? nil : DateLabel.whenChip(w, today: today)
+            }
+        }
+        if dates { d.deadline = t.deadline }
+        if !settled {
+            let s = t.notesSummary
+            if s.total > 0 || s.hasNotes { d.summary = s }
+        }
+        if !indent {
+            switch source {
+            case .upcoming, .completed, .trash: d.mark = list(t.list)
+            case .today: d.mark = settled ? list(t.list) : nil
+            default: break
+            }
+            if d.mark != nil { d.day = day }
+        }
+        return d
+    }
+}
+
+/// A row's line 2 (ROW-DENSITY.md §6.4): 13pt `ink-tertiary`, 20pt tall (more with a larger text size). The mark, the day (Completed and Trash
+/// months), the When, the count or the notes glyph, 9 apart; the deadline capsule at the right edge. Short of room, the
+/// mark's short name fades first, then the When goes; the tile, the count and the deadline never go.
+struct DetailLine: View {
+    let details: RowDetails
+    var groupDay: CalendarDate? = nil
+    var upcoming = false
+    @Environment(\.palette) private var p
+
+    var body: some View {
+        DetailLayout {
+            if let l = details.mark {
+                ListMarkTile(list: l).layoutValue(key: DetailRole.self, value: .fixed)
+                ListMarkName(list: l).layoutValue(key: DetailRole.self, value: .name)
+            }
+            if let day = details.day {
+                Text(DateLabel.monthDay(day)).font(Typo.quiet).monospacedDigit().foregroundStyle(p.inkTertiary)
+                    .fixedSize().layoutValue(key: DetailRole.self, value: .fixed)
+            }
+            if let w = details.when { QuietWhen(text: w).layoutValue(key: DetailRole.self, value: .when) }
+            if let s = details.summary { NotesHint(summary: s).fixedSize().layoutValue(key: DetailRole.self, value: .fixed) }
+            if let dl = details.deadline {
+                DeadlineChip(date: dl, groupDay: groupDay, upcoming: upcoming, compact: true)
+                    .layoutValue(key: DetailRole.self, value: .trailing)
+            }
+        }
+        // 20pt at the default size; it grows with Dynamic Type, as the row does.
+        .frame(minHeight: Metric.detailLine)
+    }
+}
+
+/// A part of line 2, for `DetailLayout`.
+enum DetailRole: LayoutValueKey {
+    case fixed, name, when, trailing
+    static let defaultValue = DetailRole.fixed
+}
+
+/// Line 2's layout: the parts from the leading edge, 9 apart (the mark's tile and name 6), the trailing one at the
+/// right edge. Short of room: the name is cut (it fades), and goes under 30pt; then the When goes.
+struct DetailLayout: Layout {
+    var gap: CGFloat = 9
+    var markGap: CGFloat = 6
+    var nameMin: CGFloat = 30
+
+    private struct Plan { var widths: [CGFloat]; var shown: [Bool] }
+
+    private func plan(_ width: CGFloat, _ subviews: Subviews) -> Plan {
+        var widths = subviews.map { $0.sizeThatFits(.unspecified).width }
+        var shown = Array(repeating: true, count: subviews.count)
+        func roles(_ r: DetailRole) -> [Int] { subviews.indices.filter { subviews[$0][DetailRole.self] == r } }
+        func total() -> CGFloat {
+            var x: CGFloat = 0
+            var prev: DetailRole?
+            for i in subviews.indices where shown[i] {
+                let r = subviews[i][DetailRole.self]
+                if let prev { x += prev == .fixed && r == .name ? markGap : gap }
+                x += widths[i]
+                prev = r
+            }
+            return x
+        }
+        var over = total() - width
+        guard over > 0 else { return Plan(widths: widths, shown: shown) }
+        for i in roles(.name) {
+            let cut = widths[i] - over
+            if cut >= min(nameMin, widths[i]) { widths[i] = cut; return Plan(widths: widths, shown: shown) }
+            shown[i] = false
+        }
+        over = total() - width
+        guard over > 0 else { return Plan(widths: widths, shown: shown) }
+        for i in roles(.when) { shown[i] = false }
+        return Plan(widths: widths, shown: shown)
+    }
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width.flatMap { $0.isFinite ? $0 : nil } ?? .infinity
+        let p = plan(width, subviews)
+        let h = subviews.indices.filter { p.shown[$0] }.map { subviews[$0].sizeThatFits(.unspecified).height }.max() ?? 0
+        let natural = p.widths.enumerated().filter { p.shown[$0.offset] }.map(\.element).reduce(0, +)
+        return CGSize(width: width.isFinite ? width : natural, height: h)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let p = plan(bounds.width, subviews)
+        var x = bounds.minX
+        var prev: DetailRole?
+        for i in subviews.indices {
+            let r = subviews[i][DetailRole.self]
+            guard p.shown[i] else {
+                // Gone: placed out of sight (a layout can't remove a child).
+                subviews[i].place(at: CGPoint(x: bounds.minX - 10_000, y: bounds.midY), anchor: .leading, proposal: .zero)
+                continue
+            }
+            if r == .trailing {
+                subviews[i].place(at: CGPoint(x: bounds.maxX, y: bounds.midY), anchor: .trailing, proposal: ProposedViewSize(width: p.widths[i], height: nil))
+                continue
+            }
+            if let prev { x += prev == .fixed && r == .name ? markGap : gap }
+            subviews[i].place(at: CGPoint(x: x, y: bounds.midY), anchor: .leading, proposal: ProposedViewSize(width: p.widths[i], height: nil))
+            x += p.widths[i]
+            prev = r
+        }
+    }
+}
+
+/// The list mark's tile (§22): the sidebar's small tile, 16×13, its colour and monogram.
+struct ListMarkTile: View {
+    let list: ListModel
+    @Environment(\.palette) private var p
+    var body: some View {
+        ListTile(content: .mono(list.monogram), hue: p.tile(slot: list.colorSlot), scale: Metric.markTileW / Metric.tileW)
+    }
+}
+
+/// The list mark's short name (`ListName.short`), 13pt `ink-tertiary`; cut off, it fades. VoiceOver reads the full name.
+struct ListMarkName: View {
+    let list: ListModel
+    @Environment(\.palette) private var p
+    var body: some View {
+        let full = list.name.isEmpty ? "Untitled" : list.name
+        let short = list.shortName.isEmpty ? "Untitled" : list.shortName
+        Text(short)
+            .font(Typo.quiet)
+            .foregroundStyle(p.inkTertiary)
+            .fadeTruncation(Metric.titleFade, text: short)
+            .accessibilityLabel(full)
     }
 }
 
@@ -497,99 +705,5 @@ struct EmptyState: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 80)
-    }
-}
-
-/// The title and the quiet When after it, as the Mac lays them out when narrow: the title keeps up to 156pt; the When
-/// drops before the title goes under that.
-struct TitleSlot: Layout {
-    var minTitle: CGFloat = Metric.titleKeep
-    var gap: CGFloat = 8
-
-    private func plan(_ width: CGFloat, _ subviews: Subviews) -> (title: CGFloat, when: CGSize?) {
-        let t = subviews[0].sizeThatFits(.unspecified)
-        guard subviews.count > 1 else { return (min(t.width, width), nil) }
-        let w = subviews[1].sizeThatFits(.unspecified)
-        if width - w.width - gap >= min(minTitle, t.width) { return (min(t.width, width - w.width - gap), w) }
-        return (min(t.width, width), nil)
-    }
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let width = proposal.width ?? .infinity
-        let p = plan(width, subviews)
-        // The title's own answer: its width, or more when it can't go that narrow (its notes hint stays whole).
-        let t = subviews[0].sizeThatFits(ProposedViewSize(width: p.title, height: nil))
-        let total = t.width + (p.when.map { $0.width + gap } ?? 0)
-        return CGSize(width: total, height: max(t.height, p.when?.height ?? 0))
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let p = plan(bounds.width, subviews)
-        subviews[0].place(at: CGPoint(x: bounds.minX, y: bounds.midY), anchor: .leading,
-                          proposal: ProposedViewSize(width: p.title, height: bounds.height))
-        guard subviews.count > 1 else { return }
-        if let w = p.when {
-            subviews[1].place(at: CGPoint(x: bounds.minX + p.title + gap, y: bounds.midY), anchor: .leading,
-                              proposal: ProposedViewSize(w))
-        } else {
-            // Dropped: placed out of sight (a layout can't remove a child).
-            subviews[1].place(at: CGPoint(x: bounds.minX - 10_000, y: bounds.midY), anchor: .leading, proposal: .zero)
-        }
-    }
-}
-
-/// A row's title slot and, in the views that mix lists, the list's name at the row's end, shared out as the Mac shares
-/// a short row (INTERACTIONS-v2 §24 "A short row", the Mac's TaskRowView): the title keeps up to 156pt and its notes
-/// hint, the name up to 94pt (the Mac's 72); room beyond those goes to the title first, then to the name, which is cut
-/// and fades out like a title. A name that would show less than 42pt (the Mac's 32), or less than all of a shorter
-/// one, goes, and the title gets its room. The title's slot ends 8 short of what follows; the name sits at the end,
-/// `after` short of it (the gap before the deadline), only when it shows.
-struct TitleThenName: Layout {
-    var after: CGFloat = 0
-    var titleKeep: CGFloat = Metric.titleKeep
-    var nameKeep: CGFloat = Metric.listNameKeep
-    var nameMin: CGFloat = Metric.listNameMin
-    var gap: CGFloat = 8
-
-    private func plan(_ width: CGFloat, _ subviews: Subviews) -> (lead: CGFloat, name: CGFloat) {
-        let lead = subviews[0].sizeThatFits(.unspecified).width
-        let room = max(0, width - gap)
-        guard subviews.count > 1 else { return (min(lead, room), 0) }
-        let name = subviews[1].sizeThatFits(.unspecified).width
-        let avail = room - after
-        if lead + name <= avail { return (lead, name) }
-        // What the slot keeps: up to 156pt of the title, plus what it can't give up (the hint).
-        let hint = subviews[0].sizeThatFits(ProposedViewSize(width: 0, height: nil)).width
-        let leadKeep = min(lead, titleKeep + hint)
-        let cut = min(name, max(min(name, nameKeep), avail - lead), max(0, avail - leadKeep))
-        // Less than a few letters of the name reads as noise: then it goes (the Mac's `whereMin`).
-        if cut < min(name, nameMin) { return (min(lead, room), 0) }
-        return (min(lead, avail - cut), cut)
-    }
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let natural = subviews[0].sizeThatFits(.unspecified).width + gap
-            + (subviews.count > 1 ? subviews[1].sizeThatFits(.unspecified).width + after : 0)
-        let width = proposal.width.flatMap { $0.isFinite ? $0 : nil } ?? natural
-        let p = plan(width, subviews)
-        let h = subviews.indices.map { i in
-            subviews[i].sizeThatFits(ProposedViewSize(width: i == 0 ? p.lead : p.name, height: nil)).height
-        }.max() ?? 0
-        // It fills the row, as the Spacer between them did.
-        return CGSize(width: width, height: h)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let p = plan(bounds.width, subviews)
-        subviews[0].place(at: CGPoint(x: bounds.minX, y: bounds.midY), anchor: .leading,
-                          proposal: ProposedViewSize(width: p.lead, height: bounds.height))
-        guard subviews.count > 1 else { return }
-        guard p.name > 0 else {
-            // Gone: placed out of sight, as TitleSlot drops the When (a layout can't remove a child).
-            subviews[1].place(at: CGPoint(x: bounds.minX - 10_000, y: bounds.midY), anchor: .leading, proposal: .zero)
-            return
-        }
-        subviews[1].place(at: CGPoint(x: bounds.maxX - after, y: bounds.midY), anchor: .trailing,
-                          proposal: ProposedViewSize(width: p.name, height: bounds.height))
     }
 }

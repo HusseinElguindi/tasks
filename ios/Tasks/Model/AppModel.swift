@@ -230,8 +230,19 @@ final class AppModel {
     var hasToken: Bool
     /// The `-sampleData` store: never synced.
     let isSample: Bool
-    /// In front (scenePhase active): the 30 s syncs run only then.
+    /// In front (scenePhase active): the periodic syncs run only then, and the poke socket is held only then.
     @ObservationIgnored var inFront = true
+    /// The poke socket (design/PUSH-SYNC.md): `/v1/events` while in front; each head it hears goes to `pokes`, which
+    /// syncs if the store is behind. Closed in the background, and never opened by a background refresh.
+    @ObservationIgnored let socket: SyncSocket
+    @ObservationIgnored let pokes: SyncPokes
+    /// When the periodic loop last synced (system uptime), for `SocketPolicy.pollDue`.
+    @ObservationIgnored var lastPoll: Double?
+    /// The home line's live cloud (design/SYNC-STATUS.md §3, B): the bolt once the socket is live, the plain cloud only
+    /// after 5 s down in front (`LiveGlyph`), so coming to the front doesn't flash it.
+    var syncLive = false
+    @ObservationIgnored var liveGlyph = LiveGlyph()
+    @ObservationIgnored var liveTimer: Timer?
     /// Writes the widgets' feed (Widgets.swift); nil for the sample data.
     @ObservationIgnored var widgetFeed: WidgetFeedWriter?
 
@@ -255,9 +266,11 @@ final class AppModel {
         static let todayDoneCollapsed = "todayCompletedCollapsed"
     }
 
-    init(store: Store, isSample: Bool = false) {
+    init(store: Store, isSample: Bool = false, socket: SyncSocket = SyncSocket()) {
         self.store = store
         self.isSample = isSample
+        self.socket = socket
+        pokes = SyncPokes(store: store)
         let d = UserDefaults.standard
         appearance = d.string(forKey: Keys.appearance).flatMap(Appearance.init(rawValue:)) ?? .system
         style = d.string(forKey: Keys.style).flatMap(InterfaceStyle.init(rawValue:)) ?? .classic
@@ -268,6 +281,7 @@ final class AppModel {
             showCompleted = Set(d.stringArray(forKey: Keys.completedOpen) ?? [])
                 .union(d.bool(forKey: Keys.todayDoneCollapsed) ? [] : [Self.todayDone])
         }
+        wireSocket()
     }
 
     // MARK: Lookups

@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import Security
 import TasksCore
 
@@ -39,8 +40,13 @@ enum Keychain {
 
 /// Sync: TasksCore's Store syncs on its own once it has a `SyncConfig` (about a second after each change, with its
 /// backoff and recovery). This sets the config from Settings and triggers it the Mac's way: at launch, on coming to
-/// the front, every 30 s while in front, and on pull to refresh (the Mac's ⌘R). No background sync.
+/// the front, on pull to refresh (the Mac's ⌘R), and on a poke from the server's `/v1/events` socket, held while in
+/// front (design/PUSH-SYNC.md); the periodic sync is a safety net beside it, every 5 min while the socket is up and
+/// every 30 s while it's down (`SocketPolicy.pollDue`). In the background only the background refresh syncs, and it
+/// never opens the socket.
 extension AppModel {
+    nonisolated static let socketLogger = Logger(subsystem: "com.elguindi.Tasks", category: "sync-socket")
+
     /// The Worker the app syncs with unless Settings says otherwise.
     static let defaultServer = "https://tasks.elguindi.workers.dev"
 
@@ -76,13 +82,31 @@ extension AppModel {
         applyConfig()
     }
 
-    /// Hands the Store its config; a change (or the first one) syncs at once.
+    /// Hands the Store its config; a change (or the first one) syncs at once. The socket follows it, held while in
+    /// front (repeating that costs nothing; new settings reconnect).
     func applyConfig() {
         let config = syncConfig
         if store.config != config { store.config = config }
+        socket.update(config: store.config, hold: inFront)
     }
 
-    /// At launch: the config, then a sync every 30 s while the app is in front (spec §5).
+    /// Each head the socket hears goes to `pokes` (a sync if the store is behind); both log, for the simulator check.
+    func wireSocket() {
+        let pokes = pokes
+        socket.onHead = { head in
+            Self.socketLogger.notice("poke head \(head)")
+            pokes.poke(head: head)
+        }
+        socket.onState = { [weak self] state in
+            Self.socketLogger.notice("state \(String(describing: state), privacy: .public)")
+            self?.socketChanged()
+        }
+        pokes.log = { what in Self.socketLogger.notice("\(what, privacy: .public)") }
+        socketChanged()
+    }
+
+    /// At launch: the config (and the socket, if in front), then the periodic sync while the app is in front: every
+    /// 30 s while the socket is down, every 5 min while it's up (spec §5, design/PUSH-SYNC.md).
     func startSync() {
         applyConfig()
         store.requestSync(force: true)
@@ -90,25 +114,117 @@ extension AppModel {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(30))
                 guard let self else { return }
-                if self.inFront { self.store.requestSync() }
+                self.pollTick(now: ProcessInfo.processInfo.systemUptime)
             }
         }
     }
 
-    /// Coming to the front: the day may have changed, and the server may have news.
+    /// One tick of the periodic loop at `now` (system uptime): a sync if `SocketPolicy` says one is due.
+    func pollTick(now: Double) {
+        guard SocketPolicy.pollDue(inFront ? .front : .away, socketConnected: socket.isConnected, now: now,
+                                   lastPoll: lastPoll) else { return }
+        lastPoll = now
+        store.requestSync()
+    }
+
+    /// Coming to the front: the day may have changed, and the server may have news. The socket connects at once
+    /// (holding it again resets its backoff); its first head is a second check beside this sync.
     func cameToFront() {
         inFront = true
         store.refreshDay()
         store.requestSync(force: true)
+        socket.update(config: store.config, hold: true)
+    }
+
+    /// Going to the background, where iOS may end the app without notice (and suspends it within seconds, which would
+    /// kill the socket anyway, so it's closed now, `.goingAway`): no new-task row waits (a title is written,
+    /// an empty row goes), the snapshot is written now (TasksCore otherwise writes it only at a 500-entry tail or
+    /// 10 min after the first entry it doesn't hold), and a feed write that's waiting goes out, so the home screen
+    /// shows it.
+    func wentToBackground() {
+        endDraft()
+        inFront = false
+        // Nothing counts in the background: the live cloud keeps what it shows.
+        liveTimer?.invalidate()
+        liveTimer = nil
+        liveGlyph.pause()
+        socket.update(config: store.config, hold: false)
+        store.persistNow()
+        widgetFeed?.flush()
     }
 
     /// Pull to refresh, the Mac's ⌘R: a sync now, clearing a stopped state or a backoff, and wait for it.
     func syncNow() async {
         guard store.config != nil else { return }
+        socket.retryNow()
         store.requestSync(force: true)
         store.cancelScheduledSync()
         await store.sync()
     }
+
+    /// Settings' Sync Now: a sync at once, and the socket connects now if it was waiting out a backoff or an old
+    /// server's hour (design/SYNC-STATUS.md decision 5). Pull to refresh does both too (`syncNow`).
+    func requestSyncNow() {
+        store.requestSync(force: true)
+        socket.retryNow()
+    }
+
+    // MARK: Live updates (design/SYNC-STATUS.md)
+
+    /// The socket's state changed: the live cloud follows it, the bolt at once, the plain cloud after 5 s down. Only
+    /// in front; in the background it keeps what it shows.
+    func socketChanged() {
+        liveTimer?.invalidate()
+        liveTimer = nil
+        var connected = socket.isConnected
+        #if DEBUG
+        if let d = Self.debugLive() { connected = d.state == .connected }
+        #endif
+        guard inFront || connected else { return }
+        let now = ProcessInfo.processInfo.systemUptime
+        if let again = liveGlyph.update(connected: connected, now: now) {
+            liveTimer = Timer.scheduledTimer(withTimeInterval: again - now + 0.005, repeats: false) { [weak self] _ in
+                MainActor.assumeIsolated { self?.socketChanged() }
+            }
+        }
+        if liveGlyph.live != syncLive { syncLive = liveGlyph.live }
+    }
+
+    /// What Settings ▸ Sync ▸ Live updates shows; nil (the row hidden) until sync is set up, and on the sample data
+    /// (design/SYNC-STATUS.md decision 4). The socket is observable, so the row follows it.
+    var liveInput: LiveStatus.Input? {
+        #if DEBUG
+        if let d = Self.debugLive() { return d }
+        #endif
+        guard store.config != nil else { return nil }
+        return socket.liveInput
+    }
+
+    /// The home line shows the bolt cloud: push is live and the line says "Synced…" (every other state keeps
+    /// `icloud`, as its words already say what's wrong).
+    var syncLineLive: Bool {
+        guard syncLive, store.recovery == nil, store.pendingCount == 0, case .idle = store.syncState else { return false }
+        return true
+    }
+
+    #if DEBUG
+    /// `-debugLive live|connecting|reconnecting|offline|unavailable|rejected|off` (Debug only): stands in for the
+    /// socket in Settings ▸ Sync ▸ Live updates, for screenshots and UI tests, even on the sample data. Times are as
+    /// of each read: the last change 2 min ago, a drop 3 min ago, the reconnect in 8 s, an old server's retry in 58 min.
+    static func debugLive(now: Date = Date()) -> LiveStatus.Input? {
+        guard let s = UserDefaults.standard.string(forKey: "debugLive") else { return nil }
+        switch s {
+        case "live": return .init(state: .connected, lastChangeAt: now - 120)
+        case "connecting": return .init(state: .connecting)
+        case "reconnecting": return .init(state: .waiting(until: now + 7.5, why: .dropped), droppedAt: now - 180)
+        case "offline": return .init(state: .waiting(until: now + 30, why: .dropped), offline: true, droppedAt: now - 180)
+        case "unavailable": return .init(state: .waiting(until: now + 58 * 60, why: .oldServer))
+        case "rejected": return .init(state: .stopped)
+        case "off": return .init(state: .off)
+        default: return nil
+        }
+    }
+    #endif
 
     // MARK: What it says
 

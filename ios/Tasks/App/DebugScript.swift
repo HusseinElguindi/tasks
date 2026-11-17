@@ -38,6 +38,9 @@ import UIKit
 ///                              (frames)
 ///     film:MS[:NAME]           the same, in the background: the next steps run while it records (wait it out before
 ///                              quit) (film)
+///     dropcheck                Debug only: the drop landing check on the list shown (`CollectionDrag.debugDropCheck`,
+///                              Home's too): every lifting row onto every slot or Upcoming day, its preview against its landing,
+///                              appended to dropcheck.txt; an error when one fails (ios/Tools/script/drop-landing-check.sh)
 ///     quit                     the app exits (after the done marker is written)
 ///
 /// Output, in the app container's tmp/script/ (emptied at launch): run.txt (each step, ms from the first, and any
@@ -200,6 +203,9 @@ final class ScriptRunner {
             case "film":
                 let a = arg.split(separator: ":", maxSplits: 1).map(String.init)
                 Task { await frames(Int(a.first ?? "") ?? 500, to: a.count > 1 ? a[1] : "film") }
+            #if DEBUG
+            case "dropcheck": await dropCheck()
+            #endif
             case "quit": quit = true
             default: fail("unknown step")
             }
@@ -362,6 +368,23 @@ final class ScriptRunner {
         finger = nil
         pressing = nil
     }
+
+    #if DEBUG
+    /// The drop landing check on the list shown, into dropcheck.txt.
+    private func dropCheck() async {
+        let lines: [String]
+        if let s = screen() as? TaskCollectionController {
+            lines = await s.drag.debugDropCheck()
+        } else if let h = screen() as? HomeCollectionController {
+            lines = await h.debugDropCheck()
+        } else {
+            fail("dropcheck: no list on screen")
+            return
+        }
+        write(lines.joined(separator: "\n"), to: "dropcheck")
+        if lines.last?.contains(": ok ") != true { fail("dropcheck: \(lines.last ?? "no summary")") }
+    }
+    #endif
 
     // MARK: Editing
 

@@ -11,7 +11,7 @@ enum Line: @MainActor Identifiable {
     /// A heading's notes as their own row: the collection view draws them as an item of their own
     /// (`TaskCollection.items`), so they fold into the heading with its tasks (§23).
     case headingNotes(TaskModel)
-    /// `groupDay`: in Upcoming, the day of the group it's in (its rows don't repeat that date). `day`: in a month group
+    /// `groupDay`: in Upcoming, the day of the group it's in, a day inside a month too (its rows don't repeat that date). `day`: in a month group
     /// of Completed or Trash, the day it was done or deleted, after its list's name ("School · Oct 22").
     case task(TaskModel, indent: Bool, groupDay: CalendarDate? = nil, day: CalendarDate? = nil)
     case completedToggle(key: String, count: Int, open: Bool)
@@ -164,7 +164,22 @@ extension AppModel {
         for g in groups {
             let mine = rows[g.id] ?? []
             out.append(.group(key: g.id, title: g.name, sub: g.sub, quiet: mine.isEmpty))
-            out += mine.map { .task($0, indent: false, groupDay: g.day) }
+            guard g.kind == .month else {
+                out += mine.map { .task($0, indent: false, groupDay: g.day) }
+                continue
+            }
+            // A month lists its days, each with tasks under a label of its own, so no row repeats the day it's filed
+            // under (§22, ROW-DENSITY.md C; `ViewGroups.upcomingDayInMonth`).
+            var at: CalendarDate?
+            for m in mine {
+                guard let up = ViewGroups.upDay(when: m.when, deadline: m.deadline) else { continue }
+                if up != at {
+                    at = up
+                    let d = ViewGroups.upcomingDayInMonth(up)
+                    out.append(.group(key: d.id, title: d.name, sub: d.sub, quiet: false))
+                }
+                out.append(.task(m, indent: false, groupDay: up))
+            }
         }
         if items.isEmpty && !draftHere {
             out.append(.empty(title: "Nothing upcoming", message: "Tasks with a date after today show up here, on the day they reach Today.", symbol: "calendar"))

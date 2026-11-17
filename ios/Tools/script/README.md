@@ -38,6 +38,7 @@ Separated by `;` or new lines. In a step's text, `\;` is a semicolon, `\n` a Ret
 | `log:NAME` | appends to `NAME.txt`: the drag probe's fields and the drag's state, the field being typed into (text, selection, caret rect), the shown rows' frames |
 | `frames:MS[:NAME]` | for MS ms, every display frame's caret and rows as drawn (presentation layers), and the field and its views up to its cell as drawn (after `\|\|`, with its offset `tvoff=drawn/model`), to `NAME.txt` (`frames.txt`) |
 | `film:MS[:NAME]` | the same as `frames`, in the background: the next steps run while it records, to `NAME.txt` (`film.txt`); wait it out before `quit` |
+| `dropcheck` | Debug only: the drop landing check on the list shown (every lifting row onto every slot or Upcoming day, its preview against its landing), into `dropcheck.txt`; an `ERR` when one fails. `drop-landing-check.sh` runs it in every view |
 | `quit` | the app exits once the done marker is written |
 
 All points are window points. Output goes to the container's `tmp/script/`, emptied at each launch: `run.txt` (each
@@ -67,6 +68,14 @@ On the shared simulator, hold the sim lease while it runs (coord's `lease.sh sim
 
 From a UI test, check for the element `debugScript` instead: its value is the done marker and its label is the output
 folder's path. `TasksUITests/DebugScriptTests.swift` runs a scripted heading drag that way and reads its log.
+
+## The drop landing check
+
+`drop-landing-check.sh [--sim UDID] [--app Tasks.app] [--out DIR]` runs the `dropcheck` step on the sample data in
+Today, Upcoming, Undated, every list (PHYS 122 also with Labs, then Lectures, collapsed) and Home's lists: about 790
+drops in about 90 s, each written, compared with its preview and undone (`CollectionDrag.debugDropCheck`; the Mac's is
+app/Scripts/drop-landing-check.sh). It exits 1 on any failure, an undo that brings a row back at no height too. Hold the
+sim lease while it runs.
 
 ## Examples
 

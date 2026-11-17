@@ -116,6 +116,7 @@ final class FlowTests: XCTestCase {
         app.launch()
         app.buttons["Settings"].firstMatch.tap()
         app.settle()
+        XCTAssertFalse(app.descendants(matching: .any)["liveUpdates"].exists, "the sample data never syncs: no Live updates row")
         app.buttons["Dark"].firstMatch.tap()
         app.settle()
         shot("flow-settings-dark")
@@ -128,6 +129,27 @@ final class FlowTests: XCTestCase {
         app.buttons["Done"].firstMatch.tap()
         app.settle()
         shot("flow-home-light-glass")
+    }
+
+    /// Settings ▸ Sync ▸ Live updates (design/SYNC-STATUS.md), from `-debugLive`: between Status and Background
+    /// refresh, one element whose value is the word and the detail, the countdown ticking.
+    func testLiveUpdatesInSettings() {
+        app.launchArguments += ["-debugLive", "reconnecting"]
+        app.launch()
+        app.buttons["Settings"].firstMatch.tap()
+        let row = app.descendants(matching: .any)["liveUpdates"]
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        XCTAssertEqual(row.label, "Live updates")
+        let value = row.value as? String ?? ""
+        XCTAssertTrue(value.hasPrefix("Reconnecting. Lost the connection at "), value)
+        // The countdown ticks from 8 s (and -debugLive's wait never ends, so it stays at 1 s).
+        XCTAssertNotNil(value.range(of: #"Trying again in [1-8] seconds?; checking every 30 seconds meanwhile\.$"#,
+                                    options: .regularExpression), value)
+        let status = app.staticTexts["Status"].firstMatch.frame
+        let refresh = app.descendants(matching: .any)["backgroundRefresh"].frame
+        XCTAssertGreaterThan(row.frame.minY, status.minY, "under Status")
+        XCTAssertLessThan(row.frame.minY, refresh.minY, "above Background refresh")
+        shot("flow-settings-live-reconnecting")
     }
 
     /// The title is edited in the details and written when they close (one change, as on the Mac): the row has it.
@@ -547,6 +569,23 @@ final class FlowTests: XCTestCase {
         shot("flow-scrolled")
     }
 
+    /// Home folded: the large header's mark and name go under the bar, and the bar shows them small (the mark is a list
+    /// mark: Today's lit tile with the check). The sample's Home fits a phone at the default size, so it's scrolled at
+    /// the largest text size; the bar's mark and name don't grow with it. Shots only, in Dark and Light: the bar's name
+    /// is in the accessibility tree folded or not (it's the screen's title), so there's nothing to assert on.
+    func testHomeFoldsToTheMarkInTheBar() {
+        for appearance in ["dark", "light"] {
+            app.launchArguments = ["-sampleData", "YES", "-appearance", appearance, "-style", "classic",
+                                   "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+            app.launch()
+            app.settle()
+            app.swipeUp()
+            sleep(1)
+            shot("flow-home-folded-\(appearance)")
+            app.terminate()
+        }
+    }
+
     // MARK: A very long list name
 
     /// A few long words and one that can't break.
@@ -561,6 +600,33 @@ final class FlowTests: XCTestCase {
     private func level(_ query: XCUIElementQuery, _ label: String, with other: XCUIElement) -> XCUIElement? {
         query.matching(NSPredicate(format: "label == %@", label)).allElementsBoundByIndex
             .first { abs($0.frame.midY - other.frame.midY) < 12 }
+    }
+
+    /// The element labelled `label` on the line under `title`, in its row: a row's line 2 (ROW-DENSITY.md §6.4).
+    private func under(_ query: XCUIElementQuery, _ label: String, _ title: XCUIElement) -> XCUIElement? {
+        query.matching(NSPredicate(format: "label == %@", label)).allElementsBoundByIndex
+            .first { $0.frame.midY > title.frame.maxY && $0.frame.minY < title.frame.maxY + 12 }
+    }
+
+    /// The element labelled `label` in `title`'s row, after the title: on its line when the row fits on one, else on
+    /// line 2 (T55).
+    private func inRow(_ query: XCUIElementQuery, _ label: String, _ title: XCUIElement) -> XCUIElement? {
+        inRow(query, matching: "label == '\(label)'", title)
+    }
+
+    /// The same, for a label matching `format` (an NSPredicate's, on `label`).
+    private func inRow(_ query: XCUIElementQuery, matching format: String, _ title: XCUIElement) -> XCUIElement? {
+        let row = cell(title)
+        return query.matching(NSPredicate(format: format)).allElementsBoundByIndex.first { e in
+            row.contains(CGPoint(x: e.frame.midX, y: e.frame.midY))
+                && (e.frame.minY >= title.frame.maxY - 1 || e.frame.minX >= title.frame.maxX - 1)
+        }
+    }
+
+    /// The same, for a label matching `format` (an NSPredicate's, on `label`).
+    private func under(_ query: XCUIElementQuery, matching format: String, _ title: XCUIElement) -> XCUIElement? {
+        query.matching(NSPredicate(format: format)).allElementsBoundByIndex
+            .first { $0.frame.midY > title.frame.maxY && $0.frame.minY < title.frame.maxY + 12 }
     }
 
     /// A very long list name (the user, 2026-11-02) stays on one line in a task's details, as on the Mac, where pane
@@ -690,7 +756,24 @@ final class FlowTests: XCTestCase {
             shot("fade-upcoming-\(look)")
             assertFades(title, "\(look): a long title")
             XCTAssertGreaterThanOrEqual(title.frame.width, 155.5, "\(look): the title keeps 156pt")
-            if let name = level(app.staticTexts, Self.longName, with: title) {
+            if !pad {
+                // The phone's two-line row (ROW-DENSITY.md §6.4): the title alone on line 1, across the row; the mark on
+                // line 2, its name cut and fading after the tile.
+                XCTAssertGreaterThanOrEqual(title.frame.width, 280, "\(look): the title has the row's width")
+                if let name = under(app.staticTexts, Self.longName, title) {
+                    assertFades(name, "\(look): a long list name on line 2")
+                    XCTAssertGreaterThanOrEqual(name.frame.width, 29.5, "\(look): the name, 30pt or more")
+                    XCTAssertGreaterThan(name.frame.minX, title.frame.minX + 16, "\(look): after the tile")
+                } else {
+                    XCTFail("\(look): the long title's list mark, on line 2")
+                }
+                assertDoesntFade(groceries, "\(look): a title that fits")
+                if let errands = inRow(app.staticTexts, "Errands", groceries) {
+                    assertDoesntFade(errands, "\(look): a list name that fits")
+                } else {
+                    XCTFail("\(look): Errands, in its row")
+                }
+            } else if let name = level(app.staticTexts, Self.longName, with: title) {
                 assertFades(name, "\(look): a long list name after a long title")
                 // On this row the title's 156pt leaves the name less than its 94: the title keeps exactly 156.
                 XCTAssertEqual(title.frame.width, 156, accuracy: 1, "\(look): the title gives way to 156pt, no less")
@@ -700,11 +783,13 @@ final class FlowTests: XCTestCase {
             } else {
                 XCTFail("\(look): the long title's list name")
             }
-            assertDoesntFade(groceries, "\(look): a title that fits")
-            if let errands = level(app.staticTexts, "Errands", with: groceries) {
-                assertDoesntFade(errands, "\(look): a list name that fits")
-            } else {
-                XCTFail("\(look): Errands, after its title")
+            if pad {
+                assertDoesntFade(groceries, "\(look): a title that fits")
+                if let errands = level(app.staticTexts, "Errands", with: groceries) {
+                    assertDoesntFade(errands, "\(look): a list name that fits")
+                } else {
+                    XCTFail("\(look): Errands, after its title")
+                }
             }
             // Home on the phone; iPad's sidebar is beside the list.
             if !pad { back() }
@@ -729,8 +814,9 @@ final class FlowTests: XCTestCase {
     /// The sample's list names, as a row in a view that mixes lists shows them after the title.
     private static let listNames = ["Inbox", "School", "PHYS 122", "Tasks app", "Home", "Errands"]
 
-    /// What each row's list name shows in Upcoming, at one text size: whole, cut and fading (then never under 42pt),
-    /// or gone (out of sight). The library books' row (Inbox, due tomorrow) gets a long title.
+    /// What each row's list mark shows in Upcoming, at one text size: whole, or cut and fading (then never under
+    /// 30pt), or gone (out of sight), and whether every one is on its title's line 2. The library books' row (Inbox,
+    /// due tomorrow) gets a long title.
     private func listNamesAfterTitles(_ size: String, file: StaticString = #filePath, line: UInt = #line)
         -> (whole: [String], fading: [String], gone: [String]) {
         app = XCUIApplication()
@@ -752,24 +838,48 @@ final class FlowTests: XCTestCase {
                 out.0.append(n.label)
             } else {
                 out.1.append(n.label)
-                XCTAssertGreaterThanOrEqual(w, 41.5, "\(what): cut, it keeps 42pt", file: file, line: line)
+                XCTAssertGreaterThanOrEqual(w, 29.5, "\(what): cut, it keeps 30pt", file: file, line: line)
             }
         }
         app.terminate()
         return out
     }
 
-    /// A list's name after a task's title (the user, 2026-11-02; INTERACTIONS-v2 §24) shows whole, or cut to no less
-    /// than 42pt (the Mac's 32) and fading, or not at all: never a sliver or a lone "…". PHYS 122 after a title that's
-    /// cut shows whole. At the largest text size School, after "Submit MSE 333 A2" and its deadline, goes.
+    /// A list's mark (the user, 2026-11-08: "let's go with 3"; ROW-DENSITY.md §6.4) is on the row's line 2 when the row
+    /// doesn't fit on one line (T55), under its title, so a long title no longer squeezes it: at the default size every sample name shows whole, the one after
+    /// the long title too. At the largest text size a cut name keeps 30pt, never a sliver.
     func testListNameAfterATitleIsWholeFadingOrGone() {
         let normal = listNamesAfterTitles("UICTContentSizeCategoryL")
-        XCTAssertTrue(normal.whole.contains("PHYS 122"), "PHYS 122 after a cut title, whole")
-        XCTAssertTrue(normal.whole.contains("Inbox"), "Inbox after the long title, whole")
+        XCTAssertTrue(normal.whole.contains("PHYS 122"), "PHYS 122, whole")
+        XCTAssertTrue(normal.whole.contains("Inbox"), "Inbox under the long title, whole")
+        XCTAssertEqual(normal.fading, [], "at the default size no short name is cut")
         XCTAssertEqual(normal.gone, [], "at the default size every name shows")
-        let largest = listNamesAfterTitles("UICTContentSizeCategoryAccessibilityXXXL")
-        XCTAssertTrue(largest.gone.contains("School"), "at the largest size, School after Submit MSE 333 A2 goes")
-        XCTAssertFalse(largest.fading.isEmpty, "and other names are cut, fading")
+        _ = listNamesAfterTitles("UICTContentSizeCategoryAccessibilityXXXL")
+    }
+
+    /// Upcoming's months list their days (§22, ROW-DENSITY.md C): a day with tasks after the first week has a label of
+    /// its own under its month's heading, so its rows don't repeat it: the study plan's When (10 days out) isn't shown,
+    /// and dates read as dates, not counts (§24 "In Upcoming").
+    func testUpcomingMonthsListTheirDays() {
+        app.launchArguments += ["-screen", "upcoming"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["Tomorrow"].firstMatch.appears(timeout: 10), "Upcoming")
+        let plan = t("CS 489 final study plan")
+        for _ in 0..<6 where !(plan.exists && plan.isHittable) { app.swipeUp() }
+        sleep(1)
+        XCTAssertTrue(plan.isHittable, "the study plan, in a month")
+        shot("upcoming-month-days")
+        let f = DateFormatter()
+        f.dateFormat = "MMM d"
+        let day = f.string(from: Calendar.current.date(byAdding: .day, value: 10, to: Date())!)
+        let label = app.staticTexts.matching(NSPredicate(format: "label == %@", day)).allElementsBoundByIndex
+            .last { $0.frame.maxY <= plan.frame.minY + 1 }
+        XCTAssertNotNil(label, "its day's label, \(day), above it")
+        if let label { XCTAssertLessThan(plan.frame.minY - label.frame.maxY, 40, "right above it") }
+        XCTAssertNil(inRow(app.descendants(matching: .any), matching: "label BEGINSWITH 'When '", plan),
+                     "its When is its day's: not repeated")
+        XCTAssertEqual(app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS 'in 10d'")).count, 0,
+                       "no counts in Upcoming")
     }
 
     // MARK: Drag to reorder (§14, §23)
@@ -808,16 +918,20 @@ final class FlowTests: XCTestCase {
     }
 
     /// A task dragged over a heading joins that section, right where it's dropped: one op, list and order. The gap's
-    /// every new slot ticks, the drop thuds once, and the copy sets down exactly on the row.
+    /// every new slot ticks, the drop thuds once, and the copy sets down exactly on the row. (It's dropped on the
+    /// pre-lab, not on the bench under it: with two-line rows the bench's middle is in the list's bottom edge-scroll
+    /// band, and the second's hold there scrolled the list.)
     func testDragATaskIntoAnotherSection() {
         app.launchArguments += ["-screen", "list:phys", "-dragProbe", "YES"]
         app.launch()
         let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
         XCTAssertTrue(redo.appears(timeout: 10))
         app.settle()
+        let prelab = app.staticTexts["Lab 4 pre-lab · RC circuits"].firstMatch
         let bench = app.staticTexts["Book a make-up lab bench"].firstMatch, exam = heading("Exam prep")
-        drag(redo, onto: bench)
-        XCTAssertGreaterThan(y(redo), y(bench), "under the row it was dropped on, in Labs")
+        drag(redo, onto: prelab)
+        XCTAssertGreaterThan(y(redo), y(prelab), "under the row it was dropped on, in Labs")
+        XCTAssertLessThan(y(redo), y(bench), "above the next")
         XCTAssertLessThan(y(redo), y(exam), "and still above Exam prep")
         XCTAssertGreaterThan(y(redo), y(heading("Labs")), "under Labs")
         XCTAssertGreaterThanOrEqual(Int(probe()["ticks"] ?? "") ?? 0, 3, "a tick at each slot the gap moved to: \(probe())")
@@ -954,22 +1068,24 @@ final class FlowTests: XCTestCase {
     }
 
     /// The copy follows the finger sideways too, keeping the grab offset; the slot is still chosen by its height, and
-    /// it sets down back in the row's column.
+    /// it sets down back in the row's column. (It's taken to the pre-lab, not to the bench under it: with two-line rows
+    /// the bench's middle is in the list's bottom edge-scroll band, and the second's hold there scrolled the list.)
     func testDragCopyFollowsSideways() {
         app.launchArguments += ["-screen", "list:phys", "-dragProbe", "YES"]
         app.launch()
         let redo = app.staticTexts["Redo the worked examples from lecture 9"].firstMatch
         XCTAssertTrue(redo.appears(timeout: 10))
         app.settle()
+        let prelab = app.staticTexts["Lab 4 pre-lab · RC circuits"].firstMatch
         let bench = app.staticTexts["Book a make-up lab bench"].firstMatch
         redo.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-            .press(forDuration: 0.5, thenDragTo: bench.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: 70, dy: 0)),
+            .press(forDuration: 0.5, thenDragTo: prelab.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).withOffset(CGVector(dx: 70, dy: 0)),
                    withVelocity: .default, thenHoldForDuration: 1)
         sleep(2)
-        XCTAssertEqual(Double(probe()["dx"] ?? "") ?? 0, 70 + Double(bench.frame.midX - redo.frame.midX), accuracy: 4,
+        XCTAssertEqual(Double(probe()["dx"] ?? "") ?? 0, 70 + Double(prelab.frame.midX - redo.frame.midX), accuracy: 4,
                        "the copy was where the finger took it, 70 pt right: \(probe())")
-        XCTAssertGreaterThan(y(redo), y(bench), "dropped by its height: under the bench, as without the sideways move")
-        XCTAssertLessThan(y(redo), y(heading("Exam prep")))
+        XCTAssertGreaterThan(y(redo), y(prelab), "dropped by its height: under the pre-lab, as without the sideways move")
+        XCTAssertLessThan(y(redo), y(bench), "above the next")
         assertLandedExactly()
     }
 
@@ -1569,15 +1685,30 @@ final class FlowTests: XCTestCase {
             let origin = app.coordinate(withNormalizedOffset: .zero)
             let field = app.textFields["headingName"]
             var seen = 0
+            // Lectures' place, by Labs' (always on the screen): slow drags, held at their end so they don't fling, till
+            // it's within 3 pt. A short one goes back and on (the list's end is close below): a drag under the slop
+            // would be a tap.
+            let labs = heading("Labs"), span = labs.frame.minY - lectures.frame.minY
+            func scroll(lectures span: CGFloat, to y: CGFloat) {
+                func drag(_ d: CGFloat) {
+                    origin.withOffset(CGVector(dx: 200, dy: 700))
+                        .press(forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: 200, dy: 700 - d)),
+                               withVelocity: .slow, thenHoldForDuration: 0.5)
+                    sleep(1)
+                }
+                for _ in 0..<4 {
+                    let d = labs.frame.minY - span - y
+                    if abs(d) <= 3 { return }
+                    if abs(d) < 30 { drag(d - 80); drag(80) } else { drag(d) }
+                }
+            }
             for attempt in 1...3 {
                 let what = "\(look), rename \(attempt)"
-                // To the list's end: Lectures' box top (its name's frame, padded as the box is) is under the bar, its
-                // name's foot still shows.
-                origin.withOffset(CGVector(dx: 200, dy: 650))
-                    .press(forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: 200, dy: 250)),
-                           withVelocity: 600, thenHoldForDuration: 0.5)
-                sleep(1)
+                // Lectures' box top (its name's frame, padded as the box is) 12 pt under the bar, its name's foot still
+                // showing. (It was a drag to the list's end; with two-line rows that takes Lectures off the screen.)
+                scroll(lectures: span, to: top - 12)
                 let f = lectures.frame
+                print("RENAME \(what): Lectures \(f), the list's top \(top)")
                 XCTAssertLessThan(f.minY, top - 2, "\(what): Lectures' top under the bar (\(f), the list's top \(top))")
                 XCTAssertGreaterThan(f.maxY, top + 12, "\(what): its name shows")
                 let film = Film()
@@ -1624,8 +1755,9 @@ final class FlowTests: XCTestCase {
     /// ~0.6 s the menu took to close the box's top stroke was a hairline. The row's height (the distance between the
     /// rows either side) is the same renaming as at rest, as Rename starts and as it ends: the cause, caught whatever
     /// the screenshots' timing. Screenshots are taken on another thread from the tap on Rename (XCTest's idle wait off,
-    /// so the tap returns at once); in each that shows the box, a column through its straight part has two stroke runs,
-    /// the top one no thinner than the bottom one (less a pixel for rounding). Three renames a look. Dark and Light.
+    /// so the tap returns at once); in each that shows the box, wherever the keyboard's scroll has it, a column through
+    /// its straight part has two stroke runs as far apart as the settled box's, the top one no thinner than the bottom
+    /// one (less a pixel for rounding). Three renames a look. Dark and Light.
     func testARenamedHeadingsTopEdgeIsWholeAsTheMenuCloses() {
         final class Film: @unchecked Sendable {
             let lock = NSLock()
@@ -1661,16 +1793,23 @@ final class FlowTests: XCTestCase {
                 XCTAssertTrue(field.appears(timeout: 3), "\(what): renaming in place")
                 sleep(1)
                 XCTAssertEqual(span(), rest, accuracy: 0.5, "\(what): the row as tall renaming as at rest")
-                // Through the box's straight part: clear of its rounded corners, the caret and the chevron.
-                let x = field.frame.maxX - 60, from = field.frame.minY - 16, to = field.frame.maxY + 14
+                // Through the box's straight part: clear of its rounded corners, the caret and the chevron. From just
+                // over the settled box to the screen's foot, so the column follows the box wherever it is in a frame:
+                // as the keyboard comes up the list scrolls Labs up to it (on the first rename, ~97 pt in ~0.2 s), and
+                // a column cut off under the settled box took a frame mid-scroll for a box missing its bottom edge
+                // (T56: it was there, under the cut). Nothing else in this column is coloured on this screen.
+                let x = field.frame.maxX - 60, from = field.frame.minY - 16, to = app.frame.height
                 let settled = strokeRuns(XCUIScreen.main.screenshot().image.cgImage!, x: x, from: from, to: to)
                 XCTAssertEqual(settled.count, 2, "\(what): settled, the box's top and bottom edges (\(settled))")
+                let gap = settled.count == 2 ? settled[1].top - settled[0].top : 0
                 for (i, cg) in film.frames.enumerated() {
                     let runs = strokeRuns(cg, x: x, from: from, to: to)
                     guard !runs.isEmpty else { continue }
                     seen += 1
                     XCTAssertEqual(runs.count, 2, "\(what), frame \(i): the box's top and bottom edges (\(runs))")
                     guard runs.count == 2 else { continue }
+                    XCTAssertEqual(runs[1].top - runs[0].top, gap, accuracy: 1,
+                                   "\(what), frame \(i): the box whole, its edges as far apart as settled (\(runs), \(settled))")
                     XCTAssertGreaterThanOrEqual(runs[0].height, runs[1].height - 1,
                                                 "\(what), frame \(i): its top edge as thick as its bottom (\(runs), px)")
                 }
@@ -2180,9 +2319,10 @@ final class FlowTests: XCTestCase {
             func luma(_ x: Int, _ row: Int) -> Int { let i = (row * w + x) * 4; return (Int(px[i]) + Int(px[i + 1]) + Int(px[i + 2])) / 3 }
             let xs = [0.2, 0.35, 0.5, 0.65].map { Int(width * $0 * scale) }
             var rules: [Int] = []
-            // Down to 40 above the bottom: the + is right of the columns looked at, and the iPhone 18 Pro has Exam
-            // prep's rule below the old 120 (it failed there on List too).
-            for row in Int(labs.minY * scale)..<Int((height - 40) * scale) {
+            // Down to 20 above the bottom: the + is right of the columns looked at, and the iPhone 18 Pro has Exam
+            // prep's rule below the old 120 (it failed there on List too), and with two-line rows and the synced notes
+            // at 837 of 874, below the old 40. (The home indicator, under 854, is clear of the 0.2 column.)
+            for row in Int(labs.minY * scale)..<Int((height - 20) * scale) {
                 let l = xs.map { luma($0, row) }, bg = luma(Int(4 * scale), row)
                 if l.allSatisfy({ abs($0 - bg) >= 6 }), l.max()! - l.min()! <= 3, rules.last.map({ row - $0 > 3 }) ?? true {
                     rules.append(row)
@@ -2296,9 +2436,20 @@ final class FlowTests: XCTestCase {
         sleep(2)
         XCTAssertTrue(sheet.exists, "collapsed and open again")
         XCTAssertLessThan(Double(probe()["fo"] ?? "") ?? .infinity, 1.5, "the chevron twice: no row over another: \(probe())")
+        // With two-line rows the last task is under the bar: the list is scrolled to its end first.
+        app.swipeUp()
+        app.settle()
         let labs = heading("Labs"), lectures = heading("Lectures")
         for (to, below) in [(app.staticTexts["Ask about problem 7 at office hours"].firstMatch, true),
                             (app.staticTexts["Read chapter 15 · oscillations"].firstMatch, false)] {
+            if !below {
+                // Back to the list's top, gently (no pull to refresh): scrolled to its end, the chapter was under the
+                // bar, in the top edge-scroll band, and the list scrolled under the flicked copy.
+                let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
+                start.press(forDuration: 0.05, thenDragTo: start.withOffset(CGVector(dx: 0, dy: 160)), withVelocity: .slow,
+                            thenHoldForDuration: 0.3)
+                app.settle()
+            }
             at(labs).press(forDuration: 0.4, thenDragTo: at(to), withVelocity: XCUIGestureVelocity(rawValue: 3000), thenHoldForDuration: 0)
             sleep(2)
             let p = probe(), ev = p["ev"] ?? ""
@@ -2663,20 +2814,25 @@ final class FlowTests: XCTestCase {
         let done = app.staticTexts["Reply to the landlord about the lease"].firstMatch
         XCTAssertTrue(done.appears(timeout: 3), "in the Completed group, open by default")
         XCTAssertTrue(app.buttons["Hide completed tasks"].exists, "open")
-        XCTAssertNotNil(level(app.staticTexts, "Inbox", with: done), "its list's name")
+        XCTAssertNotNil(inRow(app.staticTexts, "Inbox", done), "its list's mark, in its row")
     }
 
-    /// In a month group of Completed and Trash a row shows the day after its list ("School · Oct 22").
+    /// In a month group of Completed and Trash a row shows the day after its list mark ("School  Oct 22"), on its line
+    /// when it fits (T55), else on line 2.
     func testMonthGroupsShowTheDay() {
         app.launchArguments += ["-screen", "completed"]
         app.launch()
         let done = app.staticTexts["Register for winter courses"].firstMatch
         XCTAssertTrue(done.appears(timeout: 10), "Completed")
-        let name = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH 'School · '")).allElementsBoundByIndex
-            .first { abs($0.frame.midY - done.frame.midY) < 12 }
-        XCTAssertNotNil(name, "School and the day it was done")
-        XCTAssertNotNil(level(app.staticTexts, "School", with: app.staticTexts["Meet the ECE 358 lab group"].firstMatch),
-                        "in a day group, the list alone: the group has the day")
+        let name = inRow(app.staticTexts, "School", done)
+        let day = inRow(app.staticTexts, matching: "label MATCHES '^[A-Z][a-z]{2} [0-9]{1,2}$'", done)
+        XCTAssertNotNil(name, "School")
+        XCTAssertNotNil(day, "and the day it was done")
+        if let name, let day { XCTAssertLessThan(name.frame.maxX, day.frame.minX, "the day after the mark") }
+        let recent = app.staticTexts["Meet the ECE 358 lab group"].firstMatch
+        XCTAssertNotNil(inRow(app.staticTexts, "School", recent), "in a day group, the list")
+        XCTAssertNil(inRow(app.staticTexts, matching: "label MATCHES '^[A-Z][a-z]{2} [0-9]{1,2}$'", recent),
+                     "alone: the group has the day")
     }
 
     /// Show in <list>, from Today's menu and from the details' header: the list opens with the task.
@@ -3157,6 +3313,11 @@ final class FlowTests: XCTestCase {
     /// A heading with no tasks takes a drop over its row or the air above the next heading: the top of its section.
     func testADropIntoAnEmptyHeading() {
         openPhys()
+        // To the list's end first: with two-line rows the formula sheet is at the foot, where Home's New List bar is
+        // still fading out as the list comes in (its press went to the bar), and Reading would be in the bottom
+        // edge-scroll band, so the drags' holds scrolled the list.
+        app.swipeUp()
+        app.settle()
         menuOpen {
             app.staticTexts["Make the midterm formula sheet"].firstMatch.press(forDuration: 1.0)
             app.buttons["New Heading Above"].tap()
@@ -3173,6 +3334,55 @@ final class FlowTests: XCTestCase {
         let lab4 = app.staticTexts["Lab 4 pre-lab · RC circuits"].firstMatch
         dragTo(lab4, y: cell(exam).midY - 10)
         XCTAssertTrue(y(exam) < y(lab4) && y(lab4) < y(reading), "over the heading: in Exam prep too")
+    }
+
+    /// A list's bottom row, pressed the moment it comes in, while Home's New List bar is still fading out over it (its
+    /// 0.3 s): the row's menu opens. The leaving bar used to take the press, and no menu opened (T51). Both ways in: a
+    /// launch to the list, and a tap on it from Home.
+    func testAPressAsAListComesInGoesToTheRow() {
+        // The app's curves 5 times as long (Debug's -motionScale): the fade's 1.5 s, so the press, which XCTest can't
+        // start sooner than ~0.45 s after the row is found, lands in it every time (unscaled, it was after the fade
+        // in 2 runs of 3).
+        app.launchArguments += ["-motionScale", "5"]
+        guard openAndPress(launch: true) else { return }
+        // Out of the menu by its New Heading Above, left empty (it leaves nothing); back to Home, where the bar is
+        // back and works.
+        app.buttons["New Heading Above"].firstMatch.tap()
+        app.settle()
+        app.typeText("\n")
+        app.settle()
+        back()
+        let newList = app.buttons["New List"].firstMatch
+        XCTAssertTrue(newList.appears(timeout: 3), "the bar is back on Home")
+        newList.tap()
+        XCTAssertTrue(app.alerts["New List"].appears(timeout: 3), "the bar's New List works")
+        app.alerts["New List"].buttons["Cancel"].tap()
+        XCTAssertTrue(app.alerts["New List"].vanishes(timeout: 3))
+        app.settle()
+        _ = openAndPress(launch: false)
+    }
+
+    /// Whether the row's menu opened.
+    private func openAndPress(launch: Bool) -> Bool {
+        let sheet = app.staticTexts["Make the midterm formula sheet"].firstMatch
+        // No waits for the screen to be still, from the way in to the press: they'd outlast the bar's fade.
+        var opened = false
+        menuOpen {
+            if launch {
+                app.launchArguments += ["-screen", "list:phys"]
+                app.launch()
+            } else {
+                app.buttons["PHYS 122"].firstMatch.tap()
+            }
+            XCTAssertTrue(sheet.appears(timeout: 10), "PHYS 122")
+            let y = sheet.frame.midY
+            XCTAssertGreaterThan(y, 760, "at the foot, under where the bar was")
+            // By coordinate, at the row's middle across (its text may still be sliding in).
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0)).withOffset(CGVector(dx: 0, dy: y)).press(forDuration: 1.0)
+            opened = app.buttons["New Heading Above"].firstMatch.appears(timeout: 3)
+            XCTAssertTrue(opened, "the row's menu opened (\(launch ? "launched" : "tapped") to the list)")
+        }
+        return opened
     }
 
     /// The air above Today's next group is the end of this one (it used to refuse the drop).
@@ -3233,6 +3443,28 @@ final class FlowTests: XCTestCase {
         assertLandedExactly()
         app.buttons["More"].tap()
         XCTAssertTrue(app.buttons["Undo Set When"].appears(timeout: 3), "one step, the Mac's name")
+    }
+
+    /// A day inside a month takes a drop like a day of the first week (§22, ROW-DENSITY.md C): the study plan (10 days
+    /// out) dropped on the furnace check's day (9 days out, its deadline) takes that day as its When, and its own day's
+    /// label goes.
+    func testDropOnADayInsideAMonth() {
+        openUpcoming()
+        let plan = t("CS 489 final study plan"), furnace = t("Book the furnace check")
+        for _ in 0..<6 where !(plan.exists && plan.isHittable) { app.swipeUp() }
+        sleep(1)
+        XCTAssertTrue(plan.isHittable && furnace.isHittable, "both rows, in a month")
+        let f = DateFormatter()
+        f.dateFormat = "MMM d"
+        let own = f.string(from: Calendar.current.date(byAdding: .day, value: 10, to: Date())!)
+        XCTAssertTrue(app.staticTexts[own].firstMatch.exists, "the study plan's day, \(own)")
+        XCTAssertLessThan(y(furnace), y(plan), "the furnace check's day comes first")
+        drag(plan, onto: furnace)
+        XCTAssertFalse(app.staticTexts[own].firstMatch.exists, "its own day's label went with it")
+        XCTAssertTrue(plan.exists, "still in Upcoming")
+        XCTAssertLessThan(abs(y(plan) - y(furnace)), 70, "on the furnace check's day, beside it")
+        app.buttons["More"].tap()
+        XCTAssertTrue(app.buttons["Undo Set When"].appears(timeout: 3), "one Set When step")
     }
 
     /// The drop's step undoes: the task goes back to its day.
@@ -3335,7 +3567,8 @@ final class FlowTests: XCTestCase {
         let y0 = header.frame.minY
         app.swipeUp()
         sleep(1)
-        XCTAssertLessThan(header.frame.minY, y0 - 20, "one finger still scrolls")
+        // With two-line rows the list is long enough that the swipe takes the header off the screen (its cell goes).
+        XCTAssertTrue(!header.exists || header.frame.minY < y0 - 20, "one finger still scrolls")
     }
 
     /// Complete with a mixed selection completes the open ones: "Completed 2 tasks", with Undo ("Complete 3 Tasks");
@@ -3511,5 +3744,153 @@ final class FlowTests: XCTestCase {
         app.buttons["Collapse Lectures"].tap()
         app.settle()
         XCTAssertEqual(selectTitle.label, "1 Selected", "the folded row left")
+    }
+}
+
+// MARK: - One-line rows whenever everything fits (T55)
+
+/// A row is one 48pt line when its title and its details fit on it, nothing cut; otherwise the two-line row, 56pt
+/// (the user, 2026-11-08: "the quiz 2 task could fit on one line without any truncation. what if we made those cases
+/// fit on one line?", "yes on the design question, we love consistency"). School's rows, from the sample.
+extension FlowTests {
+    private func deadline(of title: XCUIElement) -> XCUIElement? {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH 'Deadline, '")).allElementsBoundByIndex
+            .first { cell(title).contains(CGPoint(x: $0.frame.midX, y: $0.frame.midY)) }
+    }
+
+    private func openSchool() {
+        app.buttons["School"].firstMatch.tap()
+        XCTAssertTrue(t("ECE 358 lab report").appears(timeout: 5), "School")
+        app.settle()
+    }
+
+    /// A short title with the notes glyph and a deadline is one line, the capsule at the trailing edge, level with the
+    /// title. Renamed on another device to a title too long for that, it takes line 2, on the spring.
+    func testAShortRowWithNotesAndADeadlineIsOneLine() {
+        let long = "ECE 358 lab report, with the oscilloscope traces"
+        launch(remote: "s1", notes: "Bring the lab kit.")
+        openSchool()
+        remoteEdit()
+        app.settle()
+        let title = t("ECE 358 lab report")
+        XCTAssertTrue(app.images["Has notes"].firstMatch.appears(timeout: 3), "the notes glyph")
+        XCTAssertEqual(cell(title).height, 48, accuracy: 1, "one line: \(cell(title))")
+        let chip = deadline(of: title)
+        XCTAssertNotNil(chip, "its deadline")
+        if let chip {
+            XCTAssertEqual(chip.frame.midY, title.frame.midY, accuracy: 2, "the capsule on the title's line")
+            XCTAssertEqual(chip.frame.maxX, cell(title).maxX - Self.rowEnd, accuracy: 2, "at the trailing edge")
+        }
+        let notes = app.images.matching(NSPredicate(format: "label == 'Has notes'")).allElementsBoundByIndex
+            .first { abs($0.frame.midY - title.frame.midY) < 4 }
+        XCTAssertNotNil(notes, "the glyph after the title, on its line")
+        if let notes { XCTAssertGreaterThan(notes.frame.minX, title.frame.maxX + 7, "8 after the title") }
+        shot("fit-short-one-line")
+        app.terminate()
+
+        // The same details with a long title: two lines.
+        app = XCUIApplication()
+        app.launchArguments = ["-sampleData", "YES", "-appearance", "dark", "-style", "classic"]
+        launch(remote: "s1", title: long, notes: "Bring the lab kit.")
+        openSchool()
+        XCTAssertEqual(cell(t("ECE 358 lab report")).height, 48, accuracy: 1, "one line before the rename")
+        remoteEdit()
+        app.settle()
+        let longTitle = t(long)
+        XCTAssertTrue(longTitle.appears(timeout: 3), "the synced title")
+        XCTAssertEqual(cell(longTitle).height, 56, accuracy: 1, "two lines once it doesn't fit: \(cell(longTitle))")
+        if let chip = deadline(of: longTitle) {
+            XCTAssertGreaterThan(chip.frame.minY, longTitle.frame.maxY - 1, "the capsule on line 2")
+        } else {
+            XCTFail("its deadline")
+        }
+        shot("fit-long-two-lines")
+    }
+
+    /// A rename in the details that crosses the boundary: the row keeps its shape while the title is typed, and takes
+    /// line 2 once the edit ends; a shorter title brings it back to one line.
+    func testARenameAcrossTheBoundaryResizesAfterTheEdit() {
+        app.launch()
+        openSchool()
+        let title = t("Submit MSE 333 A2")
+        XCTAssertEqual(cell(title).height, 48, accuracy: 1, "one line: \(cell(title))")
+        title.tap()
+        app.settle()
+        editTitle("Submit MSE 333 A2")
+        app.typeText(" report")
+        sleep(1)
+        // Behind the sheet the row is as it was: the title is written only as the edit ends.
+        if title.exists { XCTAssertEqual(cell(title).height, 48, accuracy: 1, "its shape held while typing") }
+        app.buttons["Done"].firstMatch.tap()
+        app.settle()
+        let long = t("Submit MSE 333 A2 report")
+        XCTAssertTrue(long.appears(timeout: 3), "renamed")
+        XCTAssertEqual(cell(long).height, 56, accuracy: 1, "two lines after the edit: \(cell(long))")
+        assertNoOverlaps()
+
+        long.tap()
+        app.settle()
+        editTitle("Submit MSE 333 A2 report")
+        app.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: " report".count))
+        app.buttons["Done"].firstMatch.tap()
+        app.settle()
+        XCTAssertTrue(title.appears(timeout: 3), "renamed back")
+        XCTAssertEqual(cell(title).height, 48, accuracy: 1, "one line again: \(cell(title))")
+        assertNoOverlaps()
+    }
+
+    /// At a large text size the same row has less room: "ECE 358 lab report" and its capsule, one line at the default
+    /// size, take two at Accessibility Large, and a bare row stays one line.
+    func testALargeTextSizeRefitsTheRows() {
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityL"]
+        app.launch()
+        openSchool()
+        let lab = t("ECE 358 lab report")
+        XCTAssertGreaterThan(cell(lab).height, 64, "two lines, grown with the text: \(cell(lab))")
+        if let chip = deadline(of: lab) {
+            XCTAssertGreaterThan(chip.frame.midY, lab.frame.maxY, "the capsule on line 2")
+        } else {
+            XCTFail("its deadline")
+        }
+        shot("fit-ax-large")
+    }
+
+    /// A drag across rows of both heights: the gap is the lifted row's own height, it lands exactly on its cell, and
+    /// the rows close up with nothing overlapping. A two-line row dragged down past one-line rows, then a one-line row
+    /// up past two-line ones.
+    func testDragAcrossMixedHeights() {
+        app.launchArguments += ["-dragProbe", "YES"]
+        app.launch()
+        openSchool()
+        let review = t("Review CS 489 lectures 10–14"), kit = t("Return the ECE 358 lab kit")
+        let fee = t("Pay the MSE 333 field trip fee"), lab = t("ECE 358 lab report")
+        XCTAssertEqual(cell(review).height, 56, accuracy: 1, "two lines")
+        XCTAssertEqual(cell(kit).height, 48, accuracy: 1, "one line")
+        drag(review, onto: kit)
+        app.settle()
+        XCTAssertGreaterThan(y(review), y(kit), "under the row it was dropped on")
+        XCTAssertLessThan(y(review), y(fee), "above the next")
+        XCTAssertEqual(cell(review).height, 56, accuracy: 1, "its own height where it landed")
+        assertLandedExactly()
+        assertNoOverlaps()
+        // Up onto the first row: it goes above it, first.
+        drag(kit, onto: lab)
+        app.settle()
+        XCTAssertLessThan(y(kit), y(lab), "above the first row")
+        XCTAssertEqual(cell(kit).height, 48, accuracy: 1, "its own height where it landed")
+        assertLandedExactly()
+        assertNoOverlaps()
+    }
+
+    /// The row's trailing pad: the capsule ends 12 short of the row's fill, which is the cell less its 10pt insets.
+    static let rowEnd: CGFloat = 22
+
+    /// The shown task rows' cells follow one another with no overlap and no gap.
+    private func assertNoOverlaps(file: StaticString = #filePath, line: UInt = #line) {
+        let cells = app.cells.allElementsBoundByIndex.map { $0.frame }.filter { $0.height > 1 && $0.minY > 100 }
+            .sorted { $0.minY < $1.minY }
+        for (a, b) in zip(cells, cells.dropFirst()) {
+            XCTAssertLessThanOrEqual(a.maxY, b.minY + 1, "no overlap: \(a) over \(b)", file: file, line: line)
+        }
     }
 }

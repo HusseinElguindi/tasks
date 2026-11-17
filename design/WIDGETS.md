@@ -211,8 +211,9 @@ their data folders do):
   entry is a rendered copy, so three tripled the archive WidgetKit writes on every reload, ~400 KB for a large Today.)
 - **Written by each app** after any change to what a widget draws (`WidgetFeed.changes`), debounced 1 s, and after a
   sync that applied entries; at most once per gap (`WidgetFeedPace`: 20 s while the Mac's window is on screen, 2 min
-  with none), and within a gap of the first change waiting. Hiding, closing, minimizing or leaving the window writes
-  what's waiting at once. It's written atomically (temp file, then rename), the way the snapshot is.
+  with none; 20 s on the iPhone, whose widgets aren't on screen while the app is in front), and within a gap of the
+  first change waiting. Hiding, closing, minimizing or leaving the window writes what's waiting at once; on the iPhone,
+  going to the background does, and the background refresh writes at once. It's written atomically (temp file, then rename), the way the snapshot is.
 
 ### 3.3 Writing: an inbox the app drains
 

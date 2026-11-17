@@ -1,4 +1,5 @@
 import SwiftUI
+import TasksCore
 
 /// The root on the phone, and the sidebar on iPad and the Mac: Today, Upcoming, Undated · Lists · Completed, Trash.
 struct HomeView: View {
@@ -22,7 +23,7 @@ struct HomeView: View {
                 if !sidebar {
                     ToolbarItem(placement: .principal) {
                         HStack(spacing: 7) {
-                            LogoMark(size: 20)
+                            LogoMark(scale: 0.8)
                             Text("Tasks").font(.system(size: 17, weight: .semibold)).foregroundStyle(p.ink)
                         }
                         .opacity(folded ? 1 : 0)
@@ -33,20 +34,21 @@ struct HomeView: View {
     }
 }
 
-/// Home's header: the mark and "Tasks", large on the phone.
+/// Home's header: the mark (a list mark, `LogoMark`) and "Tasks", large on the phone.
 struct HomeHeader: View {
     let sidebar: Bool
     @Environment(\.palette) private var p
 
     var body: some View {
         HStack(spacing: sidebar ? 9 : 11) {
-            LogoMark(size: sidebar ? 22 : 30)
+            LogoMark(scale: sidebar ? 1 : 1.2)
             Text("Tasks")
                 .font(sidebar ? .system(size: 20, weight: .semibold) : Typo.largeTitle)
                 .foregroundStyle(p.ink)
             Spacer()
         }
-        .padding(.leading, Metric.rowPad - 2)
+        // The mark on the rows' tile column, as the Mac's sidebar header puts it.
+        .padding(.leading, Metric.rowPad)
         .padding(.top, 4)
         .padding(.bottom, 14)
         .accessibilityElement(children: .ignore)
@@ -55,20 +57,23 @@ struct HomeHeader: View {
     }
 }
 
-/// How sync is doing, quietly, under the views (the Mac's sync indicator, in words). Pull down to sync now.
+/// How sync is doing, quietly, under the views (the Mac's sync indicator, in words). Pull down to sync now. While push
+/// is live and it says "Synced…", the cloud carries a bolt (design/SYNC-STATUS.md §3, B); the words don't change.
 struct SyncLine: View {
     let text: String
+    var live = false
     @Environment(\.palette) private var p
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "icloud").font(.system(size: 12, weight: .medium))
+            Image(systemName: LiveStatus.symbol(live: live)).font(.system(size: 12, weight: .medium))
             Text(text).font(Typo.meta).lineLimit(1)
         }
         .foregroundStyle(p.inkTertiary)
         .padding(.leading, Metric.rowPad + 2)
         .padding(.top, 14)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Sync: " + text)
+        .accessibilityLabel("Sync: " + text + (live ? ". Live" : ""))
+        .accessibilityIdentifier("syncLine")
     }
 }
 
